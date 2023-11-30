@@ -18,7 +18,7 @@ export class AppComponent {
   ]
 
   constructor(private router: Router, private activatedRoute: ActivatedRoute) {
-	this.router.events.subscribe(event => {
+	this.router.events.subscribe((event: any) => {
 	  if (event instanceof NavigationEnd) {
 		// Check if the current route has data for showSidenavAndTopbar
 		this.showSidenavAndTopbar = this.getShowSidenavAndTopbarFromRouteData(activatedRoute);
