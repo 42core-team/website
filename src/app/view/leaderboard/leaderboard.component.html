@@ -1,0 +1,35 @@
+<h1>Leaderborad</h1>
+<div class="grid" style="text-align: center;">
+	<div class="col-4">
+		<p-card header="2nd Place">
+			{{teams[1].name}}
+		</p-card>
+	</div>
+
+	<div class="col-4">
+		<p-card header="1st Place">
+			{{teams[0].name}}
+		</p-card>
+	  </div>
+
+	<div class="col-4">
+		<p-card header="3rd Place">
+			{{teams[2].name}}
+		</p-card>
+	</div>
+</div>
+<br>
+<p-table [value]="teams">
+    <ng-template pTemplate="header">
+        <tr>
+            <th>Team</th>
+            <th>Rank</th>
+        </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-team>
+        <tr>
+            <td>{{ team.name }}</td>
+            <td>{{ team.rank }}</td>
+        </tr>
+    </ng-template>
+</p-table>
