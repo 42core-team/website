@@ -1,20 +1,41 @@
 import express from 'express';
+import session from 'express-session';
 import { PrismaClient, Team } from '@prisma/client';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
+router.use(
+	session({
+		secret: process.env.SESSION_SECRET || 'your-secret-key',
+		resave: false,
+		saveUninitialized: true,
+	})
+);
+
 router.get('/', async (req, res) => {
-	const { id } = req.body;
+	let token = req.session.token;
+	if (!token) {
+		res.status(401).json({ error: 'Unauthorized' });
+		return;
+	}
 	try {
 		const team = await prisma.team.findFirst({
-		  where: {
-			id: parseInt(id, 10),
-		  },
+			where: {
+				tokens: {
+					some: {
+						token: token,
+					},
+				}
+			}
 		});
+		if (!team) {
+			res.status(401).json({ error: 'Unauthorized' });
+			return;
+		}
 		res.json(team);
 	} catch (error) {
-		console.error("Error updating team:", error);
+		console.error("Error getting team:", error);
 		res.status(500).json({ error: "Internal Server Error" });
 	}
 });

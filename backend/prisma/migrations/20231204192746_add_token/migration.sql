@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `Token` MODIFY `token` VARCHAR(2040) NOT NULL;

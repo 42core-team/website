@@ -11,7 +11,23 @@ datasource db {
 }
 
 model Team {
-  id    Int     @id @default(autoincrement())
-  name  String?
-  repo_url String?
+  id    Int     		@id @default(autoincrement())
+  name  String  		@default("")
+  email String			@default("")
+  password String 		@default("")
+  repo_url String? 		@default("")
+  tokens      Token[]
+}
+
+model Token {
+ id         Int       @id @default(autoincrement())
+ createdAt  DateTime  @default(now())
+ updatedAt  DateTime  @updatedAt
+ valid      Boolean   @default(true)
+ token 		String    @db.VarChar(2040)
+ expiration DateTime
+
+ // Relation fields
+ team   Team @relation(fields: [teamId], references: [id])
+ teamId Int
 }
