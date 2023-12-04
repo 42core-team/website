@@ -7,47 +7,10 @@
 		<div class="col-12">
 			<p-divider></p-divider>
 		</div>
-		<div class="field mb-4 col-12 md:col-6">
-			<label for="avatar" class="font-medium">Avatar</label>
-			<div class="flex align-items-center">
-				<img src="assets/images/blocks/avatars/circle/avatar-f-4.png" class="mr-4" />
-				<p-fileUpload id="avatar" mode="basic" name="avatar" url="./upload.php" accept="image/*" [maxFileSize]="1000000" styleClass="p-button-outlined p-button-plain" chooseLabel="Upload Image"></p-fileUpload>
-			</div>
-		</div>
-		<div class="col-12">
-			<p-divider></p-divider>
-		</div>
-		<div class="field mb-4 col-12 md:col-6">
-			<label for="email" class="font-medium">Email</label>
-			<input id="email" [(ngModel)]="email" type="text" pInputText>
-		</div>
-		<div class="field mb-4 col-12 md:col-6">
-			<label for="country" class="font-medium">Country</label>
-			<p-dropdown inputId="country" [options]="options" optionLabel="name" [filter]="true" filterBy="name" [showClear]="true" placeholder="Select a Repo">
-				<ng-template let-country pTemplate="item">
-					<div class="flex align-items-center">
-						<img src="assets/images/blocks/flag/flag_placeholder.png" [class]="'mr-2 flag flag-' + country.code.toLowerCase()" style="width:18px"/>
-						<div>{{country.name}}</div>
-					</div>
-				</ng-template>
-			</p-dropdown>
-		</div>
-		<div class="field mb-4 col-12 md:col-6">
-			<label for="city" class="font-medium">City</label>
-			<input id="city" type="text" pInputText>
-		</div>
-		<div class="field mb-4 col-12 md:col-6">
-			<label for="state" class="font-medium">State</label>
-			<input id="state" type="text" pInputText>
-		</div>
-		<div class="col-12">
-			<p-divider></p-divider>
-		</div>
 		<div class="field mb-4 col-12">
-			<label for="website" class="font-medium">Website</label>
-			<div class="p-inputgroup">
-				<span class="p-inputgroup-addon">www</span>
-				<input id="website" type="text" pInputText>      
+			<div class="field mb-4 col-12">
+				<label for="repo" class="font-medium">Gitub repo</label>
+				<input id="repo" type="text" pInputText>
 			</div>
 		</div>
 		<div class="col-12">

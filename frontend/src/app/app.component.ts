@@ -14,7 +14,7 @@ export class AppComponent {
 	{link: '/battle', name: 'Battle', icon: 'bolt'},
 	{link: '/leaderboard', name: 'Leaderboard', icon: 'users'},
 	{link: '/team', name: 'Team', icon: 'pencil'},
-	{link: '/about', name: 'About', icon: 'info'},
+	{link: '/about', name: 'About', icon: 'question-circle'},
   ]
 
   constructor(private router: Router, private activatedRoute: ActivatedRoute) {
