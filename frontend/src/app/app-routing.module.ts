@@ -6,12 +6,14 @@ import { BattleComponent } from './view/battle/battle.component';
 import { LeaderboardComponent } from './view/leaderboard/leaderboard.component';
 import { AboutComponent } from './view/about/about.component';
 import { TeamComponent } from './view/team/team.component';
+import { LoginComponent } from './view/login/login.component';
 
 const routes: Routes = [
 	{path: '', component: DashboardComponent},
 	{path: 'battle', component: BattleComponent},
 	{path: 'leaderboard', component: LeaderboardComponent},
 	{path: 'team', component: TeamComponent},
+	{path: 'login', component: LoginComponent , data: { showSidenavAndTopbar: false }},
 
 	{path: 'about', component: AboutComponent , data: { showSidenavAndTopbar: false }},
 	{path: '**', component: NotFoundComponent , data: { showSidenavAndTopbar: false }}

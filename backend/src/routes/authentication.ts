@@ -61,22 +61,30 @@ router.post('/login', async (req, res) => {
 		return;
 	}
 	const token = jwt.sign({ team }, process.env.JWT_SECRET!, { expiresIn: '1h' } as jwt.SignOptions);
-
-	req.session.token = token;
-
-	const db_token = await prisma.token.create({
-		data: {
-		  token: token,
-		  expiration: new Date(Date.now() + 3600000).toISOString(),
-		  team: {
-			connect: {
-			  id: team!.id,
-			},
-		  },
-		},
-	  });
 	  
-	res.json({ token });
+	  req.session.token = token;
+
+	  req.session.save(async (err) => {
+		  if (err) {
+			  console.error('Error saving session:', err);
+			  res.status(500).json({ error: 'Internal Server Error' });
+			  return;
+		  }
+  
+		  const db_token = await prisma.token.create({
+			data: {
+			  token: token,
+			  expiration: new Date(Date.now() + 3600000).toISOString(),
+			  team: {
+				connect: {
+				  id: team!.id,
+				},
+			  },
+			},
+		  });
+  
+		  res.json({ token });
+	  });
 });
 
 router.post('/register', async (req, res) => {

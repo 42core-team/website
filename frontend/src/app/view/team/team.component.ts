@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import { Component } from '@angular/core';
 
 @Component({
@@ -18,4 +19,10 @@ export class TeamComponent {
 	changeFn() {
 		console.log("Focus");
 	}
+
+	constructor(http: HttpClient) {
+		http.get('http://localhost:8080/team').subscribe(data => {
+			console.log(data);
+		});
+	 }
 }

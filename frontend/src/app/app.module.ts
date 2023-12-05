@@ -20,6 +20,7 @@ import { FileUploadModule } from 'primeng/fileupload';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { EditorModule } from 'primeng/editor';
 import { DividerModule } from 'primeng/divider';
+import { LoginComponent } from './view/login/login.component';
 
 
 @NgModule({
@@ -31,6 +32,7 @@ import { DividerModule } from 'primeng/divider';
 	LeaderboardComponent,
 	AboutComponent,
 	TeamComponent,
+ LoginComponent,
   ],
   imports: [
 	BrowserModule,

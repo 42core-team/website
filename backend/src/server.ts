@@ -4,7 +4,11 @@ import teamroutes from './routes/team';
 import authroutes from './routes/authentication';
 
 const app = express();
+const cors = require('cors');
+
 app.use(express.json());
+app.use(cors());
+
 dotenv.config();
 
 app.use('/team', teamroutes);

@@ -15,6 +15,7 @@ router.use(
 
 router.get('/', async (req, res) => {
 	let token = req.session.token;
+	console.log(req.cookies);
 	if (!token) {
 		res.status(401).json({ error: 'Unauthorized' });
 		return;
