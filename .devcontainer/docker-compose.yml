@@ -1,0 +1,37 @@
+volumes:
+  data:
+services:
+  development:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace
+    stdin_open: true
+
+  
+  db:
+    image: mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: mydatabase
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    volumes:
+      - data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+  
+  
+  nginx:
+    image: nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./etc/nginx/ssl:/etc/nginx/ssl/
+    ports:
+      - "80:80"
+      # - "443:443"
+    depends_on:
+      - development
+      - db
+      

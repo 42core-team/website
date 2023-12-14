@@ -7,7 +7,7 @@ import { Component } from '@angular/core';
 })
 export class LoginComponent {
 	constructor(private http: HttpClient) {
-		this.http.post('http://localhost:8080/team', {"name": "Team 3", "password": "passwor123"}).subscribe(data => {
+		this.http.post('http://localhost:8081/auth/login', {"name": "Team 3", "password": "passwor123"}).subscribe(data => {
 			console.log(data);
 		});
 	 }

@@ -19,6 +19,12 @@ model Team {
   tokens      Token[]
 }
 
+model User {
+  id   		Int     		@id @default(autoincrement())
+  intraName String  		@default("")
+  discordId String			@default("")
+}
+
 model Token {
  id         Int       @id @default(autoincrement())
  createdAt  DateTime  @default(now())
