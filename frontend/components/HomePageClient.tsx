@@ -26,8 +26,7 @@ export default function HomePageClient(props: { initialStats: MatchStats }) {
   const visualizerUrl = useMemo(() => {
     const base = process.env.NEXT_PUBLIC_VISUALIZER_URL;
     const params = new URLSearchParams({
-      autoplay:
-        "https://raw.githubusercontent.com/42core-team/monorepo/refs/heads/dev/visualizer/public/replays/replay_latest.json",
+      autoplay: "true",
       speed: "5",
       ui: "false",
       theme: visualizerTheme,
@@ -63,7 +62,9 @@ export default function HomePageClient(props: { initialStats: MatchStats }) {
             </Link>
             <Link
               className={buttonStyles({ variant: "bordered", radius: "full" })}
-              href="https://github.com/42core-team/my-core-bot"
+              href="https://github.com/42core-team"
+              target="_blank"
+              rel="noopener noreferrer"
             >
               <GithubIcon size={20} />
               GitHub
