@@ -39,7 +39,7 @@ export default async function EventQueuePage({
   });
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto py-3">
       <h1 className="text-3xl font-bold mb-8">Event Queue</h1>
       <p className="text-lg text-default-600 mb-4">
         Play against other participants in the queue to test your code.

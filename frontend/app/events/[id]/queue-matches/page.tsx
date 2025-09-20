@@ -72,7 +72,7 @@ export default async function EventQueueMatchesAdminPage({
   const chartTitle = `Matches played (${formatDateShort(startDate)} – ${formatDateShort(endDate)}, ${interval} buckets)`;
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto py-3">
       <h1 className="text-3xl font-bold mb-8">All Queue Matches</h1>
 
       <div className="mb-6">

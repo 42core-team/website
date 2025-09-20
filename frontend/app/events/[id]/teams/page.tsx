@@ -60,8 +60,8 @@ export default async function TeamsPage({
   );
 
   return (
-    <div className="py-8 space-y-8">
-      <Card className="p-6">
+    <div className="py-3 space-y-8">
+      <Card className="px-5 py-4">
         <div className="flex flex-col gap-4">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold">Teams</h1>

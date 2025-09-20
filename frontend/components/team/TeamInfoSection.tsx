@@ -117,7 +117,7 @@ export const TeamInfoSection = ({
       </div>
 
       {/* Team Members Section */}
-      <div className="mt-6 mb-8 p-4 bg-default-100 rounded-lg">
+      <div className="mt-6 mb-6 p-4 bg-default-100 rounded-lg">
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-lg font-semibold">Team Members</h3>
           {!myTeam.locked && (
@@ -169,7 +169,7 @@ export const TeamInfoSection = ({
       </div>
 
       {/* Team Management Compartment */}
-      <div className="mt-8 pt-4 border-t border-default-200">
+      <div>
         {leaveError && (
           <div className="mb-4 px-4 py-3 rounded-md bg-danger-50 text-danger-700 border border-danger-200">
             {leaveError}
@@ -181,7 +181,7 @@ export const TeamInfoSection = ({
               color="danger"
               variant="light"
               onPress={onConfirmOpen}
-              size="sm"
+              size="md"
             >
               Leave Team
             </Button>
