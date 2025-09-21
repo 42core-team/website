@@ -85,6 +85,7 @@ export class TeamService {
         try {
             await this.githubApiService.createTeamRepository(
                 repoName,
+                team.name,
                 user.username,
                 user.githubAccessToken,
                 event.githubOrg,

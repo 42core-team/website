@@ -196,6 +196,7 @@ export class AppService {
 
   async createTeamRepository(
     name: string,
+    teamName: string,
     username: string,
     encryptedUserGithubAccessToken: string,
     githubOrg: string,
@@ -210,6 +211,7 @@ export class AppService {
     this.logger.log(
       `Creating team repository ${JSON.stringify({
         name,
+        teamName,
         username,
         githubOrg,
         teamId,
@@ -250,6 +252,7 @@ export class AppService {
               visualizerDockerImage,
               tempFolderPath,
               eventId,
+              teamName,
             );
           })(),
         ]);

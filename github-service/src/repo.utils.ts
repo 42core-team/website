@@ -18,6 +18,7 @@ export class RepoUtils {
         visualizerDockerImage: string,
         tempFolderPath: string,
         eventId: string,
+        teamName: string,
     ): Promise<SimpleGit> {
         this.logger.log(
             `Cloning mono repo ${monoRepoUrl} to temp folder ${tempFolderPath}`,
@@ -41,6 +42,10 @@ export class RepoUtils {
                 path.join(tempFolderPath, this.MY_CORE_BOT_FOLDER),
                 myCoreBotDockerImage,
                 visualizerDockerImage,
+            ),
+            this.updateTeamName(
+                path.join(tempFolderPath, this.MY_CORE_BOT_FOLDER),
+                teamName,
             ),
         ]);
         return gitRepo;
@@ -232,6 +237,42 @@ export class RepoUtils {
         } catch (error) {
             this.logger.error(
                 `Failed to update README.md with team repo URL`,
+                error as Error,
+            );
+        }
+    }
+
+    private async updateTeamName(repoRoot: string, teamName: string): Promise<void> {
+        try {
+            const mainCPath = path.join(repoRoot, this.MY_CORE_BOT_FOLDER, "src", "main.c");
+            const exists = await fs
+                .stat(mainCPath)
+                .then(() => true)
+                .catch(() => false);
+            if (!exists) {
+                this.logger.log(
+                    `No src/main.c found at ${mainCPath}, skipping team name update`,
+                );
+                return;
+            }
+
+            const originalContent = await fs.readFile(mainCPath, "utf-8");
+
+            let updatedContent = originalContent.replaceAll("YOUR TEAM NAME HERE", teamName);
+
+            if (updatedContent !== originalContent) {
+                await fs.writeFile(mainCPath, updatedContent);
+                this.logger.log(
+                    `Replaced 'YOUR TEAM NAME HERE' with '${teamName}' in ${mainCPath}`,
+                );
+            } else {
+                this.logger.log(
+                    `No occurrence of 'YOUR TEAM NAME HERE' found in ${mainCPath}`,
+                );
+            }
+        } catch (error) {
+            this.logger.error(
+                `Failed to update team name in src/main.c`,
                 error as Error,
             );
         }
