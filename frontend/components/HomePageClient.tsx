@@ -99,11 +99,11 @@ export default function HomePageClient(props: {
         {/* Foreground (logo + text + links) */}
         <div className="relative z-10 inline-block text-center justify-center w-full mb-25">
           <CoreLogoWhite className="mx-auto w-[30%] h-auto" />
-          <span className="text-2xl font-bold block mt-2">
+          <h1 className="text-2xl font-bold block mt-2">
             Imagine a game contest that brings people
             <br />
             from around the world together for fun and learning.
-          </span>
+          </h1>
           <div className="mt-6 flex items-center justify-center gap-3">
             <Link
               className={buttonStyles({
@@ -147,6 +147,9 @@ export default function HomePageClient(props: {
             </div>
           </div>
         </div>
+        <noscript>
+          <div className="p-4 text-center">JavaScript is disabled</div>
+        </noscript>
       </section>
 
       {/* Global Stats Section */}
@@ -165,7 +168,7 @@ export default function HomePageClient(props: {
               alt: "Gib Character",
               content: (
                 <div className="flex flex-col items-center gap-4">
-                  <h1 className="text-4xl font-bold">What the Game is About</h1>
+                  <h2 className="text-4xl font-bold">What the Game is About</h2>
                   <p className="text-2xl"></p>
                   <p className="text-xl text-gray-400">{`CORE Game is a competitive coding challenge where you design and program your own AI-powered bots to battle it out in a dynamic 2D arena. Every decision matters—strategy, efficiency, and adaptability will determine whether your bot rises to victory or falls in defeat. Are you ready to code your way to the top?`}</p>
                 </div>
@@ -178,7 +181,7 @@ export default function HomePageClient(props: {
               alt: "Bob Character",
               content: (
                 <div className="flex flex-col items-center gap-4">
-                  <h1 className="text-4xl font-bold">How to Play the Game</h1>
+                  <h2 className="text-4xl font-bold">How to Play the Game</h2>
                   <p className="text-2xl"></p>
                   <p className="text-xl text-gray-400">{`Write your own bot, fine-tune its strategy, and deploy it into battle. The game runs autonomously based on the logic you've programmed, so your code is your weapon. Learn from past matches, tweak your tactics, and keep improving—because in CORE Game, the smartest code wins.`}</p>
                 </div>
@@ -191,9 +194,9 @@ export default function HomePageClient(props: {
               alt: "Rob Character",
               content: (
                 <div className="flex flex-col items-center gap-4">
-                  <h1 className="text-4xl font-bold">
+                  <h2 className="text-4xl font-bold">
                     What is Necessary to Play
-                  </h1>
+                  </h2>
                   <p className="text-2xl"></p>
                   <p className="text-xl text-gray-400">{`All you need is basic programming knowledge, a curious mind, and a hunger for competition! Whether you're a beginner or an experienced coder, you can jump in, experiment, and refine your bot as you go. No fancy hardware required—just bring your creativity and a love for coding!`}</p>
                 </div>
@@ -206,9 +209,9 @@ export default function HomePageClient(props: {
               alt: "Zob Character",
               content: (
                 <div className="flex flex-col items-center gap-4">
-                  <h1 className="text-4xl font-bold">
+                  <h2 className="text-4xl font-bold">
                     What We Offer as a Team
-                  </h1>
+                  </h2>
                   <p className="text-2xl"></p>
                   <p className="text-xl text-gray-400">{`We're more than just a game—we're a community of coders, innovators, and problem-solvers. As a team, we provide an engaging platform, regular challenges, and a space to connect with like-minded programmers. Workshops, mentorship, and thrilling competitions—we've got everything you need to grow, learn, and have fun!`}</p>
                 </div>

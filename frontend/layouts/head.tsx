@@ -4,6 +4,17 @@ import NextHead from "next/head";
 import { siteConfig } from "@/config/site";
 
 export const Head = () => {
+  let visualizerOrigin: string | undefined;
+  try {
+    const v = process.env.NEXT_PUBLIC_VISUALIZER_URL;
+    if (v) {
+      const url = new URL(v);
+      visualizerOrigin = url.origin;
+    }
+  } catch {
+    // ignore invalid URL
+  }
+
   return (
     <NextHead>
       <title>{siteConfig.name}</title>
@@ -16,6 +27,16 @@ export const Head = () => {
         name="viewport"
       />
       <link href="/favicon.ico" rel="icon" />
+      {visualizerOrigin && (
+        <>
+          <link rel="dns-prefetch" href={visualizerOrigin} />
+          <link
+            rel="preconnect"
+            href={visualizerOrigin}
+            crossOrigin="anonymous"
+          />
+        </>
+      )}
     </NextHead>
   );
 };
