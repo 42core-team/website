@@ -18,7 +18,7 @@ export const TeamCreationSection = ({
   errorMessage,
   validationError,
 }: TeamCreationSectionProps) => (
-  <div className="bg-default-50 p-6 rounded-lg border border-default-200">
+  <div className="bg-default-50 p-5 rounded-lg border border-default-200">
     <h2 className="text-xl font-semibold mb-4">Create Your Team</h2>
     <div className="flex flex-col gap-2">
       <div className="flex gap-2 items-center">

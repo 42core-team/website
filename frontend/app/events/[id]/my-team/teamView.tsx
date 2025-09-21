@@ -15,11 +15,11 @@ export default function TeamView({
   pendingInvites,
 }: TeamViewProps) {
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto mb-8 mt-3">
       {!initialTeam ? (
         <>
           <TeamCreationForm />
-          <div className="mt-8"></div>
+          <div className="mb-5"></div>
           <TeamInvitesDisplay pendingInvites={pendingInvites} />
         </>
       ) : (

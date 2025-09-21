@@ -8,13 +8,12 @@ export default function BackButton() {
     <Button
       type="button"
       variant="ghost"
-      className="p-2"
       aria-label="Back to teams list"
       onPress={() => {
         window.history.back();
       }}
     >
-      <ArrowLeftIcon size={20} />
+      <ArrowLeftIcon size={18} />
     </Button>
   );
 }

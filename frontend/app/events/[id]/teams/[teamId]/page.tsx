@@ -45,8 +45,8 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
   }
 
   return (
-    <div className="py-8 space-y-8">
-      <Card className="p-6">
+    <div className="py-3 space-y-8">
+      <Card className="px-5 py-4">
         <div className="flex flex-col gap-2 mb-4">
           <div className="flex items-center gap-4">
             <BackButton />

@@ -9,11 +9,12 @@ import {
   TableCell,
   Chip,
 } from "@heroui/react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Event } from "@/app/actions/event";
 import { EventState } from "@/app/actions/event-model";
 
 export default function EventsTable({ events }: { events: Event[] }) {
+  const router = useRouter();
   const formatState = (state: EventState) => {
     switch (state) {
       case EventState.TEAM_FINDING:
@@ -51,7 +52,11 @@ export default function EventsTable({ events }: { events: Event[] }) {
   };
 
   return (
-    <Table aria-label="Events table" className="mb-8">
+    <Table
+      aria-label="Events table"
+      className="mb-8"
+      onRowAction={(key) => router.push(`/events/${String(key)}`)}
+    >
       <TableHeader>
         <TableColumn>Name</TableColumn>
         <TableColumn>Start Date</TableColumn>
@@ -61,8 +66,6 @@ export default function EventsTable({ events }: { events: Event[] }) {
       <TableBody items={events} emptyContent="No events found">
         {(event) => (
           <TableRow
-            as={Link}
-            href={`/events/${event.id}`}
             key={event.id}
             className="cursor-pointer transition-colors hover:bg-default-100"
           >

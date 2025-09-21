@@ -18,7 +18,7 @@ import { Tooltip } from "@heroui/tooltip";
 
 export default function TeamUserTable({ members }: { members: TeamMember[] }) {
   return (
-    <Table aria-label="Team members table" className="mb-8">
+    <Table aria-label="Team members table">
       <TableHeader>
         <TableColumn>Member</TableColumn>
         <TableColumn>

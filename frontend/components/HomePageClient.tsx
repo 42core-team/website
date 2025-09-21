@@ -11,13 +11,23 @@ import { CoreLogoWhite } from "@/components/social";
 import GlobalStats from "@/components/GlobalStats";
 import { MatchStats } from "@/app/actions/stats";
 import { useTheme } from "next-themes";
-
-export default function HomePageClient(props: { initialStats: MatchStats }) {
+import { Card, CardBody, CardHeader, Chip } from "@heroui/react";
+import { Event } from "@/app/actions/event";
+export default function HomePageClient(props: {
+  initialStats: MatchStats;
+  currentLiveEvent?: Event;
+}) {
   const { resolvedTheme } = useTheme();
   const [isMounted, setIsMounted] = useState(false);
+  const [now, setNow] = useState<Date>(new Date());
 
   useEffect(() => {
     setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
   }, []);
 
   const visualizerTheme =
@@ -26,8 +36,7 @@ export default function HomePageClient(props: { initialStats: MatchStats }) {
   const visualizerUrl = useMemo(() => {
     const base = process.env.NEXT_PUBLIC_VISUALIZER_URL;
     const params = new URLSearchParams({
-      autoplay:
-        "https://raw.githubusercontent.com/42core-team/monorepo/refs/heads/dev/visualizer/public/replays/replay_latest.json",
+      autoplay: "true",
       speed: "5",
       ui: "false",
       theme: visualizerTheme,
@@ -38,17 +47,63 @@ export default function HomePageClient(props: { initialStats: MatchStats }) {
     return `${base}/?${params.toString()}`;
   }, [visualizerTheme]);
 
+  const formatTimeLeft = (ms: number) => {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const hhmmss = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    return days > 0 ? `${days}d ${hhmmss}` : hhmmss;
+  };
+
+  const timeLeftMs = props.currentLiveEvent
+    ? new Date(props.currentLiveEvent.endDate).getTime() - now.getTime()
+    : 0;
+
   return (
     <div>
+      {props.currentLiveEvent && timeLeftMs > 0 && (
+        <Card className="absolute right-20 top-20 z-20 md:block hidden">
+          <CardHeader className="flex items-center gap-3">
+            <span className="text-lg font-semibold">
+              {props.currentLiveEvent.name}
+            </span>
+            <Chip color="danger" variant="solid" size="sm">
+              Live
+            </Chip>
+          </CardHeader>
+          <CardBody className="flex flex-col gap-3">
+            <span className="text-foreground-500"></span>
+            <Chip color="warning" variant="flat" aria-label="Event countdown">
+              Ends in {formatTimeLeft(timeLeftMs)}
+            </Chip>
+            <div className="mt-1">
+              <Link
+                className={buttonStyles({
+                  color: "primary",
+                  radius: "full",
+                  variant: "shadow",
+                  size: "sm",
+                })}
+                href={`/events/${props.currentLiveEvent.id}`}
+              >
+                View event
+              </Link>
+            </div>
+          </CardBody>
+        </Card>
+      )}
       <section className="flex flex-col items-center justify-center mb-15">
         {/* Foreground (logo + text + links) */}
         <div className="relative z-10 inline-block text-center justify-center w-full mb-25">
           <CoreLogoWhite className="mx-auto w-[30%] h-auto" />
-          <span className="text-2xl font-bold block mt-2">
+          <h1 className="text-2xl font-bold block mt-2">
             Imagine a game contest that brings people
             <br />
             from around the world together for fun and learning.
-          </span>
+          </h1>
           <div className="mt-6 flex items-center justify-center gap-3">
             <Link
               className={buttonStyles({
@@ -63,7 +118,9 @@ export default function HomePageClient(props: { initialStats: MatchStats }) {
             </Link>
             <Link
               className={buttonStyles({ variant: "bordered", radius: "full" })}
-              href="https://github.com/42core-team/my-core-bot"
+              href="https://github.com/42core-team"
+              target="_blank"
+              rel="noopener noreferrer"
             >
               <GithubIcon size={20} />
               GitHub
@@ -90,6 +147,9 @@ export default function HomePageClient(props: { initialStats: MatchStats }) {
             </div>
           </div>
         </div>
+        <noscript>
+          <div className="p-4 text-center">JavaScript is disabled</div>
+        </noscript>
       </section>
 
       {/* Global Stats Section */}
@@ -108,9 +168,9 @@ export default function HomePageClient(props: { initialStats: MatchStats }) {
               alt: "Gib Character",
               content: (
                 <div className="flex flex-col items-center gap-4">
-                  <h1 className="text-4xl font-bold">What the Game is About</h1>
+                  <h2 className="text-4xl font-bold">What the Game is About</h2>
                   <p className="text-2xl"></p>
-                  <p className="text-xl text-gray-400">{`CORE Game is a competitive coding challenge where you design and program your own AI-powered bots to battle it out in a dynamic 2D arena. Every decision matters—strategy, efficiency, and adaptability will determine whether your bot rises to victory or falls in defeat. Are you ready to code your way to the top?`}</p>
+                  <p className="text-xl text-gray-400">{`CORE Game is a competitive coding challenge where you design and program your own bots to battle it out in a dynamic 2D arena. Every decision matters—strategy, efficiency, and adaptability will determine whether your bot rises to victory or falls in defeat. Are you ready to code your way to the top?`}</p>
                 </div>
               ),
               delay: 0.2,
@@ -121,7 +181,7 @@ export default function HomePageClient(props: { initialStats: MatchStats }) {
               alt: "Bob Character",
               content: (
                 <div className="flex flex-col items-center gap-4">
-                  <h1 className="text-4xl font-bold">How to Play the Game</h1>
+                  <h2 className="text-4xl font-bold">How to Play the Game</h2>
                   <p className="text-2xl"></p>
                   <p className="text-xl text-gray-400">{`Write your own bot, fine-tune its strategy, and deploy it into battle. The game runs autonomously based on the logic you've programmed, so your code is your weapon. Learn from past matches, tweak your tactics, and keep improving—because in CORE Game, the smartest code wins.`}</p>
                 </div>
@@ -134,11 +194,11 @@ export default function HomePageClient(props: { initialStats: MatchStats }) {
               alt: "Rob Character",
               content: (
                 <div className="flex flex-col items-center gap-4">
-                  <h1 className="text-4xl font-bold">
+                  <h2 className="text-4xl font-bold">
                     What is Necessary to Play
-                  </h1>
+                  </h2>
                   <p className="text-2xl"></p>
-                  <p className="text-xl text-gray-400">{`All you need is basic programming knowledge, a curious mind, and a hunger for competition! Whether you\'re a beginner or an experienced coder, you can jump in, experiment, and refine your bot as you go. No fancy hardware required—just bring your creativity and a love for coding!`}</p>
+                  <p className="text-xl text-gray-400">{`All you need is basic programming knowledge, a curious mind, and a hunger for competition! Whether you're a beginner or an experienced coder, you can jump in, experiment, and refine your bot as you go. No fancy hardware required—just bring your creativity and a love for coding!`}</p>
                 </div>
               ),
               delay: 0.6,
@@ -149,9 +209,9 @@ export default function HomePageClient(props: { initialStats: MatchStats }) {
               alt: "Zob Character",
               content: (
                 <div className="flex flex-col items-center gap-4">
-                  <h1 className="text-4xl font-bold">
+                  <h2 className="text-4xl font-bold">
                     What We Offer as a Team
-                  </h1>
+                  </h2>
                   <p className="text-2xl"></p>
                   <p className="text-xl text-gray-400">{`We're more than just a game—we're a community of coders, innovators, and problem-solvers. As a team, we provide an engaging platform, regular challenges, and a space to connect with like-minded programmers. Workshops, mentorship, and thrilling competitions—we've got everything you need to grow, learn, and have fun!`}</p>
                 </div>

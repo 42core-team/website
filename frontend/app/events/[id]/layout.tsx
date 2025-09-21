@@ -3,6 +3,8 @@ import EventLayout from "@/layouts/event";
 import { getEventById } from "@/app/actions/event";
 import { isActionError } from "@/app/actions/errors";
 import { Metadata } from "next";
+import { remark } from "remark";
+import strip from "strip-markdown";
 
 export async function generateMetadata({
   params,
@@ -17,24 +19,32 @@ export async function generateMetadata({
       description: "This event could not be found on the CORE Game platform.",
     };
   }
+  const textDescription = String(
+    await remark()
+      .use(strip)
+      .process(event.description || ""),
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+
   return {
     title: {
       default: `${event.name}`,
       template: `%s | ${event.name} | CORE Game`,
     },
     description:
-      event.description || `Details for the ${event.name} event in CORE Game`,
+      textDescription || `Details for the ${event.name} event in CORE Game`,
     openGraph: {
       title: `${event.name}`,
       description:
-        event.description || `Details for the ${event.name} event in CORE Game`,
+        textDescription || `Details for the ${event.name} event in CORE Game`,
       url: `/events/${id}`,
     },
     twitter: {
       card: "summary",
       title: `${event.name}`,
       description:
-        event.description || `Details for the ${event.name} event in CORE Game`,
+        textDescription || `Details for the ${event.name} event in CORE Game`,
     },
   };
 }

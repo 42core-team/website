@@ -42,7 +42,6 @@ export default function TeamsTable({
       aria-label="Teams table"
       onSortChange={handleSortChange}
       sortDescriptor={sortDescriptor}
-      className="mb-8"
     >
       <TableHeader>
         <TableColumn key="name" allowsSorting>
