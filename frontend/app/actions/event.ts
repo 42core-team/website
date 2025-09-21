@@ -34,6 +34,14 @@ export async function getEventById(
   return await handleError(axiosInstance.get(`event/${eventId}`));
 }
 
+export async function getCurrentLiveEvent(): Promise<
+  ServerActionResponse<Event | undefined>
+> {
+  return await handleError(
+    axiosInstance.get<Event | undefined>("event/event/currentLiveEvent"),
+  );
+}
+
 export async function isUserRegisteredForEvent(
   eventId: string,
 ): Promise<ServerActionResponse<boolean>> {
