@@ -2,40 +2,6 @@ import HomePageClient from "@/components/HomePageClient";
 import { getGlobalStats } from "@/app/actions/stats";
 import { getCurrentLiveEvent } from "@/app/actions/event";
 import { isActionError } from "@/app/actions/errors";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Bot Programming Competition",
-  description:
-    "CORE Game is an bot programming competition and coding game. Build autonomous bots, compete in a 2D arena, analyze replays, and climb the leaderboard.",
-  alternates: {
-    canonical: "/",
-  },
-  openGraph: {
-    title: "CORE Game — Bot Programming Competition",
-    description:
-      "Design bots, battle in a 2D arena, and climb the leaderboard in the CORE Game coding competition.",
-    url: "/",
-    type: "website",
-    images: [
-      {
-        url: "/CORE-LOGO.svg",
-        alt: "CORE Game logo",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "CORE Game — Bot Programming Competition",
-    description:
-      "Design bots, battle in a 2D arena, and climb the leaderboard in the CORE Game coding competition.",
-    images: ["/CORE-LOGO.svg"],
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
 
 export default async function HomePage() {
   const globalStats = await getGlobalStats();

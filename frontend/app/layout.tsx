@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   },
   description:
     "Official homepage of CORE Game, the strategic programming competition where you develop bots to outsmart opponents.",
+  alternates: {
+    canonical: "/",
+  },
   keywords: [
     "programming competition",
     "bot programming",
@@ -23,23 +26,28 @@ export const metadata: Metadata = {
     "coding game",
   ],
   openGraph: {
-    title: "Home - CORE Game",
+    title: "CORE Game — Bot Programming Competition",
     description:
-      "Official homepage of CORE Game, the strategic programming competition where you develop bots to outsmart opponents.",
+      "Design bots, battle in a 2D arena, and climb the leaderboard in the CORE Game coding competition.",
+    url: "/",
     type: "website",
     images: [
       {
         url: "/CORE-LOGO.svg",
-        alt: "CORE Game",
+        alt: "CORE Game logo",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Home - CORE Game",
+    title: "CORE Game — Bot Programming Competition",
     description:
-      "Official homepage of CORE Game, the strategic programming competition where you develop bots to outsmart opponents.",
+      "Design bots, battle in a 2D arena, and climb the leaderboard in the CORE Game coding competition.",
     images: ["/CORE-LOGO.svg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
   category: "coding game",
 };
