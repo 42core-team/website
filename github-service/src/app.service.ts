@@ -266,7 +266,7 @@ export class AppService {
           e as Error,
         );
         await this.deleteRepository(name, githubOrg, secret);
-        throw e;
+        // Error is handled by the outer catch block; do not re-throw here.
       } finally {
         await fs.rm(tempFolderPath, { recursive: true, force: true });
         this.logger.log(`Removed temp folder ${tempFolderPath}`);
