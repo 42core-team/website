@@ -60,9 +60,9 @@ export class RepoUtils {
 
         await gitRepo.addRemote(
             "team-repo",
-            teamRepo.clone_url.replace("https://", `https://${decryptedGithubAccessToken}@`),
-        ),
-        await gitRepo.add("."),
+            teamRepo.clone_url.replace("https://", `https://${decryptedGithubAccessToken}@`)
+        );
+        await gitRepo.add(".");
         await gitRepo.commit("Initial commit");
 
         await gitRepo.branch(["-M", "main"]);
