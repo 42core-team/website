@@ -94,6 +94,7 @@ export class AppController {
     @EventPattern("create_team_repository")
     async handleCreateTeamRepository(data: {
         name: string,
+        teamName: string,
         username: string,
         userGithubAccessToken: string,
         githubOrg: string,
@@ -107,6 +108,7 @@ export class AppController {
     }) {
         const safeData = {
             name: data.name,
+            teamName: data.teamName,
             username: data.username,
             githubOrg: data.githubOrg,
             monoRepoVersion: data.monoRepoVersion,
@@ -116,6 +118,7 @@ export class AppController {
         this.logger.log(`create_team_repository event received ${JSON.stringify(safeData)}`);
         await this.appService.createTeamRepository(
             data.name,
+            data.teamName,
             data.username,
             data.userGithubAccessToken,
             data.githubOrg,
