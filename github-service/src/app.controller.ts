@@ -114,7 +114,7 @@ export class AppController {
             eventId: data.eventId,
         };
         this.logger.log(`create_team_repository event received ${JSON.stringify(safeData)}`);
-        return await this.appService.createTeamRepository(
+        await this.appService.createTeamRepository(
             data.name,
             data.username,
             data.userGithubAccessToken,

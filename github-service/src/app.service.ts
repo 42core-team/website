@@ -226,53 +226,66 @@ export class AppService {
       const repositoryApi = new RepositoryApi(githubApi);
       const userApi = new UserApi(githubApi);
       this.logger.log(`Creating repo ${name} in org ${githubOrg}`);
-      const repo = await repositoryApi.createRepo(
-        {
-          name,
-          private: true,
-        },
-        githubOrg,
-      );
 
-      const tempFolderPath = `${this.TMP_FOLDER}/${repo.name}-${Date.now()}`;
+      const tempFolderPath = `${this.TMP_FOLDER}/${name}-${Date.now()}`;
       try {
-        await fs.mkdir(tempFolderPath);
-        await this.repoUtils.cloneMonoRepoAndPushToTeamRepo(
-          monoRepoUrl,
-          monoRepoVersion,
-          myCoreBotDockerImage,
-          visualizerDockerImage,
-          repo.clone_url,
+        const [repo, gitRepo] = await Promise.all([
+          (async () => {
+            const repo = await repositoryApi.createRepo(
+              {
+                name,
+                private: true,
+              },
+              githubOrg,
+            );
+            name = repo.name;
+            return repo;
+          })(),
+          (async () => {
+            await fs.mkdir(tempFolderPath);
+            return await this.repoUtils.cloneMonoRepo(
+              monoRepoUrl,
+              monoRepoVersion,
+              myCoreBotDockerImage,
+              visualizerDockerImage,
+              tempFolderPath,
+              eventId,
+            );
+          })(),
+        ]);
+
+        await this.repoUtils.pushToTeamRepo(
+          repo,
           secret,
           tempFolderPath,
-          eventId,
+          gitRepo,
         );
       } catch (e) {
         this.logger.error(
-          `Failed to clone mono repo and push to team repo for repo ${repo.name}`,
+          `Failed to clone mono repo and push to team repo for repo ${name}`,
           e as Error,
         );
-        await this.deleteRepository(repo.name, githubOrg, secret);
-        return false;
+        await this.deleteRepository(name, githubOrg, secret);
+        // Error is handled by the outer catch block; do not re-throw here.
       } finally {
         await fs.rm(tempFolderPath, { recursive: true, force: true });
         this.logger.log(`Removed temp folder ${tempFolderPath}`);
       }
 
       this.githubServiceResultsClient.emit("repository_created", {
-        repositoryName: repo.name,
+        repositoryName: name,
         teamId: teamId,
       });
 
       await repositoryApi.addCollaborator(
         githubOrg,
-        repo.name,
+        name,
         username,
         "push",
       );
       await userApi.acceptRepositoryInvitationByRepo(
         githubOrg,
-        repo.name,
+        name,
         githubAccessToken,
       );
 
@@ -282,10 +295,9 @@ export class AppService {
           username,
           githubOrg,
           teamId,
-          repoName: repo.name,
+          repoName: name,
         })}`,
       );
-      return repo;
     } catch (error) {
       this.logger.error(
         `Failed to create team repository ${JSON.stringify({
