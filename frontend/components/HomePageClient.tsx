@@ -68,7 +68,7 @@ export default function HomePageClient(props: {
         <Card className="absolute right-20 top-20 z-20 md:block hidden">
           <CardHeader className="flex items-center gap-3">
             <span className="text-lg font-semibold">
-              One Week Core GAME beta
+              {props.currentLiveEvent.name}
             </span>
             <Chip color="danger" variant="solid" size="sm">
               Live
