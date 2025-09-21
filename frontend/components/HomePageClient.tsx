@@ -11,13 +11,23 @@ import { CoreLogoWhite } from "@/components/social";
 import GlobalStats from "@/components/GlobalStats";
 import { MatchStats } from "@/app/actions/stats";
 import { useTheme } from "next-themes";
-
-export default function HomePageClient(props: { initialStats: MatchStats }) {
+import { Card, CardBody, CardHeader, Chip } from "@heroui/react";
+import { Event } from "@/app/actions/event";
+export default function HomePageClient(props: {
+  initialStats: MatchStats;
+  currentLiveEvent?: Event;
+}) {
   const { resolvedTheme } = useTheme();
   const [isMounted, setIsMounted] = useState(false);
+  const [now, setNow] = useState<Date>(new Date());
 
   useEffect(() => {
     setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
   }, []);
 
   const visualizerTheme =
@@ -38,8 +48,54 @@ export default function HomePageClient(props: { initialStats: MatchStats }) {
     return `${base}/?${params.toString()}`;
   }, [visualizerTheme]);
 
+  const formatTimeLeft = (ms: number) => {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const hhmmss = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    return days > 0 ? `${days}d ${hhmmss}` : hhmmss;
+  };
+
+  const timeLeftMs = props.currentLiveEvent
+    ? new Date(props.currentLiveEvent.endDate).getTime() - now.getTime()
+    : 0;
+
   return (
     <div>
+      {props.currentLiveEvent && timeLeftMs > 0 && (
+        <Card className="absolute right-20 top-20 z-20 md:block hidden">
+          <CardHeader className="flex items-center gap-3">
+            <span className="text-lg font-semibold">
+              One Week Core GAME beta
+            </span>
+            <Chip color="danger" variant="solid" size="sm">
+              Live
+            </Chip>
+          </CardHeader>
+          <CardBody className="flex flex-col gap-3">
+            <span className="text-foreground-500"></span>
+            <Chip color="warning" variant="flat" aria-label="Event countdown">
+              Ends in {formatTimeLeft(timeLeftMs)}
+            </Chip>
+            <div className="mt-1">
+              <Link
+                className={buttonStyles({
+                  color: "primary",
+                  radius: "full",
+                  variant: "shadow",
+                  size: "sm",
+                })}
+                href={`/events/${props.currentLiveEvent.id}`}
+              >
+                View event
+              </Link>
+            </div>
+          </CardBody>
+        </Card>
+      )}
       <section className="flex flex-col items-center justify-center mb-15">
         {/* Foreground (logo + text + links) */}
         <div className="relative z-10 inline-block text-center justify-center w-full mb-25">
@@ -138,7 +194,7 @@ export default function HomePageClient(props: { initialStats: MatchStats }) {
                     What is Necessary to Play
                   </h1>
                   <p className="text-2xl"></p>
-                  <p className="text-xl text-gray-400">{`All you need is basic programming knowledge, a curious mind, and a hunger for competition! Whether you\'re a beginner or an experienced coder, you can jump in, experiment, and refine your bot as you go. No fancy hardware required—just bring your creativity and a love for coding!`}</p>
+                  <p className="text-xl text-gray-400">{`All you need is basic programming knowledge, a curious mind, and a hunger for competition! Whether you're a beginner or an experienced coder, you can jump in, experiment, and refine your bot as you go. No fancy hardware required—just bring your creativity and a love for coding!`}</p>
                 </div>
               ),
               delay: 0.6,
