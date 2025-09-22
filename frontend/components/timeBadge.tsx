@@ -1,6 +1,7 @@
 "use client";
 
 import { Chip } from "@heroui/react";
+import { useState, useEffect } from "react";
 
 export default function TimeBadge({
   time,
@@ -28,14 +29,33 @@ export default function TimeBadge({
     | "danger"
     | undefined;
 }) {
-  const date = new Date(time);
-  const formatted = date.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  const [formatted, setFormatted] = useState(() => {
+    const date = new Date(time);
+    return date.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "UTC",
+    });
   });
+
+  useEffect(() => {
+    const date = new Date(time);
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const locale = navigator.language || "en-US";
+    setFormatted(
+      date.toLocaleString(locale, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone,
+      }),
+    );
+  }, [time]);
 
   return (
     <Chip variant={variant} color={color} className={className}>
