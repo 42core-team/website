@@ -10,7 +10,7 @@ To start a game, send a message to the `game_queue` channel with the following J
 
 ```json
 {
-  "pattern": "start",
+  "pattern": "new_game",
   "data": {
     "ID": "550e8400-e29b-41d4-a716-446655440000",
     "Image": "ghcr.io/42core-team/game-server:dev",
@@ -18,12 +18,14 @@ To start a game, send a message to the `game_queue` channel with the following J
       {
         "ID": "550e8400-e29b-41d4-a716-446655440001",
         "Image": "ghcr.io/42core-team/my-core-bot:dev",
-        "RepoURL": "https://github.com/42core-team/my-core-bot.git"
+        "RepoURL": "https://github.com/42core-team/my-core-bot.git",
+        "Name": "My Core Bot"
       },
       {
         "ID": "550e8400-e29b-41d4-a716-446655440002",
         "Image": "ghcr.io/42core-team/my-core-bot:dev",
-        "RepoURL": "https://github.com/42core-team/my-core-bot.git"
+        "RepoURL": "https://github.com/42core-team/my-core-bot.git",
+        "Name": "Gridmaster"
       }
     ]
   }
@@ -39,6 +41,7 @@ To start a game, send a message to the `game_queue` channel with the following J
   - `ID`: Unique identifier for each bot (UUID format)
   - `Image`: Docker image for the bot
   - `RepoURL`: Git repository URL for the bot's source code
+  - `Name`: Display name for the bot/player
 
 ## Game Results
 

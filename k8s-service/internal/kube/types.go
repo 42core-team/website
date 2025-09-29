@@ -18,4 +18,5 @@ type Bot struct {
 	RndID   *string   `json:"rndID"`
 	RepoURL string    `json:"repoURL"`
 	Image   string    `json:"image"`
+	Name    *string   `json:"name"`
 }

@@ -20,6 +20,7 @@ func (c *Client) CreateGameJob(game *Game) error {
 
 	var botIDs []string
 	botIDMapping := make(map[string]string)
+	var playerNameEnvs []corev1.EnvVar
 	for ind := range game.Bots {
 		id, err := generateRandomID(2)
 		if err != nil {
@@ -28,6 +29,13 @@ func (c *Client) CreateGameJob(game *Game) error {
 		game.Bots[ind].RndID = &id
 		botIDs = append(botIDs, id)
 		botIDMapping[id] = game.Bots[ind].ID.String()
+
+		if game.Bots[ind].Name != nil && *game.Bots[ind].Name != "" {
+			playerNameEnvs = append(playerNameEnvs, corev1.EnvVar{
+				Name:  fmt.Sprintf("PLAYER_%s_NAME", id),
+				Value: *game.Bots[ind].Name,
+			})
+		}
 	}
 
 	botMappingJSON, err := json.Marshal(botIDMapping)
@@ -142,36 +150,21 @@ func (c *Client) CreateGameJob(game *Game) error {
 		})
 	}
 
+	gameEnv := []corev1.EnvVar{
+		{ Name: "GAME_ID",          Value: game.ID.String() },
+		{ Name: "SEND_RESULTS",     Value: "true" },
+		{ Name: "RABBITMQ_URL",     Value: c.cfg.RabbitMQHTTP + "/api/exchanges/%2f/amq.direct/publish" },
+		{ Name: "S3_PRESIGNED_URL", Value: presignedURL },
+		{ Name: "UPLOAD_REPLAY",    Value: "true" },
+		{ Name: "BOT_ID_MAPPING",   Value: string(botMappingJSON) },
+	}
+	gameEnv = append(gameEnv, playerNameEnvs...)
+
 	mainContainer := corev1.Container{
 		Name:  "game",
 		Image: game.Image,
 		Args:  botIDs,
-		Env: []corev1.EnvVar{
-			{
-				Name:  "GAME_ID",
-				Value: game.ID.String(),
-			},
-			{
-				Name:  "SEND_RESULTS",
-				Value: "true",
-			},
-			{
-				Name:  "RABBITMQ_URL",
-				Value: c.cfg.RabbitMQHTTP + "/api/exchanges/%2f/amq.direct/publish",
-			},
-			{
-				Name:  "S3_PRESIGNED_URL",
-				Value: presignedURL,
-			},
-			{
-				Name:  "UPLOAD_REPLAY",
-				Value: "true",
-			},
-			{
-				Name:  "BOT_ID_MAPPING",
-				Value: string(botMappingJSON),
-			},
-		},
+		Env:   gameEnv,
 		SecurityContext: &corev1.SecurityContext{
 			//RunAsUser: &serverRunAsUser,
 			//RunAsNonRoot:             &runAsNonRootTrue,
@@ -200,11 +193,11 @@ func (c *Client) CreateGameJob(game *Game) error {
 		Image: "ghcr.io/paulicstudios/alpine-iptables:latest",
 		Command: []string{
 			"sh", "-c", fmt.Sprintf(`
-                set -eux;
-                # Block all non-loopback egress for bot UID
-                iptables -I OUTPUT 1 -m owner --uid-owner %d ! -o lo -j DROP;
-                ip6tables -I OUTPUT 1 -m owner --uid-owner %d ! -o lo -j DROP;
-            `, botRunAsUser, botRunAsUser),
+				set -eux;
+				# Block all non-loopback egress for bot UID
+				iptables -I OUTPUT 1 -m owner --uid-owner %d ! -o lo -j DROP;
+				ip6tables -I OUTPUT 1 -m owner --uid-owner %d ! -o lo -j DROP;
+			`, botRunAsUser, botRunAsUser),
 		},
 		SecurityContext: &corev1.SecurityContext{
 			RunAsUser: func(i int64) *int64 { return &i }(0),
