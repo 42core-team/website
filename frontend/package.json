@@ -67,7 +67,7 @@
     "@types/node": "^24.5.2",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
-    "lint-staged": "^16.1.6",
+    "lint-staged": "^16.2.3",
     "postcss": "^8.5.6",
     "prettier": "^3.6.2",
     "tailwindcss": "^4.1.13",
