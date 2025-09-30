@@ -48,7 +48,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "tournament-pairings": "^2.0.0",
-    "typeorm": "^0.3.26"
+    "typeorm": "^0.3.27"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
