@@ -28,7 +28,7 @@ async function markdownToHtml(md: string): Promise<string> {
   return String(file);
 }
 
-// determines which version number was incremented in a release
+// determines which version number was incremented in a release (e.g. v1.2.3.4 -> v1.3.0.0 is a level 2 bump.)
 function bumpLevel(curr: string, prev?: string): 1 | 2 | 3 | 4 {
   if (!prev) return 4;
   const toNums = (t: string) =>

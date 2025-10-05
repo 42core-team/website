@@ -217,12 +217,23 @@ export function WikiNavigation({
       );
     }
 
+    const collectAllPaths = (items: WikiNavItem[]): string[] => {
+      return items.flatMap((item) => {
+        const path = item.slug.join("/");
+        if (item.children && item.children.length > 0) {
+          return [path, ...collectAllPaths(item.children)];
+        }
+        return [];
+      });
+    };
+    const allPaths = collectAllPaths(items);
+
     if (item.children && item.children.length > 0) {
       return (
         <Accordion
           key={uniqueKey}
           variant="light"
-          defaultExpandedKeys={isParentActive ? [itemPath] : []}
+          defaultExpandedKeys={allPaths}
         >
           <AccordionItem
             key={itemPath}

@@ -71,11 +71,13 @@ func getDummyGame() kube.GameMessage {
 					ID:      uuid.New(),
 					Image:   "ghcr.io/42core-team/my-core-bot:dev-5c962b75174a38451f5003f9228ce1fa565786f2",
 					RepoURL: "https://github.com/42core-team/my-core-bot.git",
+					Name:    stringPtr("My Core Bot"),
 				},
 				{
 					ID:      uuid.New(),
 					Image:   "ghcr.io/42core-team/my-core-bot:dev-5c962b75174a38451f5003f9228ce1fa565786f2",
 					RepoURL: "https://github.com/42core-team/my-core-bot.git",
+					Name:    stringPtr("Gridmaster"),
 				},
 			},
 		},
