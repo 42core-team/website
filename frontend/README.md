@@ -1,65 +1,64 @@
-# Frontend – Next.js
+# Frontend
 
-This directory contains the frontend codebase, built with [Next.js](https://nextjs.org/).
+Next.js frontend application.
 
 ## Getting Started
 
-1. Install pnpm (if not already installed):
+### Prerequisites
 
-   ```sh
-   corepack enable && corepack prepare pnpm@latest --activate
-   # or
-   brew install pnpm
-   ```
+Install pnpm:
 
-2. Install dependencies:
+```bash
+corepack enable && corepack prepare pnpm@latest --activate
+```
 
-   ```sh
+or
+
+```bash
+brew install pnpm
+```
+
+### Installation & Setup
+
+1. Install dependencies:
+
+   ```bash
    pnpm install
    ```
 
-3. Set up environment variables:
+2. Set up environment variables:
 
-Copy the `.env.example` file to `.env.local` and fill in the values as needed. Have a look at the comments if the values are needed.
+   ```bash
+   cp .env.example .env.local
+   ```
 
-See the Environment Variables section for more information.
+   Edit `.env.local` with your configuration (see [Environment Variables](#environment-variables) below).
 
-4. Run the frontend in dev mode:
-
-   > To get the current wiki and changelog run `pnpm prebuild`
-
-   ```sh
+3. Run development server:
+   ```bash
    pnpm dev
    ```
+   > **Note:** Run `pnpm prebuild` first to fetch current wiki and changelog content.
 
-5. Build for production mode (autoupdates wiki and changelog):
+### Production
 
-   ```sh
-   pnpm build
-   ```
-
-6. Start the frontend in production mode:
-   ```sh
-   pnpm start
-   ```
+- **Build:** `pnpm build` (auto-updates wiki and changelog)
+- **Start:** `pnpm start`
 
 ## Environment Variables
 
-### GitHub OAuth
-
-GitHub is used as the default OAuth provider. For the main functionality, you will need to set up a GitHub OAuth app.
+### GitHub OAuth (Required)
 
 1. Go to GitHub → Settings → Developer settings → OAuth Apps
-2. Register a new OAuth app.
-3. Set the Authorization callback URL to:
-   `http://localhost:3000/api/auth/callback`
-4. Add your Client ID and Secret to your `.env` file.
+2. Register a new OAuth app
+3. Set Authorization callback URL: `http://localhost:3000/api/auth/callback`
+4. Add Client ID and Secret to `.env.local`
 
-### 42 School OAuth
+### 42 School OAuth (Optional)
 
-If you want to test the 42 account linking functionality, you will need register a 42 School OAuth app.
+For testing account linking functionality:
 
 1. Go to 42 School → Settings → API → Applications
 2. Create a new application
-3. Set the Redirect URI to: `http://localhost:3000/auth/callback/42`
-4. Copy the Client ID and Client Secret and add them to your `.env.local` file
+3. Set Redirect URI: `http://localhost:3000/auth/callback/42`
+4. Add Client ID and Client Secret to `.env.local`
