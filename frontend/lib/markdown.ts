@@ -38,14 +38,18 @@ export interface WikiVersion {
 }
 
 type WikiMetadataHeader = {
-	HEADING?: string;
-	PERMALINK?: string;
-	SIDEBAR_HEADING?: string;
+  HEADING?: string;
+  PERMALINK?: string;
+  SIDEBAR_HEADING?: string;
 };
 
-function parseWikiMetadataHeader(raw: string): { header: WikiMetadataHeader | null; body: string } {
+function parseWikiMetadataHeader(raw: string): {
+  header: WikiMetadataHeader | null;
+  body: string;
+} {
   const lines = raw.split(/\r?\n/);
-  if (!lines[0] || lines[0].trim() !== "=====") return { header: null, body: raw };
+  if (!lines[0] || lines[0].trim() !== "=====")
+    return { header: null, body: raw };
 
   let end = -1;
   for (let i = 1; i < Math.min(lines.length, 200); i++) {
@@ -66,7 +70,10 @@ function parseWikiMetadataHeader(raw: string): { header: WikiMetadataHeader | nu
     }
   }
 
-  const body = lines.slice(end + 1).join("\n").replace(/^\s+/, "");
+  const body = lines
+    .slice(end + 1)
+    .join("\n")
+    .replace(/^\s+/, "");
   return { header, body };
 }
 
@@ -81,7 +88,9 @@ export async function getDefaultWikiVersion(): Promise<string> {
 
 export async function getAvailableVersions(): Promise<WikiVersion[]> {
   try {
-    const entries = await fs.readdir(contentDirectory, { withFileTypes: true });
+    const entries = await fs.readdir(contentDirectory, {
+      withFileTypes: true,
+    });
     const versions: WikiVersion[] = [];
 
     // Add directories as versions (no more root-level files handling)
@@ -143,7 +152,7 @@ export async function getWikiPageWithVersion(
       }
     }
 
-	const { header, body } = parseWikiMetadataHeader(fileContent);
+    const { header, body } = parseWikiMetadataHeader(fileContent);
 
     const { data, content } = matter(body);
 
@@ -272,16 +281,18 @@ export async function getWikiPageWithVersion(
     }
 
     // Respect custom HEADING for page title; fall back gracefully
-	const pageTitle =
-		(header && ("HEADING" in header) ? header.HEADING as string : undefined) ??
-		(typeof data.title === "string" ? data.title : undefined) ??
-		getTitleFromSlug(slug);
+    const pageTitle =
+      (header && "HEADING" in header
+        ? (header.HEADING as string)
+        : undefined) ??
+      (typeof data.title === "string" ? data.title : undefined) ??
+      getTitleFromSlug(slug);
 
     // If PERMALINK is set, the public slug must reflect it (last segment)
-	const effectiveSlug = [...slug];
-	if (header && ("PERMALINK" in header) && effectiveSlug.length > 0) {
-	effectiveSlug[effectiveSlug.length - 1] = header.PERMALINK as string;
-	}
+    const effectiveSlug = [...slug];
+    if (header && "PERMALINK" in header && effectiveSlug.length > 0) {
+      effectiveSlug[effectiveSlug.length - 1] = header.PERMALINK as string;
+    }
 
     return {
       slug: effectiveSlug,
@@ -341,36 +352,42 @@ export async function getWikiNavigationWithVersion(
               children: children,
             });
           }
-} else if (entry.name.endsWith(".md")) {
-  const fsPath = path.join(dir, entry.name);
+        } else if (entry.name.endsWith(".md")) {
+          const fsPath = path.join(dir, entry.name);
 
-  let sidebarTitleOverride: string | undefined;
-  let permalinkOverride: string | undefined;
+          let sidebarTitleOverride: string | undefined;
+          let permalinkOverride: string | undefined;
 
-  try {
-    const raw = await fs.readFile(fsPath, "utf8");
-    const { header } = parseWikiMetadataHeader(raw);
-    if (header) {
-      if ("SIDEBAR_HEADING" in header) sidebarTitleOverride = header.SIDEBAR_HEADING as string;
-      else if ("HEADING" in header) sidebarTitleOverride = header.HEADING as string;
+          try {
+            const raw = await fs.readFile(fsPath, "utf8");
+            const { header } = parseWikiMetadataHeader(raw);
+            if (header) {
+              if ("SIDEBAR_HEADING" in header)
+                sidebarTitleOverride = header.SIDEBAR_HEADING as string;
+              else if ("HEADING" in header)
+                sidebarTitleOverride = header.HEADING as string;
 
-      if ("PERMALINK" in header) permalinkOverride = header.PERMALINK as string;
-    }
-  } catch {
-    // ignore file read errors, navigation will still render
-  }
+              if ("PERMALINK" in header)
+                permalinkOverride = header.PERMALINK as string;
+            }
+          } catch {
+            // ignore file read errors, navigation will still render
+          }
 
-  const fileBase = entry.name.replace(".md", "");
-  const finalLastSegment = (permalinkOverride !== undefined) ? permalinkOverride : fileBase;
+          const fileBase = entry.name.replace(".md", "");
+          const finalLastSegment =
+            permalinkOverride !== undefined ? permalinkOverride : fileBase;
 
-  const slug = [...basePath, finalLastSegment];
-  items.push({
-    title: (sidebarTitleOverride !== undefined) ? sidebarTitleOverride : formatTitle(fileBase),
-    slug,
-    isFile: true,
-  });
-}
-
+          const slug = [...basePath, finalLastSegment];
+          items.push({
+            title:
+              sidebarTitleOverride !== undefined
+                ? sidebarTitleOverride
+                : formatTitle(fileBase),
+            slug,
+            isFile: true,
+          });
+        }
       }
     } catch (error) {
       console.error(`Error reading directory ${dir}:`, error);
@@ -409,7 +426,10 @@ async function getFilePathFromSlugWithVersion(
 
   const decodedSlug = slug.map((segment) => decodeURIComponent(segment));
 
-  if (decodedSlug.length === 0 || (decodedSlug.length === 1 && decodedSlug[0] === "")) {
+  if (
+    decodedSlug.length === 0 ||
+    (decodedSlug.length === 1 && decodedSlug[0] === "")
+  ) {
     return path.join(versionDir, "README.md");
   }
 
@@ -423,7 +443,11 @@ async function getFilePathFromSlugWithVersion(
     return candidateDirect;
   } catch {
     // Try README in directory
-    const candidateReadme = path.resolve(versionDir, ...decodedSlug, "README.md");
+    const candidateReadme = path.resolve(
+      versionDir,
+      ...decodedSlug,
+      "README.md",
+    );
     if (!candidateReadme.startsWith(path.resolve(versionDir))) {
       throw new Error("Invalid wiki path");
     }
@@ -437,14 +461,19 @@ async function getFilePathFromSlugWithVersion(
         throw new Error("Invalid wiki path");
       }
       try {
-        const entries = await fs.readdir(parentDir, { withFileTypes: true });
+        const entries = await fs.readdir(parentDir, {
+          withFileTypes: true,
+        });
         for (const e of entries) {
           if (!e.isFile() || !e.name.endsWith(".md")) continue;
           const p = path.join(parentDir, e.name);
           try {
             const raw = await fs.readFile(p, "utf8");
             const { header } = parseWikiMetadataHeader(raw);
-            if (header?.PERMALINK && header.PERMALINK === decodedSlug[decodedSlug.length - 1]) {
+            if (
+              header?.PERMALINK &&
+              header.PERMALINK === decodedSlug[decodedSlug.length - 1]
+            ) {
               return p;
             }
           } catch {
