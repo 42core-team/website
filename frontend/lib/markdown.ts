@@ -272,16 +272,16 @@ export async function getWikiPageWithVersion(
     }
 
     // Respect custom HEADING for page title; fall back gracefully
-    const pageTitle =
-      (header?.HEADING && header.HEADING.trim()) ||
-      (typeof data.title === "string" && data.title.trim()) ||
-      getTitleFromSlug(slug);
+	const pageTitle =
+		(header && ("HEADING" in header) ? header.HEADING as string : undefined) ??
+		(typeof data.title === "string" ? data.title : undefined) ??
+		getTitleFromSlug(slug);
 
     // If PERMALINK is set, the public slug must reflect it (last segment)
-    const effectiveSlug = [...slug];
-    if (header?.PERMALINK && effectiveSlug.length > 0) {
-      effectiveSlug[effectiveSlug.length - 1] = header.PERMALINK;
-    }
+	const effectiveSlug = [...slug];
+	if (header && ("PERMALINK" in header) && effectiveSlug.length > 0) {
+	effectiveSlug[effectiveSlug.length - 1] = header.PERMALINK as string;
+	}
 
     return {
       slug: effectiveSlug,
@@ -341,35 +341,36 @@ export async function getWikiNavigationWithVersion(
               children: children,
             });
           }
-		} else if (entry.name.endsWith(".md")) {
-			const fsPath = path.join(dir, entry.name);
+} else if (entry.name.endsWith(".md")) {
+  const fsPath = path.join(dir, entry.name);
 
-			// Read minimally to extract header; falls back silently
-			let sidebarTitleOverride: string | undefined;
-			let permalinkOverride: string | undefined;
-			try {
-				const raw = await fs.readFile(fsPath, "utf8");
-				const { header } = parseWikiMetadataHeader(raw);
-				if (header) {
-					sidebarTitleOverride = header.SIDEBAR_HEADING || header.HEADING;
-					permalinkOverride = header.PERMALINK;
-				}
-			} catch {
-				// ignore file read errors, navigation will still render
-			}
+  let sidebarTitleOverride: string | undefined;
+  let permalinkOverride: string | undefined;
 
-			const fileBase = entry.name.replace(".md", "");
-			const finalLastSegment = (permalinkOverride && permalinkOverride.trim()) || fileBase;
+  try {
+    const raw = await fs.readFile(fsPath, "utf8");
+    const { header } = parseWikiMetadataHeader(raw);
+    if (header) {
+      if ("SIDEBAR_HEADING" in header) sidebarTitleOverride = header.SIDEBAR_HEADING as string;
+      else if ("HEADING" in header) sidebarTitleOverride = header.HEADING as string;
 
-			const slug = [...basePath, finalLastSegment];
-			items.push({
-				title: sidebarTitleOverride
-				? sidebarTitleOverride
-				: formatTitle(fileBase),
-				slug,
-				isFile: true,
-			});
-		}
+      if ("PERMALINK" in header) permalinkOverride = header.PERMALINK as string;
+    }
+  } catch {
+    // ignore file read errors, navigation will still render
+  }
+
+  const fileBase = entry.name.replace(".md", "");
+  const finalLastSegment = (permalinkOverride !== undefined) ? permalinkOverride : fileBase;
+
+  const slug = [...basePath, finalLastSegment];
+  items.push({
+    title: (sidebarTitleOverride !== undefined) ? sidebarTitleOverride : formatTitle(fileBase),
+    slug,
+    isFile: true,
+  });
+}
+
       }
     } catch (error) {
       console.error(`Error reading directory ${dir}:`, error);
