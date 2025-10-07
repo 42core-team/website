@@ -37,6 +37,46 @@ export interface WikiVersion {
   isDefault?: boolean;
 }
 
+type WikiMetadataHeader = {
+  HEADING?: string;
+  PERMALINK?: string;
+  SIDEBAR_HEADING?: string;
+};
+
+function parseWikiMetadataHeader(raw: string): {
+  header: WikiMetadataHeader | null;
+  body: string;
+} {
+  const lines = raw.split(/\r?\n/);
+  if (!lines[0] || lines[0].trim() !== "=====")
+    return { header: null, body: raw };
+
+  let end = -1;
+  for (let i = 1; i < Math.min(lines.length, 200); i++) {
+    if (lines[i].trim() === "=====") {
+      end = i;
+      break;
+    }
+  }
+  if (end === -1) return { header: null, body: raw };
+
+  const headerLines = lines.slice(1, end);
+  const header: WikiMetadataHeader = {};
+  for (const line of headerLines) {
+    const m = line.match(/^\s*([A-Z_]+)\s*=\s*"([^"]*)"\s*$/);
+    if (m) {
+      const k = m[1] as keyof WikiMetadataHeader;
+      header[k] = m[2];
+    }
+  }
+
+  const body = lines
+    .slice(end + 1)
+    .join("\n")
+    .replace(/^\s+/, "");
+  return { header, body };
+}
+
 const contentDirectory = path.join(process.cwd(), "content/wiki");
 
 // Exposed default wiki version getter for centralized control
@@ -48,7 +88,9 @@ export async function getDefaultWikiVersion(): Promise<string> {
 
 export async function getAvailableVersions(): Promise<WikiVersion[]> {
   try {
-    const entries = await fs.readdir(contentDirectory, { withFileTypes: true });
+    const entries = await fs.readdir(contentDirectory, {
+      withFileTypes: true,
+    });
     const versions: WikiVersion[] = [];
 
     // Add directories as versions (no more root-level files handling)
@@ -109,7 +151,10 @@ export async function getWikiPageWithVersion(
         throw err;
       }
     }
-    const { data, content } = matter(fileContent);
+
+    const { header, body } = parseWikiMetadataHeader(fileContent);
+
+    const { data, content } = matter(body);
 
     // Process markdown content with callout support
     const processedContent = await remark()
@@ -235,11 +280,25 @@ export async function getWikiPageWithVersion(
       }
     }
 
+    // Respect custom HEADING for page title; fall back gracefully
+    const pageTitle =
+      (header && "HEADING" in header
+        ? (header.HEADING as string)
+        : undefined) ??
+      (typeof data.title === "string" ? data.title : undefined) ??
+      getTitleFromSlug(slug);
+
+    // If PERMALINK is set, the public slug must reflect it (last segment)
+    const effectiveSlug = [...slug];
+    if (header && "PERMALINK" in header && effectiveSlug.length > 0) {
+      effectiveSlug[effectiveSlug.length - 1] = header.PERMALINK as string;
+    }
+
     return {
-      slug,
-      title: getTitleFromSlug(slug),
+      slug: effectiveSlug,
+      title: pageTitle,
       content: htmlContent,
-      frontmatter: data,
+      frontmatter: { ...data, __coreHeader: header ?? undefined },
       lastModified,
       version,
     };
@@ -294,9 +353,37 @@ export async function getWikiNavigationWithVersion(
             });
           }
         } else if (entry.name.endsWith(".md")) {
-          const slug = [...basePath, entry.name.replace(".md", "")];
+          const fsPath = path.join(dir, entry.name);
+
+          let sidebarTitleOverride: string | undefined;
+          let permalinkOverride: string | undefined;
+
+          try {
+            const raw = await fs.readFile(fsPath, "utf8");
+            const { header } = parseWikiMetadataHeader(raw);
+            if (header) {
+              if ("SIDEBAR_HEADING" in header)
+                sidebarTitleOverride = header.SIDEBAR_HEADING as string;
+              else if ("HEADING" in header)
+                sidebarTitleOverride = header.HEADING as string;
+
+              if ("PERMALINK" in header)
+                permalinkOverride = header.PERMALINK as string;
+            }
+          } catch {
+            // ignore file read errors, navigation will still render
+          }
+
+          const fileBase = entry.name.replace(".md", "");
+          const finalLastSegment =
+            permalinkOverride !== undefined ? permalinkOverride : fileBase;
+
+          const slug = [...basePath, finalLastSegment];
           items.push({
-            title: formatTitle(entry.name.replace(".md", "")),
+            title:
+              sidebarTitleOverride !== undefined
+                ? sidebarTitleOverride
+                : formatTitle(fileBase),
             slug,
             isFile: true,
           });
@@ -334,14 +421,11 @@ async function getFilePathFromSlugWithVersion(
   slug: string[],
   version?: string,
 ): Promise<string> {
-  // Get the default version if none specified
   const actualVersion = version || (await getDefaultWikiVersion());
   const versionDir = path.join(contentDirectory, actualVersion);
 
-  // Decode URL components to handle spaces and special characters
   const decodedSlug = slug.map((segment) => decodeURIComponent(segment));
 
-  // Handle root README
   if (
     decodedSlug.length === 0 ||
     (decodedSlug.length === 1 && decodedSlug[0] === "")
@@ -349,10 +433,7 @@ async function getFilePathFromSlugWithVersion(
     return path.join(versionDir, "README.md");
   }
 
-  // Try direct file path first
   const candidateDirect = path.resolve(versionDir, ...decodedSlug) + ".md";
-
-  // Security check: ensure path is inside versionDir
   if (!candidateDirect.startsWith(path.resolve(versionDir))) {
     throw new Error("Invalid wiki path");
   }
@@ -361,7 +442,7 @@ async function getFilePathFromSlugWithVersion(
     await fs.access(candidateDirect);
     return candidateDirect;
   } catch {
-    // If not exist, try README in directory
+    // Try README in directory
     const candidateReadme = path.resolve(
       versionDir,
       ...decodedSlug,
@@ -370,8 +451,43 @@ async function getFilePathFromSlugWithVersion(
     if (!candidateReadme.startsWith(path.resolve(versionDir))) {
       throw new Error("Invalid wiki path");
     }
-    return candidateReadme;
+    try {
+      await fs.access(candidateReadme);
+      return candidateReadme;
+    } catch {
+      // FALLBACK: last segment might be a PERMALINK pointing to some file in this directory
+      const parentDir = path.resolve(versionDir, ...decodedSlug.slice(0, -1));
+      if (!parentDir.startsWith(path.resolve(versionDir))) {
+        throw new Error("Invalid wiki path");
+      }
+      try {
+        const entries = await fs.readdir(parentDir, {
+          withFileTypes: true,
+        });
+        for (const e of entries) {
+          if (!e.isFile() || !e.name.endsWith(".md")) continue;
+          const p = path.join(parentDir, e.name);
+          try {
+            const raw = await fs.readFile(p, "utf8");
+            const { header } = parseWikiMetadataHeader(raw);
+            if (
+              header?.PERMALINK &&
+              header.PERMALINK === decodedSlug[decodedSlug.length - 1]
+            ) {
+              return p;
+            }
+          } catch {
+            // ignore a single file read error and continue
+          }
+        }
+      } catch {
+        // parent directory not readable or doesn't exist
+      }
+    }
   }
+
+  // Default to README inside the target path if everything above failed
+  return path.resolve(versionDir, ...decodedSlug, "README.md");
 }
 
 function formatVersionName(slug: string): string {
