@@ -3,6 +3,9 @@ import { WikiNavItem } from "@/lib/markdown";
 import { Accordion, AccordionItem } from "@heroui/react";
 import Link from "next/link";
 
+const INDENT_BASE = 8; // px
+const INDENT_STEP = 10; // px per depth level
+
 interface TocItem {
   id: string;
   text: string;
@@ -167,7 +170,6 @@ export function WikiNavigation({
     const itemPath = item.slug.join("/");
     const uniqueKey = `${itemPath}-${depth}-${index}-${item.isFile ? "file" : "dir"}`;
     const isActive = currentPath === itemPath;
-    const isParentActive = currentPath.startsWith(itemPath + "/");
 
     if (item.isFile) {
       return (
@@ -175,17 +177,19 @@ export function WikiNavigation({
           <Link
             href={getVersionAwareUrl(itemPath)}
             onClick={onItemClick}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors hover:bg-default-100 ${
+            className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors hover:bg-default-100 ${
               isActive ? "bg-primary-50 text-primary-600" : "text-default-600"
             }`}
-            style={{ paddingLeft: `${depth * 16 + 12}px` }}
+            style={{
+              paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
+            }}
           >
             {item.title}
           </Link>
 
           {/* Show table of contents under the active page */}
           {isActive && toc.length > 0 && (
-            <div className="ml-2 sm:ml-4 mt-1 mb-2 bg-default-50 border border-default-200 rounded-md p-2">
+            <div className="ml-1 sm:ml-2 mt-1 mb-2 bg-default-50 border border-default-200 rounded-md p-2">
               <div className="text-xs font-semibold text-default-600 mb-2 px-2 py-1 bg-default-100 rounded">
                 On this page
               </div>
@@ -239,14 +243,25 @@ export function WikiNavigation({
             key={itemPath}
             aria-label={item.title}
             title={
-              <div className="flex items-center gap-2 text-default-700">
+              <div
+                className="flex items-center gap-2 text-default-700 text-[13px] font-semibold"
+                style={{
+                  paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
+                }}
+              >
                 {item.title}
               </div>
             }
             indicator={<span className="text-default-400">▼</span>}
             className="border-none"
+            classNames={{
+              trigger: "pt-5 pb-0 pl-0",
+              content: "pt-0 pb-0 pl-0",
+              title: "pl-0",
+              indicator: "ml-auto",
+            }}
           >
-            <div className="ml-4">
+            <div>
               {item.children.map((child, index) => (
                 <React.Fragment key={`${item.slug.join("/")}-child-${index}`}>
                   {renderNavItem(child, depth + 1, index)}
@@ -263,10 +278,12 @@ export function WikiNavigation({
         key={uniqueKey}
         href={getVersionAwareUrl(itemPath)}
         onClick={onItemClick}
-        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors hover:bg-default-100 ${
+        className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors hover:bg-default-100 ${
           isActive ? "bg-primary-50 text-primary-600" : "text-default-600"
         }`}
-        style={{ paddingLeft: `${depth * 16 + 12}px` }}
+        style={{
+          paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
+        }}
       >
         {item.title}
       </Link>
@@ -275,7 +292,7 @@ export function WikiNavigation({
 
   return (
     <nav
-      className="wiki-sidebar-navigation w-64 h-full overflow-y-auto border-r border-divider bg-content1"
+      className="wiki-sidebar-navigation w-66 h-full overflow-y-auto border-r border-divider bg-content1"
       aria-label="Wiki sidebar navigation"
       role="navigation"
     >
