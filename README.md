@@ -2,126 +2,104 @@
 <img src="https://status.coregame.de/badge/web/status?labelColor=&color=&style=for-the-badge&label=coregame.de"/>
 </a>
 
-# Getting Started
+The CORE Game website built with Next.js, NestJS, and Go microservices for managing tournaments, teams, and game execution.
 
-## Running the Website
+## Architecture Overview
 
-For instructions on how to run the website, please head over to the [`frontend/README.md`](frontend/README.md).
+This project consists of multiple microservices:
 
-# Docker Images
+* **[Frontend](frontend/README.md)** - Next.js web application
+* **[API Service](api/README.md)** - Main backend API (NestJS + PostgreSQL)
+* **[GitHub Service](github-service/README.md)** - Repository management microservice
+* **[K8s Service](k8s-service/README.md)** - Game execution in Kubernetes clusters
 
-This project automatically builds multi-architecture Docker images for both AMD64 and ARM64 platforms.
+## Quick Start
 
-## Image Tags
+### Option 1: DevContainer (slower in execution but easier)
 
-The following tagging strategy is used:
+The easiest way to get started is using the provided DevContainer:
 
-### Branch-based Tags
-- **`main`** - Latest stable version from main branch
-- **`dev`** - Latest development version from dev branch
-- **`<branch-name>`** - Latest version from any other branch (e.g., `60-helm-chart`)
-- **`latest`** - Alias for `main` branch
+1. Open the project in VS Code
+2. Install the "Dev Containers" extension
+3. Press `Ctrl+Shift+P` → "Dev Containers: Reopen in Container"
+4. Wait for the container to build and start
 
-### SHA-based Tags
-- **`<branch-name>-<short-sha>`** - Specific commit from a branch (e.g., `main-a1b2c3d`)
+The DevContainer includes all necessary tools and services pre-configured.
 
-### Pull Request Tags
-- Pull requests build images but don't push them (for testing only)
+### Option 2: Manual Setup (faster but more complex)
 
-## Usage
+If you prefer to install everything locally:
 
-Pull the latest stable image:
+#### Prerequisites
+
+* **Node.js 18+** with pnpm
+* **Go 1.25+**
+* **PostgreSQL** (or use Docker Compose)
+* **RabbitMQ** (or use Docker Compose)
+* **Kubernetes cluster** (for game execution)
+* **S3-compatible storage** (for replay storage)
+
+#### Quick Infrastructure Setup
+
+For PostgreSQL and RabbitMQ, you can use the provided Docker Compose:
+
 ```bash
-docker pull ghcr.io/your-org/your-repo:latest
+cd .devcontainer && docker-compose up -d postgres rabbitmq
 ```
 
-Pull a specific branch:
-```bash
-docker pull ghcr.io/your-org/your-repo:dev
-```
+This starts:
 
-Pull a specific commit:
-```bash
-docker pull ghcr.io/your-org/your-repo:main-a1b2c3d
-```
+* **PostgreSQL** on `localhost:5432` (user: `postgres`, password: `postgres`, db: `postgres`)
+* **RabbitMQ** on `localhost:5672` (management UI: `http://localhost:15672`, user: `guest`, password: `guest`)
 
-## Multi-Architecture Support
+The default environment variables in each service are configured to work with these settings.
 
-All images support both:
-- `linux/amd64` (Intel/AMD 64-bit)
-- `linux/arm64` (ARM 64-bit, including Apple Silicon)
+#### Basic Setup (Website Only)
 
-Docker will automatically pull the correct architecture for your platform.
+For basic website functionality:
 
-## Deployment Pipeline
+1. **Start infrastructure** (PostgreSQL + RabbitMQ)
+2. **Configure Frontend** - See [frontend/README.md](frontend/README.md)
+3. **Configure API** - See [api/README.md](api/README.md)
+4. **Start services:** - See individual READMEs for details
 
-This project includes an automated deployment pipeline that deploys to Kubernetes using Helm charts.
+#### Full Setup (All Features)
 
-### Environments
+For complete functionality including GitHub integration and game execution:
 
-- **🟢 Production** (`main` branch) → `production` namespace
-- **🟡 Beta/Staging** (`dev` branch) → `staging` namespace
-- **🔵 Development** (feature branches) → `development` namespace
+1. **Start PostgreSQL**
+2. **Start RabbitMQ**
+3. **Set up Kubernetes cluster** (recommended: [kind](https://kind.sigs.k8s.io/))
+4. **Configure S3 storage** for replay storage
+5. **Configure all services:**
+   * [Frontend](frontend/README.md) - Web interface
+   * [API Service](api/README.md) - Main backend
+   * [GitHub Service](github-service/README.md) - Repository management
+   * [K8s Service](k8s-service/README.md) - Game execution
+6. **Start all services**
 
-### Automatic Deployment
+## Service Dependencies
 
-When you push to any tracked branch:
+### Core Services (Required)
 
-1. **Docker image** is built for multiple architectures (AMD64/ARM64)
-2. **Image is tagged** with branch name and commit SHA
-3. **Helm chart** is deployed with environment-specific configuration
-4. **Application** is automatically available at the configured domain
+* **Frontend** ← **API Service** ← **PostgreSQL**
 
-### Manual Deployment
+### Extended Features
 
-You can also deploy manually:
+* **GitHub Integration** requires **RabbitMQ** + **GitHub Service**
+* **Game Execution** requires **Kubernetes** + **K8s Service** + **S3 Storage**
 
-1. Go to **Actions** → **Deploy to Kubernetes**
-2. Select environment (`prod`, `beta`, `dev`)
-3. Specify image tag to deploy
-4. Run the workflow
+## Contributing
 
-### Configuration
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test locally using the DevContainer or manual setup
+5. Submit a pull request
 
-See [`k8s/README.md`](k8s/README.md) for detailed setup instructions including:
-- Kubernetes cluster configuration
-- GitHub secrets setup
-- Environment-specific values
-- Troubleshooting guide
+## Support
 
-### Deployment Status
+For issues and questions:
 
-Each deployment provides detailed status information including:
-- Deployed image tag
-- Kubernetes resources created
-- Health check results
-- Access URLs
-
-## GitHub Environments
-
-This project uses GitHub Environments to track active deployments and provide easy access to deployed applications.
-
-### Environment Overview
-
-You can see active environments in the repository sidebar:
-
-- **🟢 Production** - Live production environment
-- **🟡 Beta/Staging** - Staging environment for testing
-- **🔵 Development** - Development environment for feature testing
-
-### Quick Setup
-
-1. Go to **Actions** → **Setup GitHub Environments**
-2. Click **"Run workflow"** to automatically create environments
-3. Update domain URLs in values files
-4. Configure environment secrets
-
-### Features
-
-- 📍 **Active deployment tracking** in GitHub UI
-- 🔗 **Direct links** to deployed applications
-- 🛡️ **Protection rules** for production deployments
-- 📊 **Deployment history** and status monitoring
-- 🔐 **Environment-specific secrets** management
-
-For detailed setup instructions, see [`.github/ENVIRONMENTS.md`](.github/ENVIRONMENTS.md).
+* Check individual service READMEs for specific setup issues
+* Open an issue in this repository
