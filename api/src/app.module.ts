@@ -12,6 +12,7 @@ import {DatabaseConfig} from "./DatabaseConfig";
 import {GithubApiModule} from "./github-api/github-api.module";
 import {ScheduleModule} from "@nestjs/schedule";
 import { StatsModule } from './stats/stats.module';
+import {RabbitMqModule} from "./common/rabbitmq.module";
 
 @Module({
     imports: [
@@ -35,6 +36,7 @@ import { StatsModule } from './stats/stats.module';
         MatchModule,
         GithubApiModule,
         StatsModule,
+        RabbitMqModule,
     ],
     controllers: [AppController],
     providers: [AppService],
