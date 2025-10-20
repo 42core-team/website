@@ -1,5 +1,5 @@
 # Multi-stage build for Next.js production with pnpm
-FROM node:24-alpine AS base
+FROM node:25-alpine AS base
 
 # Install pnpm globally
 RUN npm install -g pnpm
