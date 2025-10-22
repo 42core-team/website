@@ -14,6 +14,18 @@ module.exports = {
       fontFamily: {
         original: ["Original", "sans-serif"],
       },
+      typography: {
+        DEFAULT: {
+          css: {
+            'code::before': {
+              content: '""'
+            },
+            'code::after': {
+              content: '""'
+            }
+          }
+        },
+  },
     },
   },
   darkMode: "class",

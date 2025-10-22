@@ -1,9 +1,12 @@
 import { promises as fs } from "fs";
 import path from "path";
 import matter from "gray-matter";
-import { remark } from "remark";
+import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
-import remarkHtml from "remark-html";
+import remarkRehype from "remark-rehype";
+import rehypeHighlight from "rehype-highlight";
+import rehypeStringify from "rehype-stringify";
+import { unified } from "unified";
 
 const FALLBACK_WIKI_VERSION = "latest";
 
@@ -157,9 +160,12 @@ export async function getWikiPageWithVersion(
     const { data, content } = matter(body);
 
     // Process markdown content with callout support
-    const processedContent = await remark()
+    const processedContent = await unified()
+      .use(remarkParse)
       .use(remarkGfm)
-      .use(remarkHtml, { sanitize: false })
+      .use(remarkRehype)
+      .use(rehypeHighlight)
+      .use(rehypeStringify)
       .process(content);
 
     // Post-process the HTML to add IDs to headings and handle callouts
