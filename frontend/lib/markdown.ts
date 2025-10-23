@@ -10,11 +10,23 @@ import { unified } from "unified";
 
 const FALLBACK_WIKI_VERSION = "latest";
 
+// Standard YAML frontmatter contract for wiki pages
+// - title:         string    -> Display title for the page
+// - sidebarTitle:  string    -> Optional shorter/different title for navigation
+// - permalink:     string    -> Optional slug override for the last path segment
+// Additional custom keys are supported and exposed via `frontmatter`.
+export interface WikiFrontmatter {
+  title?: string;
+  sidebarTitle?: string;
+  permalink?: string;
+  [key: string]: any;
+}
+
 export interface WikiPage {
   slug: string[];
   title: string;
   content: string;
-  frontmatter: { [key: string]: any };
+  frontmatter: WikiFrontmatter;
   lastModified: Date;
   version?: string;
 }
@@ -38,46 +50,6 @@ export interface WikiVersion {
   name: string;
   slug: string;
   isDefault?: boolean;
-}
-
-type WikiMetadataHeader = {
-  HEADING?: string;
-  PERMALINK?: string;
-  SIDEBAR_HEADING?: string;
-};
-
-function parseWikiMetadataHeader(raw: string): {
-  header: WikiMetadataHeader | null;
-  body: string;
-} {
-  const lines = raw.split(/\r?\n/);
-  if (!lines[0] || lines[0].trim() !== "=====")
-    return { header: null, body: raw };
-
-  let end = -1;
-  for (let i = 1; i < Math.min(lines.length, 200); i++) {
-    if (lines[i].trim() === "=====") {
-      end = i;
-      break;
-    }
-  }
-  if (end === -1) return { header: null, body: raw };
-
-  const headerLines = lines.slice(1, end);
-  const header: WikiMetadataHeader = {};
-  for (const line of headerLines) {
-    const m = line.match(/^\s*([A-Z_]+)\s*=\s*"([^"]*)"\s*$/);
-    if (m) {
-      const k = m[1] as keyof WikiMetadataHeader;
-      header[k] = m[2];
-    }
-  }
-
-  const body = lines
-    .slice(end + 1)
-    .join("\n")
-    .replace(/^\s+/, "");
-  return { header, body };
 }
 
 const contentDirectory = path.join(process.cwd(), "content/wiki");
@@ -155,9 +127,10 @@ export async function getWikiPageWithVersion(
       }
     }
 
-    const { header, body } = parseWikiMetadataHeader(fileContent);
-
-    const { data, content } = matter(body);
+    // Parse standard YAML frontmatter using gray-matter
+    const parsed = matter(fileContent);
+    const data = parsed.data as WikiFrontmatter;
+    const content = parsed.content;
 
     // Process markdown content with callout support
     const processedContent = await unified()
@@ -286,25 +259,20 @@ export async function getWikiPageWithVersion(
       }
     }
 
-    // Respect custom HEADING for page title; fall back gracefully
-    const pageTitle =
-      (header && "HEADING" in header
-        ? (header.HEADING as string)
-        : undefined) ??
-      (typeof data.title === "string" ? data.title : undefined) ??
-      getTitleFromSlug(slug);
+    // Determine title: prefer YAML frontmatter `title`, fallback to slug
+    const pageTitle = data.title ?? getTitleFromSlug(slug);
 
-    // If PERMALINK is set, the public slug must reflect it (last segment)
+    // If `permalink` is set in frontmatter, reflect it in the last slug segment
     const effectiveSlug = [...slug];
-    if (header && "PERMALINK" in header && effectiveSlug.length > 0) {
-      effectiveSlug[effectiveSlug.length - 1] = header.PERMALINK as string;
+    if (data.permalink && effectiveSlug.length > 0) {
+      effectiveSlug[effectiveSlug.length - 1] = data.permalink;
     }
 
     return {
       slug: effectiveSlug,
       title: pageTitle,
       content: htmlContent,
-      frontmatter: { ...data, __coreHeader: header ?? undefined },
+      frontmatter: { ...data },
       lastModified,
       version,
     };
@@ -360,22 +328,14 @@ export async function getWikiNavigationWithVersion(
           }
         } else if (entry.name.endsWith(".md")) {
           const fsPath = path.join(dir, entry.name);
-
           let sidebarTitleOverride: string | undefined;
           let permalinkOverride: string | undefined;
 
           try {
             const raw = await fs.readFile(fsPath, "utf8");
-            const { header } = parseWikiMetadataHeader(raw);
-            if (header) {
-              if ("SIDEBAR_HEADING" in header)
-                sidebarTitleOverride = header.SIDEBAR_HEADING as string;
-              else if ("HEADING" in header)
-                sidebarTitleOverride = header.HEADING as string;
-
-              if ("PERMALINK" in header)
-                permalinkOverride = header.PERMALINK as string;
-            }
+            const front = matter(raw).data as WikiFrontmatter;
+            sidebarTitleOverride = front.sidebarTitle ?? front.title;
+            permalinkOverride = front.permalink;
           } catch {
             // ignore file read errors, navigation will still render
           }
@@ -475,11 +435,8 @@ async function getFilePathFromSlugWithVersion(
           const p = path.join(parentDir, e.name);
           try {
             const raw = await fs.readFile(p, "utf8");
-            const { header } = parseWikiMetadataHeader(raw);
-            if (
-              header?.PERMALINK &&
-              header.PERMALINK === decodedSlug[decodedSlug.length - 1]
-            ) {
+            const front = matter(raw).data as WikiFrontmatter;
+            if (front.permalink === decodedSlug[decodedSlug.length - 1]) {
               return p;
             }
           } catch {
