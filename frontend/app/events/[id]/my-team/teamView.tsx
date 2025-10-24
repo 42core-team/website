@@ -9,7 +9,7 @@ interface TeamViewProps {
   pendingInvites: Team[];
 }
 
-export default function TeamView({
+export default async function TeamView({
   initialTeam,
   teamMembers,
   pendingInvites,
