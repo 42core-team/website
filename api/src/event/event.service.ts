@@ -276,4 +276,11 @@ export class EventService {
 
     return qb.getOne();
   }
+
+  isEventLocked(eventId: string): Promise<boolean> {
+    return this.eventRepository.existsBy({
+      id: eventId,
+      areTeamsLocked: true,
+    });
+  }
 }
