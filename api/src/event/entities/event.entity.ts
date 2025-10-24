@@ -59,8 +59,14 @@ export class EventEntity {
   @Column({ type: "timestamp", nullable: true })
   repoLockDate: Date | null;
 
-  @Column({default: false})
-  areTeamsLocked: boolean;
+  @Column({default: true})
+  canCreateTeam: boolean;
+
+  @Column({default: true})
+  processQueue: boolean;
+
+  @Column({type: "timestamp", nullable: true})
+  lockedAt: Date | null;
 
   @Column({ type: "enum", enum: EventState, default: EventState.CODING_PHASE })
   state: EventState;
