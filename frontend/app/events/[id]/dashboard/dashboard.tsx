@@ -203,7 +203,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
             </h2>
             <div className="flex flex-wrap gap-3">
               <Button
-                isDisabled={event.areTeamsLocked || lockingTeamsLoading}
+                isDisabled={event.lockedAt != null || lockingTeamsLoading}
                 onPress={() => {
                   setLockingTeamsLoading(true);
                   lockEvent(eventId)
