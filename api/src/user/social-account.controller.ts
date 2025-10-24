@@ -15,8 +15,7 @@ import {
   SocialAccountEntity,
   SocialPlatform,
 } from "./entities/social-account.entity";
-import { FrontendGuard, UserId } from "src/guards/FrontendGuard";
-import {UserGuard} from "../guards/UserGuard";
+import {UserGuard, UserId} from "../guards/UserGuard";
 
 class LinkSocialAccountDto {
   platform: SocialPlatform;
@@ -24,7 +23,7 @@ class LinkSocialAccountDto {
   platformUserId: string;
 }
 
-@UseGuards(FrontendGuard, UserGuard)
+@UseGuards(UserGuard)
 @ApiTags("social-accounts")
 @Controller("social-accounts")
 export class SocialAccountController {

@@ -10,7 +10,8 @@ if (!fs.existsSync(BASE_DIR)) {
 }
 
 // Determine current branch from environment
-const currentBranch = process.env.CURRENT_BRANCH || process.env.GITHUB_REF_NAME || "";
+const currentBranch =
+  process.env.CURRENT_BRANCH || process.env.GITHUB_REF_NAME || "";
 
 // If running on dev, pull wiki from monorepo's dev branch (sparse checkout of /wiki)
 if (currentBranch === "dev" || currentBranch === "") {

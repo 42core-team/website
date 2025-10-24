@@ -3,7 +3,7 @@ import {
     Controller,
     Get,
     Logger,
-    Param, ParseBoolPipe,
+    Param,
     ParseUUIDPipe,
     Put, Query,
     UnauthorizedException,
@@ -12,11 +12,9 @@ import {
 import {MatchService} from "./match.service";
 import {EventService} from "../event/event.service";
 import {EventState} from "../event/entities/event.entity";
-import {FrontendGuard, UserId} from "../guards/FrontendGuard";
-import {UserGuard} from "../guards/UserGuard";
+import {UserGuard, UserId} from "../guards/UserGuard";
 import {MatchEntity} from "./entites/match.entity";
 
-@UseGuards(FrontendGuard)
 @Controller('match')
 export class MatchController {
     constructor(
@@ -71,6 +69,7 @@ export class MatchController {
         return this.matchService.getTournamentTeamCount(eventId);
     }
 
+    @UseGuards(UserGuard)
     @Get("tournament/:eventId")
     getTournamentMatches(
         @Param("eventId", ParseUUIDPipe) eventId: string,
