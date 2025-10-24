@@ -12,7 +12,7 @@ import {
     Query,
     UseGuards,
 } from "@nestjs/common";
-import { UserId} from "../guards/UserGuard";
+import { UserId } from "../guards/UserGuard";
 import {TeamService} from "./team.service";
 import {CreateTeamDto} from "./dtos/createTeamDto";
 import {InviteUserDto} from "./dtos/inviteUserDto";
