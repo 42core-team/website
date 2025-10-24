@@ -32,13 +32,13 @@ export default async function Page({
   const userRegistered = await isUserRegisteredForEvent(eventId);
   if (!userRegistered) {
     redirect(`/events/${eventId}`);
-    return;
+  }
   }
 
   const event = await getEventById(eventId);
   if (isActionError(event)) {
     redirect(`/events/${eventId}`);
-    return;
+  }
   }
 
   const team = await getMyEventTeam(eventId);
