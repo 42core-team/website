@@ -1,5 +1,6 @@
 @config "../tailwind.config.mjs";
 @import "tailwindcss";
+@import "./themes/highlightjs/github-dark.css";
 
 @font-face {
   font-family: "Original";

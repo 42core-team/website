@@ -56,13 +56,15 @@
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.1",
     "remark-html": "^16.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
     "strip-markdown": "^6.0.0",
     "tailwind-variants": "^3.1.1",
     "unified": "^11.0.5"
   },
   "devDependencies": {
     "@heroui/theme": "^2.4.22",
-    "@tailwindcss/postcss": "^4.1.13",
+    "@tailwindcss/postcss": "^4.1.15",
     "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^24.6.0",
     "@types/react": "^19.1.16",
@@ -72,5 +74,6 @@
     "prettier": "^3.6.2",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2"
-  }
+  },
+  "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"
 }

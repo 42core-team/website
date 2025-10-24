@@ -1,17 +1,32 @@
 import { promises as fs } from "fs";
 import path from "path";
 import matter from "gray-matter";
-import { remark } from "remark";
+import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
-import remarkHtml from "remark-html";
+import remarkRehype from "remark-rehype";
+import rehypeHighlight from "rehype-highlight";
+import rehypeStringify from "rehype-stringify";
+import { unified } from "unified";
 
 const FALLBACK_WIKI_VERSION = "latest";
+
+// Standard YAML frontmatter contract for wiki pages
+// - title:         string    -> Display title for the page
+// - sidebarTitle:  string    -> Optional shorter/different title for navigation
+// - permalink:     string    -> Optional slug override for the last path segment
+// Additional custom keys are supported and exposed via `frontmatter`.
+export interface WikiFrontmatter {
+  title?: string;
+  sidebarTitle?: string;
+  permalink?: string;
+  [key: string]: any;
+}
 
 export interface WikiPage {
   slug: string[];
   title: string;
   content: string;
-  frontmatter: { [key: string]: any };
+  frontmatter: WikiFrontmatter;
   lastModified: Date;
   version?: string;
 }
@@ -48,7 +63,9 @@ export async function getDefaultWikiVersion(): Promise<string> {
 
 export async function getAvailableVersions(): Promise<WikiVersion[]> {
   try {
-    const entries = await fs.readdir(contentDirectory, { withFileTypes: true });
+    const entries = await fs.readdir(contentDirectory, {
+      withFileTypes: true,
+    });
     const versions: WikiVersion[] = [];
 
     // Add directories as versions (no more root-level files handling)
@@ -109,12 +126,19 @@ export async function getWikiPageWithVersion(
         throw err;
       }
     }
-    const { data, content } = matter(fileContent);
+
+    // Parse standard YAML frontmatter using gray-matter
+    const parsed = matter(fileContent);
+    const data = parsed.data as WikiFrontmatter;
+    const content = parsed.content;
 
     // Process markdown content with callout support
-    const processedContent = await remark()
+    const processedContent = await unified()
+      .use(remarkParse)
       .use(remarkGfm)
-      .use(remarkHtml, { sanitize: false })
+      .use(remarkRehype)
+      .use(rehypeHighlight)
+      .use(rehypeStringify)
       .process(content);
 
     // Post-process the HTML to add IDs to headings and handle callouts
@@ -235,11 +259,20 @@ export async function getWikiPageWithVersion(
       }
     }
 
+    // Determine title: prefer YAML frontmatter `title`, fallback to slug
+    const pageTitle = data.title ?? getTitleFromSlug(slug);
+
+    // If `permalink` is set in frontmatter, reflect it in the last slug segment
+    const effectiveSlug = [...slug];
+    if (data.permalink && effectiveSlug.length > 0) {
+      effectiveSlug[effectiveSlug.length - 1] = data.permalink;
+    }
+
     return {
-      slug,
-      title: getTitleFromSlug(slug),
+      slug: effectiveSlug,
+      title: pageTitle,
       content: htmlContent,
-      frontmatter: data,
+      frontmatter: { ...data },
       lastModified,
       version,
     };
@@ -294,9 +327,29 @@ export async function getWikiNavigationWithVersion(
             });
           }
         } else if (entry.name.endsWith(".md")) {
-          const slug = [...basePath, entry.name.replace(".md", "")];
+          const fsPath = path.join(dir, entry.name);
+          let sidebarTitleOverride: string | undefined;
+          let permalinkOverride: string | undefined;
+
+          try {
+            const raw = await fs.readFile(fsPath, "utf8");
+            const front = matter(raw).data as WikiFrontmatter;
+            sidebarTitleOverride = front.sidebarTitle ?? front.title;
+            permalinkOverride = front.permalink;
+          } catch {
+            // ignore file read errors, navigation will still render
+          }
+
+          const fileBase = entry.name.replace(".md", "");
+          const finalLastSegment =
+            permalinkOverride !== undefined ? permalinkOverride : fileBase;
+
+          const slug = [...basePath, finalLastSegment];
           items.push({
-            title: formatTitle(entry.name.replace(".md", "")),
+            title:
+              sidebarTitleOverride !== undefined
+                ? sidebarTitleOverride
+                : formatTitle(fileBase),
             slug,
             isFile: true,
           });
@@ -334,14 +387,11 @@ async function getFilePathFromSlugWithVersion(
   slug: string[],
   version?: string,
 ): Promise<string> {
-  // Get the default version if none specified
   const actualVersion = version || (await getDefaultWikiVersion());
   const versionDir = path.join(contentDirectory, actualVersion);
 
-  // Decode URL components to handle spaces and special characters
   const decodedSlug = slug.map((segment) => decodeURIComponent(segment));
 
-  // Handle root README
   if (
     decodedSlug.length === 0 ||
     (decodedSlug.length === 1 && decodedSlug[0] === "")
@@ -349,10 +399,7 @@ async function getFilePathFromSlugWithVersion(
     return path.join(versionDir, "README.md");
   }
 
-  // Try direct file path first
   const candidateDirect = path.resolve(versionDir, ...decodedSlug) + ".md";
-
-  // Security check: ensure path is inside versionDir
   if (!candidateDirect.startsWith(path.resolve(versionDir))) {
     throw new Error("Invalid wiki path");
   }
@@ -361,7 +408,7 @@ async function getFilePathFromSlugWithVersion(
     await fs.access(candidateDirect);
     return candidateDirect;
   } catch {
-    // If not exist, try README in directory
+    // Try README in directory
     const candidateReadme = path.resolve(
       versionDir,
       ...decodedSlug,
@@ -370,8 +417,40 @@ async function getFilePathFromSlugWithVersion(
     if (!candidateReadme.startsWith(path.resolve(versionDir))) {
       throw new Error("Invalid wiki path");
     }
-    return candidateReadme;
+    try {
+      await fs.access(candidateReadme);
+      return candidateReadme;
+    } catch {
+      // FALLBACK: last segment might be a PERMALINK pointing to some file in this directory
+      const parentDir = path.resolve(versionDir, ...decodedSlug.slice(0, -1));
+      if (!parentDir.startsWith(path.resolve(versionDir))) {
+        throw new Error("Invalid wiki path");
+      }
+      try {
+        const entries = await fs.readdir(parentDir, {
+          withFileTypes: true,
+        });
+        for (const e of entries) {
+          if (!e.isFile() || !e.name.endsWith(".md")) continue;
+          const p = path.join(parentDir, e.name);
+          try {
+            const raw = await fs.readFile(p, "utf8");
+            const front = matter(raw).data as WikiFrontmatter;
+            if (front.permalink === decodedSlug[decodedSlug.length - 1]) {
+              return p;
+            }
+          } catch {
+            // ignore a single file read error and continue
+          }
+        }
+      } catch {
+        // parent directory not readable or doesn't exist
+      }
+    }
   }
+
+  // Default to README inside the target path if everything above failed
+  return path.resolve(versionDir, ...decodedSlug, "README.md");
 }
 
 function formatVersionName(slug: string): string {
