@@ -10,10 +10,8 @@ import {
 } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { CreateUserDto } from "./dtos/user.dto";
-import { FrontendGuard, UserId } from "../guards/FrontendGuard";
-import {UserGuard} from "../guards/UserGuard";
+import {UserGuard, UserId} from "../guards/UserGuard";
 
-@UseGuards(FrontendGuard)
 @Controller("user")
 export class UserController {
   constructor(private readonly userService: UserService) {}

@@ -25,7 +25,7 @@ export class AppService {
       })
       .catch((error) => {
         if (error.code !== "EXIST") {
-          this.logger.error(
+          this.logger.warn(
             `Failed to create temp folder at ${this.TMP_FOLDER} because it already exists`,
           );
         }
@@ -271,7 +271,7 @@ export class AppService {
         await this.deleteRepository(name, githubOrg, secret);
         // Error is handled by the outer catch block; do not re-throw here.
       } finally {
-        await fs.rm(tempFolderPath, { recursive: true, force: true });
+        //await fs.rm(tempFolderPath, { recursive: true, force: true });
         this.logger.log(`Removed temp folder ${tempFolderPath}`);
       }
 
