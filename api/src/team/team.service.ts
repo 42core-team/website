@@ -342,4 +342,13 @@ export class TeamService {
     async setTeamRepository(teamId: string, repositoryName: string) {
         return this.teamRepository.update(teamId, {repo: repositoryName});
     }
+
+    isTeamLocked(teamId: string): Promise<boolean> {
+        return this.teamRepository.exists({
+            where: {
+                id: teamId,
+                locked: true
+            }
+        })
+    }
 }

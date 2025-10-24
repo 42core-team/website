@@ -33,17 +33,15 @@ export default async function Page({
   if (!userRegistered) {
     redirect(`/events/${eventId}`);
   }
-  }
 
   const event = await getEventById(eventId);
   if (isActionError(event)) {
     redirect(`/events/${eventId}`);
   }
-  }
 
   const team = await getMyEventTeam(eventId);
 
-  if (!team && event.areTeamsLocked) {
+  if (!team && !event.canCreateTeam) {
     return (
       <Alert
         color="warning"
