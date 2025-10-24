@@ -50,7 +50,8 @@ async function fetchAllReleases() {
   }
 
   all.sort(
-    (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
+    (a, b) =>
+      new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
   );
 
   return all;

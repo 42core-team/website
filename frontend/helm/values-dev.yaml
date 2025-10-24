@@ -34,9 +34,9 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-#    nginx.ingress.kubernetes.io/limit-rps: "5"
-#    nginx.ingress.kubernetes.io/limit-burst: "10"
-#    nginx.ingress.kubernetes.io/limit-connections: "20"
+  #    nginx.ingress.kubernetes.io/limit-rps: "5"
+  #    nginx.ingress.kubernetes.io/limit-burst: "10"
+  #    nginx.ingress.kubernetes.io/limit-connections: "20"
   hosts:
     - host: dev.coregame.de
       paths:

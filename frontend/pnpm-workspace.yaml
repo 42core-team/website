@@ -1,5 +1,5 @@
 onlyBuiltDependencies:
-  - '@heroui/shared-utils'
-  - '@tailwindcss/oxide'
+  - "@heroui/shared-utils"
+  - "@tailwindcss/oxide"
   - postinstall-postinstall
   - sharp
