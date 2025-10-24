@@ -71,7 +71,7 @@ export class TeamController {
         if (!(await this.eventService.isUserRegisteredForEvent(eventId, userId)))
             throw new BadRequestException("You are not registered for this event.");
 
-        if(await this.eventService.isEventLocked(eventId))
+        if (await this.eventService.isEventLocked(eventId))
           throw new BadRequestException("This event is locked.");
 
         if (await this.teamService.getTeamOfUserForEvent(eventId, userId))
