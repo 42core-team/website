@@ -11,14 +11,12 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { EventService } from "./event.service";
-import { FrontendGuard, UserId } from "../guards/FrontendGuard";
 import { TeamService } from "../team/team.service";
 import { UserService } from "../user/user.service";
 import { CreateEventDto } from "./dtos/createEventDto";
 import { SetLockTeamsDateDto } from "./dtos/setLockTeamsDateDto";
-import { UserGuard } from "../guards/UserGuard";
+import { UserGuard, UserId } from "../guards/UserGuard";
 
-@UseGuards(FrontendGuard)
 @Controller("event")
 export class EventController {
   constructor(

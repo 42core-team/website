@@ -93,6 +93,7 @@ ingressRedirect:
 ```
 
 This configuration will:
+
 - Create a separate ingress for `www.coregame.de`
 - Issue HTTP 308 (permanent) redirects to `https://coregame.de`
 - Include TLS certificate management for the www subdomain

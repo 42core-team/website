@@ -25,7 +25,7 @@ export class AppService {
       })
       .catch((error) => {
         if (error.code !== "EXIST") {
-          this.logger.error(
+          this.logger.warn(
             `Failed to create temp folder at ${this.TMP_FOLDER} because it already exists`,
           );
         }

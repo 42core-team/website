@@ -12,7 +12,7 @@ import {
     Query,
     UseGuards,
 } from "@nestjs/common";
-import {FrontendGuard, UserId} from "../guards/FrontendGuard";
+import { UserId } from "../guards/UserGuard";
 import {TeamService} from "./team.service";
 import {CreateTeamDto} from "./dtos/createTeamDto";
 import {InviteUserDto} from "./dtos/inviteUserDto";
@@ -22,7 +22,6 @@ import {UserGuard} from "../guards/UserGuard";
 import {PermissionRole} from "../user/entities/user.entity";
 
 // TODO: create pipe or guard for user team validation, so we don't have to check for team existence in every endpoint
-@UseGuards(FrontendGuard)
 @Controller("team")
 export class TeamController {
     constructor(

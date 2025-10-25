@@ -19,7 +19,8 @@ export function getAllReleases(): Release[] {
   const arr: Release[] = JSON.parse(raw);
   // defensive sort (newest first)
   return arr.sort(
-    (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
+    (a, b) =>
+      new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
   );
 }
 

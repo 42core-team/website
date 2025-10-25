@@ -17,15 +17,15 @@ module.exports = {
       typography: {
         DEFAULT: {
           css: {
-            'code::before': {
-              content: '""'
+            "code::before": {
+              content: '""',
             },
-            'code::after': {
-              content: '""'
-            }
-          }
+            "code::after": {
+              content: '""',
+            },
+          },
         },
-  },
+      },
     },
   },
   darkMode: "class",
