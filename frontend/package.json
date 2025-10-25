@@ -33,7 +33,7 @@
     "@heroui/tabs": "^2.2.23",
     "@heroui/tooltip": "^2.2.23",
     "@internationalized/date": "^3.9.0",
-    "@react-aria/visually-hidden": "^3.8.27",
+    "@react-aria/visually-hidden": "^3.8.28",
     "axios": "^1.12.2",
     "chart.js": "^4.5.0",
     "clsx": "^2.1.1",
