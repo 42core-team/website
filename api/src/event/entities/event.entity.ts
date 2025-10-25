@@ -59,13 +59,13 @@ export class EventEntity {
   @Column({ type: "timestamp", nullable: true })
   repoLockDate: Date | null;
 
-  @Column({default: true})
+  @Column({ default: true })
   canCreateTeam: boolean;
 
-  @Column({default: true})
+  @Column({ default: true })
   processQueue: boolean;
 
-  @Column({type: "timestamp", nullable: true})
+  @Column({ type: "timestamp", nullable: true })
   lockedAt: Date | null;
 
   @Column({ type: "enum", enum: EventState, default: EventState.CODING_PHASE })
@@ -100,8 +100,8 @@ export class EventEntity {
 
   @JoinTable({ name: "events_users" })
   @ManyToMany(() => UserEntity, (user) => user.events, {
-      onUpdate: "CASCADE",
-      cascade: true,
+    onUpdate: "CASCADE",
+    cascade: true,
   })
   users: UserEntity[];
 

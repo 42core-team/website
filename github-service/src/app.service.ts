@@ -280,12 +280,7 @@ export class AppService {
         teamId: teamId,
       });
 
-      await repositoryApi.addCollaborator(
-        githubOrg,
-        name,
-        username,
-        "push",
-      );
+      await repositoryApi.addCollaborator(githubOrg, name, username, "push");
       await userApi.acceptRepositoryInvitationByRepo(
         githubOrg,
         name,

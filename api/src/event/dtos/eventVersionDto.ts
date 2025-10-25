@@ -1,5 +1,5 @@
 export class EventVersionDto {
-    myCoreBotVersion: string;
-    visualizerVersion: string;
-    gameServerVersion: string;
+  myCoreBotVersion: string;
+  visualizerVersion: string;
+  gameServerVersion: string;
 }
