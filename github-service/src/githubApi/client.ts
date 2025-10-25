@@ -1,5 +1,5 @@
 import { RequestOptions, ResponseHeaders } from "./types";
-import { Logger } from '@nestjs/common';
+import { Logger } from "@nestjs/common";
 
 /**
  * GitHub API Client with rate limiting and automatic retries
@@ -61,7 +61,9 @@ export class GitHubApiClient {
           const waitTime = this.calculateWaitTime(resetTime);
 
           if (retries < this.maxRetries) {
-            this.logger.warn(`Rate limited. Waiting ${waitTime}ms before retrying... url=${url}`);
+            this.logger.warn(
+              `Rate limited. Waiting ${waitTime}ms before retrying... url=${url}`,
+            );
             await this.delay(waitTime);
             retries++;
             continue;
@@ -96,11 +98,16 @@ export class GitHubApiClient {
         if (retries < this.maxRetries && this.shouldRetry(error)) {
           retries++;
           const backoffTime = this.calculateBackoffTime(retries);
-          this.logger.warn(`Request failed as ${error}. Retrying in ${backoffTime}ms... (${retries}/${this.maxRetries}) method=${method} url=${url}`);
+          this.logger.warn(
+            `Request failed as ${error}. Retrying in ${backoffTime}ms... (${retries}/${this.maxRetries}) method=${method} url=${url}`,
+          );
           await this.delay(backoffTime);
           continue;
         }
-        this.logger.error(`GitHub API request failed method=${method} url=${url}`, error as Error);
+        this.logger.error(
+          `GitHub API request failed method=${method} url=${url}`,
+          error as Error,
+        );
         throw error;
       }
     }

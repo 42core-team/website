@@ -15,7 +15,7 @@ import {
   SocialAccountEntity,
   SocialPlatform,
 } from "./entities/social-account.entity";
-import {UserGuard, UserId} from "../guards/UserGuard";
+import { UserGuard, UserId } from "../guards/UserGuard";
 
 class LinkSocialAccountDto {
   platform: SocialPlatform;
@@ -53,7 +53,9 @@ export class SocialAccountController {
 
   @Delete(":platform")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: "Unlink a social account from the authenticated user" })
+  @ApiOperation({
+    summary: "Unlink a social account from the authenticated user",
+  })
   @ApiResponse({
     status: 204,
     description: "Social account unlinked successfully",
@@ -67,7 +69,9 @@ export class SocialAccountController {
   }
 
   @Get()
-  @ApiOperation({ summary: "Get all social accounts for the authenticated user" })
+  @ApiOperation({
+    summary: "Get all social accounts for the authenticated user",
+  })
   @ApiResponse({
     status: 200,
     description: "Social accounts retrieved successfully",
@@ -79,7 +83,9 @@ export class SocialAccountController {
   }
 
   @Get(":platform")
-  @ApiOperation({ summary: "Get a specific social account for the authenticated user" })
+  @ApiOperation({
+    summary: "Get a specific social account for the authenticated user",
+  })
   @ApiResponse({
     status: 200,
     description: "Social account retrieved successfully",

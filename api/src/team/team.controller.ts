@@ -89,10 +89,7 @@ export class TeamController {
 
   @UseGuards(UserGuard, MyTeamGuards, TeamNotLockedGuard)
   @Put(`event/:${EVENT_ID_PARAM}/leave`)
-  async leaveTeam(
-    @UserId() userId: string,
-    @Team() team: TeamEntity,
-  ) {
+  async leaveTeam(@UserId() userId: string, @Team() team: TeamEntity) {
     return this.teamService.leaveTeam(team.id, userId);
   }
 
@@ -164,7 +161,7 @@ export class TeamController {
   async searchUsersForInvite(
     @EventId eventId: string,
     @Param("searchQuery") searchQuery: string,
-    @Team() team: TeamEntity
+    @Team() team: TeamEntity,
   ) {
     return this.userService.searchUsersForInvite(eventId, searchQuery, team.id);
   }
