@@ -93,7 +93,6 @@ export class TeamController {
   async leaveTeam(
     @UserId() userId: string,
     @Team() team: TeamEntity,
-    @Req() req: any,
   ) {
     return this.teamService.leaveTeam(team.id, userId);
   }
@@ -166,9 +165,8 @@ export class TeamController {
   async searchUsersForInvite(
     @EventId eventId: string,
     @Param("searchQuery") searchQuery: string,
-    @Req() req: any,
+    @Team() team: TeamEntity
   ) {
-    const team = req.team;
     return this.userService.searchUsersForInvite(eventId, searchQuery, team.id);
   }
 
@@ -219,8 +217,7 @@ export class TeamController {
 
   @UseGuards(UserGuard, MyTeamGuards)
   @Get(`event/:${EVENT_ID_PARAM}/queue/state`)
-  async getQueueState(@Req() req: any) {
-    const team = req.team;
+  async getQueueState(@Team() team: TeamEntity) {
     return this.teamService.getQueueState(team.id);
   }
 }
