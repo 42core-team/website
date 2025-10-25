@@ -1,6 +1,6 @@
-import {IsOptional} from "class-validator";
+import { IsOptional } from "class-validator";
 
-export class SetLockTeamsDateDto{
-    @IsOptional()
-    repoLockDate: number;
+export class SetLockTeamsDateDto {
+  @IsOptional()
+  repoLockDate: number;
 }
