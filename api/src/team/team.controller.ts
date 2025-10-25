@@ -178,7 +178,7 @@ export class TeamController {
     return this.teamService.getTeamsUserIsInvitedTo(userId, eventId);
   }
 
-  @UseGuards(UserGuard, MyTeamGuards, TeamNotLockedGuard)
+  @UseGuards(UserGuard, TeamNotLockedGuard)
   @Put(`event/:${EVENT_ID_PARAM}/acceptInvite/:${TEAM_ID_PARAM}`)
   async acceptTeamInvite(
     @UserId() userId: string,
