@@ -18,7 +18,9 @@ export interface Event {
   treeFormat?: number;
   githubOrg: string;
   repoLockDate?: string;
-  areTeamsLocked: boolean;
+  canCreateTeam: boolean;
+  lockedAt: string | null;
+  processQueue: boolean;
   state: EventState;
   monorepoUrl?: string;
   monorepoVersion?: string;

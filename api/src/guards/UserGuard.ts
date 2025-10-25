@@ -7,11 +7,12 @@ import {
 } from "@nestjs/common";
 import { Observable } from "rxjs";
 import { ConfigService } from "@nestjs/config";
+import { USER_ID_KEY } from "./GuardConstants";
 
 export const UserId = createParamDecorator(
   (data: unknown, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
-    return request.userId;
+    return request.headers[USER_ID_KEY];
   },
 );
 
@@ -19,7 +20,7 @@ export const UserId = createParamDecorator(
 export class UserGuard implements CanActivate {
   FRONTEND_SECRET: string;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(config: ConfigService) {
     this.FRONTEND_SECRET = config.getOrThrow("FRONTEND_SECRET");
   }
 
@@ -32,7 +33,7 @@ export class UserGuard implements CanActivate {
     if (authorization !== this.FRONTEND_SECRET)
       throw new UnauthorizedException();
 
-    const userId = request.headers["userid"];
+    const userId = request.headers[USER_ID_KEY];
     if (!userId) throw new UnauthorizedException("User ID is required");
     request.userId = userId;
 

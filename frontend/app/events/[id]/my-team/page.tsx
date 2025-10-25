@@ -3,13 +3,14 @@ import { authOptions } from "@/app/utils/authOptions";
 import { redirect } from "next/navigation";
 import {
   getMyEventTeam,
-  Team,
   getTeamMembers,
   getUserPendingInvites,
   TeamMember,
 } from "@/app/actions/team";
-import { isUserRegisteredForEvent } from "@/app/actions/event";
+import { getEventById, isUserRegisteredForEvent } from "@/app/actions/event";
 import TeamView from "./teamView";
+import { isActionError } from "@/app/actions/errors";
+import { Alert } from "@heroui/alert";
 
 export const metadata = {
   title: "My Team",
@@ -33,7 +34,22 @@ export default async function Page({
     redirect(`/events/${eventId}`);
   }
 
+  const event = await getEventById(eventId);
+  if (isActionError(event)) {
+    redirect(`/events/${eventId}`);
+  }
+
   const team = await getMyEventTeam(eventId);
+
+  if (!team && !event.canCreateTeam) {
+    return (
+      <Alert
+        color="warning"
+        title="Team creation closed"
+        description="Team creation for this event has ended. If you already have a team, you can view or manage it. Contact the event organizers for help."
+      />
+    );
+  }
 
   // Fetch team members if user has a team
   let teamMembers: TeamMember[] = [];

@@ -8,6 +8,7 @@ import {EventModule} from "../event/event.module";
 import {UserModule} from "../user/user.module";
 import {MatchModule} from "../match/match.module";
 import { TeamEventsController } from './team.events.controller';
+import {MyTeamGuards, TeamNotLockedGuard } from "../guards/TeamGuard";
 
 @Module({
     imports: [
@@ -18,7 +19,7 @@ import { TeamEventsController } from './team.events.controller';
         UserModule,
     ],
     controllers: [TeamController, TeamEventsController],
-    providers: [TeamService],
+    providers: [TeamService, MyTeamGuards, TeamNotLockedGuard],
     exports: [TeamService],
 })
 export class TeamModule {

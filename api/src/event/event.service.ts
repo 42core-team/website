@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { EventEntity, EventState } from "./entities/event.entity";
 import {
   DataSource,
+  IsNull,
   LessThanOrEqual,
   MoreThanOrEqual,
   Repository,
@@ -44,8 +45,7 @@ export class EventService {
       if (gotLock[0].pg_try_advisory_lock) {
         try {
           const events = await this.eventRepository.findBy({
-            areTeamsLocked: false,
-            state: EventState.CODING_PHASE,
+            lockedAt: IsNull(),
             repoLockDate: LessThanOrEqual(new Date()),
           });
           for (const event of events) {
@@ -78,7 +78,7 @@ export class EventService {
     return this.eventRepository.findBy({
       startDate: LessThanOrEqual(new Date()),
       endDate: MoreThanOrEqual(new Date()),
-      areTeamsLocked: false,
+      processQueue: true,
     });
   }
 
@@ -236,7 +236,9 @@ export class EventService {
 
     await this.setEventState(event.id, EventState.SWISS_ROUND);
     return this.eventRepository.update(eventId, {
-      areTeamsLocked: true,
+      canCreateTeam: false,
+      lockedAt: new Date(),
+      processQueue: false,
     });
   }
 
@@ -268,12 +270,19 @@ export class EventService {
       .where("event.isPrivate = false")
       .andWhere("event.startDate <= :now", { now: new Date() })
       .andWhere("event.endDate >= :now", { now: new Date() })
-      .andWhere("event.areTeamsLocked = false")
+      .andWhere("event.canCreateTeam = true")
       .addSelect("COUNT(user.id)", "user_count")
       .groupBy("event.id, user.id")
       .orderBy("user_count", "DESC")
       .limit(1);
 
     return qb.getOne();
+  }
+
+  canCreateTeamInEvent(eventId: string): Promise<boolean> {
+    return this.eventRepository.existsBy({
+      id: eventId,
+      canCreateTeam: true,
+    });
   }
 }
