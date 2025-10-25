@@ -9,9 +9,8 @@ import {EventService} from "../event/event.service";
 // @ts-ignore
 import {Player} from "tournament-pairings/interfaces";
 import {EventEntity, EventState} from "../event/entities/event.entity";
-import {ClientProxy, ClientProxyFactory} from "@nestjs/microservices";
-import {getRabbitmqConfig} from "../main";
 import {ConfigService} from "@nestjs/config";
+import {RabbitMqService} from "../common/rabbitmq.service";
 import {TeamEntity} from "../team/entities/team.entity";
 import {Cron, CronExpression} from "@nestjs/schedule";
 import {GithubApiService} from "../github-api/github-api.service";
@@ -21,8 +20,6 @@ import {MatchTeamResultEntity} from "./entites/match.team.result.entity";
 @Injectable()
 export class MatchService {
 
-    private gameResultsQueue: ClientProxy;
-    private gameQueue: ClientProxy;
     private logger = new Logger("MatchService");
     private k8sServiceUrl: string
 
@@ -35,11 +32,10 @@ export class MatchService {
         private readonly matchStatsRepository: Repository<MatchStatsEntity>,
         private readonly configService: ConfigService,
         private readonly dataSource: DataSource,
-        private githubApiService: GithubApiService
+        private githubApiService: GithubApiService,
+        private readonly rabbitMqService: RabbitMqService
     ) {
         this.k8sServiceUrl = configService.getOrThrow<string>("K8S_SERVICE_URL");
-        this.gameResultsQueue = ClientProxyFactory.create(getRabbitmqConfig(configService, "game_results"));
-        this.gameQueue = ClientProxyFactory.create(getRabbitmqConfig(configService, "game_queue"));
     }
 
     @Cron(CronExpression.EVERY_5_SECONDS)
@@ -264,8 +260,8 @@ export class MatchService {
         if (match.state !== MatchState.PLANNED)
             throw new Error(`Match with id ${matchId} is not in PLANNED state.`);
 
+        // Set match state to IN_PROGRESS but don't save yet
         match.state = MatchState.IN_PROGRESS;
-        await this.matchRepository.save(match);
 
         if (this.configService.get<string>("NODE_ENV") === "development") {
             const botIdMapping: Record<string, string> = {}
@@ -273,36 +269,44 @@ export class MatchService {
                 botIdMapping[team.id] = team.id;
             });
 
-            this.gameResultsQueue.emit("game_server", {
-                game_id: matchId,
-                team_results: match.teams.map(team => ({
-                    id: team.id,
-                    name: team.name,
-                    place: Math.random() * 10
-                })),
-                game_end_reason: 0,
-                version: "1.0.0",
-                BOT_ID_MAPPING: botIdMapping,
-                stats: {
-                    actions_executed: Math.floor(Math.random() * 1000),
-                    damage_deposits: Math.floor(Math.random() * 1000),
-                    gempiles_destroyed: Math.floor(Math.random() * 1000),
-                    damage_total: Math.floor(Math.random() * 1000),
-                    gems_gained: Math.floor(Math.random() * 1000),
-                    damage_walls: Math.floor(Math.random() * 1000),
-                    damage_cores: Math.floor(Math.random() * 1000),
-                    units_spawned: Math.floor(Math.random() * 1000),
-                    tiles_traveled: Math.floor(Math.random() * 1000),
-                    damage_self: Math.floor(Math.random() * 1000),
-                    damage_units: Math.floor(Math.random() * 1000),
-                    walls_destroyed: Math.floor(Math.random() * 1000),
-                    gems_transferred: Math.floor(Math.random() * 1000),
-                    units_destroyed: Math.floor(Math.random() * 1000),
-                    cores_destroyed: Math.floor(Math.random() * 1000),
-                    damage_opponent: Math.floor(Math.random() * 1000),
-                }
-            })
-            return;
+            try {
+                await this.rabbitMqService.emit("game_results", "game_server", {
+                    game_id: matchId,
+                    team_results: match.teams.map(team => ({
+                        id: team.id,
+                        name: team.name,
+                        place: Math.random() * 10
+                    })),
+                    game_end_reason: 0,
+                    version: "1.0.0",
+                    BOT_ID_MAPPING: botIdMapping,
+                    stats: {
+                        actions_executed: Math.floor(Math.random() * 1000),
+                        damage_deposits: Math.floor(Math.random() * 1000),
+                        gempiles_destroyed: Math.floor(Math.random() * 1000),
+                        damage_total: Math.floor(Math.random() * 1000),
+                        gems_gained: Math.floor(Math.random() * 1000),
+                        damage_walls: Math.floor(Math.random() * 1000),
+                        damage_cores: Math.floor(Math.random() * 1000),
+                        units_spawned: Math.floor(Math.random() * 1000),
+                        tiles_traveled: Math.floor(Math.random() * 1000),
+                        damage_self: Math.floor(Math.random() * 1000),
+                        damage_units: Math.floor(Math.random() * 1000),
+                        walls_destroyed: Math.floor(Math.random() * 1000),
+                        gems_transferred: Math.floor(Math.random() * 1000),
+                        units_destroyed: Math.floor(Math.random() * 1000),
+                        cores_destroyed: Math.floor(Math.random() * 1000),
+                        damage_opponent: Math.floor(Math.random() * 1000),
+                    }
+                });
+
+                // Only save to DB if RabbitMQ succeeded
+                await this.matchRepository.save(match);
+                return;
+            } catch (error) {
+                this.logger.error(`Failed to start match ${matchId} due to RabbitMQ error in development mode`, error);
+                throw new Error(`Failed to start match: RabbitMQ communication failed`);
+            }
         }
 
         const event = match.teams[0].event;
@@ -310,24 +314,32 @@ export class MatchService {
         const orgSecret = this.githubApiService.decryptSecret(event.githubOrgSecret);
         const repoPrefix = `https://${orgName}:${orgSecret}@github.com/${orgName}/`;
 
-        this.gameQueue.emit("new_match", {
-            id: matchId,
-            image: event.gameServerDockerImage,
-            bots: [
-                {
-                    id: match.teams[0].id,
-                    image: event.myCoreBotDockerImage,
-                    repoURL: repoPrefix + match.teams[0].repo,
-                    name: match.teams[0].name,
-                },
-                {
-                    id: match.teams[1].id,
-                    image: event.myCoreBotDockerImage,
-                    repoURL: repoPrefix + match.teams[1].repo,
-                    name: match.teams[1].name,
-                }
-            ]
-        })
+        try {
+            await this.rabbitMqService.emit("game_queue", "new_match", {
+                id: matchId,
+                image: event.gameServerDockerImage,
+                bots: [
+                    {
+                        id: match.teams[0].id,
+                        image: event.myCoreBotDockerImage,
+                        repoURL: repoPrefix + match.teams[0].repo,
+                        name: match.teams[0].name,
+                    },
+                    {
+                        id: match.teams[1].id,
+                        image: event.myCoreBotDockerImage,
+                        repoURL: repoPrefix + match.teams[1].repo,
+                        name: match.teams[1].name,
+                    }
+                ]
+            });
+
+            // Only save to DB if RabbitMQ succeeded
+            await this.matchRepository.save(match);
+        } catch (error) {
+            this.logger.error(`Failed to start match ${matchId} due to RabbitMQ error`, error);
+            throw new Error(`Failed to start match: RabbitMQ communication failed`);
+        }
     }
 
     async createMatch(teamIds: string[], round: number, phase: MatchPhase) {

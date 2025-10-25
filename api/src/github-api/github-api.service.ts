@@ -1,18 +1,14 @@
 import {Injectable} from "@nestjs/common";
-import {ClientProxy, ClientProxyFactory} from "@nestjs/microservices";
 import {ConfigService} from "@nestjs/config";
-import {getRabbitmqConfig} from "../main";
+import {RabbitMqService} from "../common/rabbitmq.service";
 import * as CryptoJS from "crypto-js";
 
 @Injectable()
 export class GithubApiService {
-    private githubClient: ClientProxy
-
     constructor(
         private configService: ConfigService,
-    ) {
-        this.githubClient = ClientProxyFactory.create(getRabbitmqConfig(configService, "github_service"))
-    }
+        private rabbitMqService: RabbitMqService,
+    ) {}
 
     decryptSecret(encryptedSecret: string): string {
         return CryptoJS.AES.decrypt(
@@ -27,7 +23,7 @@ export class GithubApiService {
         repoName: string,
         encryptedSecret: string,
     ) {
-        this.githubClient.emit('remove_write_permissions', {
+        await this.rabbitMqService.emit('github_service', 'remove_write_permissions', {
             username,
             repoOwner,
             repoName,
@@ -42,7 +38,7 @@ export class GithubApiService {
         encryptedSecret: string,
         githubAccessToken: string,
     ) {
-        this.githubClient.emit('add_user_to_repository', {
+        await this.rabbitMqService.emit('github_service', 'add_user_to_repository', {
             repositoryName,
             username,
             githubOrg,
@@ -57,7 +53,7 @@ export class GithubApiService {
         githubOrg: string,
         encryptedSecret: string,
     ) {
-        this.githubClient.emit('remove_user_from_repository', {
+        await this.rabbitMqService.emit('github_service', 'remove_user_from_repository', {
             repositoryName,
             username,
             githubOrg,
@@ -70,7 +66,7 @@ export class GithubApiService {
         githubOrg: string,
         encryptedSecret: string,
     ) {
-        this.githubClient.emit('delete_repository', {
+        await this.rabbitMqService.emit('github_service', 'delete_repository', {
             repositoryName,
             githubOrg,
             encryptedSecret,
@@ -91,7 +87,7 @@ export class GithubApiService {
         visualizerDockerImage: string,
         eventId: string
     ) {
-        this.githubClient.emit('create_team_repository', {
+        await this.rabbitMqService.emit('github_service', 'create_team_repository', {
             name,
             teamName,
             username,

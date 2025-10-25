@@ -1,4 +1,4 @@
-import {BadRequestException, forwardRef, Inject, Injectable, Logger} from '@nestjs/common';
+import {BadRequestException, forwardRef, Inject, Injectable, InternalServerErrorException, Logger} from '@nestjs/common';
 import {InjectRepository} from "@nestjs/typeorm";
 import {TeamEntity} from "./entities/team.entity";
 import {Repository} from "typeorm";
@@ -75,13 +75,15 @@ export class TeamService {
     async createTeam(name: string, userId: string, eventId: string) {
         const event = await this.eventService.getEventById(eventId);
         const user = await this.userService.getUserById(userId);
-        const team = await this.teamRepository.save({
+
+        const team = this.teamRepository.create({
             name,
             event: {id: eventId},
             users: [{id: userId}],
-        })
+        });
 
         const repoName = event.name + '-' + name + '-' + team.id;
+
         try {
             await this.githubApiService.createTeamRepository(
                 repoName,
@@ -98,14 +100,13 @@ export class TeamService {
                 event.id
             );
 
-            await this.teamRepository.save(team);
+            const savedTeam = await this.teamRepository.save(team);
+            return savedTeam;
         } catch (e) {
             this.logger.error(`Failed to create repository for team ${team.id}`, e);
-            await this.teamRepository.delete(team.id);
-            throw new BadRequestException("Failed to create repository for team. Please try again later.");
+            // Don't save the team to DB if RabbitMQ failed
+            throw new InternalServerErrorException("Failed to create repository for team. Please try again later.");
         }
-
-        return team;
     }
 
     async deleteTeam(teamId: string) {
@@ -113,12 +114,18 @@ export class TeamService {
             event: true
         });
 
-        if (team.repo)
-            await this.githubApiService.deleteRepository(
-                team.repo,
-                team.event.githubOrg,
-                team.event.githubOrgSecret
-            );
+        if (team.repo) {
+            try {
+                await this.githubApiService.deleteRepository(
+                    team.repo,
+                    team.event.githubOrg,
+                    team.event.githubOrgSecret
+                );
+            } catch (error) {
+                this.logger.error(`Failed to delete repository for team ${teamId}`, error);
+                throw new InternalServerErrorException("Failed to delete team repository. Team deletion cancelled.");
+            }
+        }
 
         return this.teamRepository.softDelete(teamId);
     }
@@ -131,8 +138,14 @@ export class TeamService {
         const user = await this.userService.getUserById(userId);
 
         if (team.users.length > 1) {
-            await this.githubApiService.removeUserFromRepository(team.repo, user.username, team.event.githubOrg, team.event.githubOrgSecret)
+            try {
+                await this.githubApiService.removeUserFromRepository(team.repo, user.username, team.event.githubOrg, team.event.githubOrgSecret)
+            } catch (error) {
+                this.logger.error(`Failed to remove user ${userId} from repository for team ${teamId}`, error);
+                throw new InternalServerErrorException("Failed to remove user from team repository. User removal cancelled.");
+            }
         }
+
         await this.teamRepository.createQueryBuilder().relation("users")
             .of(teamId)
             .remove(userId);
@@ -192,7 +205,12 @@ export class TeamService {
         })
         const user = await this.userService.getUserById(userId);
 
-        await this.githubApiService.addUserToRepository(team.repo, user.username, team.event.githubOrg, team.event.githubOrgSecret, user.githubAccessToken);
+        try {
+            await this.githubApiService.addUserToRepository(team.repo, user.username, team.event.githubOrg, team.event.githubOrgSecret, user.githubAccessToken);
+        } catch (error) {
+            this.logger.error(`Failed to add user ${userId} to repository for team ${teamId}`, error);
+            throw new InternalServerErrorException("Failed to add user to team repository. Invite acceptance cancelled.");
+        }
 
         await this.teamRepository.createQueryBuilder()
             .relation("teamInvites")
