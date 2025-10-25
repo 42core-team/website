@@ -10,7 +10,6 @@ import {
   Put,
   Query,
   UseGuards,
-  Req,
 } from "@nestjs/common";
 import { UserId } from "../guards/UserGuard";
 import { TeamService } from "./team.service";
