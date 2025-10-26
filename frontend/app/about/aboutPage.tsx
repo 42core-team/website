@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { title } from "@/components/primitives";
 import { CoreLogoWhite } from "@/components/social";
 import Link from "next/link";
+import { LinkedinIcon, LucideLinkedin } from "lucide-react";
 
 export default function AboutPageClient() {
   return (
@@ -129,40 +130,6 @@ export default function AboutPageClient() {
               className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0 }}
-            >
-              <Image
-                src="/team/jgotz.png"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
-              <h3 className="text-xl font-semibold">Jonas Götz</h3>
-              <p className="text-default-600">Head of Server and Kubernetes</p>
-            </motion.div>
-
-            <motion.div
-              className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              <Image
-                src="/team/tpaesch.jpeg"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
-              <h3 className="text-xl font-semibold">Theo Paesch</h3>
-              <p className="text-default-600">Event Management and Design</p>
-            </motion.div>
-
-            <motion.div
-              className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
               <Image
@@ -174,23 +141,6 @@ export default function AboutPageClient() {
               />
               <h3 className="text-xl font-semibold">Frederick Schubert</h3>
               <p className="text-default-600">Server and Game</p>
-            </motion.div>
-
-            <motion.div
-              className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-            >
-              <Image
-                src="/team/flfische.jpg"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
-              <h3 className="text-xl font-semibold">Florian Fischer</h3>
-              <p className="text-default-600">Visualizer</p>
             </motion.div>
 
             <motion.div
@@ -214,6 +164,107 @@ export default function AboutPageClient() {
               className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.8 }}
+            >
+              <div className="relative">
+                <Image
+                  src="/team/eebert.png"
+                  alt="Team member"
+                  width={200}
+                  height={200}
+                  className="w-40 h-40 rounded-full object-cover mb-4"
+                />
+
+                <a
+                  href={"https://www.linkedin.com/in/emil-ebert/"}
+                  className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
+                >
+                  <LucideLinkedin />
+                </a>
+              </div>
+
+              <h3 className="text-xl font-semibold">Emil Ebert</h3>
+
+              <p className="text-default-600 flex gap-2 items-center">
+                Everything in here:
+                <a
+                  href="https://github.com/42core-team/website"
+                  className="group inline-flex items-center gap-2 text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                >
+                  <span className="relative">
+                    <span className="pointer-events-none">Website</span>
+
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-0 -bottom-0.5 h-[2px] w-full bg-current transform scale-x-0 origin-left transition-transform duration-300 ease-out group-hover:scale-x-100 group-focus:scale-x-100 motion-reduce:transition-none motion-reduce:transform-none"
+                    ></span>
+                  </span>
+
+                  <span
+                    aria-hidden="true"
+                    className="transform translate-x-0 opacity-70 transition-all duration-300 group-hover:translate-x-1 group-focus:translate-x-1 group-hover:opacity-100"
+                  >
+                    →
+                  </span>
+                </a>
+              </p>
+            </motion.div>
+
+            <motion.div
+              className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <Image
+                src="/team/tpaesch.jpeg"
+                alt="Team member"
+                width={200}
+                height={200}
+                className="w-40 h-40 rounded-full object-cover mb-4"
+              />
+              <h3 className="text-xl font-semibold">Theo Paesch</h3>
+              <p className="text-default-600">Event Management and Design</p>
+            </motion.div>
+
+            <motion.div
+              className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0 }}
+            >
+              <Image
+                src="/team/jgotz.png"
+                alt="Team member"
+                width={200}
+                height={200}
+                className="w-40 h-40 rounded-full object-cover mb-4"
+              />
+              <h3 className="text-xl font-semibold">Jonas Götz</h3>
+              <p className="text-default-600">Head of Server and Kubernetes</p>
+            </motion.div>
+
+            <motion.div
+              className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <Image
+                src="/team/flfische.jpg"
+                alt="Team member"
+                width={200}
+                height={200}
+                className="w-40 h-40 rounded-full object-cover mb-4"
+              />
+              <h3 className="text-xl font-semibold">Florian Fischer</h3>
+              <p className="text-default-600">Visualizer</p>
+            </motion.div>
+
+            <motion.div
+              className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.5 }}
             >
               <Image
@@ -225,23 +276,6 @@ export default function AboutPageClient() {
               />
               <h3 className="text-xl font-semibold">Jonas Kauker</h3>
               <p className="text-default-600">Wiki and Video</p>
-            </motion.div>
-
-            <motion.div
-              className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.8 }}
-            >
-              <Image
-                src="/team/eebert.png"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
-              <h3 className="text-xl font-semibold">Emil Ebert</h3>
-              <p className="text-default-600">Website</p>
             </motion.div>
 
             <motion.div
