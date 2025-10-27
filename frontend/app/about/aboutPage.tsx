@@ -130,7 +130,7 @@ export default function AboutPageClient() {
               className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
             >
               <Image
                 src="/team/fschuber.jpg"
@@ -147,7 +147,7 @@ export default function AboutPageClient() {
               className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
             >
               <Image
                 src="/team/pgrossma.jpeg"
@@ -164,7 +164,7 @@ export default function AboutPageClient() {
               className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.8 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
             >
               <div className="relative">
                 <Image
@@ -214,7 +214,7 @@ export default function AboutPageClient() {
               className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
             >
               <Image
                 src="/team/tpaesch.jpeg"
@@ -231,7 +231,24 @@ export default function AboutPageClient() {
               className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+            >
+              <Image
+                src="https://cdn.intra.42.fr/users/b70f90a3f5b8abafd72246cad22bda34/medium_jmoritz.jpg"
+                alt="Team member"
+                width={200}
+                height={200}
+                className="w-40 h-40 rounded-full object-cover mb-4"
+              />
+              <h3 className="text-xl font-semibold">Johannes Moritz</h3>
+              <p className="text-default-600">Head of money spending</p>
+            </motion.div>
+
+            <motion.div
+              className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
             >
               <Image
                 src="/team/jgotz.png"
@@ -248,7 +265,7 @@ export default function AboutPageClient() {
               className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
+              transition={{ duration: 0.5, delay: 0.7 }}
             >
               <Image
                 src="/team/flfische.jpg"
@@ -265,7 +282,7 @@ export default function AboutPageClient() {
               className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.5 }}
+              transition={{ duration: 0.5, delay: 0.8 }}
             >
               <Image
                 src="/team/jkauker.jpg"
@@ -282,7 +299,7 @@ export default function AboutPageClient() {
               className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.6 }}
+              transition={{ duration: 0.5, delay: 0.9 }}
             >
               <Image
                 src="https://cdn.intra.42.fr/users/f69eb7c83b6b91f6d84d6635cc33e953/medium_apregitz.jpg"
@@ -299,7 +316,7 @@ export default function AboutPageClient() {
               className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.7 }}
+              transition={{ duration: 0.5, delay: 1 }}
             >
               <Image
                 src="https://cdn.intra.42.fr/users/c86f2d994f58da1df739af962abca534/medium_chuhlig.jpg"
@@ -316,7 +333,7 @@ export default function AboutPageClient() {
               className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.9 }}
+              transition={{ duration: 0.5, delay: 1.1 }}
             >
               <Image
                 src="https://cdn.intra.42.fr/users/12e74e15f7b4926f9b9c1e1554b6bcd9/medium_kmuhlbau.jpg"
@@ -327,23 +344,6 @@ export default function AboutPageClient() {
               />
               <h3 className="text-xl font-semibold">Konrad Mühlbauer</h3>
               <p className="text-default-600">Website</p>
-            </motion.div>
-
-            <motion.div
-              className="flex flex-col items-center p-6 rounded-lg border border-default-200 shadow-xs w-full max-w-sm mx-auto"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 1 }}
-            >
-              <Image
-                src="https://cdn.intra.42.fr/users/b70f90a3f5b8abafd72246cad22bda34/medium_jmoritz.jpg"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
-              <h3 className="text-xl font-semibold">Johannes Moritz</h3>
-              <p className="text-default-600">Head of money spending</p>
             </motion.div>
           </div>
         </motion.div>
