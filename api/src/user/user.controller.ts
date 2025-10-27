@@ -10,7 +10,8 @@ import {
 } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { CreateUserDto } from "./dtos/user.dto";
-import { UserGuard, UserId } from "../guards/UserGuard";
+import { UserId } from "../guards/UserGuard";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 @Controller("user")
 export class UserController {
@@ -44,7 +45,7 @@ export class UserController {
     );
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Get("canCreateEvent")
   async canCreateEvent(@UserId() id: string) {
     return this.userService.canCreateEvent(id);

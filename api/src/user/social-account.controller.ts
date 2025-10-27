@@ -15,7 +15,8 @@ import {
   SocialAccountEntity,
   SocialPlatform,
 } from "./entities/social-account.entity";
-import { UserGuard, UserId } from "../guards/UserGuard";
+import { UserId } from "../guards/UserGuard";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 class LinkSocialAccountDto {
   platform: SocialPlatform;
@@ -23,7 +24,7 @@ class LinkSocialAccountDto {
   platformUserId: string;
 }
 
-@UseGuards(UserGuard)
+@UseGuards(JwtAuthGuard)
 @ApiTags("social-accounts")
 @Controller("social-accounts")
 export class SocialAccountController {
