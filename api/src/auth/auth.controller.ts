@@ -20,7 +20,7 @@ export class AuthController {
   constructor(
     private auth: AuthService,
     private configService: ConfigService,
-    private userService: UserService
+    private userService: UserService,
   ) {}
 
   @UseGuards(JwtAuthGuard)
@@ -46,7 +46,7 @@ export class AuthController {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        maxAge: 7 * 24 * 60 * 60 * 1000
+        maxAge: 7 * 24 * 60 * 60 * 1000,
       });
       return res.redirect(redirectUrl);
     }

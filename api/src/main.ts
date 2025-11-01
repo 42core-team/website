@@ -38,7 +38,6 @@ async function bootstrap() {
       "Content-Type, Accept, Authorization, X-Requested-With, X-HTTP-Method-Override, X-Auth-Token, X-Refresh-Token",
   });
 
-
   app.connectMicroservice<MicroserviceOptions>(
     getRabbitmqConfig(configService, "game_results"),
   );
