@@ -13,12 +13,14 @@ import { Response, Request } from "express";
 import { AuthService } from "./auth.service";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { ConfigService } from "@nestjs/config";
+import { UserService } from "../user/user.service";
 
 @Controller("auth")
 export class AuthController {
   constructor(
     private auth: AuthService,
     private configService: ConfigService,
+    private userService: UserService
   ) {}
 
   @UseGuards(JwtAuthGuard)
@@ -54,6 +56,7 @@ export class AuthController {
   @Get("/me")
   @UseGuards(JwtAuthGuard)
   me(@Req() req: Request) {
-    return (req as any).user;
+    const user: any = (req as any).user;
+    return this.userService.getUserById(user.id);
   }
 }

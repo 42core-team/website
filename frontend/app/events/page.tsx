@@ -50,9 +50,9 @@ export default async function EventsPage() {
           Discover and join upcoming coding competitions
         </p>
         {canCreate && (
-          <Button color="primary" as={Link} href="/events/create">
+          <Link color="primary" href="/events/create">
             Create Event
-          </Button>
+          </Link>
         )}
       </div>
       <div className="mt-8">
