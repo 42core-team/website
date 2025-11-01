@@ -1,13 +1,14 @@
 import { Button } from "@heroui/react";
 import { GithubIcon } from "./icons";
-import { signIn } from "next-auth/react";
 
 export default function GithubLoginButton() {
-  async function githubLogin() {
+  function githubLogin() {
     try {
-      await signIn("github");
+      const base =
+        process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL || process.env.BACKEND_URL;
+      window.location.href = `${base?.replace(/\/$/, "")}/auth/github/callback`;
     } catch (error) {
-      console.log("error while logging in:", error);
+      console.log("error while redirecting to login:", error);
     }
   }
 
