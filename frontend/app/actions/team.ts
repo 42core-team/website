@@ -61,6 +61,14 @@ export async function joinQueue(
   );
 }
 
+export async function leaveQueue(
+    eventId: string,
+): Promise<ServerActionResponse<void>> {
+    return await handleError(
+        axiosInstance.delete(`team/event/${eventId}/queue/join`),
+    );
+}
+
 export async function getTeamById(teamId: string): Promise<Team | null> {
   const team = (await axiosInstance.get(`team/${teamId}`)).data;
 

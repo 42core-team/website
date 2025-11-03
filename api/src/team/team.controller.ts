@@ -241,6 +241,20 @@ export class TeamController {
     }
 
     @UseGuards(UserGuard)
+    @Delete("event/:eventId/queue/join")
+    async leaveQueue(
+        @UserId() userId: string,
+        @Param("eventId", new ParseUUIDPipe()) eventId: string,
+    ) {
+        const team = await this.teamService.getTeamOfUserForEvent(eventId, userId);
+        if (!team) throw new NotFoundException("You are not part of a team for this event.");
+        if (team.locked) throw new BadRequestException("You cannot leave the queue with a locked team.");
+        if (!team.inQueue) throw new BadRequestException("You already left the queue.");
+
+        return this.teamService.leaveQueue(team.id);
+    }
+
+    @UseGuards(UserGuard)
     @Get("event/:eventId/queue/state")
     async getQueueState(
         @Param("eventId", new ParseUUIDPipe()) eventId: string,

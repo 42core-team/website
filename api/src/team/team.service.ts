@@ -258,6 +258,10 @@ export class TeamService {
         return this.teamRepository.update(teamId, {inQueue: true});
     }
 
+    async leaveQueue(teamId: string) {
+        return this.teamRepository.update(teamId, {inQueue: false});
+    }
+
     async getTeamsForEvent(eventId: string, relations: FindOptionsRelations<TeamEntity> = {}): Promise<TeamEntity[]> {
         return this.teamRepository.find({
             where: {
