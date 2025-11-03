@@ -68,7 +68,7 @@
     "@heroui/theme": "^2.4.23",
     "@tailwindcss/postcss": "^4.1.16",
     "@tailwindcss/typography": "^0.5.19",
-    "@types/node": "^24.9.1",
+    "@types/node": "^24.10.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "lint-staged": "^16.2.6",
