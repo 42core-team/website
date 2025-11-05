@@ -233,13 +233,22 @@ export default function AboutPageClient() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.5 }}
             >
-              <Image
-                src="https://cdn.intra.42.fr/users/b70f90a3f5b8abafd72246cad22bda34/medium_jmoritz.jpg"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
+              <div className="relative">
+                <Image
+                  src="https://cdn.intra.42.fr/users/b70f90a3f5b8abafd72246cad22bda34/medium_jmoritz.jpg"
+                  alt="Team member"
+                  width={200}
+                  height={200}
+                  className="w-40 h-40 rounded-full object-cover mb-4"
+                />
+
+                <a
+                  href={"https://www.linkedin.com/in/johannes-moritz"}
+                  className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
+                >
+                  <LucideLinkedin />
+                </a>
+              </div>
               <h3 className="text-xl font-semibold">Johannes Moritz</h3>
               <p className="text-default-600">Head of money spending</p>
             </motion.div>
