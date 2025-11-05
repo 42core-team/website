@@ -250,13 +250,22 @@ export default function AboutPageClient() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.6 }}
             >
-              <Image
-                src="/team/jgotz.png"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
+              <div className="relative">
+                <Image
+                  src="/team/jgotz.png"
+                  alt="Team member"
+                  width={200}
+                  height={200}
+                  className="w-40 h-40 rounded-full object-cover mb-4"
+                />
+
+                <a
+                  href={"www.linkedin.com/in/jonas-götz-7b66b61bb"}
+                  className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
+                >
+                  <LucideLinkedin />
+                </a>
+              </div>
               <h3 className="text-xl font-semibold">Jonas Götz</h3>
               <p className="text-default-600">Head of Server and Kubernetes</p>
             </motion.div>
