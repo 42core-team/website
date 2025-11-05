@@ -260,7 +260,7 @@ export default function AboutPageClient() {
                 />
 
                 <a
-                  href={"www.linkedin.com/in/jonas-götz-7b66b61bb"}
+                  href={"https://www.linkedin.com/in/jonas-götz-7b66b61bb"}
                   className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
                 >
                   <LucideLinkedin />
