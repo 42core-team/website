@@ -6,10 +6,10 @@ import {
 } from "@/app/actions/event";
 import EventsTabs from "@/app/events/EventsTabs";
 import { Button } from "@/components/clientHeroui";
-import Link from "next/link";
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/utils/authOptions";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Events",
@@ -50,9 +50,9 @@ export default async function EventsPage() {
           Discover and join upcoming coding competitions
         </p>
         {canCreate && (
-          <Button color="primary" as={Link} href="/events/create">
-            Create Event
-          </Button>
+          <Link href="/events/create">
+            <Button color="primary">Create Event</Button>
+          </Link>
         )}
       </div>
       <div className="mt-8">
