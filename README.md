@@ -44,7 +44,7 @@ If you prefer to install everything locally:
 For PostgreSQL and RabbitMQ, you can use the provided Docker Compose:
 
 ```bash
-cd .devcontainer && docker-compose up -d postgres rabbitmq
+cd .devcontainer && docker compose up -d postgres rabbitmq
 ```
 
 This starts:
