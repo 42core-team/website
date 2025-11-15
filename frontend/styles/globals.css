@@ -37,9 +37,15 @@
 }
 
 /* Smooth scrolling for anchor links */
-html {
+html,
+body {
   scroll-behavior: smooth;
   scrollbar-gutter: stable;
+  overflow-x: hidden;
+}
+
+body {
+  min-width: 100vw;
 }
 
 /* Offset for sticky header when jumping to anchors */
