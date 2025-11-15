@@ -16,9 +16,7 @@ export default async function DefaultLayout({
     <div className="relative flex flex-col min-h-lvh overflow-x-hidden">
       <Head />
       <BasicNavbar session={session} />
-      <main className="container mx-auto max-w-7xl px-6 flex-grow">
-        {children}
-      </main>
+      <main className="container mx-auto max-w-7xl px-6 grow">{children}</main>
       <Footer />
     </div>
   );

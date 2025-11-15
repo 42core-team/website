@@ -6,10 +6,10 @@ import { isActionError } from "@/app/actions/errors";
 export default async function HomePage() {
   const globalStats = await getGlobalStats();
   const currentLiveEvent = await getCurrentLiveEvent();
-  if (isActionError(currentLiveEvent)) {
-    console.log(currentLiveEvent);
-    throw new Error("Failed to load current live event");
-  }
+  // if (isActionError(currentLiveEvent)) {
+  //   console.log(currentLiveEvent);
+  //   throw new Error("Failed to load current live event");
+  // }
 
   const baseUrl = process.env.NEXTAUTH_URL ?? "https://coregame.de";
 

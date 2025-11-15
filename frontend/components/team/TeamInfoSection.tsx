@@ -140,7 +140,7 @@ export const TeamInfoSection = ({
                 href={`https://github.com/${member.username}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group w-full max-w-[8rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-xl"
+                className="group w-full max-w-32 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-xl"
                 aria-label={`Open ${member.username}'s GitHub profile`}
               >
                 <div className="flex flex-col items-center rounded-xl bg-content1/50 p-4 ring-1 ring-default-200 shadow-sm transition hover:shadow-md hover:ring-primary/60">

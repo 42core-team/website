@@ -174,7 +174,7 @@ const BasicNavbar = React.forwardRef<
 
       {/* Right Content */}
       <NavbarContent className="hidden md:flex" justify="end">
-        <NavbarItem className="ml-2 !flex gap-2">
+        <NavbarItem className="ml-2 flex! gap-2">
           <ThemeSwitch />
           {props.session?.user.id ? (
             <Dropdown placement="bottom-end">
@@ -226,7 +226,7 @@ const BasicNavbar = React.forwardRef<
       <NavbarMenuToggle className="text-default-400 md:hidden" />
 
       <NavbarMenu
-        className="top-[calc(var(--navbar-height)_-_1px)] max-h-fit bg-default-200/50 pb-6 pt-6 shadow-medium backdrop-blur-md backdrop-saturate-150 dark:bg-default-100/50"
+        className="top-[calc(var(--navbar-height)-1px)] max-h-fit bg-default-200/50 pb-6 pt-6 shadow-medium backdrop-blur-md backdrop-saturate-150 dark:bg-default-100/50"
         motionProps={{
           initial: { opacity: 0, y: -20 },
           animate: { opacity: 1, y: 0 },

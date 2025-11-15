@@ -124,12 +124,12 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
         <div className="max-w-md mx-auto text-center">
           <div className="p-6 bg-danger-50 border border-danger-200 rounded-lg dark:bg-danger-100/10">
             <div className="flex items-start gap-3">
-              <span className="text-danger text-2xl flex-shrink-0">⚠️</span>
+              <span className="text-danger text-2xl shrink-0">⚠️</span>
               <div className="flex-1 min-w-0">
                 <p className="text-lg font-medium text-danger mb-2">
                   OAuth Error
                 </p>
-                <p className="text-sm text-danger-600 mb-4 break-words">
+                <p className="text-sm text-danger-600 mb-4 wrap-break-word">
                   {error}
                 </p>
                 <div className="flex gap-2 justify-center">

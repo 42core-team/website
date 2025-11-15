@@ -66,9 +66,7 @@ export default async function EventLayout({
         isUserRegistered={isUserRegistered}
         isEventAdmin={isEventAdminState}
       />
-      <main className="container mx-auto max-w-7xl px-6 flex-grow">
-        {children}
-      </main>
+      <main className="container mx-auto max-w-7xl px-6 grow">{children}</main>
     </div>
   );
 }

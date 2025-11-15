@@ -127,8 +127,8 @@ export function WikiLayout({
         w-66 h-[calc(100vh-60px)]
         transform lg:transform-none transition-transform duration-300 ease-in-out
         ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-        flex-shrink-0
-        overflow-y-auto overflow-x-hidden break-words whitespace-normal
+        shrink-0
+        overflow-y-auto overflow-x-hidden wrap-break-word whitespace-normal
       `}
       >
         <WikiNavigation

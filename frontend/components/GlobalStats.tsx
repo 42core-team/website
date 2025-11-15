@@ -81,7 +81,7 @@ export default function GlobalStats(props: { initialStats: MatchStats }) {
               initial={{ y: 20 }}
               animate={{ y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className={`bg-gradient-to-br ${stat.color} rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-700`}
+              className={`bg-linear-to-br ${stat.color} rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-700`}
             >
               <div className="flex items-center justify-between mb-4">
                 <span className="text-4xl">
