@@ -1,8 +1,9 @@
 "use client";
 
-import { Button, cn } from "@heroui/react";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Match, MatchState } from "@/app/actions/tournament-model";
+import { cn } from "@/lib/utils";
 
 export default function QueueMatchesList(props: {
   eventId: string;

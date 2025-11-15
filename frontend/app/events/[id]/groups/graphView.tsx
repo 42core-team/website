@@ -10,8 +10,7 @@ import "reactflow/dist/style.css";
 import { MatchNode } from "@/components/match";
 import { Match, MatchState } from "@/app/actions/tournament-model";
 import { useParams, useRouter } from "next/navigation";
-import { Switch } from "@heroui/react";
-import { isEventAdmin } from "@/app/actions/event";
+import { Switch } from "@/components/ui/switch";
 
 // Custom node types for ReactFlow
 const nodeTypes = {
@@ -117,12 +116,12 @@ export default function GraphView({
         <div className="flex items-center mb-2 mt-2 gap-4">
           Toggle admin view
           <Switch
-            onValueChange={(value) => {
+            onCheckedChange={(value) => {
               const params = new URLSearchParams(window.location.search);
               params.set("adminReveal", value ? "true" : "false");
               router.replace(`?${params.toString()}`);
             }}
-            defaultSelected={isAdminView}
+            defaultChecked={isAdminView}
           />
         </div>
       )}

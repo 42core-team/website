@@ -3,34 +3,34 @@
 import {
   Card,
   CardHeader,
-  CardBody,
+  CardContent,
   CardFooter,
-  Divider,
-  Button,
-  Link,
-} from "@heroui/react";
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
+import Link from "next/link";
 
 export default function Error({ error }: { error: Error }) {
   return (
     <div className="flex w-full pt-40 items-center justify-center p-6">
       <Card className="max-w-lg w-full shadow-lg">
         <CardHeader className="flex flex-col items-center gap-2">
-          <h1 className="text-4xl font-bold text-danger">
+          <CardTitle className="text-4xl font-bold text-destructive">
             Something went wrong
-          </h1>
-          <p className="text-default-600">An unexpected error occurred.</p>
+          </CardTitle>
+          <CardDescription>An unexpected error occurred.</CardDescription>
         </CardHeader>
-        <Divider />
-        <CardBody className="text-center space-y-4">
-          <p className="text-default-700">
+        <CardContent className="text-center space-y-4">
+          <p>
             <strong>Error message:</strong> {error.message}
           </p>
-          <p className="text-default-500">
+          <p className=" text-balance">
             If the problem persists, you can check{" "}
             <Link
               href="https://status.coregame.de"
-              underline="hover"
-              color="primary"
+              className="text-primary hover:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -38,11 +38,11 @@ export default function Error({ error }: { error: Error }) {
             </Link>{" "}
             for known issues.
           </p>
-        </CardBody>
+        </CardContent>
         <CardFooter className="flex justify-center">
           <Button
-            color="danger"
-            onPress={() => {
+            variant="destructive"
+            onClick={() => {
               const base =
                 "https://github.com/42core-team/website_relaunch/issues/new";
               const title = encodeURIComponent(`Bug: Error - ${error.message}`);

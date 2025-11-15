@@ -7,8 +7,9 @@ import {
   TableColumn,
   TableRow,
   TableCell,
-  Chip,
 } from "@heroui/react";
+import { Badge } from "@/components/ui/badge";
+
 import { useRouter } from "next/navigation";
 import { Event } from "@/app/actions/event";
 import { EventState } from "@/app/actions/event-model";
@@ -32,6 +33,7 @@ export default function EventsTable({ events }: { events: Event[] }) {
     }
   };
 
+  // TODO: state colors
   const stateColor = (
     state: EventState,
   ): "default" | "primary" | "secondary" | "success" | "warning" | "danger" => {
@@ -77,9 +79,9 @@ export default function EventsTable({ events }: { events: Event[] }) {
               {event.minTeamSize} - {event.maxTeamSize} members
             </TableCell>
             <TableCell>
-              <Chip size="sm" variant="flat" color={stateColor(event.state)}>
+              <Badge color={stateColor(event.state)}>
                 {formatState(event.state)}
-              </Chip>
+              </Badge>
             </TableCell>
           </TableRow>
         )}

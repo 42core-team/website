@@ -84,7 +84,7 @@ export default function GraphView({
               height: MATCH_HEIGHT,
             },
           };
-        }
+        },
       );
       setNodes(newNodes);
       return;

@@ -1,13 +1,15 @@
 import { useState } from "react";
+
 import {
-  Button,
-  Avatar,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-} from "@heroui/react";
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 import { Input } from "@heroui/input";
 import {
   UserSearchResult,
@@ -88,12 +90,19 @@ export const TeamInviteModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md">
-      <ModalContent>
-        <ModalHeader>
-          <h3 className="text-xl font-semibold">Invite Team Members</h3>
-        </ModalHeader>
-        <ModalBody>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="text-xl font-semibold">
+            Invite Team Members
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent>
           <Input
             label="Search Users"
             placeholder="Search by username or name"
@@ -128,11 +137,15 @@ export const TeamInviteModal = ({
                   className="flex justify-between items-center p-2 border-b border-default-200 last:border-0"
                 >
                   <div className="flex items-center gap-3">
-                    <Avatar
-                      size="sm"
-                      name={(user.name || "User").substring(0, 2).toUpperCase()}
-                      src={user.profilePicture}
-                    />
+                    <Avatar>
+                      <AvatarImage
+                        src={user.profilePicture}
+                        alt={user.name || "User"}
+                      />
+                      <AvatarFallback>
+                        {(user.name || "User").substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
                       <p className="font-medium">{user.name}</p>
                       <p className="text-default-500 text-sm">
@@ -141,12 +154,10 @@ export const TeamInviteModal = ({
                     </div>
                   </div>
                   <Button
-                    color="primary"
                     size="sm"
-                    variant="flat"
-                    isDisabled={user.isInvited}
-                    isLoading={isInviting[user.id]}
-                    onPress={() => handleInviteUser(user.id)}
+                    disabled={user.isInvited}
+                    // TODO: isLoading={isInviting[user.id]}
+                    onClick={() => handleInviteUser(user.id)}
                   >
                     {user.isInvited ? "Invited" : "Invite"}
                   </Button>
@@ -154,14 +165,14 @@ export const TeamInviteModal = ({
               ))
             )}
           </div>
-        </ModalBody>
-        <ModalFooter>
-          <Button color="default" variant="light" onPress={onClose}>
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="destructive" onClick={onClose}>
             Close
           </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

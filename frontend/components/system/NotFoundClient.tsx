@@ -3,32 +3,33 @@
 import {
   Card,
   CardHeader,
-  CardBody,
+  CardContent,
   CardFooter,
-  Divider,
-  Button,
-  Link,
-} from "@heroui/react";
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function NotFoundClient() {
   return (
     <div className="flex w-full pt-40 items-center justify-center p-6">
       <Card className="max-w-lg w-full shadow-lg">
         <CardHeader className="flex flex-col items-center gap-3">
-          <h1 className="text-5xl font-bold text-danger">404</h1>
-          <p className="text-xl font-medium">Page Not Found</p>
+          <CardTitle className="text-5xl font-bold text-destructive">
+            404
+          </CardTitle>
+          <CardDescription className="text-xl font-medium">
+            Page Not Found
+          </CardDescription>
         </CardHeader>
-        <Divider />
-        <CardBody className="text-center gap-2">
-          <p className="text-default-600">
-            Oops! The page you are looking for doesn't exist.
-          </p>
-          <p className="text-default-500">
+        <CardContent className="text-center gap-2">
+          <p>Oops! The page you are looking for doesn't exist.</p>
+          <p>
             You can check{" "}
             <Link
               href="https://status.coregame.de"
-              underline="hover"
-              color="primary"
+              className="text-primary hover:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -36,11 +37,11 @@ export default function NotFoundClient() {
             </Link>{" "}
             for any known issues.
           </p>
-        </CardBody>
+        </CardContent>
         <CardFooter className="flex justify-center">
           <Button
-            color="danger"
-            onPress={() => {
+            variant="destructive"
+            onClick={() => {
               const base =
                 "https://github.com/42core-team/website_relaunch/issues/new";
               const title = encodeURIComponent(

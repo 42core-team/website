@@ -1,8 +1,5 @@
 import { useParams } from "next/navigation";
 import {
-  Avatar,
-  Button,
-  Chip,
   Modal,
   ModalBody,
   ModalContent,
@@ -11,12 +8,18 @@ import {
   useDisclosure,
   Skeleton,
 } from "@heroui/react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Plus } from "lucide-react";
+
 import { Team, TeamMember } from "@/app/actions/team";
 import TeamInviteModal from "./TeamInviteModal";
 import { useEffect, useState } from "react";
 import { getEventById } from "@/app/actions/event";
 import { isActionError } from "@/app/actions/errors";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface TeamInfoSectionProps {
   myTeam: Team;
@@ -72,11 +75,7 @@ export const TeamInfoSection = ({
     <div className="bg-default-50 p-6 rounded-lg border border-default-200">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Team: {myTeam.name}</h2>
-        {myTeam.locked && (
-          <Chip color="warning" variant="flat">
-            Locked
-          </Chip>
-        )}
+        {myTeam.locked && <Badge variant="destructive">Locked</Badge>}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
@@ -121,13 +120,8 @@ export const TeamInfoSection = ({
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-lg font-semibold">Team Members</h3>
           {!myTeam.locked && (
-            <Button
-              color="primary"
-              size="sm"
-              variant="flat"
-              onPress={onOpen}
-              startContent={<span className="text-lg">+</span>}
-            >
+            <Button size="sm" onClick={onOpen}>
+              <Plus className="size-4" />
               Invite Others
             </Button>
           )}
@@ -145,15 +139,19 @@ export const TeamInfoSection = ({
               >
                 <div className="flex flex-col items-center rounded-xl bg-content1/50 p-4 ring-1 ring-default-200 shadow-sm transition hover:shadow-md hover:ring-primary/60">
                   <Avatar
-                    style={
-                      member.isEventAdmin ? { outline: "orange 2px solid" } : {}
-                    }
-                    size="lg"
-                    src={member.profilePicture}
-                    name={(member.name || "User").substring(0, 2).toUpperCase()}
-                    isBordered
-                    className="mb-2"
-                  />
+                    className={cn(
+                      "mb-2",
+                      member.isEventAdmin ? "outline-orange-500 outline-2" : "",
+                    )}
+                  >
+                    <AvatarImage
+                      src={member.profilePicture}
+                      alt={member.name}
+                    />
+                    <AvatarFallback>
+                      {member.name.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                   <span className="text-sm font-medium text-default-700 text-center truncate w-full group-hover:text-primary">
                     {member.username}
                   </span>
@@ -177,12 +175,7 @@ export const TeamInfoSection = ({
         )}
         <div className="flex justify-end items-center">
           {!myTeam.locked && (
-            <Button
-              color="danger"
-              variant="light"
-              onPress={onConfirmOpen}
-              size="md"
-            >
+            <Button variant="destructive" onClick={onConfirmOpen}>
               Leave Team
             </Button>
           )}
@@ -216,18 +209,13 @@ export const TeamInfoSection = ({
             )}
           </ModalBody>
           <ModalFooter>
-            <Button
-              color="default"
-              variant="light"
-              onPress={onConfirmClose}
-              className="mr-2"
-            >
+            <Button onClick={onConfirmClose} className="mr-2">
               Cancel
             </Button>
             <Button
-              color="danger"
-              onPress={handleConfirmLeave}
-              isLoading={isLeaving}
+              variant="destructive"
+              onClick={handleConfirmLeave}
+              // TODO: isLoading={isLeaving}
             >
               Leave Team
             </Button>

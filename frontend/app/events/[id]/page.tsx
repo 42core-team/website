@@ -60,7 +60,7 @@ export default async function EventPage({
     await remark()
       .use(remarkGfm)
       .use(remarkHtml)
-      .process(event.description || "")
+      .process(event.description || ""),
   );
 
   return (

@@ -56,7 +56,7 @@ export default async function TeamsPage({
     eventId,
     filterValue,
     sortColumn,
-    sortDirection
+    sortDirection,
   );
 
   return (

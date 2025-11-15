@@ -1,6 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
 import { WikiNavItem } from "@/lib/markdown";
-import { Accordion, AccordionItem } from "@heroui/react";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 import Link from "next/link";
 
 const INDENT_BASE = 8; // px
@@ -233,41 +238,34 @@ export function WikiNavigation({
     const allPaths = collectAllPaths(items);
 
     if (item.children && item.children.length > 0) {
+      // Shadcn Accordion usage: single root per directory item with one item inside.
+      // We keep each directory expanded by default (can be collapsed by user).
       return (
         <Accordion
           key={uniqueKey}
-          variant="light"
-          defaultExpandedKeys={allPaths}
+          type="single"
+          collapsible
+          defaultValue={itemPath} // open by default
+          className="px-0"
         >
-          <AccordionItem
-            key={itemPath}
-            aria-label={item.title}
-            title={
-              <div
-                className="flex items-center gap-2 text-default-700 text-[13px] font-semibold"
-                style={{
-                  paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
-                }}
-              >
-                {item.title}
+          <AccordionItem value={itemPath} className="border-none">
+            <AccordionTrigger
+              className="py-2 px-2.5 text-[13px] font-semibold text-default-700 hover:no-underline"
+              style={{
+                paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
+              }}
+            >
+              {item.title}
+            </AccordionTrigger>
+            <AccordionContent className="pt-0 pb-0">
+              <div>
+                {item.children.map((child, index) => (
+                  <React.Fragment key={`${item.slug.join("/")}-child-${index}`}>
+                    {renderNavItem(child, depth + 1, index)}
+                  </React.Fragment>
+                ))}
               </div>
-            }
-            indicator={<span className="text-default-400">▼</span>}
-            className="border-none"
-            classNames={{
-              trigger: "pt-5 pb-0 pl-0",
-              content: "pt-0 pb-0 pl-0",
-              title: "pl-0",
-              indicator: "ml-auto",
-            }}
-          >
-            <div>
-              {item.children.map((child, index) => (
-                <React.Fragment key={`${item.slug.join("/")}-child-${index}`}>
-                  {renderNavItem(child, depth + 1, index)}
-                </React.Fragment>
-              ))}
-            </div>
+            </AccordionContent>
           </AccordionItem>
         </Accordion>
       );

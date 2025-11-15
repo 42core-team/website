@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Select, SelectItem } from "@heroui/react";
 import { useRouter, usePathname } from "next/navigation";
 import { WikiVersion } from "@/lib/markdown";

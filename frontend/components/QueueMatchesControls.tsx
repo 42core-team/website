@@ -58,12 +58,12 @@ export default function QueueMatchesControls({
 
       router.replace(`${pathname}?${params.toString()}`);
     },
-    [interval, pathname, range.end, range.start, router, searchParams]
+    [interval, pathname, range.end, range.start, router, searchParams],
   );
 
   const canApply = useMemo(
     () => !!range.start && !!range.end,
-    [range.end, range.start]
+    [range.end, range.start],
   );
 
   return (

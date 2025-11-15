@@ -8,13 +8,14 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Avatar,
 } from "@heroui/react";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import Image from "next/image";
 import { GithubIcon } from "@/components/icons";
 import CoreLogo from "@/components/CoreLogo";
 import { Tooltip } from "@heroui/tooltip";
+import { AvatarFallback } from "@radix-ui/react-avatar";
 
 export default function TeamUserTable({ members }: { members: TeamMember[] }) {
   return (
@@ -39,11 +40,13 @@ export default function TeamUserTable({ members }: { members: TeamMember[] }) {
           <TableRow key={member.id}>
             <TableCell>
               <div className="flex items-center gap-2">
-                <Avatar
-                  src={member.profilePicture}
-                  name={member.name}
-                  size="sm"
-                />
+                <Avatar>
+                  <AvatarImage src={member.profilePicture} alt={member.name} />
+                  <AvatarFallback>
+                    {member.name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+
                 {member.isEventAdmin && (
                   <Tooltip content="Admin">
                     <CoreLogo

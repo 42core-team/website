@@ -1,33 +1,18 @@
 "use client";
 
-import { Chip } from "@heroui/react";
+import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 
 export default function TimeBadge({
   time,
   className = "",
-  variant = "faded",
-  color = "success",
+  variant = "default",
+  // TODO:color = "success",
 }: {
   time: string | Date;
   className?: string;
-  variant?:
-    | "faded"
-    | "flat"
-    | "solid"
-    | "bordered"
-    | "light"
-    | "shadow"
-    | "dot"
-    | undefined;
-  color?:
-    | "default"
-    | "primary"
-    | "secondary"
-    | "success"
-    | "warning"
-    | "danger"
-    | undefined;
+  variant?: "default" | "outline" | "secondary" | "destructive";
+  // TODO:  color?: undefined;
 }) {
   const [formatted, setFormatted] = useState(() => {
     const date = new Date(time);
@@ -58,8 +43,8 @@ export default function TimeBadge({
   }, [time]);
 
   return (
-    <Chip variant={variant} color={color} className={className}>
+    <Badge variant={variant} className={className}>
       {formatted}
-    </Chip>
+    </Badge>
   );
 }

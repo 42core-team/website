@@ -2,16 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Button,
-  Input,
-  Textarea,
-  Card,
-  Tooltip,
-  Form,
-  DateInput,
-  Switch,
-} from "@heroui/react";
+import { Input, Textarea, Card, Tooltip, Form, DateInput } from "@heroui/react";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+
 import { createEvent } from "@/app/actions/event";
 import { isActionError } from "@/app/actions/errors";
 
@@ -340,7 +334,7 @@ export default function CreateEventForm() {
                   Private events are hidden from the All Events tab.
                 </p>
               </div>
-              <Switch isSelected={isPrivate} onValueChange={setIsPrivate}>
+              <Switch checked={isPrivate} onCheckedChange={setIsPrivate}>
                 {isPrivate ? "Private" : "Public"}
               </Switch>
             </div>
@@ -533,13 +527,17 @@ export default function CreateEventForm() {
 
         <div className="flex justify-end space-x-4">
           <Button
+            variant="destructive"
             type="button"
-            variant="light"
-            onPress={() => router.push("/events")}
+            onClick={() => router.push("/events")}
           >
             Cancel
           </Button>
-          <Button type="submit" color="primary" isLoading={isLoading}>
+          <Button
+            type="submit"
+            color="primary"
+            //TODO:  isLoading={isLoading}
+          >
             Create Event
           </Button>
         </div>
