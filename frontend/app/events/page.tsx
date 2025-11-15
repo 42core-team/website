@@ -46,7 +46,7 @@ export default async function EventsPage() {
         <div className="flex flex-row items-center justify-center">
           <h1 className={title()}>Events</h1>
         </div>
-        <p className="text-lg text-default-600">
+        <p className="text-lg text-muted-foreground">
           Discover and join upcoming coding competitions
         </p>
         {canCreate && (

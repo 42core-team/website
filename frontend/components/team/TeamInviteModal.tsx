@@ -10,13 +10,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-import { Input } from "@heroui/input";
+import { Input } from "@/components/ui/input";
 import {
   UserSearchResult,
   searchUsersForInvite,
   sendTeamInvite,
 } from "@/app/actions/team";
 import { usePlausible } from "next-plausible";
+import { Label } from "@/components/ui/label";
 
 interface TeamInviteModalProps {
   isOpen: boolean;
@@ -65,15 +66,15 @@ export const TeamInviteModal = ({
 
       setSearchResults((prev) =>
         prev.map((user) =>
-          user.id === userId ? { ...user, isInvited: true } : user,
-        ),
+          user.id === userId ? { ...user, isInvited: true } : user
+        )
       );
     } catch (error: any) {
       // You can customize this error message as needed
       alert(
         error?.response?.data?.message ||
           error?.message ||
-          "Failed to send invite.",
+          "Failed to send invite."
       );
     } finally {
       setIsInviting((prev) => ({ ...prev, [userId]: false }));
@@ -103,20 +104,23 @@ export const TeamInviteModal = ({
           </DialogTitle>
         </DialogHeader>
         <DialogContent>
-          <Input
-            label="Search Users"
-            placeholder="Search by username or name"
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="mb-4"
-            autoFocus={true}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleEnterToInvite();
-              }
-            }}
-          />
+          <div className="grid w-full max-w-sm items-center gap-3">
+            <Label htmlFor="search">Search Users</Label>
+            <Input
+              id="search"
+              placeholder="Search by username or name"
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="mb-4"
+              autoFocus={true}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleEnterToInvite();
+                }
+              }}
+            />
+          </div>
           <div className="max-h-[300px] overflow-y-auto">
             {isSearching ? (
               <div className="flex justify-center py-4">

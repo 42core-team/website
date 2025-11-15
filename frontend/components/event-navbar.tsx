@@ -55,7 +55,7 @@ export default function EventNavbar({
   }, [eventId, isUserRegistered, isEventAdmin, event.state]);
 
   return (
-    <div className="w-full border-t border-divider">
+    <div className="w-full border-t">
       <nav className="container mx-auto max-w-7xl px-6 h-16 flex items-center justify-center gap-8">
         {navItems.map((item) => (
           <Link

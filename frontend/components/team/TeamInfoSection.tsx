@@ -1,13 +1,13 @@
 import { useParams } from "next/navigation";
+
 import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  useDisclosure,
-  Skeleton,
-} from "@heroui/react";
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,12 +37,8 @@ export const TeamInfoSection = ({
   isRepoPending = false,
 }: TeamInfoSectionProps) => {
   const eventId = useParams().id as string;
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const {
-    isOpen: isConfirmOpen,
-    onOpen: onConfirmOpen,
-    onClose: onConfirmClose,
-  } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
   const [githubOrg, setGithubOrg] = useState<string | null>(null);
 
@@ -62,11 +58,11 @@ export const TeamInfoSection = ({
 
   const handleConfirmLeave = async () => {
     setLeaveError(null);
-    onConfirmClose();
+    setIsConfirmOpen(false);
     const success = await onLeaveTeam();
     if (!success) {
       setLeaveError(
-        "Failed to leave team. Try refreshing the page or trying again later.",
+        "Failed to leave team. Try refreshing the page or trying again later."
       );
     }
   };
@@ -120,7 +116,7 @@ export const TeamInfoSection = ({
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-lg font-semibold">Team Members</h3>
           {!myTeam.locked && (
-            <Button size="sm" onClick={onOpen}>
+            <Button size="sm" onClick={() => setIsOpen(true)}>
               <Plus className="size-4" />
               Invite Others
             </Button>
@@ -141,7 +137,7 @@ export const TeamInfoSection = ({
                   <Avatar
                     className={cn(
                       "mb-2",
-                      member.isEventAdmin ? "outline-orange-500 outline-2" : "",
+                      member.isEventAdmin ? "outline-orange-500 outline-2" : ""
                     )}
                   >
                     <AvatarImage
@@ -152,7 +148,7 @@ export const TeamInfoSection = ({
                       {member.name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm font-medium text-default-700 text-center truncate w-full group-hover:text-primary">
+                  <span className="text-sm font-medium text-center truncate w-full group-hover:text-primary">
                     {member.username}
                   </span>
                 </div>
@@ -175,7 +171,10 @@ export const TeamInfoSection = ({
         )}
         <div className="flex justify-end items-center">
           {!myTeam.locked && (
-            <Button variant="destructive" onClick={onConfirmOpen}>
+            <Button
+              variant="destructive"
+              onClick={() => setIsConfirmOpen(true)}
+            >
               Leave Team
             </Button>
           )}
@@ -185,18 +184,25 @@ export const TeamInfoSection = ({
       {/* Invite Modal */}
       <TeamInviteModal
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={() => setIsOpen(false)}
         teamId={myTeam.id}
         eventId={eventId}
       />
 
       {/* Leave Team Confirmation Modal */}
-      <Modal isOpen={isConfirmOpen} onClose={onConfirmClose} size="sm">
-        <ModalContent>
-          <ModalHeader>
-            <h3 className="text-xl font-semibold">Leave Team</h3>
-          </ModalHeader>
-          <ModalBody>
+      <Dialog
+        open={isConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open) setIsConfirmOpen(false);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">
+              Leave Team
+            </DialogTitle>
+          </DialogHeader>
+          <DialogContent>
             <p>
               Are you sure you want to leave this team? This action cannot be
               undone.
@@ -207,9 +213,9 @@ export const TeamInfoSection = ({
                 delete the team.
               </p>
             )}
-          </ModalBody>
-          <ModalFooter>
-            <Button onClick={onConfirmClose} className="mr-2">
+          </DialogContent>
+          <DialogFooter>
+            <Button onClick={() => setIsConfirmOpen(false)} className="mr-2">
               Cancel
             </Button>
             <Button
@@ -219,9 +225,9 @@ export const TeamInfoSection = ({
             >
               Leave Team
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

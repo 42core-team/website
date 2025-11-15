@@ -3,7 +3,7 @@
 import { Suspense, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { User } from "@heroui/react";
+import { User } from "@/components/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { title } from "@/components/primitives";
 import SocialAccountsDisplay from "@/components/social-accounts-display";
@@ -32,7 +32,7 @@ function ProfileContent() {
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="text-center">
           <h1 className={title()}>Profile</h1>
-          <p className="mt-4 text-lg text-default-600">
+          <p className="mt-4 text-lg text-muted-foreground">
             Manage your account and linked social platforms
           </p>
         </div>

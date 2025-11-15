@@ -10,7 +10,8 @@ import {
 import { getEventById, isUserRegisteredForEvent } from "@/app/actions/event";
 import TeamView from "./teamView";
 import { isActionError } from "@/app/actions/errors";
-import { Alert } from "@heroui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircleIcon } from "lucide-react";
 
 export const metadata = {
   title: "My Team",
@@ -43,11 +44,14 @@ export default async function Page({
 
   if (!team && !event.canCreateTeam) {
     return (
-      <Alert
-        color="warning"
-        title="Team creation closed"
-        description="Team creation for this event has ended. If you already have a team, you can view or manage it. Contact the event organizers for help."
-      />
+      <Alert variant="destructive">
+        <AlertCircleIcon />
+        <AlertTitle>Team creation closed</AlertTitle>
+        <AlertDescription>
+          Team creation for this event has ended. If you already have a team,
+          you can view or manage it. Contact the event organizers for help.
+        </AlertDescription>
+      </Alert>
     );
   }
 

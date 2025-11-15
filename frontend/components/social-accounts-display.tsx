@@ -39,7 +39,7 @@ export default function SocialAccountsDisplay() {
   }, [session?.user?.id]);
 
   const { message, isInitiating, initiate42OAuth, clearMessage } = use42Linking(
-    loadSocialAccounts, // Use the stable callback
+    loadSocialAccounts // Use the stable callback
   );
 
   useEffect(() => {
@@ -51,7 +51,7 @@ export default function SocialAccountsDisplay() {
   // Clear any lingering error messages when we detect a new 42 account
   useEffect(() => {
     const has42Account = socialAccounts.some(
-      (account) => account.platform === OAUTH_PROVIDERS.FORTY_TWO,
+      (account) => account.platform === OAUTH_PROVIDERS.FORTY_TWO
     );
     if (has42Account && message?.type === "error") {
       // Clear error message after account is successfully linked
@@ -75,7 +75,7 @@ export default function SocialAccountsDisplay() {
     try {
       await unlinkSocialAccount(platform);
       setSocialAccounts((accounts) =>
-        accounts.filter((account) => account.platform !== platform),
+        accounts.filter((account) => account.platform !== platform)
       );
     } catch (error) {
       console.error("Error unlinking account:", error);
@@ -87,7 +87,7 @@ export default function SocialAccountsDisplay() {
 
   const get42Account = () =>
     socialAccounts.find(
-      (account) => account.platform === OAUTH_PROVIDERS.FORTY_TWO,
+      (account) => account.platform === OAUTH_PROVIDERS.FORTY_TWO
     );
 
   if (loading) {
@@ -105,7 +105,9 @@ export default function SocialAccountsDisplay() {
       </CardHeader>
       <CardContent className="space-y-4">
         {socialAccounts.length === 0 ? (
-          <p className="text-default-600">No social accounts linked yet.</p>
+          <p className="text-muted-foreground">
+            No social accounts linked yet.
+          </p>
         ) : (
           <div className="space-y-3">
             {socialAccounts.map((account) => (

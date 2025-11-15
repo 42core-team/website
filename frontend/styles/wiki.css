@@ -123,7 +123,7 @@
 }
 
 .wiki-content h1 {
-  @apply text-3xl font-bold mt-8 mb-4 text-foreground border-b border-divider pb-2;
+  @apply text-3xl font-bold mt-8 mb-4 text-foreground border-b  pb-2;
 }
 
 .wiki-content h2 {
@@ -139,7 +139,7 @@
 }
 
 .wiki-content p {
-  @apply mb-4 leading-relaxed text-default-700;
+  @apply mb-4 leading-relaxed text-foreground;
 }
 
 .wiki-content ul,
@@ -160,15 +160,15 @@
 }
 
 .wiki-content a {
-  @apply text-primary hover:text-primary-600 underline;
+  @apply underline;
 }
 
 .wiki-content code {
-  @apply bg-default-100 px-2 py-1 rounded text-sm font-mono text-default-800;
+  @apply px-2 py-1 rounded text-sm font-mono text-foreground;
 }
 
 .wiki-content pre {
-  @apply bg-default-100 p-4 rounded-lg overflow-x-auto mb-4;
+  @apply p-4 rounded-lg overflow-x-auto mb-4;
 }
 
 .wiki-content pre code {
@@ -176,20 +176,20 @@
 }
 
 .wiki-content blockquote {
-  @apply border-l-4 border-primary pl-4 italic text-default-600 mb-4;
+  @apply border-l-4 border-border pl-4 italic text-muted-foreground mb-4;
 }
 
 .wiki-content table {
-  @apply w-full border-collapse border border-divider mb-4;
+  @apply w-full border-collapse border  mb-4;
 }
 
 .wiki-content th,
 .wiki-content td {
-  @apply border border-divider px-4 py-2 text-left;
+  @apply border  px-4 py-2 text-left;
 }
 
 .wiki-content th {
-  @apply bg-default-100 font-semibold;
+  @apply font-semibold;
 }
 
 .wiki-content img {
@@ -197,7 +197,7 @@
 }
 
 .wiki-content hr {
-  @apply border-divider my-8;
+  @apply my-8;
 }
 
 /* Heading anchor styles */
@@ -225,7 +225,7 @@
 .wiki-content h5 .heading-anchor::before,
 .wiki-content h6 .heading-anchor::before {
   content: "#";
-  @apply absolute -left-6 text-default-400 opacity-0 transition-opacity;
+  @apply absolute -left-6 text-muted-foreground opacity-0 transition-opacity;
 }
 
 .wiki-content h1:hover .heading-anchor::before,

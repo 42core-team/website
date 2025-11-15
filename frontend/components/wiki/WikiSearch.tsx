@@ -140,7 +140,7 @@ export function WikiSearch({
 
       {query && (
         <div
-          className="absolute top-full left-0 right-0 mt-2 bg-content1 border border-divider rounded-lg shadow-lg max-h-96 overflow-y-auto z-20"
+          className="absolute top-full left-0 right-0 mt-2 bg-content1 border rounded-lg shadow-lg max-h-96 overflow-y-auto z-20"
           role="listbox"
           aria-label="Search results"
         >
@@ -166,11 +166,9 @@ export function WikiSearch({
                     role="option"
                     aria-selected={false}
                   >
-                    <div className="font-medium text-sm text-default-700">
-                      {page.title}
-                    </div>
+                    <div className="font-medium text-sm">{page.title}</div>
                     <div
-                      className="text-xs text-default-600 mt-1 line-clamp-2"
+                      className="text-xs text-muted-foreground mt-1 line-clamp-2"
                       dangerouslySetInnerHTML={{
                         __html: result.highlightedSnippet,
                       }}
@@ -182,7 +180,7 @@ export function WikiSearch({
                           {page.version}
                         </span>
                       )}
-                      <span className="text-default-400">
+                      <span className="text-muted-foreground">
                         {result.matchType === "title"
                           ? "Found in title"
                           : "Found in content"}

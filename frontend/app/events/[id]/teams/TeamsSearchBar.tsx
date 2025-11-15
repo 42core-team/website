@@ -1,6 +1,6 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Input } from "@heroui/react";
+import { Input } from "@/components/ui/input";
 import { SearchIcon } from "@/components/icons";
 import { useState, useEffect } from "react";
 

@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { MatchLogs } from "@/app/actions/tournament-model";
-import { Input } from "@heroui/input";
-import { Tab, Tabs } from "@heroui/tabs";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface MatchLogsDisplayProps {
   logs: MatchLogs;
@@ -82,7 +82,7 @@ const parseAnsiColorCodes = (text: string) => {
 
 export default function MatchLogsDisplay({ logs }: MatchLogsDisplayProps) {
   const [selectedTab, setSelectedTab] = useState<string>(
-    logs.length > 0 ? logs[0].container : "",
+    logs.length > 0 ? logs[0].container : ""
   );
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -91,7 +91,7 @@ export default function MatchLogsDisplay({ logs }: MatchLogsDisplayProps) {
     if (!searchQuery.trim()) return logArray;
 
     return logArray.filter((log) =>
-      log.toLowerCase().includes(searchQuery.toLowerCase()),
+      log.toLowerCase().includes(searchQuery.toLowerCase())
     );
   };
 
@@ -109,33 +109,37 @@ export default function MatchLogsDisplay({ logs }: MatchLogsDisplayProps) {
         </div>
       </div>
 
-      <Tabs>
+      <Tabs
+        value={selectedTab}
+        onValueChange={setSelectedTab}
+        className="w-full"
+      >
+        <TabsList>
+          {logs.map((log) => (
+            <TabsTrigger key={log.container} value={log.container}>
+              {log.team || log.container}
+            </TabsTrigger>
+          ))}
+        </TabsList>
         {logs.map((log) => (
-          <Tab
-            key={log.container}
-            value={log.container}
-            title={log.team || log.container}
-            onClick={() => setSelectedTab(log.container)}
-          >
+          <TabsContent key={log.container} value={log.container}>
             <div
               className="overflow-y-auto"
               style={{ maxHeight: "calc(100vh - 300px)" }}
             >
-              {selectedTab === log.container && (
-                <pre className="whitespace-pre-wrap p-4 rounded-md">
-                  {getFilteredLogs(log.logs).map((line, index) => (
-                    <div key={index}>
-                      {parseAnsiColorCodes(line).map((part, partIndex) => (
-                        <span key={partIndex} style={{ color: part.color }}>
-                          {part.text}
-                        </span>
-                      ))}
-                    </div>
-                  ))}
-                </pre>
-              )}
+              <pre className="whitespace-pre-wrap p-4 rounded-md">
+                {getFilteredLogs(log.logs).map((line, index) => (
+                  <div key={index}>
+                    {parseAnsiColorCodes(line).map((part, partIndex) => (
+                      <span key={partIndex} style={{ color: part.color }}>
+                        {part.text}
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </pre>
             </div>
-          </Tab>
+          </TabsContent>
         ))}
       </Tabs>
     </div>

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { QueueState } from "@/app/actions/team.model";
 import { getQueueState, joinQueue, Team } from "@/app/actions/team";
 import { Match, MatchState } from "@/app/actions/tournament-model";
-import { Spinner } from "@heroui/spinner";
+import { Spinner } from "@/components/ui/spinner";
 import QueueMatchesList from "@/components/QueueMatchesList";
 import { useParams, useRouter } from "next/navigation";
 import { usePlausible } from "next-plausible";
@@ -56,7 +56,7 @@ export default function QueueState(props: {
             <p
               className={cn(
                 "text-sm text-muted-foreground",
-                queueState.inQueue ? "text-green-500" : "",
+                queueState.inQueue ? "text-green-500" : ""
               )}
             >
               Status: {queueState.inQueue ? "In Queue" : "Not in Queue"}

@@ -114,7 +114,7 @@ export function WikiLayout({
         className={`
           fixed lg:sticky top-[60px] left-0 z-50 lg:z-0
           w-64 h-[calc(100vh-60px)]
-          bg-background border-r border-divider
+          bg-background border-r 
           transform lg:transform-none transition-transform duration-300 ease-in-out
           ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           overflow-y-auto overflow-x-hidden
@@ -133,7 +133,7 @@ export function WikiLayout({
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Header with Search and Version Selector */}
         <header
-          className={`sticky top-[60px] z-40 border-b border-divider bg-content1 p-4 transition-opacity duration-300 ${
+          className={`sticky top-[60px] z-40 border-b bg-content1 p-4 transition-opacity duration-300 ${
             isBasicNavbarMenuOpen
               ? "opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto"
               : "opacity-100"

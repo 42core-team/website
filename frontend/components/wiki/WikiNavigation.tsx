@@ -75,10 +75,10 @@ export function WikiNavigation({
       // Find the entry closest to the ideal position
       const closestEntry = intersectingEntries.reduce((prev, curr) => {
         const prevDistance = Math.abs(
-          prev.boundingClientRect.top - idealPosition,
+          prev.boundingClientRect.top - idealPosition
         );
         const currDistance = Math.abs(
-          curr.boundingClientRect.top - idealPosition,
+          curr.boundingClientRect.top - idealPosition
         );
         return currDistance < prevDistance ? curr : prev;
       });
@@ -91,7 +91,7 @@ export function WikiNavigation({
           const activeLink = document.querySelector(`a[href="#${newId}"]`);
           if (activeLink instanceof HTMLElement) {
             const contentContainer = document.querySelector(
-              ".wiki-sidebar-navigation",
+              ".wiki-sidebar-navigation"
             );
 
             if (contentContainer instanceof HTMLElement) {
@@ -170,7 +170,7 @@ export function WikiNavigation({
   const renderNavItem = (
     item: WikiNavItem,
     depth: number = 0,
-    index: number = 0,
+    index: number = 0
   ) => {
     const itemPath = item.slug.join("/");
     const uniqueKey = `${itemPath}-${depth}-${index}-${item.isFile ? "file" : "dir"}`;
@@ -183,7 +183,9 @@ export function WikiNavigation({
             href={getVersionAwareUrl(itemPath)}
             onClick={onItemClick}
             className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors hover:bg-default-100 ${
-              isActive ? "bg-primary-50 text-primary-600" : "text-default-600"
+              isActive
+                ? "bg-primary-50 text-primary-600"
+                : "text-muted-foreground"
             }`}
             style={{
               paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
@@ -195,7 +197,7 @@ export function WikiNavigation({
           {/* Show table of contents under the active page */}
           {isActive && toc.length > 0 && (
             <div className="ml-1 sm:ml-2 mt-1 mb-2 bg-default-50 border border-default-200 rounded-md p-2">
-              <div className="text-xs font-semibold text-default-600 mb-2 px-2 py-1 bg-default-100 rounded">
+              <div className="text-xs font-semibold text-muted-foreground mb-2 px-2 py-1 bg-default-100 rounded">
                 On this page
               </div>
               <div className="space-y-0.5">
@@ -250,7 +252,7 @@ export function WikiNavigation({
         >
           <AccordionItem value={itemPath} className="border-none">
             <AccordionTrigger
-              className="py-2 px-2.5 text-[13px] font-semibold text-default-700 hover:no-underline"
+              className="py-2 px-2.5 text-[13px] font-semibold hover:no-underline"
               style={{
                 paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
               }}
@@ -277,7 +279,7 @@ export function WikiNavigation({
         href={getVersionAwareUrl(itemPath)}
         onClick={onItemClick}
         className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors hover:bg-default-100 ${
-          isActive ? "bg-primary-50 text-primary-600" : "text-default-600"
+          isActive ? "bg-primary-50 text-primary-600" : "text-muted-foreground"
         }`}
         style={{
           paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
@@ -290,12 +292,12 @@ export function WikiNavigation({
 
   return (
     <nav
-      className="wiki-sidebar-navigation w-66 h-full overflow-y-auto border-r border-divider bg-content1"
+      className="wiki-sidebar-navigation w-66 h-full overflow-y-auto border-r bg-content1"
       aria-label="Wiki sidebar navigation"
       role="navigation"
     >
       <div className="p-4">
-        <h2 className="text-lg font-semibold mb-4 text-default-700">Wiki</h2>
+        <h2 className="text-lg font-semibold mb-4">Wiki</h2>
         <div className="space-y-1">
           {items.map((item, index) => (
             <React.Fragment key={`root-${index}-${item.slug.join("/")}`}>

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@heroui/input";
+import { Input } from "@/components/ui/input";
+import { Label } from "../ui/label";
 
 interface TeamCreationSectionProps {
   newTeamName: string;
@@ -22,13 +23,16 @@ export const TeamCreationSection = ({
     <h2 className="text-xl font-semibold mb-4">Create Your Team</h2>
     <div className="flex flex-col gap-2">
       <div className="flex gap-2 items-center">
-        <Input
-          label="Team Name"
-          placeholder="Enter team name"
-          value={newTeamName}
-          onChange={(e) => setNewTeamName(e.target.value)}
-          className="flex-1"
-        />
+        <div className="grid w-full max-w-sm items-center gap-3">
+          <Label htmlFor="team-name">Team Name:</Label>
+          <Input
+            id="team-name"
+            placeholder="Enter team name"
+            value={newTeamName}
+            onChange={(e) => setNewTeamName(e.target.value)}
+            className="flex-1"
+          />
+        </div>
         <Button
           color="primary"
           onClick={handleCreateTeam}

@@ -30,7 +30,7 @@ export default function Error({ error }: { error: Error }) {
             If the problem persists, you can check{" "}
             <Link
               href="https://status.coregame.de"
-              className="text-primary hover:underline"
+              className="hover:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -61,12 +61,12 @@ export default function Error({ error }: { error: Error }) {
                     .toISOString()
                     .replace("T", " ")
                     .replace("Z", " UTC")}\n\n` +
-                  `Additional context:\n`,
+                  `Additional context:\n`
               );
               window.open(
                 `${base}?labels=bug&title=${title}&body=${body}`,
                 "_blank",
-                "noopener,noreferrer",
+                "noopener,noreferrer"
               );
             }}
           >

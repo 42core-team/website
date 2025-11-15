@@ -44,7 +44,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
           }
         });
       },
-      { rootMargin: "-20% 0% -35% 0%" },
+      { rootMargin: "-20% 0% -35% 0%" }
     );
 
     toc.forEach(({ id }) => {
@@ -63,10 +63,8 @@ export function TableOfContents({ content }: TableOfContentsProps) {
 
   return (
     <nav className="sticky top-24 h-fit">
-      <div className="border border-divider rounded-lg p-4 bg-content1">
-        <h3 className="text-sm font-semibold text-default-700 mb-3">
-          On this page
-        </h3>
+      <div className="border rounded-lg p-4 bg-content1">
+        <h3 className="text-sm font-semibold mb-3">On this page</h3>
         <ul className="space-y-1">
           {toc.map((item) => (
             <li key={item.id}>
@@ -75,7 +73,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
                 className={`block text-sm hover:text-primary transition-colors ${
                   activeId === item.id
                     ? "text-primary font-medium"
-                    : "text-default-600"
+                    : "text-muted-foreground"
                 }`}
                 style={{ paddingLeft: `${(item.level - 1) * 12}px` }}
               >

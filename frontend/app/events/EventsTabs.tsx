@@ -1,6 +1,6 @@
 "use client";
 
-import { Tab, Tabs } from "@heroui/react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EventsTable from "@/app/events/EventTable";
 import { Event } from "@/app/actions/event";
 
@@ -18,16 +18,21 @@ export default function EventsTabs({
   }
   return (
     <Tabs
-      aria-label="Events tabs"
+      defaultValue={myEvents.length ? "my" : "all"}
       className="w-full ps-1.5 pb-0.5"
-      defaultSelectedKey={myEvents.length ? "my" : "all"}
     >
-      <Tab key="my" title={`My Events (${myEvents.length})`}>
+      <TabsList aria-label="Events tabs">
+        <TabsTrigger value="my">{`My Events (${myEvents.length})`}</TabsTrigger>
+        <TabsTrigger value="all">
+          {`All Events (${allEvents.length})`}
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="my">
         <EventsTable events={myEvents} />
-      </Tab>
-      <Tab key="all" title={`All Events (${allEvents.length})`}>
+      </TabsContent>
+      <TabsContent value="all">
         <EventsTable events={allEvents} />
-      </Tab>
+      </TabsContent>
     </Tabs>
   );
 }

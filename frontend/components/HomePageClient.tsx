@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { button as buttonStyles } from "@heroui/theme";
+import { Button } from "@/components/ui/button";
 
 import { GithubIcon, WikiIcon } from "@/components/icons";
 import { CoreLogoWhite } from "@/components/social";
@@ -85,17 +85,11 @@ export default function HomePageClient(props: {
             <span className="text-foreground-500"></span>
             <Badge>Ends in {formatTimeLeft(timeLeftMs)}</Badge>
             <div className="mt-1">
-              <Link
-                className={buttonStyles({
-                  color: "primary",
-                  radius: "full",
-                  variant: "shadow",
-                  size: "sm",
-                })}
-                href={`/events/${props.currentLiveEvent.id}`}
-              >
-                View event
-              </Link>
+              <Button asChild>
+                <Link href={`/events/${props.currentLiveEvent.id}`}>
+                  View event
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -110,26 +104,22 @@ export default function HomePageClient(props: {
             from around the world together for fun and learning.
           </h1>
           <div className="mt-6 flex items-center justify-center gap-3">
-            <Link
-              className={buttonStyles({
-                color: "primary",
-                radius: "full",
-                variant: "shadow",
-              })}
-              href="/wiki"
-            >
-              <WikiIcon size={20} />
-              Documentation
-            </Link>
-            <Link
-              className={buttonStyles({ variant: "bordered", radius: "full" })}
-              href="https://github.com/42core-team"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <GithubIcon size={20} />
-              GitHub
-            </Link>
+            <Button asChild>
+              <Link href="/wiki">
+                <WikiIcon size={20} />
+                Documentation
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link
+                href="https://github.com/42core-team"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <GithubIcon size={20} />
+                GitHub
+              </Link>
+            </Button>
           </div>
         </div>
 
@@ -175,7 +165,7 @@ export default function HomePageClient(props: {
                 <div className="flex flex-col items-center gap-4">
                   <h2 className="text-4xl font-bold">What the Game is About</h2>
                   <p className="text-2xl"></p>
-                  <p className="text-xl text-gray-400">{`CORE Game is a competitive coding challenge where you design and program your own bots to battle it out in a dynamic 2D arena. Every decision matters—strategy, efficiency, and adaptability will determine whether your bot rises to victory or falls in defeat. Are you ready to code your way to the top?`}</p>
+                  <p className="text-xl text-muted-foreground">{`CORE Game is a competitive coding challenge where you design and program your own bots to battle it out in a dynamic 2D arena. Every decision matters—strategy, efficiency, and adaptability will determine whether your bot rises to victory or falls in defeat. Are you ready to code your way to the top?`}</p>
                 </div>
               ),
               delay: 0.2,
@@ -188,7 +178,7 @@ export default function HomePageClient(props: {
                 <div className="flex flex-col items-center gap-4">
                   <h2 className="text-4xl font-bold">How to Play the Game</h2>
                   <p className="text-2xl"></p>
-                  <p className="text-xl text-gray-400">{`Write your own bot, fine-tune its strategy, and deploy it into battle. The game runs autonomously based on the logic you've programmed, so your code is your weapon. Learn from past matches, tweak your tactics, and keep improving—because in CORE Game, the smartest code wins.`}</p>
+                  <p className="text-xl text-muted-foreground">{`Write your own bot, fine-tune its strategy, and deploy it into battle. The game runs autonomously based on the logic you've programmed, so your code is your weapon. Learn from past matches, tweak your tactics, and keep improving—because in CORE Game, the smartest code wins.`}</p>
                 </div>
               ),
               delay: 0.4,
@@ -203,7 +193,7 @@ export default function HomePageClient(props: {
                     What is Necessary to Play
                   </h2>
                   <p className="text-2xl"></p>
-                  <p className="text-xl text-gray-400">{`All you need is basic programming knowledge, a curious mind, and a hunger for competition! Whether you're a beginner or an experienced coder, you can jump in, experiment, and refine your bot as you go. No fancy hardware required—just bring your creativity and a love for coding!`}</p>
+                  <p className="text-xl text-muted-foreground">{`All you need is basic programming knowledge, a curious mind, and a hunger for competition! Whether you're a beginner or an experienced coder, you can jump in, experiment, and refine your bot as you go. No fancy hardware required—just bring your creativity and a love for coding!`}</p>
                 </div>
               ),
               delay: 0.6,
@@ -218,7 +208,7 @@ export default function HomePageClient(props: {
                     What We Offer as a Team
                   </h2>
                   <p className="text-2xl"></p>
-                  <p className="text-xl text-gray-400">{`We're more than just a game—we're a community of coders, innovators, and problem-solvers. As a team, we provide an engaging platform, regular challenges, and a space to connect with like-minded programmers. Workshops, mentorship, and thrilling competitions—we've got everything you need to grow, learn, and have fun!`}</p>
+                  <p className="text-xl text-muted-foreground">{`We're more than just a game—we're a community of coders, innovators, and problem-solvers. As a team, we provide an engaging platform, regular challenges, and a space to connect with like-minded programmers. Workshops, mentorship, and thrilling competitions—we've got everything you need to grow, learn, and have fun!`}</p>
                 </div>
               ),
               delay: 0.8,
