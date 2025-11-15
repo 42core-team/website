@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Button, cn } from "@heroui/react";
+import { Button } from "@/components/ui/button";
 // @ts-ignore
 import { QueueState } from "@/app/actions/team.model";
 import { getQueueState, joinQueue, Team } from "@/app/actions/team";
@@ -9,6 +9,7 @@ import { Spinner } from "@heroui/spinner";
 import QueueMatchesList from "@/components/QueueMatchesList";
 import { useParams, useRouter } from "next/navigation";
 import { usePlausible } from "next-plausible";
+import { cn } from "@/lib/utils";
 
 export default function QueueState(props: {
   queueState: QueueState;
@@ -55,15 +56,15 @@ export default function QueueState(props: {
             <p
               className={cn(
                 "text-sm text-default-500",
-                queueState.inQueue ? "text-green-500" : "",
+                queueState.inQueue ? "text-green-500" : ""
               )}
             >
               Status: {queueState.inQueue ? "In Queue" : "Not in Queue"}
             </p>
             {!queueState.inQueue ? (
               <Button
-                isDisabled={joiningQueue}
-                onPress={() => {
+                disabled={joiningQueue}
+                onClick={() => {
                   setJoiningQueue(true);
                   plausible("join_queue");
                   joinQueue(props.eventId)
@@ -78,7 +79,6 @@ export default function QueueState(props: {
                       setJoiningQueue(false);
                     });
                 }}
-                color="success"
               >
                 play
               </Button>

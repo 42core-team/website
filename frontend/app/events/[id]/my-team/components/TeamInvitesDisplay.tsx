@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button } from "@heroui/react";
+import { Button } from "@/components/ui/button";
 import { Team, acceptTeamInvite, declineTeamInvite } from "@/app/actions/team";
 import { isActionError } from "@/app/actions/errors";
 import { usePlausible } from "next-plausible";
@@ -101,19 +101,19 @@ export default function TeamInvitesDisplay({
                 <Button
                   color="primary"
                   size="sm"
-                  isLoading={actionStates[invite.id]?.isAccepting}
-                  isDisabled={actionStates[invite.id]?.isDeclining}
-                  onPress={() => handleAcceptInvite(invite.id)}
+                  // TODO: isLoading={actionStates[invite.id]?.isAccepting}
+                  disabled={actionStates[invite.id]?.isDeclining}
+                  onClick={() => handleAcceptInvite(invite.id)}
                 >
                   Accept
                 </Button>
                 <Button
                   color="default"
                   size="sm"
-                  variant="light"
-                  isLoading={actionStates[invite.id]?.isDeclining}
-                  isDisabled={actionStates[invite.id]?.isAccepting}
-                  onPress={() => handleDeclineInvite(invite.id)}
+                  variant="secondary"
+                  // TODO: isLoading={actionStates[invite.id]?.isDeclining}
+                  disabled={actionStates[invite.id]?.isAccepting}
+                  onClick={() => handleDeclineInvite(invite.id)}
                 >
                   Decline
                 </Button>

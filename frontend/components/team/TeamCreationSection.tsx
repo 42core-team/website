@@ -1,4 +1,4 @@
-import { Button } from "@heroui/react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@heroui/input";
 
 interface TeamCreationSectionProps {
@@ -31,9 +31,9 @@ export const TeamCreationSection = ({
         />
         <Button
           color="primary"
-          onPress={handleCreateTeam}
-          isLoading={isLoading}
-          isDisabled={!newTeamName || !!validationError}
+          onClick={handleCreateTeam}
+          // TODO: isLoading={isLoading}
+          disabled={!newTeamName || !!validationError}
         >
           Create Team
         </Button>

@@ -1,6 +1,5 @@
 "use client";
 import { Link } from "@heroui/link";
-import { Button } from "@heroui/button";
 import { siteConfig } from "@/config/site";
 
 export default function Footer() {
@@ -9,7 +8,7 @@ export default function Footer() {
     const repo = "42core-team/website_relaunch";
     const base = `https://github.com/${repo}/issues/new`;
     const title = encodeURIComponent(
-      `Feedback: ${document.title || "Website issue/idea"}`,
+      `Feedback: ${document.title || "Website issue/idea"}`
     );
     const ua = navigator.userAgent;
     const body = encodeURIComponent(
@@ -20,8 +19,8 @@ export default function Footer() {
         .replace("T", " ")
         .replace(
           "Z",
-          " UTC",
-        )}\n\nAdditional context:\n\nType of report: [ ] Bug [ ] Content issue [ ] Design [ ] Performance [ ] Accessibility`,
+          " UTC"
+        )}\n\nAdditional context:\n\nType of report: [ ] Bug [ ] Content issue [ ] Design [ ] Performance [ ] Accessibility`
     );
     location.href = `${base}?labels=feedback&title=${title}&body=${body}`;
   };

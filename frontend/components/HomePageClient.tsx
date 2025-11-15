@@ -11,7 +11,14 @@ import { CoreLogoWhite } from "@/components/social";
 import GlobalStats from "@/components/GlobalStats";
 import { MatchStats } from "@/app/actions/stats";
 import { useTheme } from "next-themes";
-import { Card, CardBody, CardHeader, Chip } from "@heroui/react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Event } from "@/app/actions/event";
 export default function HomePageClient(props: {
   initialStats: MatchStats;
@@ -67,18 +74,16 @@ export default function HomePageClient(props: {
       {props.currentLiveEvent && timeLeftMs > 0 && (
         <Card className="absolute right-20 top-20 z-20 md:block hidden">
           <CardHeader className="flex items-center gap-3">
-            <span className="text-lg font-semibold">
+            <CardTitle className="text-lg font-semibold">
               {props.currentLiveEvent.name}
-            </span>
-            <Chip color="danger" variant="solid" size="sm">
-              Live
-            </Chip>
+            </CardTitle>
+            <CardDescription>
+              <Badge>Live</Badge>
+            </CardDescription>
           </CardHeader>
-          <CardBody className="flex flex-col gap-3">
+          <CardContent className="flex flex-col gap-3">
             <span className="text-foreground-500"></span>
-            <Chip color="warning" variant="flat" aria-label="Event countdown">
-              Ends in {formatTimeLeft(timeLeftMs)}
-            </Chip>
+            <Badge>Ends in {formatTimeLeft(timeLeftMs)}</Badge>
             <div className="mt-1">
               <Link
                 className={buttonStyles({
@@ -92,7 +97,7 @@ export default function HomePageClient(props: {
                 View event
               </Link>
             </div>
-          </CardBody>
+          </CardContent>
         </Card>
       )}
       <section className="flex flex-col items-center justify-center mb-15">

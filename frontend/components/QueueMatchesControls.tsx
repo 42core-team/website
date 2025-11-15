@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChangeEvent, FormEvent, useCallback, useMemo, useState } from "react";
-import { Button } from "@heroui/button";
+import { Button } from "@/components/ui/button";
 import { DateRangePicker, Select, SelectItem } from "@heroui/react";
 import { parseAbsoluteToLocal, ZonedDateTime } from "@internationalized/date";
 
@@ -58,12 +58,12 @@ export default function QueueMatchesControls({
 
       router.replace(`${pathname}?${params.toString()}`);
     },
-    [interval, pathname, range.end, range.start, router, searchParams],
+    [interval, pathname, range.end, range.start, router, searchParams]
   );
 
   const canApply = useMemo(
     () => !!range.start && !!range.end,
-    [range.end, range.start],
+    [range.end, range.start]
   );
 
   return (
@@ -106,8 +106,8 @@ export default function QueueMatchesControls({
       <Button
         type="submit"
         className="inline-flex items-center gap-1 rounded bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-sm"
-        onPress={() => apply()}
-        isDisabled={!canApply}
+        onClick={() => apply()}
+        disabled={!canApply}
       >
         Apply
       </Button>

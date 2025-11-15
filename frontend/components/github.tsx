@@ -1,4 +1,4 @@
-import { Button } from "@heroui/react";
+import { Button } from "@/components/ui/button";
 import { GithubIcon } from "./icons";
 import { signIn } from "next-auth/react";
 
@@ -12,7 +12,8 @@ export default function GithubLoginButton() {
   }
 
   return (
-    <Button variant="flat" onPress={githubLogin} startContent={<GithubIcon />}>
+    <Button onClick={githubLogin}>
+      <GithubIcon />
       Login
     </Button>
   );

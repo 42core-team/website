@@ -5,7 +5,7 @@ import {
   getMyEvents,
 } from "@/app/actions/event";
 import EventsTabs from "@/app/events/EventsTabs";
-import { Button } from "@/components/clientHeroui";
+import { Button } from "@/components/ui/button";
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/utils/authOptions";

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Card } from "@/components/clientHeroui";
+import { Card } from "@/components/ui/card";
 import { getTeamsForEventTable } from "@/app/actions/team";
 import TeamsSearchBar from "./TeamsSearchBar";
 import TeamsTable from "./TeamsTable";
@@ -56,7 +56,7 @@ export default async function TeamsPage({
     eventId,
     filterValue,
     sortColumn,
-    sortDirection,
+    sortDirection
   );
 
   return (

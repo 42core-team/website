@@ -3,7 +3,8 @@
 import { Suspense, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Card, CardBody, CardHeader, User } from "@heroui/react";
+import { User } from "@heroui/react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { title } from "@/components/primitives";
 import SocialAccountsDisplay from "@/components/social-accounts-display";
 
@@ -38,9 +39,9 @@ function ProfileContent() {
 
         <Card>
           <CardHeader>
-            <h2 className="text-xl font-semibold">Account Information</h2>
+            <CardTitle>Account Information</CardTitle>
           </CardHeader>
-          <CardBody className="pt-2 pb-4">
+          <CardContent className="pt-2 pb-4">
             <User
               name={session!.user?.name}
               description={session!.user?.email}
@@ -51,7 +52,7 @@ function ProfileContent() {
               }}
               className="justify-start gap-4"
             />
-          </CardBody>
+          </CardContent>
         </Card>
 
         <SocialAccountsDisplay />

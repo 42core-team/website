@@ -1,4 +1,9 @@
-import { Card } from "@/components/clientHeroui";
+import {
+  Card,
+  CardHeader,
+  CardDescription,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   getEventById,
   getTeamsCountForEvent,
@@ -10,6 +15,27 @@ import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import remarkHtml from "remark-html";
 import TimeBadge from "@/components/timeBadge";
+
+function StatCard({
+  title,
+  value,
+  className = "",
+}: {
+  title: string;
+  value: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card className={`p-6 ${className}`}>
+      <CardHeader>
+        <CardTitle className="text-lg font-semibold mb-2">{title}</CardTitle>
+        <CardDescription className="text-3xl font-bold">
+          {value}
+        </CardDescription>
+      </CardHeader>
+    </Card>
+  );
+}
 
 export default async function EventPage({
   params,
@@ -34,7 +60,7 @@ export default async function EventPage({
     await remark()
       .use(remarkGfm)
       .use(remarkHtml)
-      .process(event.description || ""),
+      .process(event.description || "")
   );
 
   return (
@@ -42,20 +68,9 @@ export default async function EventPage({
       <h1 className="text-3xl font-bold mb-8">{event.name}</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-2">Participants</h3>
-          <p className="text-3xl font-bold">{participantsCount}</p>
-        </Card>
-
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-2">Teams</h3>
-          <p className="text-3xl font-bold">{teamsCount}</p>
-        </Card>
-
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-2">Location</h3>
-          <p className="text-xl">{event.location || "TBA"}</p>
-        </Card>
+        <StatCard title="Participants" value={participantsCount} />
+        <StatCard title="Teams" value={teamsCount} />
+        <StatCard title="Location" value={event.location || "TBA"} />
       </div>
 
       <Card className="p-6 mb-8">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Input } from "@heroui/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@heroui/react";
 import {
   Event,
   getEventById,
@@ -56,7 +57,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
         setParticipantsCount(participants);
         if (eventData?.repoLockDate) {
           setTeamAutoLockTime(
-            new Date(eventData.repoLockDate).toISOString().slice(0, 16),
+            new Date(eventData.repoLockDate).toISOString().slice(0, 16)
           );
         }
         setIsAdmin(true);
@@ -203,8 +204,8 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
             </h2>
             <div className="flex flex-wrap gap-3">
               <Button
-                isDisabled={event.lockedAt != null || lockingTeamsLoading}
-                onPress={() => {
+                disabled={event.lockedAt != null || lockingTeamsLoading}
+                onClick={() => {
                   setLockingTeamsLoading(true);
                   lockEvent(eventId)
                     .then(() => {
@@ -223,10 +224,10 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
               </Button>
 
               <Button
-                isDisabled={
+                disabled={
                   event.state != EventState.SWISS_ROUND || startingGroupPhase
                 }
-                onPress={() => {
+                onClick={() => {
                   setStartingGroupPhase(true);
                   startSwissMatches(eventId)
                     .then(() => {
@@ -244,11 +245,11 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
               </Button>
 
               <Button
-                isDisabled={
+                disabled={
                   event.state != EventState.ELIMINATION_ROUND ||
                   startingTournament
                 }
-                onPress={() => {
+                onClick={() => {
                   setStartingTournament(true);
                   startTournamentMatches(eventId)
                     .then(() => {
@@ -278,10 +279,10 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
               />
 
               <Button
-                onPress={() =>
+                onClick={() =>
                   setEventTeamsLockDate(
                     eventId,
-                    new Date(teamAutoLockTime).getTime(),
+                    new Date(teamAutoLockTime).getTime()
                   ).then(() => {
                     alert("set team auto lock date");
                   })
@@ -290,7 +291,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 save
               </Button>
               <Button
-                onPress={() => {
+                onClick={() => {
                   setEventTeamsLockDate(eventId, null).then(() => {
                     alert("reset team auto lock date");
                     setTeamAutoLockTime("");

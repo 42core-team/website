@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import ReactFlow, {
   Background,
   Node,
@@ -10,9 +10,7 @@ import "reactflow/dist/style.css";
 import { MatchNode } from "@/components/match";
 import { Match, MatchState } from "@/app/actions/tournament-model";
 import { useParams, useRouter } from "next/navigation";
-import { isEventAdmin } from "@/app/actions/event";
-import { Button, Switch } from "@heroui/react";
-import { getSwissMatches } from "@/app/actions/tournament";
+import { Switch } from "@/components/ui/switch";
 
 const MATCH_WIDTH = 200;
 const MATCH_HEIGHT = 80;
@@ -86,7 +84,7 @@ export default function GraphView({
               height: MATCH_HEIGHT,
             },
           };
-        },
+        }
       );
       setNodes(newNodes);
       return;
@@ -137,12 +135,12 @@ export default function GraphView({
           <div className="flex items-center mb-2 mt-2 gap-4">
             Toggle admin view
             <Switch
-              onValueChange={(value) => {
+              onCheckedChange={(value: boolean) => {
                 const params = new URLSearchParams(window.location.search);
                 params.set("adminReveal", value ? "true" : "false");
                 router.replace(`?${params.toString()}`);
               }}
-              defaultSelected={isAdminView}
+              defaultChecked={isAdminView}
             />
           </div>
         )}

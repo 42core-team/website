@@ -1,5 +1,6 @@
 "use client";
-import { Button, Chip } from "@heroui/react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useEffect, useState, useRef } from "react";
 import { joinEvent } from "@/app/actions/event";
 import { useRouter } from "next/navigation";
@@ -82,8 +83,8 @@ export default function EventJoinNotice({
               {error && <span className="text-danger text-sm">{error}</span>}
               <Button
                 color="primary"
-                isLoading={isJoining}
-                onPress={handleJoin}
+                // TODO: isLoading={isJoining}
+                onClick={handleJoin}
               >
                 Join Event
               </Button>
@@ -94,9 +95,9 @@ export default function EventJoinNotice({
             <p className="text-warning-400">
               This event has not started yet. You can join once it begins.
             </p>
-            <Chip color="warning" variant="flat" aria-label="Event countdown">
+            <Badge variant="destructive" aria-label="Event countdown">
               Starts in {formatTimeLeft(timeLeftMs)}
-            </Chip>
+            </Badge>
           </div>
         )}
       </div>

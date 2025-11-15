@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { Button } from "@heroui/react";
-import { Card, CardBody, CardHeader } from "@heroui/react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   getSocialAccounts,
   unlinkSocialAccount,
@@ -39,7 +39,7 @@ export default function SocialAccountsDisplay() {
   }, [session?.user?.id]);
 
   const { message, isInitiating, initiate42OAuth, clearMessage } = use42Linking(
-    loadSocialAccounts, // Use the stable callback
+    loadSocialAccounts // Use the stable callback
   );
 
   useEffect(() => {
@@ -51,7 +51,7 @@ export default function SocialAccountsDisplay() {
   // Clear any lingering error messages when we detect a new 42 account
   useEffect(() => {
     const has42Account = socialAccounts.some(
-      (account) => account.platform === OAUTH_PROVIDERS.FORTY_TWO,
+      (account) => account.platform === OAUTH_PROVIDERS.FORTY_TWO
     );
     if (has42Account && message?.type === "error") {
       // Clear error message after account is successfully linked
@@ -75,7 +75,7 @@ export default function SocialAccountsDisplay() {
     try {
       await unlinkSocialAccount(platform);
       setSocialAccounts((accounts) =>
-        accounts.filter((account) => account.platform !== platform),
+        accounts.filter((account) => account.platform !== platform)
       );
     } catch (error) {
       console.error("Error unlinking account:", error);
@@ -87,7 +87,7 @@ export default function SocialAccountsDisplay() {
 
   const get42Account = () =>
     socialAccounts.find(
-      (account) => account.platform === OAUTH_PROVIDERS.FORTY_TWO,
+      (account) => account.platform === OAUTH_PROVIDERS.FORTY_TWO
     );
 
   if (loading) {
@@ -101,9 +101,9 @@ export default function SocialAccountsDisplay() {
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-xl font-semibold">Linked Accounts</h2>
+        <CardTitle>Linked Accounts</CardTitle>
       </CardHeader>
-      <CardBody className="space-y-4">
+      <CardContent className="space-y-4">
         {socialAccounts.length === 0 ? (
           <p className="text-default-600">No social accounts linked yet.</p>
         ) : (
@@ -129,9 +129,8 @@ export default function SocialAccountsDisplay() {
                 <Button
                   size="sm"
                   color="danger"
-                  variant="light"
-                  onPress={() => handleUnlink(account.platform)}
-                  isLoading={unlinkingAccount === account.platform}
+                  onClick={() => handleUnlink(account.platform)}
+                  // TODO: isLoading={unlinkingAccount === account.platform}
                 >
                   Unlink
                 </Button>
@@ -155,8 +154,7 @@ export default function SocialAccountsDisplay() {
               <Button
                 size="sm"
                 color="primary"
-                variant="flat"
-                onPress={() => {
+                onClick={() => {
                   plausible("link_account", {
                     props: {
                       platform: OAUTH_PROVIDERS.FORTY_TWO,
@@ -164,28 +162,28 @@ export default function SocialAccountsDisplay() {
                   });
                   initiate42OAuth();
                 }}
-                isLoading={isInitiating}
-                spinner={
-                  <svg
-                    className="animate-spin h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                }
+                // TODO: isLoading={isInitiating}
+                // spinner={
+                //   <svg
+                //     className="animate-spin h-4 w-4"
+                //     fill="none"
+                //     viewBox="0 0 24 24"
+                //   >
+                //     <circle
+                //       className="opacity-25"
+                //       cx="12"
+                //       cy="12"
+                //       r="10"
+                //       stroke="currentColor"
+                //       strokeWidth="4"
+                //     ></circle>
+                //     <path
+                //       className="opacity-75"
+                //       fill="currentColor"
+                //       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                //     ></path>
+                //   </svg>
+                // }
               >
                 {isInitiating ? "Connecting..." : "Connect"}
               </Button>
@@ -207,18 +205,16 @@ export default function SocialAccountsDisplay() {
                 <div className="flex gap-2 mt-3">
                   <Button
                     size="sm"
-                    variant="flat"
                     color="danger"
-                    onPress={initiate42OAuth}
+                    onClick={initiate42OAuth}
                     className="h-8"
                   >
                     Try Again
                   </Button>
                   <Button
                     size="sm"
-                    variant="light"
                     color="danger"
-                    onPress={clearMessage}
+                    onClick={clearMessage}
                     className="h-8"
                   >
                     Dismiss
@@ -228,7 +224,7 @@ export default function SocialAccountsDisplay() {
             </div>
           </div>
         )}
-      </CardBody>
+      </CardContent>
     </Card>
   );
 }

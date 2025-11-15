@@ -1,6 +1,6 @@
 import React from "react";
 import { notFound } from "next/navigation";
-import { Card } from "@/components/clientHeroui";
+import { Card } from "@/components/ui/card";
 import { getTeamById, getTeamMembers } from "@/app/actions/team";
 import TeamUserTable from "./TeamUserTable";
 import BackButton from "./BackButton";

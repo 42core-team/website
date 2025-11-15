@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Button } from "@heroui/react";
+import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
 import {
   getUserPendingInvites,
@@ -137,21 +137,19 @@ export const TeamInvitesSection = () => {
                   </span>
                 )}
                 <Button
-                  color="primary"
                   size="sm"
-                  isLoading={actionStates[invite.id]?.isAccepting}
-                  isDisabled={actionStates[invite.id]?.isDeclining}
-                  onPress={() => handleAcceptInvite(invite.id)}
+                  // TODO: isLoading={actionStates[invite.id]?.isAccepting}
+                  disabled={actionStates[invite.id]?.isDeclining}
+                  onClick={() => handleAcceptInvite(invite.id)}
                 >
                   Accept
                 </Button>
                 <Button
-                  color="default"
+                  variant="destructive"
                   size="sm"
-                  variant="light"
-                  isLoading={actionStates[invite.id]?.isDeclining}
-                  isDisabled={actionStates[invite.id]?.isAccepting}
-                  onPress={() => handleDeclineInvite(invite.id)}
+                  // TODO: isLoading={actionStates[invite.id]?.isDeclining}
+                  disabled={actionStates[invite.id]?.isAccepting}
+                  onClick={() => handleDeclineInvite(invite.id)}
                 >
                   Decline
                 </Button>
