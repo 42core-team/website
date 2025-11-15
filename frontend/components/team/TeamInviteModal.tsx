@@ -66,15 +66,15 @@ export const TeamInviteModal = ({
 
       setSearchResults((prev) =>
         prev.map((user) =>
-          user.id === userId ? { ...user, isInvited: true } : user
-        )
+          user.id === userId ? { ...user, isInvited: true } : user,
+        ),
       );
     } catch (error: any) {
       // You can customize this error message as needed
       alert(
         error?.response?.data?.message ||
           error?.message ||
-          "Failed to send invite."
+          "Failed to send invite.",
       );
     } finally {
       setIsInviting((prev) => ({ ...prev, [userId]: false }));

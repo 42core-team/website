@@ -75,10 +75,10 @@ export function WikiNavigation({
       // Find the entry closest to the ideal position
       const closestEntry = intersectingEntries.reduce((prev, curr) => {
         const prevDistance = Math.abs(
-          prev.boundingClientRect.top - idealPosition
+          prev.boundingClientRect.top - idealPosition,
         );
         const currDistance = Math.abs(
-          curr.boundingClientRect.top - idealPosition
+          curr.boundingClientRect.top - idealPosition,
         );
         return currDistance < prevDistance ? curr : prev;
       });
@@ -91,7 +91,7 @@ export function WikiNavigation({
           const activeLink = document.querySelector(`a[href="#${newId}"]`);
           if (activeLink instanceof HTMLElement) {
             const contentContainer = document.querySelector(
-              ".wiki-sidebar-navigation"
+              ".wiki-sidebar-navigation",
             );
 
             if (contentContainer instanceof HTMLElement) {
@@ -170,7 +170,7 @@ export function WikiNavigation({
   const renderNavItem = (
     item: WikiNavItem,
     depth: number = 0,
-    index: number = 0
+    index: number = 0,
   ) => {
     const itemPath = item.slug.join("/");
     const uniqueKey = `${itemPath}-${depth}-${index}-${item.isFile ? "file" : "dir"}`;

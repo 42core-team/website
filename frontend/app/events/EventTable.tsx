@@ -35,7 +35,7 @@ export default function EventsTable({ events }: { events: Event[] }) {
   };
 
   const stateVariant = (
-    state: EventState
+    state: EventState,
   ): "default" | "secondary" | "destructive" | "outline" => {
     switch (state) {
       case EventState.TEAM_FINDING:

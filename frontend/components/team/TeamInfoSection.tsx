@@ -62,7 +62,7 @@ export const TeamInfoSection = ({
     const success = await onLeaveTeam();
     if (!success) {
       setLeaveError(
-        "Failed to leave team. Try refreshing the page or trying again later."
+        "Failed to leave team. Try refreshing the page or trying again later.",
       );
     }
   };
@@ -137,7 +137,7 @@ export const TeamInfoSection = ({
                   <Avatar
                     className={cn(
                       "mb-2",
-                      member.isEventAdmin ? "outline-orange-500 outline-2" : ""
+                      member.isEventAdmin ? "outline-orange-500 outline-2" : "",
                     )}
                   >
                     <AvatarImage

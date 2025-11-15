@@ -56,7 +56,7 @@ export default function QueueState(props: {
             <p
               className={cn(
                 "text-sm text-muted-foreground",
-                queueState.inQueue ? "text-green-500" : ""
+                queueState.inQueue ? "text-green-500" : "",
               )}
             >
               Status: {queueState.inQueue ? "In Queue" : "Not in Queue"}

@@ -67,12 +67,12 @@ export default function QueueMatchesControls({
 
       router.replace(`${pathname}?${params.toString()}`);
     },
-    [interval, pathname, range.end, range.start, router, searchParams]
+    [interval, pathname, range.end, range.start, router, searchParams],
   );
 
   const canApply = useMemo(
     () => !!range.start && !!range.end,
-    [range.end, range.start]
+    [range.end, range.start],
   );
 
   return (
@@ -105,7 +105,7 @@ export default function QueueMatchesControls({
                 variant="outline"
                 className={cn(
                   "flex-1 justify-start text-left font-normal",
-                  !range.start && "text-muted-foreground"
+                  !range.start && "text-muted-foreground",
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
@@ -150,7 +150,7 @@ export default function QueueMatchesControls({
                 variant="outline"
                 className={cn(
                   "flex-1 justify-start text-left font-normal",
-                  !range.end && "text-muted-foreground"
+                  !range.end && "text-muted-foreground",
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />

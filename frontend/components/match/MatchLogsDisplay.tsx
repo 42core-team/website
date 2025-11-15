@@ -82,7 +82,7 @@ const parseAnsiColorCodes = (text: string) => {
 
 export default function MatchLogsDisplay({ logs }: MatchLogsDisplayProps) {
   const [selectedTab, setSelectedTab] = useState<string>(
-    logs.length > 0 ? logs[0].container : ""
+    logs.length > 0 ? logs[0].container : "",
   );
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -91,7 +91,7 @@ export default function MatchLogsDisplay({ logs }: MatchLogsDisplayProps) {
     if (!searchQuery.trim()) return logArray;
 
     return logArray.filter((log) =>
-      log.toLowerCase().includes(searchQuery.toLowerCase())
+      log.toLowerCase().includes(searchQuery.toLowerCase()),
     );
   };
 

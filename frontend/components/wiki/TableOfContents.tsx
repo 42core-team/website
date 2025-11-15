@@ -44,7 +44,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
           }
         });
       },
-      { rootMargin: "-20% 0% -35% 0%" }
+      { rootMargin: "-20% 0% -35% 0%" },
     );
 
     toc.forEach(({ id }) => {

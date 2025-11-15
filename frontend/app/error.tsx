@@ -61,12 +61,12 @@ export default function Error({ error }: { error: Error }) {
                     .toISOString()
                     .replace("T", " ")
                     .replace("Z", " UTC")}\n\n` +
-                  `Additional context:\n`
+                  `Additional context:\n`,
               );
               window.open(
                 `${base}?labels=bug&title=${title}&body=${body}`,
                 "_blank",
-                "noopener,noreferrer"
+                "noopener,noreferrer",
               );
             }}
           >

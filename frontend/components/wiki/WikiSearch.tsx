@@ -40,7 +40,7 @@ export function WikiSearch({
       setIsLoading(true);
       try {
         const response = await fetch(
-          `/api/wiki/search?q=${encodeURIComponent(activeQuery)}&version=${encodeURIComponent(currentVersion)}`
+          `/api/wiki/search?q=${encodeURIComponent(activeQuery)}&version=${encodeURIComponent(currentVersion)}`,
         );
         if (!response.ok) throw new Error(`Search failed: ${response.status}`);
         const searchResults = await response.json();
@@ -79,7 +79,7 @@ export function WikiSearch({
               document.querySelector(".main-wiki-content");
             if (!contentContainer) return;
             const elements = contentContainer.querySelectorAll(
-              "p, h1, h2, h3, h4, h5, h6, li, td, th"
+              "p, h1, h2, h3, h4, h5, h6, li, td, th",
             );
             for (const element of Array.from(elements)) {
               if (element.textContent?.toLowerCase().includes(searchSnapshot)) {
@@ -103,7 +103,7 @@ export function WikiSearch({
         });
       }
     },
-    [currentVersion, query, router]
+    [currentVersion, query, router],
   );
 
   return (

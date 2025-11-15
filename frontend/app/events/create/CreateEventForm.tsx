@@ -57,7 +57,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 async function validateGithubToken(
   orgName: string,
-  token: string
+  token: string,
 ): Promise<string | null> {
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -88,7 +88,7 @@ async function validateGithubToken(
     // 2. Check for repository creation permissions (by trying to list repos)
     const reposResponse = await fetch(
       `https://api.github.com/orgs/${orgName}/repos?type=all`,
-      { headers }
+      { headers },
     );
     if (!reposResponse.ok) {
       let errorMessage = `Token lacks permission to list repositories in '${orgName}'. Required: 'repo' scope.`;
@@ -106,7 +106,7 @@ async function validateGithubToken(
     // 3. Check for invitation permissions (by trying to list members)
     const membersResponse = await fetch(
       `https://api.github.com/orgs/${orgName}/members`,
-      { headers }
+      { headers },
     );
     if (!membersResponse.ok) {
       let errorMessage = `Token lacks permission to list members in '${orgName}'. Required: 'admin:org' or 'read:org' scope.`;
@@ -134,7 +134,7 @@ async function validateGithubToken(
 
 function combineImageAndTag(
   image: string | undefined,
-  tag: string | undefined
+  tag: string | undefined,
 ): string | undefined {
   if (!image?.trim() || !tag?.trim()) {
     return image || undefined;
@@ -175,7 +175,7 @@ export default function CreateEventForm() {
 
   // Extract owner/repo from a GitHub URL like https://github.com/owner/repo
   const parseGitHubRepo = (
-    url: string
+    url: string,
   ): { owner: string; repo: string } | null => {
     try {
       const u = new URL(url.trim());
@@ -211,13 +211,13 @@ export default function CreateEventForm() {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(
-            body?.message || `Failed to fetch tags (${res.status})`
+            body?.message || `Failed to fetch tags (${res.status})`,
           );
         }
         const data: Array<{ name: string }> = await res.json();
         if (!cancelled) {
           setAvailableTags(
-            Array.from(new Set((data || []).map((t) => t.name)))
+            Array.from(new Set((data || []).map((t) => t.name))),
           );
         }
       } catch (e: any) {
@@ -239,7 +239,7 @@ export default function CreateEventForm() {
 
   function combineImageAndTag(
     image: string | undefined,
-    tag: string | undefined
+    tag: string | undefined,
   ): string | undefined {
     if (!image?.trim() || !tag?.trim()) {
       return image || undefined;
@@ -252,15 +252,15 @@ export default function CreateEventForm() {
 
     const gameServerDockerImageString = combineImageAndTag(
       values.gameServerDockerImage,
-      values.gameServerImageTag
+      values.gameServerImageTag,
     );
     const myCoreBotDockerImageString = combineImageAndTag(
       values.myCoreBotDockerImage,
-      values.myCoreBotImageTag
+      values.myCoreBotImageTag,
     );
     const visualizerDockerImageString = combineImageAndTag(
       values.visualizerDockerImage,
-      values.visualizerImageTag
+      values.visualizerImageTag,
     );
 
     if (!gameServerDockerImageString) {
@@ -278,7 +278,7 @@ export default function CreateEventForm() {
 
     const validationError = await validateGithubToken(
       values.githubOrg,
-      values.githubOrgSecret
+      values.githubOrgSecret,
     );
     if (validationError) {
       setError(validationError);
@@ -387,7 +387,7 @@ export default function CreateEventForm() {
                               variant="outline"
                               className={cn(
                                 "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
+                                !field.value && "text-muted-foreground",
                               )}
                             >
                               {field.value ? (
@@ -423,7 +423,7 @@ export default function CreateEventForm() {
                                   : new Date();
                                 newDate.setHours(
                                   parseInt(hours),
-                                  parseInt(minutes)
+                                  parseInt(minutes),
                                 );
                                 field.onChange(newDate);
                               }}
@@ -449,7 +449,7 @@ export default function CreateEventForm() {
                               variant="outline"
                               className={cn(
                                 "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
+                                !field.value && "text-muted-foreground",
                               )}
                             >
                               {field.value ? (
@@ -485,7 +485,7 @@ export default function CreateEventForm() {
                                   : new Date();
                                 newDate.setHours(
                                   parseInt(hours),
-                                  parseInt(minutes)
+                                  parseInt(minutes),
                                 );
                                 field.onChange(newDate);
                               }}

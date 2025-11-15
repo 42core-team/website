@@ -57,7 +57,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
         setParticipantsCount(participants);
         if (eventData?.repoLockDate) {
           setTeamAutoLockTime(
-            new Date(eventData.repoLockDate).toISOString().slice(0, 16)
+            new Date(eventData.repoLockDate).toISOString().slice(0, 16),
           );
         }
         setIsAdmin(true);
@@ -282,7 +282,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 onClick={() =>
                   setEventTeamsLockDate(
                     eventId,
-                    new Date(teamAutoLockTime).getTime()
+                    new Date(teamAutoLockTime).getTime(),
                   ).then(() => {
                     alert("set team auto lock date");
                   })

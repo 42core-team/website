@@ -49,7 +49,7 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
 
       // Clean up session storage and processing ref on error
       sessionStorage.removeItem(
-        OAUTH_CONFIG.SESSION_STORAGE_KEYS.PROCESSED_CODE
+        OAUTH_CONFIG.SESSION_STORAGE_KEYS.PROCESSED_CODE,
       );
       processingRef.current = null;
     } finally {
@@ -86,14 +86,14 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
 
       // Also check sessionStorage as backup
       const processedCode = sessionStorage.getItem(
-        OAUTH_CONFIG.SESSION_STORAGE_KEYS.PROCESSED_CODE
+        OAUTH_CONFIG.SESSION_STORAGE_KEYS.PROCESSED_CODE,
       );
       if (processedCode === code) {
         return; // Already processed this code
       }
 
       const storedState = sessionStorage.getItem(
-        OAUTH_CONFIG.SESSION_STORAGE_KEYS.OAUTH_STATE
+        OAUTH_CONFIG.SESSION_STORAGE_KEYS.OAUTH_STATE,
       );
       sessionStorage.removeItem(OAUTH_CONFIG.SESSION_STORAGE_KEYS.OAUTH_STATE);
 
@@ -105,7 +105,7 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
         // Mark this code as being processed in sessionStorage
         sessionStorage.setItem(
           OAUTH_CONFIG.SESSION_STORAGE_KEYS.PROCESSED_CODE,
-          code
+          code,
         );
         handleOAuthCallback(code, state);
       } else {

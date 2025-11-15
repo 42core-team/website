@@ -35,7 +35,7 @@ export default function QueueMatchesList(props: {
                   ? "bg-success-100 text-success-700"
                   : match.state === MatchState.IN_PROGRESS
                     ? "bg-warning-100 text-warning-700"
-                    : "bg-background text-foreground"
+                    : "bg-background text-foreground",
               )}
             >
               {match.state}
@@ -50,7 +50,7 @@ export default function QueueMatchesList(props: {
                     "flex-1 text-center py-2 px-3 rounded-md",
                     match.winner?.name === match.teams[0]?.name
                       ? "bg-success-50 border border-success-200"
-                      : ""
+                      : "",
                   )}
                 >
                   <div className="font-medium">
@@ -61,7 +61,7 @@ export default function QueueMatchesList(props: {
                   </div>
                   <div className="text-xl font-bold mt-1">
                     {match.results.find(
-                      (result) => result.team?.id === match.teams[0]?.id
+                      (result) => result.team?.id === match.teams[0]?.id,
                     )?.score || 0}
                   </div>
                 </div>
@@ -73,7 +73,7 @@ export default function QueueMatchesList(props: {
                     "flex-1 text-center py-2 px-3 rounded-md",
                     match.winner?.name === match.teams[1]?.name
                       ? "bg-success-50 border border-success-200"
-                      : ""
+                      : "",
                   )}
                 >
                   <div className="font-medium">
@@ -84,7 +84,7 @@ export default function QueueMatchesList(props: {
                   </div>
                   <div className="text-xl font-bold mt-1">
                     {match.results.find(
-                      (result) => result.team?.id === match.teams[1]?.id
+                      (result) => result.team?.id === match.teams[1]?.id,
                     )?.score || 0}
                   </div>
                 </div>
