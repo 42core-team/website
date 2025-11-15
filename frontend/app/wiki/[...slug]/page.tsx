@@ -162,7 +162,7 @@ export default async function WikiPage({ params }: WikiPageProps) {
                 <h1 className="text-4xl font-bold text-foreground mb-2">
                   {parentPage.title}
                 </h1>
-                <div className="text-sm text-default-500 flex items-center gap-4">
+                <div className="text-sm text-muted-foreground flex items-center gap-4">
                   <span>
                     Last updated: {parentPage.lastModified.toLocaleDateString()}
                   </span>
@@ -216,7 +216,7 @@ export default async function WikiPage({ params }: WikiPageProps) {
               <h1 className="text-4xl font-bold text-foreground mb-2">
                 {homePage.title}
               </h1>
-              <div className="text-sm text-default-500 flex items-center gap-4">
+              <div className="text-sm text-muted-foreground flex items-center gap-4">
                 <span>
                   Last updated: {homePage.lastModified.toLocaleDateString()}
                 </span>
@@ -255,7 +255,7 @@ export default async function WikiPage({ params }: WikiPageProps) {
           <h1 className="text-4xl font-bold text-foreground mb-2">
             {page.title}
           </h1>
-          <div className="text-sm text-default-500 flex items-center gap-4">
+          <div className="text-sm text-muted-foreground flex items-center gap-4">
             <span>Last updated: {page.lastModified.toLocaleDateString()}</span>
             {version !== defaultVersion && (
               <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded text-xs font-medium">

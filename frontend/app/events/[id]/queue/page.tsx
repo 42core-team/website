@@ -44,7 +44,7 @@ export default async function EventQueuePage({
       <p className="text-lg text-default-600 mb-4">
         Play against other participants in the queue to test your code.
       </p>
-      <p className="text-sm text-default-500">
+      <p className="text-sm text-muted-foreground">
         If you have any questions, please contact the event organizers.
       </p>
 
@@ -59,7 +59,7 @@ export default async function EventQueuePage({
         </div>
       ) : (
         <div className="flex items-center justify-center min-h-[200px]">
-          <p className="text-lg text-default-500">
+          <p className="text-lg text-muted-foreground">
             Your team is locked and cannot join the queue.
           </p>
         </div>

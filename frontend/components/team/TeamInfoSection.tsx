@@ -79,7 +79,7 @@ export const TeamInfoSection = ({
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
-          <p className="text-sm text-default-500">Repository</p>
+          <p className="text-sm text-muted-foreground">Repository</p>
           <div className="font-medium">
             {myTeam.repo ? (
               <a
@@ -98,17 +98,17 @@ export const TeamInfoSection = ({
           </div>
         </div>
         <div>
-          <p className="text-sm text-default-500">Created</p>
+          <p className="text-sm text-muted-foreground">Created</p>
           <p className="font-medium">
             {new Date(myTeam.createdAt || "").toLocaleDateString()}
           </p>
         </div>
         <div>
-          <p className="text-sm text-default-500">Queue score</p>
+          <p className="text-sm text-muted-foreground">Queue score</p>
           <p className="font-medium">{myTeam.queueScore}</p>
         </div>
         <div>
-          <p className="text-sm text-default-500">Updated</p>
+          <p className="text-sm text-muted-foreground">Updated</p>
           <p className="font-medium">
             {new Date(myTeam.updatedAt || "").toLocaleDateString()}
           </p>
@@ -159,7 +159,7 @@ export const TeamInfoSection = ({
               </Link>
             ))
           ) : (
-            <p className="text-default-500 col-span-full text-center">
+            <p className="text-muted-foreground col-span-full text-center">
               No team members found
             </p>
           )}

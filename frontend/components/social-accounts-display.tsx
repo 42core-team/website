@@ -93,7 +93,7 @@ export default function SocialAccountsDisplay() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[100px]">
-        <div className="text-default-500">Loading social accounts...</div>
+        <div className="text-muted-foreground">Loading social accounts...</div>
       </div>
     );
   }
@@ -121,7 +121,7 @@ export default function SocialAccountsDisplay() {
                     <p className="font-medium">
                       {getPlatformName(account.platform)}
                     </p>
-                    <p className="text-sm text-default-500">
+                    <p className="text-sm text-muted-foreground">
                       @{account.username}
                     </p>
                   </div>
@@ -148,7 +148,7 @@ export default function SocialAccountsDisplay() {
                 </div>
                 <div>
                   <p className="font-medium">42 School</p>
-                  <p className="text-sm text-default-500">Not connected</p>
+                  <p className="text-sm text-muted-foreground">Not connected</p>
                 </div>
               </div>
               <Button

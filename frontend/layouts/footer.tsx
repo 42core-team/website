@@ -34,7 +34,7 @@ export default function Footer() {
               <img src="/logo-white.svg" alt="CORE" className="w-8 h-8" />
               <span className="font-bold text-xl">CORE</span>
             </Link>
-            <p className="mt-4 text-default-500">
+            <p className="mt-4 text-muted-foreground">
               CORE Game is a competitive coding challenge where you design and
               program your own bots to battle it out in a dynamic 2D arena.
             </p>
@@ -44,30 +44,33 @@ export default function Footer() {
           <div>
             <h3 className="font-bold mb-4">Quick Links</h3>
             <div className="flex flex-col gap-2">
-              <Link href="/" className="text-default-500 hover:text-primary">
+              <Link
+                href="/"
+                className="text-muted-foreground hover:text-primary"
+              >
                 Home
               </Link>
               <Link
                 href="/events"
-                className="text-default-500 hover:text-primary"
+                className="text-muted-foreground hover:text-primary"
               >
                 Events
               </Link>
               <Link
                 href="/wiki"
-                className="text-default-500 hover:text-primary"
+                className="text-muted-foreground hover:text-primary"
               >
                 Wiki
               </Link>
               <Link
                 href="/changelog"
-                className="text-default-500 hover:text-primary"
+                className="text-muted-foreground hover:text-primary"
               >
                 Changelog
               </Link>
               <Link
                 href="/about"
-                className="text-default-500 hover:text-primary"
+                className="text-muted-foreground hover:text-primary"
               >
                 About Us
               </Link>
@@ -82,21 +85,21 @@ export default function Footer() {
                 href="https://status.coregame.de"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-default-500 hover:text-primary"
+                className="text-muted-foreground hover:text-primary"
               >
                 Status Page
               </Link>
               <Link
                 href={siteConfig.links.github}
                 isExternal
-                className="text-default-500 hover:text-primary"
+                className="text-muted-foreground hover:text-primary"
               >
                 GitHub
               </Link>
               <a
                 href="#"
                 onClick={handleReportIssue}
-                className="text-default-500 hover:text-primary"
+                className="text-muted-foreground hover:text-primary"
               >
                 Report an issue
               </a>
@@ -107,19 +110,19 @@ export default function Footer() {
         {/* Bottom Section */}
         <div className="mt-8 pt-8 border-t border-default-200">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-default-500 text-sm">
+            <p className="text-muted-foreground text-sm">
               © 2025 CORE Game. All rights reserved.
             </p>
             <div className="flex gap-4 text-sm">
               <Link
                 href="/impressum"
-                className="text-default-500 hover:text-primary"
+                className="text-muted-foreground hover:text-primary"
               >
                 Impressum
               </Link>
               <Link
                 href="/datenschutz"
-                className="text-default-500 hover:text-primary"
+                className="text-muted-foreground hover:text-primary"
               >
                 Datenschutz
               </Link>

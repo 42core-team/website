@@ -330,7 +330,7 @@ export default function CreateEventForm() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Private event</p>
-                <p className="text-xs text-default-500">
+                <p className="text-xs text-muted-foreground">
                   Private events are hidden from the All Events tab.
                 </p>
               </div>
@@ -389,7 +389,7 @@ export default function CreateEventForm() {
                     <span>GitHub Organization Secret</span>
                     <Tooltip
                       content={
-                        <div className="text-xs text-default-500 p-2 max-w-xs">
+                        <div className="text-xs text-muted-foreground p-2 max-w-xs">
                           The token needs the following permissions:
                           <ul className="list-disc list-inside ml-4">
                             <li>
@@ -446,7 +446,7 @@ export default function CreateEventForm() {
               <div className="text-sm text-danger">{tagFetchError}</div>
             )}
             {isLoadingTags && (
-              <div className="text-xs text-default-500">Loading tags…</div>
+              <div className="text-xs text-muted-foreground">Loading tags…</div>
             )}
           </div>
 

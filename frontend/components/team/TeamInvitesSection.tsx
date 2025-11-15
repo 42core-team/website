@@ -109,7 +109,7 @@ export const TeamInvitesSection = () => {
     return (
       <div className="bg-default-50 p-6 rounded-lg border border-default-200 mb-6">
         <h2 className="text-xl font-semibold mb-4">Team Invitations</h2>
-        <p className="text-default-500">Loading invitations...</p>
+        <p className="text-muted-foreground">Loading invitations...</p>
       </div>
     );
   }
@@ -118,7 +118,7 @@ export const TeamInvitesSection = () => {
     <div className="bg-default-50 p-6 rounded-lg border border-default-200 mb-6">
       <h2 className="text-xl font-semibold mb-4">Team Invitations</h2>
       {invites.length === 0 ? (
-        <p className="text-default-500">No pending team invitations</p>
+        <p className="text-muted-foreground">No pending team invitations</p>
       ) : (
         <div className="divide-y divide-default-200">
           {invites.map((invite) => (
@@ -128,7 +128,7 @@ export const TeamInvitesSection = () => {
             >
               <div>
                 <p className="font-medium">{invite.name}</p>
-                <p className="text-sm text-default-500">Invited</p>
+                <p className="text-sm text-muted-foreground">Invited</p>
               </div>
               <div className="flex gap-2 items-center">
                 {actionStates[invite.id]?.message && (

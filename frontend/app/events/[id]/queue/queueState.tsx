@@ -55,7 +55,7 @@ export default function QueueState(props: {
             <p className="text-lg">Team: {props.team.name}</p>
             <p
               className={cn(
-                "text-sm text-default-500",
+                "text-sm text-muted-foreground",
                 queueState.inQueue ? "text-green-500" : "",
               )}
             >

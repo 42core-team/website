@@ -4,6 +4,14 @@ import Link from "next/link";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import remarkHtml from "remark-html";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Changelog",
@@ -69,7 +77,7 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
     <div className="py-10">
       <header className="mb-4">
         <h1 className="text-4xl font-bold pb-2">Changelog</h1>
-        <p className="text-default-500">
+        <p className="text-muted-foreground">
           All changes from{" "}
           <a
             href="https://github.com/42core-team/monorepo/releases"
@@ -83,7 +91,13 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
         </p>
       </header>
 
-      <ul className="space-y-4">
+      <Accordion
+        type="multiple"
+        className="rounded-md border"
+        {...(page === 1 && releases[0]
+          ? { defaultValue: [String(releases[0].id)] }
+          : {})}
+      >
         {releases.map((rel, idx) => {
           const html = renderedBodies[idx];
           const date = new Date(rel.published_at);
@@ -112,85 +126,83 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
 
           const latestBadge =
             globalIndex === 0 ? (
-              <span className="ml-2 text-xs px-2 py-0.5 rounded bg-primary-100 text-primary-700">
+              <Badge variant="secondary" className="ml-2">
                 latest
-              </span>
+              </Badge>
             ) : null;
 
           return (
-            <li key={rel.id} className="border border-default-200 rounded-md">
-              <details {...(globalIndex === 0 ? { open: true } : {})}>
-                <summary className="cursor-pointer list-none p-4 hover:bg-default-100 rounded-t-md">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className={`${sizeClass} ${weightClass}`}>
-                        {rel.name}
-                      </span>
-                      <span className="text-default-500">({rel.tag_name})</span>
-                      {latestBadge}
-                    </div>
-                    <div className="text-sm text-default-500">
-                      {date.toLocaleDateString()}
-                    </div>
+            <AccordionItem key={rel.id} value={String(rel.id)}>
+              <AccordionTrigger className="px-4">
+                <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`${sizeClass} ${weightClass}`}>
+                      {rel.name}
+                    </span>
+                    <span className="text-muted-foreground">
+                      ({rel.tag_name})
+                    </span>
+                    {latestBadge}
                   </div>
-                </summary>
-
-                <div className="px-4 pb-4 pt-2">
-                  {html.trim() ? (
-                    <article
-                      className="prose dark:prose-invert max-w-none"
-                      dangerouslySetInnerHTML={{ __html: html }}
-                    />
-                  ) : (
-                    <p className="text-default-500 italic">No description.</p>
-                  )}
-
-                  <div className="mt-4">
-                    <Link
-                      href={rel.html_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-primary underline hover:no-underline"
-                    >
-                      View on GitHub →
-                    </Link>
+                  <div className="text-sm text-muted-foreground">
+                    {date.toLocaleDateString()}
                   </div>
                 </div>
-              </details>
-            </li>
+              </AccordionTrigger>
+              <AccordionContent className="px-4">
+                {html.trim() ? (
+                  <article
+                    className="prose dark:prose-invert max-w-none"
+                    dangerouslySetInnerHTML={{ __html: html }}
+                  />
+                ) : (
+                  <p className="text-muted-foreground italic">
+                    No description.
+                  </p>
+                )}
+
+                <div className="mt-4">
+                  <Button asChild variant="link">
+                    <Link href={rel.html_url} target="_blank" rel="noreferrer">
+                      View on GitHub →
+                    </Link>
+                  </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           );
         })}
-      </ul>
+      </Accordion>
 
       {/* Pagination */}
       <nav className="mt-8 flex items-center justify-between">
-        <Link
-          href={`/changelog?page=${Math.max(1, page - 1)}`}
-          className={`px-3 py-2 rounded border ${
-            page <= 1
-              ? "pointer-events-none opacity-50 border-default-200"
-              : "border-default-300 hover:bg-default-100"
-          }`}
-          aria-disabled={page <= 1}
-        >
-          ← Newer
-        </Link>
+        {page <= 1 ? (
+          <Button variant="outline" disabled>
+            ← Newer
+          </Button>
+        ) : (
+          <Button asChild variant="outline">
+            <Link href={`/changelog?page=${Math.max(1, page - 1)}`}>
+              ← Newer
+            </Link>
+          </Button>
+        )}
 
-        <span className="text-sm text-default-500">
+        <span className="text-sm text-muted-foreground">
           Page {page} / {totalPages} &middot; {perPage} per page
         </span>
 
-        <Link
-          href={`/changelog?page=${Math.min(totalPages, page + 1)}`}
-          className={`px-3 py-2 rounded border ${
-            page >= totalPages
-              ? "pointer-events-none opacity-50 border-default-200"
-              : "border-default-300 hover:bg-default-100"
-          }`}
-          aria-disabled={page >= totalPages}
-        >
-          Older →
-        </Link>
+        {page >= totalPages ? (
+          <Button variant="outline" disabled>
+            Older →
+          </Button>
+        ) : (
+          <Button asChild variant="outline">
+            <Link href={`/changelog?page=${Math.min(totalPages, page + 1)}`}>
+              Older →
+            </Link>
+          </Button>
+        )}
       </nav>
     </div>
   );

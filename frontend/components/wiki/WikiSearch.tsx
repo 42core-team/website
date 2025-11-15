@@ -75,7 +75,9 @@ export function WikiSearch({
       {query && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-content1 border border-divider rounded-lg shadow-lg max-h-96 overflow-y-auto z-10">
           {isLoading ? (
-            <div className="p-4 text-center text-default-500">Searching...</div>
+            <div className="p-4 text-center text-muted-foreground">
+              Searching...
+            </div>
           ) : results.length > 0 ? (
             <div className="p-2">
               {results.map((result) => {
@@ -180,7 +182,7 @@ export function WikiSearch({
                       }}
                     />
 
-                    <div className="text-xs text-default-500 mt-2 flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground mt-2 flex items-center gap-2">
                       <span>/{page.slug.join("/")}</span>
                       {page.version && page.version !== "latest" && (
                         <span className="bg-primary-100 text-primary-700 px-1 py-0.5 rounded text-xs">
@@ -198,7 +200,7 @@ export function WikiSearch({
               })}
             </div>
           ) : (
-            <div className="p-4 text-center text-default-500">
+            <div className="p-4 text-center text-muted-foreground">
               No results found
             </div>
           )}

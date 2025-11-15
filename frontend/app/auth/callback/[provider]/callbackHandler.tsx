@@ -163,7 +163,7 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
             ? `Linking ${provider} account...`
             : `Processing ${provider} OAuth callback...`}
         </p>
-        <p className="mt-2 text-sm text-default-500">
+        <p className="mt-2 text-sm text-muted-foreground">
           Please wait while we complete the authentication process.
         </p>
       </div>

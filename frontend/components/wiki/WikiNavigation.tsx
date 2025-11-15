@@ -210,7 +210,7 @@ export function WikiNavigation({
                     className={`block text-xs px-2 py-1 rounded-xs transition-colors hover:bg-default-100 hover:text-primary cursor-pointer ${
                       activeId === tocItem.id
                         ? "text-primary font-medium bg-primary-50 border-l-2 border-primary"
-                        : "text-default-500"
+                        : "text-muted-foreground"
                     }`}
                     style={{
                       paddingLeft: `${Math.min((tocItem.level - 1) * 8 + 8, 32)}px`,

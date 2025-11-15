@@ -13,7 +13,7 @@ export default function QueueMatchesList(props: {
 
   if (!matches || matches.length === 0) {
     return (
-      <p className="text-center text-default-500">No past matches found</p>
+      <p className="text-center text-muted-foreground">No past matches found</p>
     );
   }
 
@@ -25,7 +25,7 @@ export default function QueueMatchesList(props: {
           className="rounded-lg border border-default-200 p-4 shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-default-500">
+            <span className="text-sm font-medium text-muted-foreground">
               Match ID: {match.id}
             </span>
             <span
@@ -66,7 +66,7 @@ export default function QueueMatchesList(props: {
                   </div>
                 </div>
 
-                <div className="text-default-500 font-bold">VS</div>
+                <div className="text-muted-foreground font-bold">VS</div>
 
                 <div
                   className={cn(

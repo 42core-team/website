@@ -123,11 +123,11 @@ export const TeamInviteModal = ({
                 <div className="animate-spin h-6 w-6 border-2 border-primary rounded-full border-t-transparent"></div>
               </div>
             ) : searchQuery.length < 2 ? (
-              <p className="text-default-500 text-center py-2">
+              <p className="text-muted-foreground text-center py-2">
                 Type at least 2 characters to search
               </p>
             ) : searchResults.length === 0 ? (
-              <p className="text-default-500 text-center py-2">
+              <p className="text-muted-foreground text-center py-2">
                 No users found
               </p>
             ) : (
@@ -148,7 +148,7 @@ export const TeamInviteModal = ({
                     </Avatar>
                     <div>
                       <p className="font-medium">{user.name}</p>
-                      <p className="text-default-500 text-sm">
+                      <p className="text-muted-foreground text-sm">
                         {user.username}
                       </p>
                     </div>

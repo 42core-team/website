@@ -21,7 +21,7 @@ function ProfileContent() {
   if (status === "loading") {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="text-default-500">Loading...</div>
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
@@ -66,7 +66,7 @@ export default function ProfileClient() {
     <Suspense
       fallback={
         <div className="flex justify-center items-center min-h-[200px]">
-          <div className="text-default-500">Loading...</div>
+          <div className="text-muted-foreground">Loading...</div>
         </div>
       }
     >
