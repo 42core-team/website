@@ -1,13 +1,14 @@
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { GithubIcon } from "./icons";
-import { signIn } from "next-auth/react";
 
 export default function GithubLoginButton() {
   async function githubLogin() {
     try {
       await signIn("github");
-    } catch (error) {
-      console.log("error while logging in:", error);
+    }
+    catch (error) {
+      console.error("error while logging in:", error);
     }
   }
 

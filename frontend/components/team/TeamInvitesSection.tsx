@@ -1,16 +1,18 @@
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { useSession } from "next-auth/react";
-import {
-  getUserPendingInvites,
-  acceptTeamInvite,
-  declineTeamInvite,
+import type {
   Team,
 } from "@/app/actions/team";
+import { useSession } from "next-auth/react";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { isActionError } from "@/app/actions/errors";
+import {
+  acceptTeamInvite,
+  declineTeamInvite,
+  getUserPendingInvites,
+} from "@/app/actions/team";
+import { Button } from "@/components/ui/button";
 
-export const TeamInvitesSection = () => {
+export function TeamInvitesSection() {
   const [invites, setInvites] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionStates, setActionStates] = useState<
@@ -31,9 +33,11 @@ export const TeamInvitesSection = () => {
       try {
         const userInvites = await getUserPendingInvites(eventId);
         setInvites(userInvites);
-      } catch (error) {
+      }
+      catch (error) {
         console.error("Error fetching invites:", error);
-      } finally {
+      }
+      finally {
         setIsLoading(false);
       }
     }
@@ -41,7 +45,8 @@ export const TeamInvitesSection = () => {
     if (session?.user?.id) {
       setIsLoading(true);
       fetchInvites();
-    } else {
+    }
+    else {
       setIsLoading(false);
     }
   }, [session, eventId]);
@@ -52,7 +57,7 @@ export const TeamInvitesSection = () => {
       return;
     }
 
-    setActionStates((prev) => ({
+    setActionStates(prev => ({
       ...prev,
       [teamId]: { ...prev[teamId], isAccepting: true, message: undefined },
     }));
@@ -60,7 +65,7 @@ export const TeamInvitesSection = () => {
     const result = await acceptTeamInvite(eventId, teamId);
 
     if (isActionError(result)) {
-      setActionStates((prev) => ({
+      setActionStates(prev => ({
         ...prev,
         [teamId]: {
           ...prev[teamId],
@@ -71,7 +76,7 @@ export const TeamInvitesSection = () => {
       return;
     }
 
-    setInvites((prev) => prev.filter((invite) => invite.id !== teamId));
+    setInvites(prev => prev.filter(invite => invite.id !== teamId));
     window.location.reload();
   };
 
@@ -81,14 +86,14 @@ export const TeamInvitesSection = () => {
       return;
     }
 
-    setActionStates((prev) => ({
+    setActionStates(prev => ({
       ...prev,
       [teamId]: { ...prev[teamId], isDeclining: true, message: undefined },
     }));
 
     const result = await declineTeamInvite(eventId, teamId);
     if (isActionError(result)) {
-      setActionStates((prev) => ({
+      setActionStates(prev => ({
         ...prev,
         [teamId]: {
           ...prev[teamId],
@@ -98,7 +103,7 @@ export const TeamInvitesSection = () => {
       }));
       return;
     }
-    setInvites((prev) => prev.filter((invite) => invite.id !== teamId));
+    setInvites(prev => prev.filter(invite => invite.id !== teamId));
   };
 
   if (!session?.user?.id) {
@@ -117,49 +122,51 @@ export const TeamInvitesSection = () => {
   return (
     <div className="bg-default-50 p-6 rounded-lg border border-default-200 mb-6">
       <h2 className="text-xl font-semibold mb-4">Team Invitations</h2>
-      {invites.length === 0 ? (
-        <p className="text-muted-foreground">No pending team invitations</p>
-      ) : (
-        <div className="divide-y divide-default-200">
-          {invites.map((invite) => (
-            <div
-              key={invite.id}
-              className="py-3 flex items-center justify-between"
-            >
-              <div>
-                <p className="font-medium">{invite.name}</p>
-                <p className="text-sm text-muted-foreground">Invited</p>
-              </div>
-              <div className="flex gap-2 items-center">
-                {actionStates[invite.id]?.message && (
-                  <span className="text-danger text-sm mr-2">
-                    {actionStates[invite.id]?.message}
-                  </span>
-                )}
-                <Button
-                  size="sm"
-                  // TODO: isLoading={actionStates[invite.id]?.isAccepting}
-                  disabled={actionStates[invite.id]?.isDeclining}
-                  onClick={() => handleAcceptInvite(invite.id)}
+      {invites.length === 0
+        ? (
+            <p className="text-muted-foreground">No pending team invitations</p>
+          )
+        : (
+            <div className="divide-y divide-default-200">
+              {invites.map(invite => (
+                <div
+                  key={invite.id}
+                  className="py-3 flex items-center justify-between"
                 >
-                  Accept
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  // TODO: isLoading={actionStates[invite.id]?.isDeclining}
-                  disabled={actionStates[invite.id]?.isAccepting}
-                  onClick={() => handleDeclineInvite(invite.id)}
-                >
-                  Decline
-                </Button>
-              </div>
+                  <div>
+                    <p className="font-medium">{invite.name}</p>
+                    <p className="text-sm text-muted-foreground">Invited</p>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    {actionStates[invite.id]?.message && (
+                      <span className="text-danger text-sm mr-2">
+                        {actionStates[invite.id]?.message}
+                      </span>
+                    )}
+                    <Button
+                      size="sm"
+                      // TODO: isLoading={actionStates[invite.id]?.isAccepting}
+                      disabled={actionStates[invite.id]?.isDeclining}
+                      onClick={() => handleAcceptInvite(invite.id)}
+                    >
+                      Accept
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      // TODO: isLoading={actionStates[invite.id]?.isDeclining}
+                      disabled={actionStates[invite.id]?.isAccepting}
+                      onClick={() => handleDeclineInvite(invite.id)}
+                    >
+                      Decline
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
     </div>
   );
-};
+}
 
 export default TeamInvitesSection;

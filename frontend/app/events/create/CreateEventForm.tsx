@@ -1,12 +1,17 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { isActionError } from "@/app/actions/errors";
+import { createEvent } from "@/app/actions/event";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Card } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -17,20 +22,15 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 
-import { createEvent } from "@/app/actions/event";
-import { isActionError } from "@/app/actions/errors";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   name: z.string().min(1, "Event name is required"),
@@ -76,7 +76,8 @@ async function validateGithubToken(
         if (errorBody && errorBody.message) {
           errorMessage = `GitHub API Error: ${errorBody.message}`;
         }
-      } catch (jsonError) {
+      }
+      catch {
         // Ignore JSON parsing errors, use default message
       }
       if (orgResponse.status === 404) {
@@ -97,7 +98,8 @@ async function validateGithubToken(
         if (errorBody && errorBody.message) {
           errorMessage = `GitHub API Error: ${errorBody.message}`;
         }
-      } catch (jsonError) {
+      }
+      catch {
         // Ignore JSON parsing errors
       }
       return errorMessage;
@@ -115,7 +117,8 @@ async function validateGithubToken(
         if (errorBody && errorBody.message) {
           errorMessage = `GitHub API Error: ${errorBody.message}`;
         }
-      } catch (jsonError) {
+      }
+      catch {
         // Ignore JSON parsing errors
       }
       return errorMessage;
@@ -126,20 +129,11 @@ async function validateGithubToken(
     //    Assuming if repo creation is possible, content read/write is implicitly handled for new repos.
 
     return null; // Token is valid and has required permissions
-  } catch (error) {
+  }
+  catch (error) {
     console.error("GitHub token validation error:", error);
     return "An unexpected error occurred during GitHub token validation.";
   }
-}
-
-function combineImageAndTag(
-  image: string | undefined,
-  tag: string | undefined,
-): string | undefined {
-  if (!image?.trim() || !tag?.trim()) {
-    return image || undefined;
-  }
-  return `${image.trim()}:${tag.trim()}`;
 }
 
 export default function CreateEventForm() {
@@ -179,11 +173,14 @@ export default function CreateEventForm() {
   ): { owner: string; repo: string } | null => {
     try {
       const u = new URL(url.trim());
-      if (u.hostname !== "github.com") return null;
+      if (u.hostname !== "github.com")
+        return null;
       const parts = u.pathname.split("/").filter(Boolean);
-      if (parts.length < 2) return null;
+      if (parts.length < 2)
+        return null;
       return { owner: parts[0], repo: parts[1].replace(/\.git$/, "") };
-    } catch {
+    }
+    catch {
       return null;
     }
   };
@@ -217,16 +214,19 @@ export default function CreateEventForm() {
         const data: Array<{ name: string }> = await res.json();
         if (!cancelled) {
           setAvailableTags(
-            Array.from(new Set((data || []).map((t) => t.name))),
+            Array.from(new Set((data || []).map(t => t.name))),
           );
         }
-      } catch (e: any) {
+      }
+      catch (e: any) {
         if (!cancelled && e?.name !== "AbortError") {
           setAvailableTags([]);
           setTagFetchError(e?.message || "Failed to fetch tags");
         }
-      } finally {
-        if (!cancelled) setIsLoadingTags(false);
+      }
+      finally {
+        if (!cancelled)
+          setIsLoadingTags(false);
       }
     };
 
@@ -390,11 +390,13 @@ export default function CreateEventForm() {
                                 !field.value && "text-muted-foreground",
                               )}
                             >
-                              {field.value ? (
-                                format(field.value, "PPP p")
-                              ) : (
-                                <span>Pick a date and time</span>
-                              )}
+                              {field.value
+                                ? (
+                                    format(field.value, "PPP p")
+                                  )
+                                : (
+                                    <span>Pick a date and time</span>
+                                  )}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
@@ -404,9 +406,8 @@ export default function CreateEventForm() {
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date(new Date().setHours(0, 0, 0, 0))
-                            }
+                            disabled={date =>
+                              date < new Date(new Date().setHours(0, 0, 0, 0))}
                             initialFocus
                           />
                           <div className="p-3 border-t">
@@ -416,14 +417,14 @@ export default function CreateEventForm() {
                                 field.value ? format(field.value, "HH:mm") : ""
                               }
                               onChange={(e) => {
-                                const [hours, minutes] =
-                                  e.target.value.split(":");
+                                const [hours, minutes]
+                                  = e.target.value.split(":");
                                 const newDate = field.value
                                   ? new Date(field.value)
                                   : new Date();
                                 newDate.setHours(
-                                  parseInt(hours),
-                                  parseInt(minutes),
+                                  Number.parseInt(hours),
+                                  Number.parseInt(minutes),
                                 );
                                 field.onChange(newDate);
                               }}
@@ -452,11 +453,13 @@ export default function CreateEventForm() {
                                 !field.value && "text-muted-foreground",
                               )}
                             >
-                              {field.value ? (
-                                format(field.value, "PPP p")
-                              ) : (
-                                <span>Pick a date and time</span>
-                              )}
+                              {field.value
+                                ? (
+                                    format(field.value, "PPP p")
+                                  )
+                                : (
+                                    <span>Pick a date and time</span>
+                                  )}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
@@ -466,9 +469,8 @@ export default function CreateEventForm() {
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date(new Date().setHours(0, 0, 0, 0))
-                            }
+                            disabled={date =>
+                              date < new Date(new Date().setHours(0, 0, 0, 0))}
                             initialFocus
                           />
                           <div className="p-3 border-t">
@@ -478,14 +480,14 @@ export default function CreateEventForm() {
                                 field.value ? format(field.value, "HH:mm") : ""
                               }
                               onChange={(e) => {
-                                const [hours, minutes] =
-                                  e.target.value.split(":");
+                                const [hours, minutes]
+                                  = e.target.value.split(":");
                                 const newDate = field.value
                                   ? new Date(field.value)
                                   : new Date();
                                 newDate.setHours(
-                                  parseInt(hours),
-                                  parseInt(minutes),
+                                  Number.parseInt(hours),
+                                  Number.parseInt(minutes),
                                 );
                                 field.onChange(newDate);
                               }}
@@ -537,9 +539,8 @@ export default function CreateEventForm() {
                         min={1}
                         max={10}
                         {...field}
-                        onChange={(e) =>
-                          field.onChange(parseInt(e.target.value))
-                        }
+                        onChange={e =>
+                          field.onChange(Number.parseInt(e.target.value))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -559,9 +560,8 @@ export default function CreateEventForm() {
                         min={form.watch("minTeamSize")}
                         max={10}
                         {...field}
-                        onChange={(e) =>
-                          field.onChange(parseInt(e.target.value))
-                        }
+                        onChange={e =>
+                          field.onChange(Number.parseInt(e.target.value))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -796,7 +796,7 @@ export default function CreateEventForm() {
               </div>
 
               <datalist id="repo-tags">
-                {availableTags.map((tag) => (
+                {availableTags.map(tag => (
                   <option key={tag} value={tag} />
                 ))}
               </datalist>

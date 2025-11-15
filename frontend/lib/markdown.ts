@@ -1,11 +1,11 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { promises as fs } from "node:fs";
+import path from "node:path";
 import matter from "gray-matter";
-import remarkParse from "remark-parse";
-import remarkGfm from "remark-gfm";
-import remarkRehype from "remark-rehype";
 import rehypeHighlight from "rehype-highlight";
 import rehypeStringify from "rehype-stringify";
+import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 
 const FALLBACK_WIKI_VERSION = "latest";
@@ -57,7 +57,7 @@ const contentDirectory = path.join(process.cwd(), "content/wiki");
 // Exposed default wiki version getter for centralized control
 export async function getDefaultWikiVersion(): Promise<string> {
   const versions = await getAvailableVersions();
-  const defaultVersion = versions.find((v) => v.isDefault);
+  const defaultVersion = versions.find(v => v.isDefault);
   return defaultVersion ? defaultVersion.slug : FALLBACK_WIKI_VERSION;
 }
 
@@ -71,10 +71,10 @@ export async function getAvailableVersions(): Promise<WikiVersion[]> {
     // Add directories as versions (no more root-level files handling)
     for (const entry of entries) {
       if (
-        entry.isDirectory() &&
-        !entry.name.startsWith(".") &&
-        entry.name !== "images" &&
-        entry.name !== "assets"
+        entry.isDirectory()
+        && !entry.name.startsWith(".")
+        && entry.name !== "images"
+        && entry.name !== "assets"
       ) {
         versions.push({
           name: formatVersionName(entry.name),
@@ -86,8 +86,8 @@ export async function getAvailableVersions(): Promise<WikiVersion[]> {
 
     // Determine newest stable tag as default, if any exist
     const tagSlugs = versions
-      .map((v) => v.slug)
-      .filter((slug) => isStableTagName(slug));
+      .map(v => v.slug)
+      .filter(slug => isStableTagName(slug));
 
     let defaultSlug = FALLBACK_WIKI_VERSION;
     if (tagSlugs.length > 0) {
@@ -99,11 +99,14 @@ export async function getAvailableVersions(): Promise<WikiVersion[]> {
     });
 
     return versions.sort((a, b) => {
-      if (a.isDefault) return -1;
-      if (b.isDefault) return 1;
+      if (a.isDefault)
+        return -1;
+      if (b.isDefault)
+        return 1;
       return b.name.localeCompare(a.name);
     });
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error reading versions:", error);
     return [];
   }
@@ -118,11 +121,13 @@ export async function getWikiPageWithVersion(
     let fileContent: string;
     try {
       fileContent = await fs.readFile(filePath, "utf8");
-    } catch (err: any) {
+    }
+    catch (err: any) {
       if (err.code === "ENOENT") {
         // If the file truly does not exist, signal not found so nice error message appears
         return null;
-      } else {
+      }
+      else {
         throw err;
       }
     }
@@ -146,6 +151,7 @@ export async function getWikiPageWithVersion(
 
     // Transform GitHub-style callouts (> [!TYPE])
     htmlContent = htmlContent.replace(
+      // eslint-disable-next-line regexp/no-super-linear-backtracking
       /<blockquote>\s*<p>\s*\[!(WARNING|INFO|NOTE|TIP|IMPORTANT|CAUTION)\]\s*(.*?)<\/p>\s*([\s\S]*?)<\/blockquote>/g,
       (_match: string, type: string, title: string, content: string) => {
         const typeClass = type.toLowerCase();
@@ -189,7 +195,8 @@ export async function getWikiPageWithVersion(
           imagePath = readmeDir
             ? path.posix.join(imageVersion, readmeDir, src)
             : path.posix.join(imageVersion, src);
-        } else {
+        }
+        else {
           // For regular .md files, images are relative to the file's directory
           const fileDir = path.dirname(
             path.relative(path.join(contentDirectory, imageVersion), filePath),
@@ -235,9 +242,9 @@ export async function getWikiPageWithVersion(
       (_match: string, href: string, attributes: string) => {
         // Skip if it's already a full URL, fragment link, or wiki link
         if (
-          href.startsWith("http") ||
-          href.startsWith("#") ||
-          href.startsWith("/wiki/")
+          href.startsWith("http")
+          || href.startsWith("#")
+          || href.startsWith("/wiki/")
         ) {
           return _match;
         }
@@ -251,10 +258,12 @@ export async function getWikiPageWithVersion(
     try {
       const stats = await fs.stat(filePath);
       lastModified = stats.mtime;
-    } catch (err: any) {
+    }
+    catch (err: any) {
       if (err.code === "ENOENT") {
         lastModified = new Date(0); // fallback for missing file
-      } else {
+      }
+      else {
         throw err;
       }
     }
@@ -276,7 +285,8 @@ export async function getWikiPageWithVersion(
       lastModified,
       version,
     };
-  } catch (error) {
+  }
+  catch (error) {
     console.error(
       `Error reading wiki page ${slug?.join("/") || "unknown"} for version ${version}:`,
       error,
@@ -303,11 +313,11 @@ export async function getWikiNavigationWithVersion(
 
       for (const entry of entries) {
         if (
-          entry.name.startsWith(".") ||
-          entry.name === "index.html" ||
-          entry.name === "script.js" ||
-          entry.name === "style.css" ||
-          entry.name === "favicon.ico"
+          entry.name.startsWith(".")
+          || entry.name === "index.html"
+          || entry.name === "script.js"
+          || entry.name === "style.css"
+          || entry.name === "favicon.ico"
         ) {
           continue;
         }
@@ -323,10 +333,11 @@ export async function getWikiNavigationWithVersion(
               title: formatTitle(entry.name),
               slug: [...basePath, entry.name],
               isFile: false,
-              children: children,
+              children,
             });
           }
-        } else if (entry.name.endsWith(".md")) {
+        }
+        else if (entry.name.endsWith(".md")) {
           const fsPath = path.join(dir, entry.name);
           let sidebarTitleOverride: string | undefined;
           let permalinkOverride: string | undefined;
@@ -336,13 +347,14 @@ export async function getWikiNavigationWithVersion(
             const front = matter(raw).data as WikiFrontmatter;
             sidebarTitleOverride = front.sidebarTitle ?? front.title;
             permalinkOverride = front.permalink;
-          } catch {
+          }
+          catch {
             // ignore file read errors, navigation will still render
           }
 
           const fileBase = entry.name.replace(".md", "");
-          const finalLastSegment =
-            permalinkOverride !== undefined ? permalinkOverride : fileBase;
+          const finalLastSegment
+            = permalinkOverride !== undefined ? permalinkOverride : fileBase;
 
           const slug = [...basePath, finalLastSegment];
           items.push({
@@ -355,26 +367,31 @@ export async function getWikiNavigationWithVersion(
           });
         }
       }
-    } catch (error) {
+    }
+    catch (error) {
       console.error(`Error reading directory ${dir}:`, error);
     }
 
     return items.sort((a, b) => {
       // Put README files first
       if (
-        a.title.toLowerCase().includes("readme") &&
-        !b.title.toLowerCase().includes("readme")
-      )
+        a.title.toLowerCase().includes("readme")
+        && !b.title.toLowerCase().includes("readme")
+      ) {
         return -1;
+      }
       if (
-        !a.title.toLowerCase().includes("readme") &&
-        b.title.toLowerCase().includes("readme")
-      )
+        !a.title.toLowerCase().includes("readme")
+        && b.title.toLowerCase().includes("readme")
+      ) {
         return 1;
+      }
 
       // Put files before directories
-      if (a.isFile && !b.isFile) return -1;
-      if (!a.isFile && b.isFile) return 1;
+      if (a.isFile && !b.isFile)
+        return -1;
+      if (!a.isFile && b.isFile)
+        return 1;
 
       return a.title.localeCompare(b.title);
     });
@@ -390,16 +407,16 @@ async function getFilePathFromSlugWithVersion(
   const actualVersion = version || (await getDefaultWikiVersion());
   const versionDir = path.join(contentDirectory, actualVersion);
 
-  const decodedSlug = slug.map((segment) => decodeURIComponent(segment));
+  const decodedSlug = slug.map(segment => decodeURIComponent(segment));
 
   if (
-    decodedSlug.length === 0 ||
-    (decodedSlug.length === 1 && decodedSlug[0] === "")
+    decodedSlug.length === 0
+    || (decodedSlug.length === 1 && decodedSlug[0] === "")
   ) {
     return path.join(versionDir, "README.md");
   }
 
-  const candidateDirect = path.resolve(versionDir, ...decodedSlug) + ".md";
+  const candidateDirect = `${path.resolve(versionDir, ...decodedSlug)}.md`;
   if (!candidateDirect.startsWith(path.resolve(versionDir))) {
     throw new Error("Invalid wiki path");
   }
@@ -407,7 +424,8 @@ async function getFilePathFromSlugWithVersion(
   try {
     await fs.access(candidateDirect);
     return candidateDirect;
-  } catch {
+  }
+  catch {
     // Try README in directory
     const candidateReadme = path.resolve(
       versionDir,
@@ -420,7 +438,8 @@ async function getFilePathFromSlugWithVersion(
     try {
       await fs.access(candidateReadme);
       return candidateReadme;
-    } catch {
+    }
+    catch {
       // FALLBACK: last segment might be a PERMALINK pointing to some file in this directory
       const parentDir = path.resolve(versionDir, ...decodedSlug.slice(0, -1));
       if (!parentDir.startsWith(path.resolve(versionDir))) {
@@ -431,7 +450,8 @@ async function getFilePathFromSlugWithVersion(
           withFileTypes: true,
         });
         for (const e of entries) {
-          if (!e.isFile() || !e.name.endsWith(".md")) continue;
+          if (!e.isFile() || !e.name.endsWith(".md"))
+            continue;
           const p = path.join(parentDir, e.name);
           try {
             const raw = await fs.readFile(p, "utf8");
@@ -439,11 +459,13 @@ async function getFilePathFromSlugWithVersion(
             if (front.permalink === decodedSlug[decodedSlug.length - 1]) {
               return p;
             }
-          } catch {
+          }
+          catch {
             // ignore a single file read error and continue
           }
         }
-      } catch {
+      }
+      catch {
         // parent directory not readable or doesn't exist
       }
     }
@@ -459,7 +481,8 @@ function formatVersionName(slug: string): string {
 }
 
 function getTitleFromSlug(slug: string[]): string {
-  if (slug.length === 0) return "README";
+  if (slug.length === 0)
+    return "README";
   // Decode the last segment to handle URL-encoded characters
   const lastSegment = decodeURIComponent(slug[slug.length - 1]);
   return formatTitle(lastSegment);
@@ -467,19 +490,20 @@ function getTitleFromSlug(slug: string[]): string {
 
 function formatTitle(name: string): string {
   // Convert kebab-case or snake_case to Title Case
-  return name.replace(/[-_]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+  return name.replace(/[-_]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
 }
 
 // Helpers to detect and compare stable tag directory names like "v1.2.3" or "1.2.3.4"
 function isStableTagName(name: string): boolean {
-  if (name.includes("-")) return false; // exclude pre-release markers
+  if (name.includes("-"))
+    return false; // exclude pre-release markers
   const normalized = name.startsWith("v") ? name.slice(1) : name;
   return /^\d+(?:\.\d+)*$/.test(normalized);
 }
 
 function parseTagNumbers(name: string): number[] {
   const normalized = name.startsWith("v") ? name.slice(1) : name;
-  return normalized.split(".").map((n) => parseInt(n, 10) || 0);
+  return normalized.split(".").map(n => Number.parseInt(n, 10) || 0);
 }
 
 function compareTagNamesDesc(a: string, b: string): number {
@@ -489,7 +513,8 @@ function compareTagNamesDesc(a: string, b: string): number {
   for (let i = 0; i < maxLen; i++) {
     const aVal = aNums[i] ?? 0;
     const bVal = bNums[i] ?? 0;
-    if (aVal !== bVal) return bVal - aVal; // descending: larger first
+    if (aVal !== bVal)
+      return bVal - aVal; // descending: larger first
   }
   return 0;
 }
@@ -516,7 +541,8 @@ export async function searchWikiPages(
         snippet = page.title;
         highlightedSnippet = highlightText(page.title, query);
         matchType = "title";
-      } else if (contentMatch) {
+      }
+      else if (contentMatch) {
         const plainTextContent = stripHtml(page.content);
         const matchIndex = plainTextContent
           .toLowerCase()
@@ -532,8 +558,10 @@ export async function searchWikiPages(
         snippet = plainTextContent.substring(start, end);
 
         // Add ellipsis if we're not at the beginning/end
-        if (start > 0) snippet = "..." + snippet;
-        if (end < plainTextContent.length) snippet = snippet + "...";
+        if (start > 0)
+          snippet = `...${snippet}`;
+        if (end < plainTextContent.length)
+          snippet = `${snippet}...`;
 
         highlightedSnippet = highlightText(snippet, query);
         matchType = "content";
@@ -587,7 +615,8 @@ export async function getAllWikiPagesForVersion(
             ...basePath,
             entry.name,
           ]);
-        } else if (entry.name.endsWith(".md")) {
+        }
+        else if (entry.name.endsWith(".md")) {
           const slug = [...basePath, entry.name.replace(".md", "")];
           const page = await getWikiPageWithVersion(slug, actualVersion);
           if (page) {
@@ -595,7 +624,8 @@ export async function getAllWikiPagesForVersion(
           }
         }
       }
-    } catch (error) {
+    }
+    catch (error) {
       console.error(`Error walking directory ${dir}:`, error);
     }
   }

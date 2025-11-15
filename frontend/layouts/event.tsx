@@ -1,15 +1,15 @@
-import EventNavbar from "@/components/event-navbar";
-import EventJoinNotice from "@/components/event-join-notice";
+import { getServerSession } from "next-auth";
 import React from "react";
+import { isActionError } from "@/app/actions/errors";
 import {
   getEventById,
   isEventAdmin,
   isUserRegisteredForEvent,
   shouldShowJoinNotice,
 } from "@/app/actions/event";
-import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/utils/authOptions";
-import { isActionError } from "@/app/actions/errors";
+import EventJoinNotice from "@/components/event-join-notice";
+import EventNavbar from "@/components/event-navbar";
 
 export default async function EventLayout({
   children,
@@ -37,7 +37,7 @@ export default async function EventLayout({
 
   const event = await getEventById(eventId);
   if (isActionError(event))
-    throw new Error("Could not get Event: " + event.error);
+    throw new Error(`Could not get Event: ${event.error}`);
 
   const isEventAdminState = await isEventAdmin(eventId);
   const isUserRegistered = await isUserRegisteredForEvent(eventId);

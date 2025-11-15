@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
+import type {
   Event,
+} from "@/app/actions/event";
+import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
+import { isActionError } from "@/app/actions/errors";
+import {
   getEventById,
   getParticipantsCountForEvent,
   getTeamsCountForEvent,
@@ -12,18 +14,18 @@ import {
   setEventTeamsLockDate,
 } from "@/app/actions/event";
 
-import { useSession } from "next-auth/react";
-import { lockEvent } from "@/app/actions/team";
-import { isActionError } from "@/app/actions/errors";
 import { EventState } from "@/app/actions/event-model";
+import { lockEvent } from "@/app/actions/team";
 import {
   startSwissMatches,
   startTournamentMatches,
 } from "@/app/actions/tournament";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-type DashboardPageProps = {
+interface DashboardPageProps {
   eventId: string;
-};
+}
 
 export function DashboardPage({ eventId }: DashboardPageProps) {
   const session = useSession();
@@ -33,8 +35,8 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   const [participantsCount, setParticipantsCount] = useState<number>(0);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
-  const [lockingTeamsLoading, setLockingTeamsLoading] =
-    useState<boolean>(false);
+  const [lockingTeamsLoading, setLockingTeamsLoading]
+    = useState<boolean>(false);
   const [startingGroupPhase, setStartingGroupPhase] = useState<boolean>(false);
   const [startingTournament, setStartingTournament] = useState<boolean>(false);
   const [teamAutoLockTime, setTeamAutoLockTime] = useState<string>("");
@@ -62,7 +64,8 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
         }
         setIsAdmin(true);
         setLoading(false);
-      } catch (error) {
+      }
+      catch (error) {
         console.error("Error loading dashboard data:", error);
         setLoading(false);
       }
@@ -189,13 +192,13 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 </div>
               )}
 
-              {!event.monorepoUrl &&
-                !event.gameServerDockerImage &&
-                !event.myCoreBotDockerImage && (
-                  <p className="text-gray-400 italic">
-                    No Docker configuration set for this event.
-                  </p>
-                )}
+              {!event.monorepoUrl
+                && !event.gameServerDockerImage
+                && !event.myCoreBotDockerImage && (
+                <p className="text-gray-400 italic">
+                  No Docker configuration set for this event.
+                </p>
+              )}
             </div>
           </div>
           <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
@@ -225,7 +228,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
               <Button
                 disabled={
-                  event.state != EventState.SWISS_ROUND || startingGroupPhase
+                  event.state !== EventState.SWISS_ROUND || startingGroupPhase
                 }
                 onClick={() => {
                   setStartingGroupPhase(true);
@@ -246,8 +249,8 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
               <Button
                 disabled={
-                  event.state != EventState.ELIMINATION_ROUND ||
-                  startingTournament
+                  event.state !== EventState.ELIMINATION_ROUND
+                  || startingTournament
                 }
                 onClick={() => {
                   setStartingTournament(true);
@@ -273,7 +276,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
               <Input
                 type="datetime-local"
                 value={teamAutoLockTime}
-                onChange={(e) => setTeamAutoLockTime(e.target.value)}
+                onChange={e => setTeamAutoLockTime(e.target.value)}
                 className="max-w-[300px]"
                 placeholder="lock repo"
               />
@@ -285,8 +288,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     new Date(teamAutoLockTime).getTime(),
                   ).then(() => {
                     alert("set team auto lock date");
-                  })
-                }
+                  })}
               >
                 save
               </Button>

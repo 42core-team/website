@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { User } from "@/components/user";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Suspense, useEffect } from "react";
 import { title } from "@/components/primitives";
 import SocialAccountsDisplay from "@/components/social-accounts-display";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { User } from "@/components/user";
 
 function ProfileContent() {
   const router = useRouter();
@@ -25,7 +25,8 @@ function ProfileContent() {
       </div>
     );
   }
-  if (!session) return null;
+  if (!session)
+    return null;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -64,11 +65,11 @@ function ProfileContent() {
 export default function ProfileClient() {
   return (
     <Suspense
-      fallback={
+      fallback={(
         <div className="flex justify-center items-center min-h-[200px]">
           <div className="text-muted-foreground">Loading...</div>
         </div>
-      }
+      )}
     >
       <ProfileContent />
     </Suspense>

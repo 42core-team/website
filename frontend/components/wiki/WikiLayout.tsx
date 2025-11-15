@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import type { WikiNavItem, WikiVersion } from "@/lib/markdown";
+import { Menu } from "lucide-react";
 import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useNavbar } from "@/contexts/NavbarContext";
+import { VersionSelector } from "./VersionSelector";
 import { WikiNavigation } from "./WikiNavigation";
 import { WikiSearch } from "./WikiSearch";
-import { VersionSelector } from "./VersionSelector";
-import { WikiNavItem, WikiVersion } from "@/lib/markdown";
-import { useNavbar } from "@/contexts/NavbarContext";
-import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface WikiLayoutProps {
   children: React.ReactNode;
@@ -34,7 +34,8 @@ export function WikiLayout({
   // Ensure clicks on in-content heading anchors scroll inside wiki-content only
   useEffect(() => {
     const container = document.querySelector(".main-wiki-content");
-    if (!container) return;
+    if (!container)
+      return;
 
     const links = container.querySelectorAll("a.heading-anchor");
     const handleClick = (e: Event) => {
@@ -44,8 +45,8 @@ export function WikiLayout({
       if (targetId) {
         const target = document.getElementById(targetId);
         if (target) {
-          const offset =
-            target.offsetTop - (container as HTMLElement).offsetTop;
+          const offset
+            = target.offsetTop - (container as HTMLElement).offsetTop;
           (container as HTMLElement).scrollTo({
             top: offset,
             behavior: "smooth",
@@ -54,40 +55,44 @@ export function WikiLayout({
       }
     };
 
-    links.forEach((link) => link.addEventListener("click", handleClick));
+    links.forEach(link => link.addEventListener("click", handleClick));
     return () => {
-      links.forEach((link) => link.removeEventListener("click", handleClick));
+      links.forEach(link => link.removeEventListener("click", handleClick));
     };
   }, []);
 
   // Intercept in-content wiki links to enable Next.js client-side navigation
   useEffect(() => {
     const container = document.querySelector(".main-wiki-content");
-    if (!container) return;
+    if (!container)
+      return;
 
     const handleClick = (e: MouseEvent) => {
       // Respect modifier keys and non-left clicks (open in new tab, etc.)
       if (
-        e.defaultPrevented ||
-        e.metaKey ||
-        e.ctrlKey ||
-        e.shiftKey ||
-        e.altKey ||
-        e.button !== 0
+        e.defaultPrevented
+        || e.metaKey
+        || e.ctrlKey
+        || e.shiftKey
+        || e.altKey
+        || e.button !== 0
       ) {
         return;
       }
 
       const target = e.target as HTMLElement | null;
       const anchor = target?.closest("a") as HTMLAnchorElement | null;
-      if (!anchor) return;
+      if (!anchor)
+        return;
 
       const href = anchor.getAttribute("href") || "";
       // Skip external links, hash links, and already-handled anchors
-      if (!href || href.startsWith("http") || href.startsWith("#")) return;
+      if (!href || href.startsWith("http") || href.startsWith("#"))
+        return;
 
       // Only intercept internal wiki links
-      if (!href.startsWith("/wiki/")) return;
+      if (!href.startsWith("/wiki/"))
+        return;
 
       e.preventDefault();
       router.push(href);

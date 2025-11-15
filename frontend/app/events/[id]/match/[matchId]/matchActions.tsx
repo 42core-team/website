@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { revealMatch } from "@/app/actions/tournament";
+import { Button } from "@/components/ui/button";
 
 export default function MatchActions(props: {
   matchId: string;

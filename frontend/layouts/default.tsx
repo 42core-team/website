@@ -1,9 +1,9 @@
-import { Head } from "./head";
+import { getServerSession } from "next-auth/next";
 
+import { authOptions } from "@/app/utils/authOptions";
 import BasicNavbar from "./basic-navbar";
 import Footer from "./footer";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/utils/authOptions";
+import { Head } from "./head";
 
 export default async function DefaultLayout({
   children,

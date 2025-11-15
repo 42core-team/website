@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  OAUTH_URLS,
   OAUTH_CONFIG,
   OAUTH_PROVIDERS,
+  OAUTH_URLS,
 } from "@/lib/constants/oauth";
 
 /**
@@ -65,9 +65,8 @@ export function use42Linking(onSuccess?: () => void): Use42LinkingReturn {
       // Generate a cryptographically secure random state string
       const array = new Uint8Array(OAUTH_CONFIG.STATE_LENGTH);
       window.crypto.getRandomValues(array);
-      const state = Array.from(array, (b) =>
-        b.toString(16).padStart(2, "0"),
-      ).join("");
+      const state = Array.from(array, b =>
+        b.toString(16).padStart(2, "0")).join("");
       const authUrl = new URL(OAUTH_URLS.FORTY_TWO_AUTHORIZE);
 
       authUrl.searchParams.set("client_id", clientId);
@@ -106,11 +105,13 @@ export function use42Linking(onSuccess?: () => void): Use42LinkingReturn {
         const url = new URL(window.location.href);
         url.searchParams.delete("success");
         window.history.replaceState({}, "", url.toString());
-      } else if (error) {
+      }
+      else if (error) {
         // Only show messages for errors
         if (error === "invalid-provider") {
           setMessage({ type: "error", text: "Invalid OAuth provider" });
-        } else {
+        }
+        else {
           setMessage({ type: "error", text: error.replace(/-/g, " ") });
         }
       }

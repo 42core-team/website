@@ -1,12 +1,12 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { WikiLayout } from "@/components/wiki/WikiLayout";
 import {
-  getWikiPageWithVersion,
-  getWikiNavigationWithVersion,
   getAvailableVersions,
   getDefaultWikiVersion,
+  getWikiNavigationWithVersion,
+  getWikiPageWithVersion,
 } from "@/lib/markdown";
-import { WikiLayout } from "@/components/wiki/WikiLayout";
 
 interface WikiPageProps {
   params: Promise<{ slug?: string[] }>;
@@ -21,7 +21,7 @@ async function parseSlugForVersion(slug: string[]) {
   }
 
   const possibleVersion = slug[0];
-  const isVersion = versions.some((v) => v.slug === possibleVersion);
+  const isVersion = versions.some(v => v.slug === possibleVersion);
 
   if (isVersion) {
     return {
@@ -84,7 +84,7 @@ export async function generateStaticParams() {
 
   for (const version of versions) {
     const nav = await getWikiNavigationWithVersion(version.slug);
-    const traverse = (items: any[], prefix: string[] = []) => {
+    const traverse = (items: any[], _prefix: string[] = []) => {
       for (const item of items) {
         if (item.isFile) {
           params.push({ slug: [version.slug, ...item.slug] });
@@ -115,11 +115,13 @@ export default async function WikiPage({ params }: WikiPageProps) {
 
   try {
     page = await getWikiPageWithVersion(pagePath, version);
-  } catch (error: any) {
+  }
+  catch (error: any) {
     // Check if this is an image file error
     if (error.message && error.message.includes("Cannot load image file")) {
       isImageError = true;
-    } else {
+    }
+    else {
       throw error; // Re-throw other errors
     }
   }
@@ -152,8 +154,11 @@ export default async function WikiPage({ params }: WikiPageProps) {
                   Image File Accessed
                 </h3>
                 <p className="text-warning-700">
-                  You tried to access an image file{" "}
-                  <code>{pagePath[pagePath.length - 1]}</code> as a page.
+                  You tried to access an image file
+                  {" "}
+                  <code>{pagePath[pagePath.length - 1]}</code>
+                  {" "}
+                  as a page.
                   Showing the parent page instead.
                 </p>
               </div>
@@ -164,7 +169,9 @@ export default async function WikiPage({ params }: WikiPageProps) {
                 </h1>
                 <div className="text-sm text-muted-foreground flex items-center gap-4">
                   <span>
-                    Last updated: {parentPage.lastModified.toLocaleDateString()}
+                    Last updated:
+                    {" "}
+                    {parentPage.lastModified.toLocaleDateString()}
                   </span>
                   {version !== defaultVersion && (
                     <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded text-xs font-medium">
@@ -182,7 +189,8 @@ export default async function WikiPage({ params }: WikiPageProps) {
           </WikiLayout>
         );
       }
-    } catch {
+    }
+    catch {
       // If parent page doesn't exist, fall through to notFound
     }
   }
@@ -206,8 +214,14 @@ export default async function WikiPage({ params }: WikiPageProps) {
                 Content Not Available
               </h3>
               <p className="text-warning-700">
-                The page <code>{pagePath.join("/")}</code> is not available in{" "}
-                {version === defaultVersion ? "the default version" : version}.
+                The page
+                {" "}
+                <code>{pagePath.join("/")}</code>
+                {" "}
+                is not available in
+                {" "}
+                {version === defaultVersion ? "the default version" : version}
+                .
                 Showing the home page for this version instead.
               </p>
             </div>
@@ -218,7 +232,9 @@ export default async function WikiPage({ params }: WikiPageProps) {
               </h1>
               <div className="text-sm text-muted-foreground flex items-center gap-4">
                 <span>
-                  Last updated: {homePage.lastModified.toLocaleDateString()}
+                  Last updated:
+                  {" "}
+                  {homePage.lastModified.toLocaleDateString()}
                 </span>
                 {version !== defaultVersion && (
                   <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded text-xs font-medium">
@@ -256,7 +272,10 @@ export default async function WikiPage({ params }: WikiPageProps) {
             {page.title}
           </h1>
           <div className="text-sm text-muted-foreground flex items-center gap-4">
-            <span>Last updated: {page.lastModified.toLocaleDateString()}</span>
+            <span>
+              Last updated:
+              {page.lastModified.toLocaleDateString()}
+            </span>
             {version !== defaultVersion && (
               <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded text-xs font-medium">
                 {version}

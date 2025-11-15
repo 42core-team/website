@@ -1,12 +1,12 @@
-import React, { useEffect, useState, useRef } from "react";
-import { WikiNavItem } from "@/lib/markdown";
+import type { WikiNavItem } from "@/lib/markdown";
+import Link from "next/link";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Accordion,
+  AccordionContent,
   AccordionItem,
   AccordionTrigger,
-  AccordionContent,
 } from "@/components/ui/accordion";
-import Link from "next/link";
 
 const INDENT_BASE = 8; // px
 const INDENT_STEP = 10; // px per depth level
@@ -49,25 +49,28 @@ export function WikiNavigation({
     const headings = doc.querySelectorAll("h1, h2, h3, h4, h5, h6");
 
     const tocItems: TocItem[] = Array.from(headings)
-      .map((heading) => ({
+      .map(heading => ({
         id: heading.id,
         text: heading.textContent || "",
-        level: parseInt(heading.tagName.charAt(1)),
+        level: Number.parseInt(heading.tagName.charAt(1)),
       }))
-      .filter((item) => item.id && item.text);
+      .filter(item => item.id && item.text);
 
     setToc(tocItems);
   }, [pageContent]);
 
   // Track which heading is currently visible
   useEffect(() => {
-    if (toc.length === 0) return;
+    if (toc.length === 0)
+      return;
 
     const handleIntersect = (entries: IntersectionObserverEntry[]) => {
-      if (isScrollingRef.current) return;
+      if (isScrollingRef.current)
+        return;
 
-      const intersectingEntries = entries.filter((e) => e.isIntersecting);
-      if (intersectingEntries.length === 0) return;
+      const intersectingEntries = entries.filter(e => e.isIntersecting);
+      if (intersectingEntries.length === 0)
+        return;
 
       // The ideal position is 100px from the top, matching the scroll-margin-top
       const idealPosition = 100;
@@ -95,10 +98,10 @@ export function WikiNavigation({
             );
 
             if (contentContainer instanceof HTMLElement) {
-              const offset =
-                activeLink.offsetTop -
-                contentContainer.clientHeight / 2 +
-                activeLink.clientHeight / 2;
+              const offset
+                = activeLink.offsetTop
+                  - contentContainer.clientHeight / 2
+                  + activeLink.clientHeight / 2;
               contentContainer.scrollTo({
                 top: offset,
                 behavior: "smooth",
@@ -115,7 +118,8 @@ export function WikiNavigation({
 
     toc.forEach(({ id }) => {
       const element = document.getElementById(id);
-      if (element) observer.observe(element);
+      if (element)
+        observer.observe(element);
     });
 
     return () => {
@@ -203,7 +207,7 @@ export function WikiNavigation({
               <div className="space-y-0.5">
                 {toc.map((tocItem, index) => (
                   <a
-                    key={`toc-${index}-${tocItem.id.replace(/[^a-zA-Z0-9-_]/g, "_")}`}
+                    key={`toc-${index}-${tocItem.id.replace(/[^\w-]/g, "_")}`}
                     href={`#${tocItem.id}`}
                     onClick={(e) => {
                       handleTocClick(tocItem.id, e);
@@ -227,17 +231,6 @@ export function WikiNavigation({
         </div>
       );
     }
-
-    const collectAllPaths = (items: WikiNavItem[]): string[] => {
-      return items.flatMap((item) => {
-        const path = item.slug.join("/");
-        if (item.children && item.children.length > 0) {
-          return [path, ...collectAllPaths(item.children)];
-        }
-        return [];
-      });
-    };
-    const allPaths = collectAllPaths(items);
 
     if (item.children && item.children.length > 0) {
       // Shadcn Accordion usage: single root per directory item with one item inside.

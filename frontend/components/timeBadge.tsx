@@ -1,7 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { useState, useEffect } from "react";
 
 export default function TimeBadge({
   time,

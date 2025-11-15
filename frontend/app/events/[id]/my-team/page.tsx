@@ -1,17 +1,19 @@
+import type {
+  TeamMember,
+} from "@/app/actions/team";
+import { AlertCircleIcon } from "lucide-react";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/utils/authOptions";
 import { redirect } from "next/navigation";
+import { isActionError } from "@/app/actions/errors";
+import { getEventById, isUserRegisteredForEvent } from "@/app/actions/event";
 import {
   getMyEventTeam,
   getTeamMembers,
   getUserPendingInvites,
-  TeamMember,
 } from "@/app/actions/team";
-import { getEventById, isUserRegisteredForEvent } from "@/app/actions/event";
-import TeamView from "./teamView";
-import { isActionError } from "@/app/actions/errors";
+import { authOptions } from "@/app/utils/authOptions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircleIcon } from "lucide-react";
+import TeamView from "./teamView";
 
 export const metadata = {
   title: "My Team",

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 
@@ -32,7 +33,7 @@ export default function Footer() {
           {/* Logo and Description */}
           <div className="col-span-1 md:col-span-2">
             <Link href="/" className="flex items-center gap-2">
-              <img src="/logo-white.svg" alt="CORE" className="w-8 h-8" />
+              <Image src="/logo-white.svg" alt="CORE" width={32} height={32} className="size-8" />
               <span className="font-bold text-xl">CORE</span>
             </Link>
             <p className="mt-4 text-muted-foreground">

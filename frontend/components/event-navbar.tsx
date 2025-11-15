@@ -1,8 +1,8 @@
 "use client";
+import type { Event } from "@/app/actions/event";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Event } from "@/app/actions/event";
 import { EventState } from "@/app/actions/event-model";
 
 interface EventNavbarProps {
@@ -35,9 +35,9 @@ export default function EventNavbar({
           ]
         : []),
       { name: "Teams", path: `/events/${eventId}/teams` },
-      ...(event.state === EventState.ELIMINATION_ROUND ||
-      event.state === EventState.SWISS_ROUND ||
-      event.state === EventState.FINISHED
+      ...(event.state === EventState.ELIMINATION_ROUND
+        || event.state === EventState.SWISS_ROUND
+        || event.state === EventState.FINISHED
         ? [
             { name: "Group Phase", path: `/events/${eventId}/groups` },
             { name: "Tournament Tree", path: `/events/${eventId}/bracket` },
@@ -57,7 +57,7 @@ export default function EventNavbar({
   return (
     <div className="w-full border-t">
       <nav className="container mx-auto max-w-7xl px-6 h-16 flex items-center justify-center gap-8">
-        {navItems.map((item) => (
+        {navItems.map(item => (
           <Link
             key={item.path}
             href={item.path}

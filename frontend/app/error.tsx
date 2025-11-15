@@ -1,16 +1,16 @@
 "use client";
 
-import {
-  Card,
-  CardHeader,
-  CardContent,
-  CardFooter,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default function Error({ error }: { error: Error }) {
   return (
@@ -24,10 +24,13 @@ export default function Error({ error }: { error: Error }) {
         </CardHeader>
         <CardContent className="text-center space-y-4">
           <p>
-            <strong>Error message:</strong> {error.message}
+            <strong>Error message:</strong>
+            {" "}
+            {error.message}
           </p>
           <p className=" text-balance">
-            If the problem persists, you can check{" "}
+            If the problem persists, you can check
+            {" "}
             <Link
               href="https://status.coregame.de"
               className="hover:underline"
@@ -35,7 +38,8 @@ export default function Error({ error }: { error: Error }) {
               rel="noopener noreferrer"
             >
               status.coregame.de
-            </Link>{" "}
+            </Link>
+            {" "}
             for known issues.
           </p>
         </CardContent>
@@ -43,25 +47,25 @@ export default function Error({ error }: { error: Error }) {
           <Button
             variant="destructive"
             onClick={() => {
-              const base =
-                "https://github.com/42core-team/website_relaunch/issues/new";
+              const base
+                = "https://github.com/42core-team/website_relaunch/issues/new";
               const title = encodeURIComponent(`Bug: Error - ${error.message}`);
               const body = encodeURIComponent(
-                `An unexpected error occurred.\n\n` +
-                  `- Error message: ${error.message}\n` +
-                  `- Broken URL: ${location.href}\n` +
-                  `- Referrer: ${document.referrer || "N/A"}\n` +
-                  `- Expected behavior:\n` +
-                  `- Actual behavior:\n` +
-                  `- Screenshot(s): Drag-and-drop or paste here\n` +
-                  `- Browser: ${navigator.userAgent}\n` +
-                  `- OS: \n` +
-                  `- Device: \n` +
-                  `- Time (UTC): ${new Date()
-                    .toISOString()
-                    .replace("T", " ")
-                    .replace("Z", " UTC")}\n\n` +
-                  `Additional context:\n`,
+                `An unexpected error occurred.\n\n`
+                + `- Error message: ${error.message}\n`
+                + `- Broken URL: ${location.href}\n`
+                + `- Referrer: ${document.referrer || "N/A"}\n`
+                + `- Expected behavior:\n`
+                + `- Actual behavior:\n`
+                + `- Screenshot(s): Drag-and-drop or paste here\n`
+                + `- Browser: ${navigator.userAgent}\n`
+                + `- OS: \n`
+                + `- Device: \n`
+                + `- Time (UTC): ${new Date()
+                  .toISOString()
+                  .replace("T", " ")
+                  .replace("Z", " UTC")}\n\n`
+                  + `Additional context:\n`,
               );
               window.open(
                 `${base}?labels=bug&title=${title}&body=${body}`,

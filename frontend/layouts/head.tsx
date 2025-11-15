@@ -1,9 +1,9 @@
-import React from "react";
 import NextHead from "next/head";
+import React from "react";
 
 import { siteConfig } from "@/config/site";
 
-export const Head = () => {
+export function Head() {
   let visualizerOrigin: string | undefined;
   try {
     const v = process.env.NEXT_PUBLIC_VISUALIZER_URL;
@@ -11,7 +11,8 @@ export const Head = () => {
       const url = new URL(v);
       visualizerOrigin = url.origin;
     }
-  } catch {
+  }
+  catch {
     // ignore invalid URL
   }
 
@@ -39,4 +40,4 @@ export const Head = () => {
       )}
     </NextHead>
   );
-};
+}

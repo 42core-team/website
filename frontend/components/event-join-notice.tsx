@@ -1,9 +1,9 @@
 "use client";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useEffect, useState, useRef } from "react";
-import { joinEvent } from "@/app/actions/event";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { joinEvent } from "@/app/actions/event";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface EventJoinNoticeProps {
   eventId: string;
@@ -17,7 +17,7 @@ export default function EventJoinNotice({
   startDate,
 }: EventJoinNoticeProps) {
   const router = useRouter();
-  const [isJoining, setIsJoining] = useState(false);
+  const [_isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState<Date>(new Date());
   const startsAt = new Date(startDate);
@@ -49,7 +49,8 @@ export default function EventJoinNotice({
   };
 
   const handleJoin = async () => {
-    if (!hasStarted) return;
+    if (!hasStarted)
+      return;
     setIsJoining(true);
     setError(null);
 
@@ -58,13 +59,16 @@ export default function EventJoinNotice({
 
       if (success) {
         router.refresh();
-      } else {
+      }
+      else {
         setError("Failed to join the event. Please try again.");
       }
-    } catch (err) {
+    }
+    catch (err) {
       console.error("Error joining event:", err);
       setError("Failed to join the event. Please try again.");
-    } finally {
+    }
+    finally {
       setIsJoining(false);
     }
   };
@@ -74,32 +78,36 @@ export default function EventJoinNotice({
   return (
     <div className="w-full bg-primary-50 border-b border-primary-200">
       <div className="container mx-auto max-w-7xl px-6 h-14 flex items-center justify-between">
-        {hasStarted ? (
-          <>
-            <p className="text-primary-700">
-              Join this event to participate with your team!
-            </p>
-            <div className="flex items-center gap-4">
-              {error && <span className="text-danger text-sm">{error}</span>}
-              <Button
-                color="primary"
-                // TODO: isLoading={isJoining}
-                onClick={handleJoin}
-              >
-                Join Event
-              </Button>
-            </div>
-          </>
-        ) : (
-          <div className="w-full flex items-center justify-between">
-            <p className="text-warning-400">
-              This event has not started yet. You can join once it begins.
-            </p>
-            <Badge variant="destructive" aria-label="Event countdown">
-              Starts in {formatTimeLeft(timeLeftMs)}
-            </Badge>
-          </div>
-        )}
+        {hasStarted
+          ? (
+              <>
+                <p className="text-primary-700">
+                  Join this event to participate with your team!
+                </p>
+                <div className="flex items-center gap-4">
+                  {error && <span className="text-danger text-sm">{error}</span>}
+                  <Button
+                    color="primary"
+                    // TODO: isLoading={isJoining}
+                    onClick={handleJoin}
+                  >
+                    Join Event
+                  </Button>
+                </div>
+              </>
+            )
+          : (
+              <div className="w-full flex items-center justify-between">
+                <p className="text-warning-400">
+                  This event has not started yet. You can join once it begins.
+                </p>
+                <Badge variant="destructive" aria-label="Event countdown">
+                  Starts in
+                  {" "}
+                  {formatTimeLeft(timeLeftMs)}
+                </Badge>
+              </div>
+            )}
       </div>
     </div>
   );

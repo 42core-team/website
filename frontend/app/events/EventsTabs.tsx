@@ -1,8 +1,8 @@
 "use client";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { Event } from "@/app/actions/event";
 import EventsTable from "@/app/events/EventTable";
-import { Event } from "@/app/actions/event";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function EventsTabs({
   myEvents,

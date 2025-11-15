@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { Team, TeamMember, leaveTeam } from "@/app/actions/team";
-import { TeamInfoSection } from "@/components/team";
-import { isActionError } from "@/app/actions/errors";
+import type { Team, TeamMember } from "@/app/actions/team";
 import { usePlausible } from "next-plausible";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { isActionError } from "@/app/actions/errors";
+import { leaveTeam } from "@/app/actions/team";
+import { TeamInfoSection } from "@/components/team";
 
 interface TeamInfoDisplayProps {
   team: Team;
@@ -28,7 +29,8 @@ export default function TeamInfoDisplay({
 
   useEffect(() => {
     function clearTimer() {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (timeoutRef.current)
+        clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
 
@@ -66,7 +68,8 @@ export default function TeamInfoDisplay({
       attemptsRef.current = 0;
       delayRef.current = 2500;
       scheduleNext(true);
-    } else {
+    }
+    else {
       setIsRepoPending(false);
       clearTimer();
     }
@@ -75,7 +78,6 @@ export default function TeamInfoDisplay({
       clearTimer();
     };
     // Only depend on repo presence and eventId
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [team?.repo, eventId]);
 
   async function handleLeaveTeam(): Promise<boolean> {

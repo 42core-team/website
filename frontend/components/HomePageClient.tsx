@@ -1,16 +1,18 @@
 "use client";
-import Image from "next/image";
+import type { Event } from "@/app/actions/event";
+import type { MatchStats } from "@/app/actions/stats";
 import { motion } from "framer-motion";
+import { useTheme } from "next-themes";
+
+import Image from "next/image";
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-
-import { Button } from "@/components/ui/button";
-
+import GlobalStats from "@/components/GlobalStats";
 import { GithubIcon, WikiIcon } from "@/components/icons";
 import { CoreLogoWhite } from "@/components/social";
-import GlobalStats from "@/components/GlobalStats";
-import { MatchStats } from "@/app/actions/stats";
-import { useTheme } from "next-themes";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -18,8 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Event } from "@/app/actions/event";
+
 export default function HomePageClient(props: {
   initialStats: MatchStats;
   currentLiveEvent?: Event;
@@ -37,8 +38,8 @@ export default function HomePageClient(props: {
     return () => clearInterval(id);
   }, []);
 
-  const visualizerTheme =
-    isMounted && resolvedTheme === "light" ? "light" : "dark";
+  const visualizerTheme
+    = isMounted && resolvedTheme === "light" ? "light" : "dark";
 
   const visualizerUrl = useMemo(() => {
     const base = process.env.NEXT_PUBLIC_VISUALIZER_URL;
@@ -83,7 +84,10 @@ export default function HomePageClient(props: {
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             <span className="text-foreground-500"></span>
-            <Badge>Ends in {formatTimeLeft(timeLeftMs)}</Badge>
+            <Badge>
+              Ends in
+              {formatTimeLeft(timeLeftMs)}
+            </Badge>
             <div className="mt-1">
               <Button asChild>
                 <Link href={`/events/${props.currentLiveEvent.id}`}>
@@ -165,7 +169,7 @@ export default function HomePageClient(props: {
                 <div className="flex flex-col items-center gap-4">
                   <h2 className="text-4xl font-bold">What the Game is About</h2>
                   <p className="text-2xl"></p>
-                  <p className="text-xl text-muted-foreground">{`CORE Game is a competitive coding challenge where you design and program your own bots to battle it out in a dynamic 2D arena. Every decision matters—strategy, efficiency, and adaptability will determine whether your bot rises to victory or falls in defeat. Are you ready to code your way to the top?`}</p>
+                  <p className="text-xl text-muted-foreground">CORE Game is a competitive coding challenge where you design and program your own bots to battle it out in a dynamic 2D arena. Every decision matters—strategy, efficiency, and adaptability will determine whether your bot rises to victory or falls in defeat. Are you ready to code your way to the top?</p>
                 </div>
               ),
               delay: 0.2,
@@ -214,7 +218,7 @@ export default function HomePageClient(props: {
               delay: 0.8,
               direction: -1,
             },
-          ].map((character) => (
+          ].map(character => (
             <motion.div
               key={character.alt}
               className="flex flex-col items-center min-h-lvh justify-center relative"
@@ -231,8 +235,8 @@ export default function HomePageClient(props: {
                 whileInView={{
                   opacity: 1,
                   x:
-                    character.direction *
-                    (typeof window !== "undefined"
+                    character.direction
+                    * (typeof window !== "undefined"
                       ? window.innerWidth * 0.47
                       : 600),
                   rotate: character.direction * 15,

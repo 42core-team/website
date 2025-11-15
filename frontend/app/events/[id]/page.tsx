@@ -1,20 +1,20 @@
-import {
-  Card,
-  CardHeader,
-  CardDescription,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  getEventById,
-  getTeamsCountForEvent,
-  getParticipantsCountForEvent,
-} from "@/app/actions/event";
-import { isActionError } from "@/app/actions/errors";
-import RepoLockCountdown from "@/app/events/[id]/repoLockCountdown";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import remarkHtml from "remark-html";
+import { isActionError } from "@/app/actions/errors";
+import {
+  getEventById,
+  getParticipantsCountForEvent,
+  getTeamsCountForEvent,
+} from "@/app/actions/event";
+import RepoLockCountdown from "@/app/events/[id]/repoLockCountdown";
 import TimeBadge from "@/components/timeBadge";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 function StatCard({
   title,
@@ -81,7 +81,8 @@ export default async function EventPage({
             <div
               className="prose dark:prose-invert max-w-none mt-1"
               dangerouslySetInnerHTML={{ __html: renderedDescription }}
-            ></div>
+            >
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -97,7 +98,12 @@ export default async function EventPage({
             <div>
               <h3 className="text-sm font-medium text-gray-500">Team Size</h3>
               <p className="mt-1">
-                {event.minTeamSize} - {event.maxTeamSize} members
+                {event.minTeamSize}
+                {" "}
+                -
+                {event.maxTeamSize}
+                {" "}
+                members
               </p>
             </div>
             {event.repoLockDate && (

@@ -1,15 +1,15 @@
-import { title } from "@/components/primitives";
+import type { Metadata } from "next";
+import { getServerSession } from "next-auth";
+import Link from "next/link";
 import {
-  getEvents,
   canUserCreateEvent,
+  getEvents,
   getMyEvents,
 } from "@/app/actions/event";
 import EventsTabs from "@/app/events/EventsTabs";
-import { Button } from "@/components/ui/button";
-import type { Metadata } from "next";
-import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/utils/authOptions";
-import Link from "next/link";
+import { title } from "@/components/primitives";
+import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Events",

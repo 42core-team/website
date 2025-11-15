@@ -1,8 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import type { Match } from "@/app/actions/tournament-model";
 import Link from "next/link";
-import { Match, MatchState } from "@/app/actions/tournament-model";
+import { MatchState } from "@/app/actions/tournament-model";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export default function QueueMatchesList(props: {
@@ -19,14 +20,16 @@ export default function QueueMatchesList(props: {
 
   return (
     <div className="flex flex-col gap-4 overflow-y-auto">
-      {matches.map((match) => (
+      {matches.map(match => (
         <div
           key={match.id}
           className="rounded-lg border border-default-200 p-4 shadow-xs"
         >
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">
-              Match ID: {match.id}
+              Match ID:
+              {" "}
+              {match.id}
             </span>
             <span
               className={cn(
@@ -43,7 +46,7 @@ export default function QueueMatchesList(props: {
           </div>
 
           <div className="mt-3 space-y-3">
-            {match.results.length == 2 && (
+            {match.results.length === 2 && (
               <div className="flex items-center justify-center gap-2">
                 <div
                   className={cn(
@@ -61,7 +64,7 @@ export default function QueueMatchesList(props: {
                   </div>
                   <div className="text-xl font-bold mt-1">
                     {match.results.find(
-                      (result) => result.team?.id === match.teams[0]?.id,
+                      result => result.team?.id === match.teams[0]?.id,
                     )?.score || 0}
                   </div>
                 </div>
@@ -84,7 +87,7 @@ export default function QueueMatchesList(props: {
                   </div>
                   <div className="text-xl font-bold mt-1">
                     {match.results.find(
-                      (result) => result.team?.id === match.teams[1]?.id,
+                      result => result.team?.id === match.teams[1]?.id,
                     )?.score || 0}
                   </div>
                 </div>
@@ -94,7 +97,7 @@ export default function QueueMatchesList(props: {
 
           <div className="mt-3 text-xs text-muted-foreground flex justify-between items-center">
             <span>{new Date(match.createdAt).toLocaleString()}</span>
-            <Link href={"/events/" + eventId + "/match/" + match.id}>
+            <Link href={`/events/${eventId}/match/${match.id}`}>
               <Button size="sm" color="secondary">
                 Replay
               </Button>

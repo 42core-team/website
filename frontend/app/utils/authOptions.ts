@@ -1,4 +1,4 @@
-import { NextAuthOptions } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
 import GithubProvider from "next-auth/providers/github";
 import axiosInstance from "@/app/actions/axios";
 
@@ -31,12 +31,13 @@ export const authOptions: NextAuthOptions = {
             await axiosInstance.post(`user/`, {
               email: user.email!,
               username: githubProfile?.login || user.name!,
-              name: user.name! || githubProfile?.name!,
-              profilePicture: user.image! || githubProfile?.avatar_url!,
+              name: user.name! || githubProfile?.name,
+              profilePicture: user.image! || githubProfile?.avatar_url,
               githubId: account.providerAccountId,
               githubAccessToken: account.access_token,
             });
-          } else {
+          }
+          else {
             await axiosInstance.put(`user/${existingUser.id}`, {
               email: user.email!,
               username: githubProfile?.login || existingUser.username,
@@ -47,9 +48,10 @@ export const authOptions: NextAuthOptions = {
               githubAccessToken: account.access_token,
             });
           }
-        } catch (e: any) {
+        }
+        catch (e: any) {
           console.error("Error during sign in:", e);
-          console.debug("response:", e?.response);
+          console.error("response:", e?.response);
           return false;
         }
       }
@@ -64,7 +66,8 @@ export const authOptions: NextAuthOptions = {
         await axiosInstance.get(`user/email/${session.user?.email}`)
       ).data;
 
-      if (dbUser) session.user.id = dbUser.id;
+      if (dbUser)
+        session.user.id = dbUser.id;
 
       return session;
     },

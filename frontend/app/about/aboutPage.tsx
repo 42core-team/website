@@ -1,21 +1,21 @@
 "use client";
 
-import Image from "next/image";
 import { motion } from "framer-motion";
+import { LucideGithub, LucideLinkedin } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 import { title } from "@/components/primitives";
 import { CoreLogoWhite } from "@/components/social";
-import Link from "next/link";
-import { LucideGithub, LucideLinkedin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-type TeamMember = {
+interface TeamMember {
   name: string;
   role: string;
   imgSrc: string;
   linkUrl: string;
   linkType: "linkedin" | "github";
-};
+}
 
 const team: TeamMember[] = [
   {
@@ -240,11 +240,13 @@ export default function AboutPageClient() {
                         className="absolute bottom-2.5 right-2.5 bg-primary text-primary-foreground rounded-full p-2 hover:scale-110 transition-transform"
                         aria-label={`${m.name} profile link`}
                       >
-                        {m.linkType === "github" ? (
-                          <LucideGithub />
-                        ) : (
-                          <LucideLinkedin />
-                        )}
+                        {m.linkType === "github"
+                          ? (
+                              <LucideGithub />
+                            )
+                          : (
+                              <LucideLinkedin />
+                            )}
                       </a>
                     </div>
                     <h3 className="text-xl font-semibold text-center">

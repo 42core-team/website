@@ -6,6 +6,8 @@ export default function RepoLockCountdown(props: { repoLockDate: string }) {
   const [countdown, setCountdown] = useState<string>("");
 
   useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+
     function calculateTimeLeft() {
       const lockDate = new Date(props.repoLockDate);
       const now = new Date();
@@ -13,7 +15,8 @@ export default function RepoLockCountdown(props: { repoLockDate: string }) {
 
       if (timeDiff <= 0) {
         setCountdown("Repo lock has passed");
-        clearInterval(interval);
+        if (interval)
+          clearInterval(interval);
         return;
       }
 
@@ -27,11 +30,14 @@ export default function RepoLockCountdown(props: { repoLockDate: string }) {
       setCountdown(`${days}d ${hours}h ${minutes}m ${seconds}s`);
     }
 
-    const interval = setInterval(calculateTimeLeft, 1000);
+    interval = setInterval(calculateTimeLeft, 1000);
     calculateTimeLeft();
 
-    return () => clearInterval(interval);
-  });
+    return () => {
+      if (interval)
+        clearInterval(interval);
+    };
+  }, [props.repoLockDate]);
 
   return (
     <div>

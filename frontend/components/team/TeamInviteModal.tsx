@@ -1,5 +1,16 @@
-import { useState } from "react";
+import type {
+  UserSearchResult,
+} from "@/app/actions/team";
 
+import { usePlausible } from "next-plausible";
+import { useState } from "react";
+import {
+  searchUsersForInvite,
+  sendTeamInvite,
+} from "@/app/actions/team";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -7,16 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
 import { Input } from "@/components/ui/input";
-import {
-  UserSearchResult,
-  searchUsersForInvite,
-  sendTeamInvite,
-} from "@/app/actions/team";
-import { usePlausible } from "next-plausible";
 import { Label } from "@/components/ui/label";
 
 interface TeamInviteModalProps {
@@ -26,11 +28,11 @@ interface TeamInviteModalProps {
   eventId: string;
 }
 
-export const TeamInviteModal = ({
+export function TeamInviteModal({
   isOpen,
   onClose,
   eventId,
-}: TeamInviteModalProps) => {
+}: TeamInviteModalProps) {
   const plausible = usePlausible();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,12 +49,15 @@ export const TeamInviteModal = ({
       try {
         const results = await searchUsersForInvite(eventId, value);
         setSearchResults(results);
-      } catch (error) {
+      }
+      catch (error) {
         console.error("Error searching users:", error);
-      } finally {
+      }
+      finally {
         setIsSearching(false);
       }
-    } else {
+    }
+    else {
       setSearchResults([]);
     }
   };
@@ -60,33 +65,38 @@ export const TeamInviteModal = ({
   // Send invite to a user
   const handleInviteUser = async (userId: string) => {
     plausible("invite_team_member");
-    setIsInviting((prev) => ({ ...prev, [userId]: true }));
+    setIsInviting(prev => ({ ...prev, [userId]: true }));
     try {
       await sendTeamInvite(eventId, userId);
 
-      setSearchResults((prev) =>
-        prev.map((user) =>
+      setSearchResults(prev =>
+        prev.map(user =>
           user.id === userId ? { ...user, isInvited: true } : user,
         ),
       );
-    } catch (error: any) {
+    }
+    catch (error: any) {
       // You can customize this error message as needed
       alert(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Failed to send invite.",
+        error?.response?.data?.message
+        || error?.message
+        || "Failed to send invite.",
       );
-    } finally {
-      setIsInviting((prev) => ({ ...prev, [userId]: false }));
+    }
+    finally {
+      setIsInviting(prev => ({ ...prev, [userId]: false }));
     }
   };
 
   // Invite first non-invited search result on Enter
   const handleEnterToInvite = () => {
-    if (isSearching || searchResults.length === 0) return;
-    const firstAvailable = searchResults.find((u) => !u.isInvited);
-    if (!firstAvailable) return;
-    if (isInviting[firstAvailable.id]) return;
+    if (isSearching || searchResults.length === 0)
+      return;
+    const firstAvailable = searchResults.find(u => !u.isInvited);
+    if (!firstAvailable)
+      return;
+    if (isInviting[firstAvailable.id])
+      return;
     void handleInviteUser(firstAvailable.id);
   };
 
@@ -94,7 +104,8 @@ export const TeamInviteModal = ({
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) onClose();
+        if (!open)
+          onClose();
       }}
     >
       <DialogContent>
@@ -110,7 +121,7 @@ export const TeamInviteModal = ({
               id="search"
               placeholder="Search by username or name"
               value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
+              onChange={e => handleSearchChange(e.target.value)}
               className="mb-4"
               autoFocus={true}
               onKeyDown={(e) => {
@@ -122,52 +133,58 @@ export const TeamInviteModal = ({
             />
           </div>
           <div className="max-h-[300px] overflow-y-auto">
-            {isSearching ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin h-6 w-6 border-2 border-primary rounded-full border-t-transparent"></div>
-              </div>
-            ) : searchQuery.length < 2 ? (
-              <p className="text-muted-foreground text-center py-2">
-                Type at least 2 characters to search
-              </p>
-            ) : searchResults.length === 0 ? (
-              <p className="text-muted-foreground text-center py-2">
-                No users found
-              </p>
-            ) : (
-              searchResults.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex justify-between items-center p-2 border-b border-default-200 last:border-0"
-                >
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage
-                        src={user.profilePicture}
-                        alt={user.name || "User"}
-                      />
-                      <AvatarFallback>
-                        {(user.name || "User").substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{user.name}</p>
-                      <p className="text-muted-foreground text-sm">
-                        {user.username}
-                      </p>
-                    </div>
+            {isSearching
+              ? (
+                  <div className="flex justify-center py-4">
+                    <div className="animate-spin h-6 w-6 border-2 border-primary rounded-full border-t-transparent"></div>
                   </div>
-                  <Button
-                    size="sm"
-                    disabled={user.isInvited}
-                    // TODO: isLoading={isInviting[user.id]}
-                    onClick={() => handleInviteUser(user.id)}
-                  >
-                    {user.isInvited ? "Invited" : "Invite"}
-                  </Button>
-                </div>
-              ))
-            )}
+                )
+              : searchQuery.length < 2
+                ? (
+                    <p className="text-muted-foreground text-center py-2">
+                      Type at least 2 characters to search
+                    </p>
+                  )
+                : searchResults.length === 0
+                  ? (
+                      <p className="text-muted-foreground text-center py-2">
+                        No users found
+                      </p>
+                    )
+                  : (
+                      searchResults.map(user => (
+                        <div
+                          key={user.id}
+                          className="flex justify-between items-center p-2 border-b border-default-200 last:border-0"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarImage
+                                src={user.profilePicture}
+                                alt={user.name || "User"}
+                              />
+                              <AvatarFallback>
+                                {(user.name || "User").substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{user.name}</p>
+                              <p className="text-muted-foreground text-sm">
+                                {user.username}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            disabled={user.isInvited}
+                            // TODO: isLoading={isInviting[user.id]}
+                            onClick={() => handleInviteUser(user.id)}
+                          >
+                            {user.isInvited ? "Invited" : "Invite"}
+                          </Button>
+                        </div>
+                      ))
+                    )}
           </div>
         </DialogContent>
         <DialogFooter>
@@ -178,6 +195,6 @@ export const TeamInviteModal = ({
       </DialogContent>
     </Dialog>
   );
-};
+}
 
 export default TeamInviteModal;

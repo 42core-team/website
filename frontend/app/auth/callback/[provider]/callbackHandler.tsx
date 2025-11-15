@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { OAUTH_PROVIDERS, OAUTH_CONFIG } from "@/lib/constants/oauth";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { OAUTH_CONFIG, OAUTH_PROVIDERS } from "@/lib/constants/oauth";
 
 /**
  * OAuth callback component that handles the complete OAuth flow
@@ -17,7 +17,8 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
   const processingRef = useRef<string | null>(null);
 
   const handleOAuthCallback = async (code: string, state: string) => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id)
+      return;
 
     setIsProcessing(true);
     setError(null);
@@ -30,8 +31,8 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          code: code,
-          state: state,
+          code,
+          state,
         }),
       });
 
@@ -43,7 +44,8 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
 
       // Success! Redirect to profile with success message
       router.push(`/profile?success=linked-${provider}`);
-    } catch (err: any) {
+    }
+    catch (err: any) {
       console.error(`Error linking ${provider} account:`, err);
       setError(err.message || `Failed to link ${provider} account`);
 
@@ -52,14 +54,16 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
         OAUTH_CONFIG.SESSION_STORAGE_KEYS.PROCESSED_CODE,
       );
       processingRef.current = null;
-    } finally {
+    }
+    finally {
       setIsProcessing(false);
     }
   };
 
   useEffect(() => {
     // Wait for session to load
-    if (status === "loading") return;
+    if (status === "loading")
+      return;
 
     // If not authenticated, redirect to login
     if (!session?.user?.id) {
@@ -108,11 +112,13 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
           code,
         );
         handleOAuthCallback(code, state);
-      } else {
+      }
+      else {
         setError("Invalid OAuth state. Please try again.");
         processingRef.current = null;
       }
-    } else if (!code && !state) {
+    }
+    else if (!code && !state) {
       // No OAuth parameters, redirect to profile
       router.push("/profile");
     }

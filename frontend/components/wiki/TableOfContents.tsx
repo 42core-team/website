@@ -24,12 +24,12 @@ export function TableOfContents({ content }: TableOfContentsProps) {
     const headings = doc.querySelectorAll("h1, h2, h3, h4, h5, h6");
 
     const tocItems: TocItem[] = Array.from(headings)
-      .map((heading) => ({
+      .map(heading => ({
         id: heading.id,
         text: heading.textContent || "",
-        level: parseInt(heading.tagName.charAt(1)),
+        level: Number.parseInt(heading.tagName.charAt(1)),
       }))
-      .filter((item) => item.id && item.text);
+      .filter(item => item.id && item.text);
 
     setToc(tocItems);
   }, [content]);
@@ -66,7 +66,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
       <div className="border rounded-lg p-4 bg-content1">
         <h3 className="text-sm font-semibold mb-3">On this page</h3>
         <ul className="space-y-1">
-          {toc.map((item) => (
+          {toc.map(item => (
             <li key={item.id}>
               <Link
                 href={`#${item.id}`}

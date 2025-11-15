@@ -15,7 +15,7 @@ export function validateTeamName(teamName: string): {
     return { isValid: false, error: "Team name is required" };
   }
 
-  const teamNameRegex = /^[A-Za-z0-9_.-]{4,30}$/;
+  const teamNameRegex = /^[\w.-]{4,30}$/;
 
   if (!teamNameRegex.test(teamName)) {
     return {

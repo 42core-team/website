@@ -1,10 +1,10 @@
-import QueueState from "@/app/events/[id]/queue/queueState";
+import type { Metadata } from "next/dist/lib/metadata/types/metadata-interface";
 import {
   getMyEventTeam,
   getQueueMatches,
   getQueueState,
 } from "@/app/actions/team";
-import { Metadata } from "next/dist/lib/metadata/types/metadata-interface";
+import QueueState from "@/app/events/[id]/queue/queueState";
 
 export const metadata: Metadata = {
   title: "Queue",
@@ -34,7 +34,7 @@ export default async function EventQueuePage({
   queueMatches = queueMatches.map((match) => {
     return {
       ...match,
-      teams: match.teams.sort((a, b) => (a.id === myTeam.id ? -1 : 1)),
+      teams: match.teams.sort((a, _b) => (a.id === myTeam.id ? -1 : 1)),
     };
   });
 
@@ -48,22 +48,24 @@ export default async function EventQueuePage({
         If you have any questions, please contact the event organizers.
       </p>
 
-      {!myTeam.locked ? (
-        <div className="mt-8">
-          <QueueState
-            queueState={queueState}
-            eventId={id}
-            team={myTeam}
-            queueMatches={queueMatches}
-          />
-        </div>
-      ) : (
-        <div className="flex items-center justify-center min-h-[200px]">
-          <p className="text-lg text-muted-foreground">
-            Your team is locked and cannot join the queue.
-          </p>
-        </div>
-      )}
+      {!myTeam.locked
+        ? (
+            <div className="mt-8">
+              <QueueState
+                queueState={queueState}
+                eventId={id}
+                team={myTeam}
+                queueMatches={queueMatches}
+              />
+            </div>
+          )
+        : (
+            <div className="flex items-center justify-center min-h-[200px]">
+              <p className="text-lg text-muted-foreground">
+                Your team is locked and cannot join the queue.
+              </p>
+            </div>
+          )}
     </div>
   );
 }

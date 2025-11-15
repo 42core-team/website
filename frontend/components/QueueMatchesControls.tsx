@@ -1,8 +1,18 @@
 "use client";
 
+import type { FormEvent } from "react";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -10,15 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Interval = "minute" | "hour" | "day";
@@ -60,9 +61,11 @@ export default function QueueMatchesControls({
       const startISO = range.start ? range.start.toISOString() : undefined;
       const endISO = range.end ? range.end.toISOString() : undefined;
 
-      if (startISO) params.set("start", startISO);
+      if (startISO)
+        params.set("start", startISO);
       else params.delete("start");
-      if (endISO) params.set("end", endISO);
+      if (endISO)
+        params.set("end", endISO);
       else params.delete("end");
 
       router.replace(`${pathname}?${params.toString()}`);
@@ -109,20 +112,21 @@ export default function QueueMatchesControls({
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {range.start ? (
-                  format(range.start, interval === "day" ? "PP" : "PPp")
-                ) : (
-                  <span>Start date</span>
-                )}
+                {range.start
+                  ? (
+                      format(range.start, interval === "day" ? "PP" : "PPp")
+                    )
+                  : (
+                      <span>Start date</span>
+                    )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
                 selected={range.start}
-                onSelect={(date) =>
-                  setRange((prev) => ({ ...prev, start: date }))
-                }
+                onSelect={date =>
+                  setRange(prev => ({ ...prev, start: date }))}
                 initialFocus
               />
               {interval !== "day" && (
@@ -135,8 +139,8 @@ export default function QueueMatchesControls({
                       const newDate = range.start
                         ? new Date(range.start)
                         : new Date();
-                      newDate.setHours(parseInt(hours), parseInt(minutes));
-                      setRange((prev) => ({ ...prev, start: newDate }));
+                      newDate.setHours(Number.parseInt(hours), Number.parseInt(minutes));
+                      setRange(prev => ({ ...prev, start: newDate }));
                     }}
                   />
                 </div>
@@ -154,20 +158,21 @@ export default function QueueMatchesControls({
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {range.end ? (
-                  format(range.end, interval === "day" ? "PP" : "PPp")
-                ) : (
-                  <span>End date</span>
-                )}
+                {range.end
+                  ? (
+                      format(range.end, interval === "day" ? "PP" : "PPp")
+                    )
+                  : (
+                      <span>End date</span>
+                    )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
                 selected={range.end}
-                onSelect={(date) =>
-                  setRange((prev) => ({ ...prev, end: date }))
-                }
+                onSelect={date =>
+                  setRange(prev => ({ ...prev, end: date }))}
                 initialFocus
               />
               {interval !== "day" && (
@@ -180,8 +185,8 @@ export default function QueueMatchesControls({
                       const newDate = range.end
                         ? new Date(range.end)
                         : new Date();
-                      newDate.setHours(parseInt(hours), parseInt(minutes));
-                      setRange((prev) => ({ ...prev, end: newDate }));
+                      newDate.setHours(Number.parseInt(hours), Number.parseInt(minutes));
+                      setRange(prev => ({ ...prev, end: newDate }));
                     }}
                   />
                 </div>

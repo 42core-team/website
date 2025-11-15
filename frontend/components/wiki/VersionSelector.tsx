@@ -1,5 +1,8 @@
 "use client";
 
+import type { WikiVersion } from "@/lib/markdown";
+import { FileText } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -7,10 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useRouter, usePathname } from "next/navigation";
-import { WikiVersion } from "@/lib/markdown";
 import { buildVersionPath } from "@/lib/wiki-navigation";
-import { FileText } from "lucide-react";
 
 interface VersionSelectorProps {
   versions: WikiVersion[];
@@ -29,8 +29,8 @@ export function VersionSelector({
     router.push(newPath);
   };
 
-  const currentVersionName =
-    versions.find((v) => v.slug === currentVersion)?.name || "Select Version";
+  const currentVersionName
+    = versions.find(v => v.slug === currentVersion)?.name || "Select Version";
 
   return (
     <>
@@ -43,7 +43,7 @@ export function VersionSelector({
             </SelectValue>
           </SelectTrigger>
           <SelectContent align="end">
-            {versions.map((version) => (
+            {versions.map(version => (
               <SelectItem key={version.slug} value={version.slug}>
                 {version.name}
               </SelectItem>
@@ -59,7 +59,7 @@ export function VersionSelector({
             <FileText className="size-4 mr-1" />
           </SelectTrigger>
           <SelectContent align="end">
-            {versions.map((version) => (
+            {versions.map(version => (
               <SelectItem key={version.slug} value={version.slug}>
                 {version.name}
               </SelectItem>

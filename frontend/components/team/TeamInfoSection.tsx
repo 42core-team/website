@@ -1,5 +1,15 @@
-import { useParams } from "next/navigation";
+import type { Team, TeamMember } from "@/app/actions/team";
 
+import { Plus } from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { isActionError } from "@/app/actions/errors";
+import { getEventById } from "@/app/actions/event";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,18 +18,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus } from "lucide-react";
-
-import { Team, TeamMember } from "@/app/actions/team";
-import TeamInviteModal from "./TeamInviteModal";
-import { useEffect, useState } from "react";
-import { getEventById } from "@/app/actions/event";
-import { isActionError } from "@/app/actions/errors";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
+import TeamInviteModal from "./TeamInviteModal";
 
 interface TeamInfoSectionProps {
   myTeam: Team;
@@ -29,13 +29,12 @@ interface TeamInfoSectionProps {
   isRepoPending?: boolean;
 }
 
-export const TeamInfoSection = ({
+export function TeamInfoSection({
   myTeam,
   onLeaveTeam,
-  isLeaving,
   teamMembers,
   isRepoPending = false,
-}: TeamInfoSectionProps) => {
+}: TeamInfoSectionProps) {
   const eventId = useParams().id as string;
   const [isOpen, setIsOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -45,7 +44,8 @@ export const TeamInfoSection = ({
   useEffect(() => {
     const loadGithubOrg = async () => {
       const event = await getEventById(eventId);
-      if (isActionError(event)) return;
+      if (isActionError(event))
+        return;
 
       setGithubOrg(event.githubOrg);
     };
@@ -70,27 +70,34 @@ export const TeamInfoSection = ({
   return (
     <div className="bg-default-50 p-6 rounded-lg border border-default-200">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Team: {myTeam.name}</h2>
+        <h2 className="text-2xl font-bold">
+          Team:
+          {myTeam.name}
+        </h2>
         {myTeam.locked && <Badge variant="destructive">Locked</Badge>}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
           <p className="text-sm text-muted-foreground">Repository</p>
           <div className="font-medium">
-            {myTeam.repo ? (
-              <a
-                href={getRepoUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                {myTeam.repo}
-              </a>
-            ) : isRepoPending ? (
-              <Skeleton className="h-5 w-75 rounded-md m-2" />
-            ) : (
-              "Not yet configured"
-            )}
+            {myTeam.repo
+              ? (
+                  <a
+                    href={getRepoUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    {myTeam.repo}
+                  </a>
+                )
+              : isRepoPending
+                ? (
+                    <Skeleton className="h-5 w-75 rounded-md m-2" />
+                  )
+                : (
+                    "Not yet configured"
+                  )}
           </div>
         </div>
         <div>
@@ -123,42 +130,44 @@ export const TeamInfoSection = ({
           )}
         </div>
         <div className="flex gap-3 items-start flex-wrap">
-          {teamMembers.length > 0 ? (
-            teamMembers.map((member) => (
-              <Link
-                key={member.id}
-                href={`https://github.com/${member.username}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group w-full max-w-32 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-xl"
-                aria-label={`Open ${member.username}'s GitHub profile`}
-              >
-                <div className="flex flex-col items-center rounded-xl bg-content1/50 p-4 ring-1 ring-default-200 shadow-sm transition hover:shadow-md hover:ring-primary/60">
-                  <Avatar
-                    className={cn(
-                      "mb-2",
-                      member.isEventAdmin ? "outline-orange-500 outline-2" : "",
-                    )}
+          {teamMembers.length > 0
+            ? (
+                teamMembers.map(member => (
+                  <Link
+                    key={member.id}
+                    href={`https://github.com/${member.username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group w-full max-w-32 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-xl"
+                    aria-label={`Open ${member.username}'s GitHub profile`}
                   >
-                    <AvatarImage
-                      src={member.profilePicture}
-                      alt={member.name}
-                    />
-                    <AvatarFallback>
-                      {member.name.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium text-center truncate w-full group-hover:text-primary">
-                    {member.username}
-                  </span>
-                </div>
-              </Link>
-            ))
-          ) : (
-            <p className="text-muted-foreground col-span-full text-center">
-              No team members found
-            </p>
-          )}
+                    <div className="flex flex-col items-center rounded-xl bg-content1/50 p-4 ring-1 ring-default-200 shadow-sm transition hover:shadow-md hover:ring-primary/60">
+                      <Avatar
+                        className={cn(
+                          "mb-2",
+                          member.isEventAdmin ? "outline-orange-500 outline-2" : "",
+                        )}
+                      >
+                        <AvatarImage
+                          src={member.profilePicture}
+                          alt={member.name}
+                        />
+                        <AvatarFallback>
+                          {member.name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium text-center truncate w-full group-hover:text-primary">
+                        {member.username}
+                      </span>
+                    </div>
+                  </Link>
+                ))
+              )
+            : (
+                <p className="text-muted-foreground col-span-full text-center">
+                  No team members found
+                </p>
+              )}
         </div>
       </div>
 
@@ -193,7 +202,8 @@ export const TeamInfoSection = ({
       <Dialog
         open={isConfirmOpen}
         onOpenChange={(open) => {
-          if (!open) setIsConfirmOpen(false);
+          if (!open)
+            setIsConfirmOpen(false);
         }}
       >
         <DialogContent>
@@ -230,6 +240,6 @@ export const TeamInfoSection = ({
       </Dialog>
     </div>
   );
-};
+}
 
 export default TeamInfoSection;
