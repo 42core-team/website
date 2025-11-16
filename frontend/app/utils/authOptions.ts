@@ -32,7 +32,7 @@ export const authOptions: NextAuthOptions = {
             id: res.data.id,
             name: res.data.username,
             email: res.data.email,
-            image: res.data.profilePicture,
+            profilePicture: res.data.profilePicture,
           };
         }
         catch (e) {
