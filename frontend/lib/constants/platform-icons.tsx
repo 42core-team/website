@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { OAUTH_PROVIDERS, type OAuthProvider } from "./oauth";
+import { OAUTH_PROVIDERS } from "./oauth";
 
 /**
  * Platform icon configurations for social accounts
@@ -28,10 +28,10 @@ export const PLATFORM_NAMES: Record<string, string> = {
   [OAUTH_PROVIDERS.LINKEDIN]: "LinkedIn",
 };
 
-export const getPlatformIcon = (platform: string): React.ReactNode => {
+export function getPlatformIcon(platform: string): React.ReactNode {
   return PLATFORM_ICONS[platform] || "🔗";
-};
+}
 
-export const getPlatformName = (platform: string): string => {
+export function getPlatformName(platform: string): string {
   return PLATFORM_NAMES[platform] || platform;
-};
+}

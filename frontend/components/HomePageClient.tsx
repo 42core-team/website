@@ -1,18 +1,26 @@
 "use client";
-import Image from "next/image";
+import type { Event } from "@/app/actions/event";
+import type { MatchStats } from "@/app/actions/stats";
 import { motion } from "framer-motion";
+import { useTheme } from "next-themes";
+
+import Image from "next/image";
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-
-import { button as buttonStyles } from "@heroui/theme";
-
+import GlobalStats from "@/components/GlobalStats";
 import { GithubIcon, WikiIcon } from "@/components/icons";
 import { CoreLogoWhite } from "@/components/social";
-import GlobalStats from "@/components/GlobalStats";
-import { MatchStats } from "@/app/actions/stats";
-import { useTheme } from "next-themes";
-import { Card, CardBody, CardHeader, Chip } from "@heroui/react";
-import { Event } from "@/app/actions/event";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
 export default function HomePageClient(props: {
   initialStats: MatchStats;
   currentLiveEvent?: Event;
@@ -30,8 +38,8 @@ export default function HomePageClient(props: {
     return () => clearInterval(id);
   }, []);
 
-  const visualizerTheme =
-    isMounted && resolvedTheme === "light" ? "light" : "dark";
+  const visualizerTheme
+    = isMounted && resolvedTheme === "light" ? "light" : "dark";
 
   const visualizerUrl = useMemo(() => {
     const base = process.env.NEXT_PUBLIC_VISUALIZER_URL;
@@ -64,68 +72,56 @@ export default function HomePageClient(props: {
 
   return (
     <div>
-      {props.currentLiveEvent && timeLeftMs > 0 && (
-        <Card className="absolute right-20 top-20 z-20 md:block hidden">
-          <CardHeader className="flex items-center gap-3">
-            <span className="text-lg font-semibold">
-              {props.currentLiveEvent.name}
-            </span>
-            <Chip color="danger" variant="solid" size="sm">
-              Live
-            </Chip>
-          </CardHeader>
-          <CardBody className="flex flex-col gap-3">
-            <span className="text-foreground-500"></span>
-            <Chip color="warning" variant="flat" aria-label="Event countdown">
-              Ends in {formatTimeLeft(timeLeftMs)}
-            </Chip>
-            <div className="mt-1">
-              <Link
-                className={buttonStyles({
-                  color: "primary",
-                  radius: "full",
-                  variant: "shadow",
-                  size: "sm",
-                })}
-                href={`/events/${props.currentLiveEvent.id}`}
-              >
-                View event
-              </Link>
-            </div>
-          </CardBody>
-        </Card>
-      )}
       <section className="flex flex-col items-center justify-center mb-15">
         {/* Foreground (logo + text + links) */}
-        <div className="relative z-10 inline-block text-center justify-center w-full mb-25">
+        <div className="flex flex-col text-center justify-center w-full mb-25">
           <CoreLogoWhite className="mx-auto w-[30%] h-auto" />
-          <h1 className="text-2xl font-bold block mt-2">
+          <h1 className="mx-auto text-balance text-2xl font-bold block mt-2 max-w-2xl">
             Imagine a game contest that brings people
-            <br />
             from around the world together for fun and learning.
           </h1>
           <div className="mt-6 flex items-center justify-center gap-3">
-            <Link
-              className={buttonStyles({
-                color: "primary",
-                radius: "full",
-                variant: "shadow",
-              })}
-              href="/wiki"
-            >
-              <WikiIcon size={20} />
-              Documentation
-            </Link>
-            <Link
-              className={buttonStyles({ variant: "bordered", radius: "full" })}
-              href="https://github.com/42core-team"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <GithubIcon size={20} />
-              GitHub
-            </Link>
+            <Button asChild>
+              <Link href="/wiki">
+                <WikiIcon size={20} />
+                Documentation
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link
+                href="https://github.com/42core-team"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <GithubIcon size={20} />
+                GitHub
+              </Link>
+            </Button>
           </div>
+          {props.currentLiveEvent && timeLeftMs > 0 && (
+            <Card className="mt-6 mx-auto max-w-sm">
+              <CardHeader className="flex flex-row justify-between items-center gap-3">
+                <CardTitle className="text-lg font-semibold">
+                  {props.currentLiveEvent.name}
+                </CardTitle>
+                <CardDescription className="space-x-2">
+                  <Badge>Live</Badge>
+                  <Badge>
+                    Ends in
+                    {" "}
+                    {formatTimeLeft(timeLeftMs)}
+                  </Badge>
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild>
+                  <Link href={`/events/${props.currentLiveEvent.id}`}>
+                    View event
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Visualizer Embed under the logo */}
@@ -170,7 +166,14 @@ export default function HomePageClient(props: {
                 <div className="flex flex-col items-center gap-4">
                   <h2 className="text-4xl font-bold">What the Game is About</h2>
                   <p className="text-2xl"></p>
-                  <p className="text-xl text-gray-400">{`CORE Game is a competitive coding challenge where you design and program your own bots to battle it out in a dynamic 2D arena. Every decision matters—strategy, efficiency, and adaptability will determine whether your bot rises to victory or falls in defeat. Are you ready to code your way to the top?`}</p>
+                  <p className="text-xl text-muted-foreground">
+                    CORE Game is a competitive coding challenge where you design
+                    and program your own bots to battle it out in a dynamic 2D
+                    arena. Every decision matters—strategy, efficiency, and
+                    adaptability will determine whether your bot rises to
+                    victory or falls in defeat. Are you ready to code your way
+                    to the top?
+                  </p>
                 </div>
               ),
               delay: 0.2,
@@ -183,7 +186,7 @@ export default function HomePageClient(props: {
                 <div className="flex flex-col items-center gap-4">
                   <h2 className="text-4xl font-bold">How to Play the Game</h2>
                   <p className="text-2xl"></p>
-                  <p className="text-xl text-gray-400">{`Write your own bot, fine-tune its strategy, and deploy it into battle. The game runs autonomously based on the logic you've programmed, so your code is your weapon. Learn from past matches, tweak your tactics, and keep improving—because in CORE Game, the smartest code wins.`}</p>
+                  <p className="text-xl text-muted-foreground">{`Write your own bot, fine-tune its strategy, and deploy it into battle. The game runs autonomously based on the logic you've programmed, so your code is your weapon. Learn from past matches, tweak your tactics, and keep improving—because in CORE Game, the smartest code wins.`}</p>
                 </div>
               ),
               delay: 0.4,
@@ -198,7 +201,7 @@ export default function HomePageClient(props: {
                     What is Necessary to Play
                   </h2>
                   <p className="text-2xl"></p>
-                  <p className="text-xl text-gray-400">{`All you need is basic programming knowledge, a curious mind, and a hunger for competition! Whether you're a beginner or an experienced coder, you can jump in, experiment, and refine your bot as you go. No fancy hardware required—just bring your creativity and a love for coding!`}</p>
+                  <p className="text-xl text-muted-foreground">{`All you need is basic programming knowledge, a curious mind, and a hunger for competition! Whether you're a beginner or an experienced coder, you can jump in, experiment, and refine your bot as you go. No fancy hardware required—just bring your creativity and a love for coding!`}</p>
                 </div>
               ),
               delay: 0.6,
@@ -213,13 +216,13 @@ export default function HomePageClient(props: {
                     What We Offer as a Team
                   </h2>
                   <p className="text-2xl"></p>
-                  <p className="text-xl text-gray-400">{`We're more than just a game—we're a community of coders, innovators, and problem-solvers. As a team, we provide an engaging platform, regular challenges, and a space to connect with like-minded programmers. Workshops, mentorship, and thrilling competitions—we've got everything you need to grow, learn, and have fun!`}</p>
+                  <p className="text-xl text-muted-foreground">{`We're more than just a game—we're a community of coders, innovators, and problem-solvers. As a team, we provide an engaging platform, regular challenges, and a space to connect with like-minded programmers. Workshops, mentorship, and thrilling competitions—we've got everything you need to grow, learn, and have fun!`}</p>
                 </div>
               ),
               delay: 0.8,
               direction: -1,
             },
-          ].map((character) => (
+          ].map(character => (
             <motion.div
               key={character.alt}
               className="flex flex-col items-center min-h-lvh justify-center relative"
@@ -236,8 +239,8 @@ export default function HomePageClient(props: {
                 whileInView={{
                   opacity: 1,
                   x:
-                    character.direction *
-                    (typeof window !== "undefined"
+                    character.direction
+                    * (typeof window !== "undefined"
                       ? window.innerWidth * 0.47
                       : 600),
                   rotate: character.direction * 15,

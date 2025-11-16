@@ -1,16 +1,19 @@
+import type {
+  TeamMember,
+} from "@/app/actions/team";
+import { AlertCircleIcon } from "lucide-react";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/utils/authOptions";
 import { redirect } from "next/navigation";
+import { isActionError } from "@/app/actions/errors";
+import { getEventById, isUserRegisteredForEvent } from "@/app/actions/event";
 import {
   getMyEventTeam,
   getTeamMembers,
   getUserPendingInvites,
-  TeamMember,
 } from "@/app/actions/team";
-import { getEventById, isUserRegisteredForEvent } from "@/app/actions/event";
+import { authOptions } from "@/app/utils/authOptions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import TeamView from "./teamView";
-import { isActionError } from "@/app/actions/errors";
-import { Alert } from "@heroui/alert";
 
 export const metadata = {
   title: "My Team",
@@ -43,11 +46,14 @@ export default async function Page({
 
   if (!team && !event.canCreateTeam) {
     return (
-      <Alert
-        color="warning"
-        title="Team creation closed"
-        description="Team creation for this event has ended. If you already have a team, you can view or manage it. Contact the event organizers for help."
-      />
+      <Alert variant="destructive">
+        <AlertCircleIcon />
+        <AlertTitle>Team creation closed</AlertTitle>
+        <AlertDescription>
+          Team creation for this event has ended. If you already have a team,
+          you can view or manage it. Contact the event organizers for help.
+        </AlertDescription>
+      </Alert>
     );
   }
 

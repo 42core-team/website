@@ -1,5 +1,6 @@
-import axios, { AxiosResponse } from "axios";
-import { ServerActionResponse } from "@/app/actions/errors";
+import type { AxiosResponse } from "axios";
+import type { ServerActionResponse } from "@/app/actions/errors";
+import axios from "axios";
 
 const axiosInstance = axios.create({
   baseURL:
@@ -13,7 +14,8 @@ function getTokenFromCookieString(cookieString: string): string | null {
   const parts = cookieString.split(";");
   for (const part of parts) {
     const [k, ...rest] = part.trim().split("=");
-    if (k === "token") return decodeURIComponent(rest.join("="));
+    if (k === "token")
+      return decodeURIComponent(rest.join("="));
   }
   return null;
 }
@@ -21,9 +23,11 @@ function getTokenFromCookieString(cookieString: string): string | null {
 axiosInstance.interceptors.request.use(
   async (config) => {
     if (process.env.BACKEND_URL) {
+      // eslint-disable-next-line ts/no-require-imports
       const cookieData = await require("next/headers").cookies();
       const token = cookieData.get("token");
-      if (token) config.headers.Authorization = `Bearer ${token.value}`;
+      if (token)
+        config.headers.Authorization = `Bearer ${token.value}`;
 
       config.baseURL = process.env.BACKEND_URL;
       return config;
@@ -46,7 +50,8 @@ export async function handleError<T>(
   try {
     const response = await promise;
     return response.data;
-  } catch (error: any) {
+  }
+  catch (error: any) {
     return {
       error: error.response?.data?.message || "An unexpected error occurred",
     };

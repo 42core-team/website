@@ -1,10 +1,9 @@
-import { NextAuthOptions } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import axiosInstance from "@/app/actions/axios";
-import { redirect } from "next/navigation";
 
-const BACKEND_BASE_URL =
-  process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
+const BACKEND_BASE_URL
+  = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -15,7 +14,7 @@ export const authOptions: NextAuthOptions = {
       id: "backend",
       name: "Backend",
       credentials: {},
-      async authorize(_credentials, req) {
+      async authorize(_credentials, _) {
         try {
           if (!BACKEND_BASE_URL) {
             console.error("Missing BACKEND URL env");
@@ -35,7 +34,8 @@ export const authOptions: NextAuthOptions = {
             email: res.data.email,
             image: res.data.profilePicture,
           };
-        } catch (e) {
+        }
+        catch (e) {
           console.error("Authorize failed:", e);
           return null;
         }
@@ -54,7 +54,7 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, _ }) {
       try {
         const res = await axiosInstance.get<{
           id: string;
@@ -67,7 +67,8 @@ export const authOptions: NextAuthOptions = {
         session.user.email = res.data.email;
         session.user.name = res.data.username;
         session.user.profilePicture = res.data.profilePicture;
-      } catch {
+      }
+      catch {
         session.user.id = "";
       }
 

@@ -1,12 +1,12 @@
-import GraphView from "@/app/events/[id]/bracket/graphView";
-import Actions from "@/app/events/[id]/bracket/actions";
+import type { Match } from "@/app/actions/tournament-model";
+import { isActionError } from "@/app/actions/errors";
+import { isEventAdmin } from "@/app/actions/event";
 import {
   getTournamentMatches,
   getTournamentTeamCount,
 } from "@/app/actions/tournament";
-import { Match } from "@/app/actions/tournament-model";
-import { isEventAdmin } from "@/app/actions/event";
-import { isActionError } from "@/app/actions/errors";
+import Actions from "@/app/events/[id]/bracket/actions";
+import GraphView from "@/app/events/[id]/bracket/graphView";
 
 export const metadata = {
   title: "Tournament Bracket",

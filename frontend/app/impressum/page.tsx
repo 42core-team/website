@@ -1,4 +1,4 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Impressum",
@@ -20,7 +20,9 @@ export default function ImpressumPage() {
           <br />
           Dammstraße 5/1
           <br />
-          74076 Heilbronn <br />
+          74076 Heilbronn
+          {" "}
+          <br />
         </p>
         <p>
           {" "}
@@ -30,27 +32,41 @@ export default function ImpressumPage() {
           <br />
         </p>
         <p>
-          <strong>Kontakt:</strong> <br />
-          Telefon:{" "}
+          <strong>Kontakt:</strong>
+          {" "}
+          <br />
+          Telefon:
+          {" "}
           <span>
-            +49<span className="hidden">phone.</span>175
-            <span className="hidden">-obf-</span>9954144
+            +49
+            <span className="hidden">phone.</span>
+            175
+            <span className="hidden">-obf-</span>
+            9954144
           </span>
           <br />
-          E-Mail:{" "}
+          E-Mail:
+          {" "}
           <span>
-            core@<span className="hidden">email.</span>paulgrossmann.
-            <span className="hidden">example.</span>de
+            core@
+            <span className="hidden">email.</span>
+            paulgrossmann.
+            <span className="hidden">example.</span>
+            de
           </span>
           <br />
         </p>
         <p>
           <strong>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV:</strong>
           <br />
-          Paul Großmann <br />
+          Paul Großmann
+          {" "}
+          <br />
           Dammstraße 5/1
           <br />
-          74076 Heilbronn <br />
+          74076 Heilbronn
+          {" "}
+          <br />
         </p>
         <div>
           <h2>Haftungsausschluss: </h2>
@@ -104,11 +120,13 @@ export default function ImpressumPage() {
           </p>
         </div>
         <p>
-          Impressum von{" "}
+          Impressum von
+          {" "}
           <a href="https://websitewissen.com" rel="dofollow" target="_blank">
             WebsiteWissen.com
           </a>
-          , dem Ratgeber für{" "}
+          , dem Ratgeber für
+          {" "}
           <a
             href="https://websitewissen.com/wordpress-website-erstellen"
             rel="dofollow"
@@ -116,23 +134,28 @@ export default function ImpressumPage() {
           >
             WordPress-Websites
           </a>
-          ,{" "}
+          ,
+          {" "}
           <a
             href="https://websitewissen.com/wordpress-hosting-vergleich"
             rel="dofollow"
             target="_blank"
           >
             WordPress-Hosting
-          </a>{" "}
-          und{" "}
+          </a>
+          {" "}
+          und
+          {" "}
           <a
             href="https://websitewissen.com/website-kosten"
             rel="dofollow"
             target="_blank"
           >
             Website-Kosten
-          </a>{" "}
-          nach einem Muster von{" "}
+          </a>
+          {" "}
+          nach einem Muster von
+          {" "}
           <a
             href="https://www.kanzlei-hasselbach.de/"
             rel="dofollow"

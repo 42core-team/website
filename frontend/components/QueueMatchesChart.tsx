@@ -1,19 +1,19 @@
 "use client";
 
-import { Bar } from "react-chartjs-2";
+import type { ChartData, ChartDataset, ChartOptions, ScriptableContext } from "chart.js";
+import type { QueueMatchesTimeBucket } from "@/app/actions/stats";
 import {
-  Chart as ChartJS,
   BarElement,
   CategoryScale,
-  LinearScale,
-  Tooltip,
+
+  Chart as ChartJS,
+
   Legend,
-  type ChartData,
-  type ChartOptions,
-  type ChartDataset,
-  type ScriptableContext,
+  LinearScale,
+
+  Tooltip,
 } from "chart.js";
-import type { QueueMatchesTimeBucket } from "@/app/actions/stats";
+import { Bar } from "react-chartjs-2";
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
@@ -32,8 +32,8 @@ export default function QueueMatchesChart({
     hour: "2-digit",
     minute: "2-digit",
   });
-  const labels = data.map((d) => formatter.format(new Date(d.bucket)));
-  const counts = data.map((d) => d.count);
+  const labels = data.map(d => formatter.format(new Date(d.bucket)));
+  const counts = data.map(d => d.count);
 
   // Create a vertical gradient fill; fall back to a flat color before chart area is ready
   const gradientBackground = (
@@ -108,7 +108,8 @@ export default function QueueMatchesChart({
         callbacks: {
           title: (items) => {
             const i = items?.[0];
-            if (!i) return "";
+            if (!i)
+              return "";
             const idx = (i as any).dataIndex ?? 0;
             const raw = data[idx]?.bucket;
             return raw

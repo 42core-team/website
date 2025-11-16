@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { MatchLogs } from "@/app/actions/tournament-model";
-import { Input } from "@heroui/input";
-import { Tab, Tabs } from "@heroui/tabs";
+import type { MatchLogs } from "@/app/actions/tournament-model";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface MatchLogsDisplayProps {
   logs: MatchLogs;
@@ -11,26 +11,26 @@ interface MatchLogsDisplayProps {
 
 // ANSI color code to CSS color mapping
 const ansiColorMap: Record<string, string> = {
-  "30": "black",
-  "31": "red",
-  "32": "green",
-  "33": "yellow",
-  "34": "blue",
-  "35": "magenta",
-  "36": "cyan",
-  "37": "white",
-  "90": "gray",
-  "91": "lightred",
-  "92": "lightgreen",
-  "93": "lightyellow",
-  "94": "lightblue",
-  "95": "lightmagenta",
-  "96": "lightcyan",
-  "97": "white",
+  30: "black",
+  31: "red",
+  32: "green",
+  33: "yellow",
+  34: "blue",
+  35: "magenta",
+  36: "cyan",
+  37: "white",
+  90: "gray",
+  91: "lightred",
+  92: "lightgreen",
+  93: "lightyellow",
+  94: "lightblue",
+  95: "lightmagenta",
+  96: "lightcyan",
+  97: "white",
 };
 
 // Parse ANSI color codes in log text
-const parseAnsiColorCodes = (text: string) => {
+function parseAnsiColorCodes(text: string) {
   // If no text or no color codes, return the text as is
   if (!text || !text.includes("[")) {
     return [{ text, color: undefined }];
@@ -40,14 +40,15 @@ const parseAnsiColorCodes = (text: string) => {
 
   // Regular expression to match ANSI color codes - updated to handle the exact format
   // This matches codes like [32m exactly as they appear in your logs
-  const colorCodeRegex = /\[([\d]+)m/g;
+  const colorCodeRegex = /\[(\d+)m/g;
 
   let lastIndex = 0;
-  let match;
-  let currentColor: string | undefined = undefined;
+  let match: RegExpExecArray | null = null;
+  let currentColor: string | undefined;
 
   // Find all color codes and their positions
-  while ((match = colorCodeRegex.exec(text)) !== null) {
+  match = colorCodeRegex.exec(text);
+  while (match !== null) {
     // Add text before this color code with previous color
     if (match.index > lastIndex) {
       parts.push({
@@ -62,6 +63,8 @@ const parseAnsiColorCodes = (text: string) => {
 
     // Move past this color code
     lastIndex = match.index + match[0].length;
+
+    match = colorCodeRegex.exec(text);
   }
 
   // Add remaining text with the last color
@@ -78,7 +81,7 @@ const parseAnsiColorCodes = (text: string) => {
   }
 
   return parts;
-};
+}
 
 export default function MatchLogsDisplay({ logs }: MatchLogsDisplayProps) {
   const [selectedTab, setSelectedTab] = useState<string>(
@@ -88,9 +91,10 @@ export default function MatchLogsDisplay({ logs }: MatchLogsDisplayProps) {
 
   // Filter logs based on search query
   const getFilteredLogs = (logArray: string[]) => {
-    if (!searchQuery.trim()) return logArray;
+    if (!searchQuery.trim())
+      return logArray;
 
-    return logArray.filter((log) =>
+    return logArray.filter(log =>
       log.toLowerCase().includes(searchQuery.toLowerCase()),
     );
   };
@@ -103,39 +107,43 @@ export default function MatchLogsDisplay({ logs }: MatchLogsDisplayProps) {
           <Input
             placeholder="Search logs..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             className="w-full"
           />
         </div>
       </div>
 
-      <Tabs>
-        {logs.map((log) => (
-          <Tab
-            key={log.container}
-            value={log.container}
-            title={log.team || log.container}
-            onClick={() => setSelectedTab(log.container)}
-          >
+      <Tabs
+        value={selectedTab}
+        onValueChange={setSelectedTab}
+        className="w-full"
+      >
+        <TabsList>
+          {logs.map(log => (
+            <TabsTrigger key={log.container} value={log.container}>
+              {log.team || log.container}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {logs.map(log => (
+          <TabsContent key={log.container} value={log.container}>
             <div
               className="overflow-y-auto"
               style={{ maxHeight: "calc(100vh - 300px)" }}
             >
-              {selectedTab === log.container && (
-                <pre className="whitespace-pre-wrap p-4 rounded-md">
-                  {getFilteredLogs(log.logs).map((line, index) => (
-                    <div key={index}>
-                      {parseAnsiColorCodes(line).map((part, partIndex) => (
-                        <span key={partIndex} style={{ color: part.color }}>
-                          {part.text}
-                        </span>
-                      ))}
-                    </div>
-                  ))}
-                </pre>
-              )}
+              <pre className="whitespace-pre-wrap p-4 rounded-md">
+                {getFilteredLogs(log.logs).map((line, index) => (
+                  <div key={index}>
+                    {parseAnsiColorCodes(line).map((part, partIndex) => (
+                      <span key={partIndex} style={{ color: part.color }}>
+                        {part.text}
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </pre>
             </div>
-          </Tab>
+          </TabsContent>
         ))}
       </Tabs>
     </div>

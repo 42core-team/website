@@ -1,339 +1,229 @@
 "use client";
-
-import type { NavbarProps } from "@heroui/react";
-import {
-  Button,
-  cn,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
-  Navbar,
-  NavbarBrand,
-  NavbarContent,
-  NavbarItem,
-  NavbarMenu,
-  NavbarMenuItem,
-  NavbarMenuToggle,
-} from "@heroui/react";
-
-import React from "react";
-
+import type { HTMLAttributes, SVGAttributes } from "react";
+import { signOut } from "next-auth/react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ThemeSwitch } from "@/components/theme-switch";
+import { forwardRef, useCallback, useState } from "react";
 import GithubLoginButton from "@/components/github";
-import { signOut } from "next-auth/react";
+import { ThemeSwitch } from "@/components/theme-switch";
+import { Button } from "@/components/ui/button";
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuList,
+} from "@/components/ui/navigation-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useNavbar } from "@/contexts/NavbarContext";
-import Image from "next/image";
+import { cn } from "@/lib/utils";
 
-const BasicNavbar = React.forwardRef<
-  HTMLElement,
-  {
-    children?: React.ReactNode | React.ReactNode[];
-    classNames?: Partial<NavbarProps["classNames"]>;
-    session: any;
-  }
->(({ classNames = {}, ...props }, ref) => {
-  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const [clickedItem, setClickedItem] = React.useState<string | null>(null);
-  const pathname = usePathname();
-  const { setIsBasicNavbarMenuOpen } = useNavbar();
-  const router = useRouter();
-
-  React.useEffect(() => {
-    setClickedItem(null);
-  }, [pathname]);
-
-  const isActive = React.useCallback(
-    (path: string) => {
-      if (clickedItem) {
-        return clickedItem === path;
-      }
-      if (path === "/events") {
-        return pathname === "/events" || pathname.startsWith("/events/");
-      }
-      if (path === "/wiki") {
-        return pathname.startsWith("/wiki");
-      }
-      return pathname === path;
-    },
-    [clickedItem, pathname],
-  );
-
+function Logo(props: SVGAttributes<SVGElement>) {
   return (
-    <Navbar
-      ref={ref}
-      {...props}
-      classNames={{
-        base: cn("border-default-100 bg-transparent", {
-          "bg-default-200/50 dark:bg-default-100/50": isMenuOpen,
-        }),
-        wrapper: "w-full justify-center",
-        item: "hidden md:flex",
-        ...classNames,
-      }}
-      height="60px"
-      isMenuOpen={isMenuOpen}
-      onMenuOpenChange={(open) => {
-        setIsMenuOpen(open);
-        setIsBasicNavbarMenuOpen(open);
-      }}
-    >
-      {/* Left Content */}
-      <NavbarBrand>
-        <Link
-          className="flex items-center"
-          href="/"
-          onPointerDown={() => setClickedItem("/")}
-          onClick={() => setClickedItem("/")}
-        >
-          <Image
-            src="/logo-black.svg"
-            width={35}
-            height={35}
-            alt="CORE"
-            className="dark:hidden"
-          />
-          <Image
-            src="/logo-white.svg"
-            width={35}
-            height={35}
-            alt="CORE"
-            className="hidden dark:block"
-          />
-          <span className="ml-1 text-small font-medium text-default-foreground">
-            CORE
-          </span>
-        </Link>
-      </NavbarBrand>
-
-      {/* Center Content */}
-      <NavbarContent justify="center">
-        <NavbarItem>
-          <Link
-            className={cn("text-default-500", {
-              "font-bold text-default-foreground": isActive("/"),
-            })}
-            href="/"
-            onPointerDown={() => setClickedItem("/")}
-            onClick={() => setClickedItem("/")}
-          >
-            Home
-          </Link>
-        </NavbarItem>
-        <NavbarItem>
-          <Link
-            className={cn("text-default-500", {
-              "font-bold text-default-foreground": isActive("/events"),
-            })}
-            href="/events"
-            onPointerDown={() => setClickedItem("/events")}
-            onClick={() => setClickedItem("/events")}
-          >
-            Events
-          </Link>
-        </NavbarItem>
-        <NavbarItem>
-          <Link
-            className={cn("text-default-500", {
-              "font-bold text-default-foreground": isActive("/wiki"),
-            })}
-            href="/wiki"
-            onPointerDown={() => setClickedItem("/wiki")}
-            onClick={() => setClickedItem("/wiki")}
-          >
-            Wiki
-          </Link>
-        </NavbarItem>
-        <NavbarItem>
-          <Link
-            className={cn("text-default-500", {
-              "font-bold text-default-foreground": isActive("/changelog"),
-            })}
-            href="/changelog"
-            onPointerDown={() => setClickedItem("/changelog")}
-            onClick={() => setClickedItem("/changelog")}
-          >
-            Changelog
-          </Link>
-        </NavbarItem>
-        <NavbarItem>
-          <Link
-            className={cn("text-default-500", {
-              "font-bold text-default-foreground": isActive("/about"),
-            })}
-            href="/about"
-            onPointerDown={() => setClickedItem("/about")}
-            onClick={() => setClickedItem("/about")}
-          >
-            About Us
-          </Link>
-        </NavbarItem>
-      </NavbarContent>
-
-      {/* Right Content */}
-      <NavbarContent className="hidden md:flex" justify="end">
-        <NavbarItem className="ml-2 !flex gap-2">
-          <ThemeSwitch />
-          {props.session?.user.id ? (
-            <Dropdown placement="bottom-end">
-              <DropdownTrigger>
-                <button
-                  className="p-0 border-none outline-hidden"
-                  style={{ borderRadius: "50%" }}
-                >
-                  <Image
-                    className="transition-transform"
-                    src={props?.session?.user.image}
-                    alt="Profile"
-                    width={40}
-                    height={40}
-                    style={{ borderRadius: "50%" }}
-                  />
-                </button>
-              </DropdownTrigger>
-              <DropdownMenu aria-label="Profile Actions" variant="flat">
-                <DropdownItem
-                  key="profile"
-                  onPress={() => router.push("/profile")}
-                >
-                  Profile
-                </DropdownItem>
-
-                {/* <DropdownItem key="settings" href="/settings">
-                                        Settings
-                                    </DropdownItem> */}
-                <DropdownItem
-                  key="logout"
-                  color="danger"
-                  onPress={() => {
-                    signOut().then(() => {
-                      router.push("/");
-                    });
-                  }}
-                >
-                  Log Out
-                </DropdownItem>
-              </DropdownMenu>
-            </Dropdown>
-          ) : (
-            <GithubLoginButton />
-          )}
-        </NavbarItem>
-      </NavbarContent>
-
-      <NavbarMenuToggle className="text-default-400 md:hidden" />
-
-      <NavbarMenu
-        className="top-[calc(var(--navbar-height)_-_1px)] max-h-fit bg-default-200/50 pb-6 pt-6 shadow-medium backdrop-blur-md backdrop-saturate-150 dark:bg-default-100/50"
-        motionProps={{
-          initial: { opacity: 0, y: -20 },
-          animate: { opacity: 1, y: 0 },
-          exit: { opacity: 0, y: -20 },
-          transition: {
-            ease: "easeInOut",
-            duration: 0.2,
-          },
-        }}
-      >
-        <NavbarMenuItem className="mb-4">
-          <Button
-            fullWidth
-            as={Link}
-            className="bg-foreground text-background"
-            href="/#"
-            onPressStart={() => setClickedItem("/#")}
-            onPress={() => setClickedItem("/#")}
-          >
-            Get Started
-          </Button>
-        </NavbarMenuItem>
-        <NavbarMenuItem>
-          <Link
-            className={cn("mb-2 w-full text-default-500", {
-              "font-bold text-default-foreground": isActive("/"),
-            })}
-            href="/"
-            onPointerDown={() => setClickedItem("/")}
-            onClick={() => setClickedItem("/")}
-          >
-            Home
-          </Link>
-        </NavbarMenuItem>
-        <NavbarMenuItem>
-          <Link
-            className={cn("mb-2 w-full text-default-500", {
-              "font-bold text-default-foreground": isActive("/events"),
-            })}
-            href="/events"
-            onPointerDown={() => setClickedItem("/events")}
-            onClick={() => setClickedItem("/events")}
-          >
-            Events
-          </Link>
-        </NavbarMenuItem>
-        <NavbarMenuItem>
-          <Link
-            className={cn("mb-2 w-full text-default-500", {
-              "font-bold text-default-foreground": isActive("/wiki"),
-            })}
-            href="/wiki"
-            onPointerDown={() => setClickedItem("/wiki")}
-            onClick={() => setClickedItem("/wiki")}
-          >
-            Wiki
-          </Link>
-        </NavbarMenuItem>
-        <NavbarMenuItem>
-          <Link
-            className={cn("mb-2 w-full text-default-500", {
-              "font-bold text-default-foreground": isActive("/changelog"),
-            })}
-            href="/changelog"
-            onPointerDown={() => setClickedItem("/changelog")}
-            onClick={() => setClickedItem("/changelog")}
-          >
-            Changelog
-          </Link>
-        </NavbarMenuItem>
-        <NavbarMenuItem>
-          <Link
-            className={cn("mb-2 w-full text-default-500", {
-              "font-bold text-default-foreground": isActive("/about"),
-            })}
-            href="/about"
-            onPointerDown={() => setClickedItem("/about")}
-            onClick={() => setClickedItem("/about")}
-          >
-            About us
-          </Link>
-        </NavbarMenuItem>
-
-        {/* Theme Switch and Login/Logout in mobile menu */}
-        <NavbarMenuItem className="mt-4 pt-4 border-t border-default-200 flex flex-col gap-4">
-          {props?.session?.user.id ? (
-            <Button
-              color="danger"
-              variant="flat"
-              fullWidth
-              onPress={() => {
-                signOut().then(() => {
-                  router.push("/");
-                });
-              }}
-            >
-              Log Out
-            </Button>
-          ) : (
-            <GithubLoginButton />
-          )}
-        </NavbarMenuItem>
-      </NavbarMenu>
-    </Navbar>
+    <svg viewBox="0 0 42 85" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <g fill="#a2a2a2">
+        <path d="M13 29L21 21V67L13 59V29Z" />
+        <path d="M8 26L21 13V0L0 21V64L21 85V75L8 62L8 26Z" />
+      </g>
+      <g fill="#747474">
+        <path d="M29 29L21 21V67L29 59V29Z" />
+        <path d="M42 64L21 85V75L34 62L34 54L42 46V64Z" />
+        <path d="M42 21V30L34 39L34 26L21 13V0L42 21Z" />
+      </g>
+    </svg>
   );
-});
+}
 
-BasicNavbar.displayName = "BasicNavbar";
+function HamburgerIcon({ className, ...props }: SVGAttributes<SVGElement>) {
+  return (
+    <svg
+      className={cn("pointer-events-none", className)}
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <path
+        d="M4 12L20 12"
+        className="origin-center -translate-y-[7px] transition-all duration-300 ease-[cubic-bezier(.5,.85,.25,1.1)] group-aria-expanded:translate-x-0 group-aria-expanded:translate-y-0 group-aria-expanded:rotate-315"
+      />
+      <path
+        d="M4 12H20"
+        className="origin-center transition-all duration-300 ease-[cubic-bezier(.5,.85,.25,1.8)] group-aria-expanded:rotate-45"
+      />
+      <path
+        d="M4 12H20"
+        className="origin-center translate-y-[7px] transition-all duration-300 ease-[cubic-bezier(.5,.85,.25,1.1)] group-aria-expanded:translate-y-0 group-aria-expanded:rotate-135"
+      />
+    </svg>
+  );
+}
+// Types
+export interface NavbarProps extends HTMLAttributes<HTMLElement> {
+  session?: any;
+}
 
-export default BasicNavbar;
+export const Navbar = forwardRef<HTMLElement, NavbarProps>(
+  ({ className, session, ...props }, ref) => {
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const pathname = usePathname();
+    const router = useRouter();
+    const { setIsBasicNavbarMenuOpen } = useNavbar();
+
+    const navLinks = [
+      { href: "/", label: "Home" },
+      { href: "/events", label: "Events" },
+      { href: "/wiki", label: "Wiki" },
+      { href: "/changelog", label: "Changelog" },
+      { href: "/about", label: "About us" },
+    ];
+
+    const isActive = useCallback(
+      (path: string) => {
+        if (path === "/events") {
+          return pathname === "/events" || pathname.startsWith("/events/");
+        }
+        if (path === "/wiki") {
+          return pathname.startsWith("/wiki");
+        }
+        return pathname === path;
+      },
+      [pathname],
+    );
+
+    return (
+      <header
+        ref={ref}
+        className={cn(
+          "sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 px-4 md:px-6 **:no-underline",
+          className,
+        )}
+        {...props}
+      >
+        <div className="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-4">
+          {/* Left side */}
+          <div className="flex items-center gap-2">
+            {/* Mobile menu trigger */}
+            <div className="md:hidden">
+              <Popover
+                open={isMobileMenuOpen}
+                onOpenChange={(open) => {
+                  setIsMobileMenuOpen(open);
+                  setIsBasicNavbarMenuOpen?.(open);
+                }}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    className="group h-9 w-9 hover:bg-accent hover:text-accent-foreground"
+                    variant="ghost"
+                    size="icon"
+                  >
+                    <HamburgerIcon />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-64 p-3">
+                  <nav className="mt-1 flex flex-col gap-1">
+                    {navLinks.map(link => (
+                      <Link
+                        key={link.href}
+                        className={cn(
+                          "rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                          isActive(link.href) && "font-bold text-foreground",
+                        )}
+                        href={link.href}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </nav>
+                </PopoverContent>
+              </Popover>
+            </div>
+            {/* Brand */}
+            <Link href="/" className="flex items-center">
+              <Logo className="size-6 light:invert" />
+              <span className="ml-1 text-sm font-bold text-foreground">
+                CORE
+              </span>
+            </Link>
+          </div>
+
+          {/* Desktop nav (centered) */}
+          <NavigationMenu className="hidden md:flex flex-1 justify-center">
+            <NavigationMenuList className="gap-2">
+              {navLinks.map(link => (
+                <NavigationMenuItem key={link.href}>
+                  <Link
+                    href={link.href}
+                    className={cn(
+                      "inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                      isActive(link.href)
+                        ? "bg-accent text-accent-foreground"
+                        : "text-foreground/80 hover:text-foreground",
+                    )}
+                  >
+                    {link.label}
+                  </Link>
+                </NavigationMenuItem>
+              ))}
+            </NavigationMenuList>
+          </NavigationMenu>
+
+          {/* Right side */
+          }
+          <div className="flex items-center gap-2">
+            <ThemeSwitch />
+            {session?.user?.id
+              ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="outline-none rounded-full">
+                        <Image
+                          className="transition-transform rounded-full"
+                          src={session?.user?.image}
+                          alt="Profile"
+                          width={40}
+                          height={40}
+                        />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-48 p-2">
+                      <button
+                        className="w-full rounded-md px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
+                        onClick={() => router.push("/profile")}
+                      >
+                        Profile
+                      </button>
+                      <button
+                        className="w-full rounded-md px-3 py-2 text-sm text-destructive hover:bg-accent hover:text-accent-foreground text-left"
+                        onClick={() => {
+                          signOut().then(() => router.push("/"));
+                        }}
+                      >
+                        Log Out
+                      </button>
+                    </PopoverContent>
+                  </Popover>
+                )
+              : (
+                  <GithubLoginButton />
+                )}
+          </div>
+        </div>
+      </header>
+    );
+  },
+);
+Navbar.displayName = "Navbar";
+export default Navbar;
+export { HamburgerIcon, Logo };

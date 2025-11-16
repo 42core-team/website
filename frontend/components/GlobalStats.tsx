@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import type { MatchStats } from "@/app/actions/stats";
 import { motion } from "framer-motion";
-import { getGlobalStats, MatchStats } from "@/app/actions/stats";
+import { Flame, Gem, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getGlobalStats } from "@/app/actions/stats";
 import AnimatedNumber from "@/components/animatedNumber";
-import {
-  CurrencyDollarIcon,
-  FireIcon,
-  UserIcon,
-} from "@heroicons/react/16/solid";
+import { Badge } from "@/components/ui/badge";
 
 export default function GlobalStats(props: { initialStats: MatchStats }) {
   const [stats, setStats] = useState<MatchStats>(props.initialStats);
@@ -19,7 +17,8 @@ export default function GlobalStats(props: { initialStats: MatchStats }) {
       const data = await getGlobalStats();
       setStats(data);
       setIsLoading(false);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error fetching global stats:", error);
     }
   };
@@ -35,24 +34,24 @@ export default function GlobalStats(props: { initialStats: MatchStats }) {
   const statCards = [
     {
       title: "Total Damage",
-      value: parseInt(stats.damageTotal || "0"),
-      icon: FireIcon,
+      value: Number.parseInt(stats.damageTotal || "0"),
+      icon: Flame,
       description: "Total damage dealt across all matches",
       color: "from-red-800 to-red-950",
       iconColor: "text-red-400",
     },
     {
       title: "Gems Gained",
-      value: parseInt(stats.gemsGained || "0"),
-      icon: CurrencyDollarIcon,
+      value: Number.parseInt(stats.gemsGained || "0"),
+      icon: Gem,
       description: "Total gems collected in all matches",
       color: "from-blue-800 to-blue-950",
       iconColor: "text-blue-400",
     },
     {
       title: "Units Spawned",
-      value: parseInt(stats.unitsSpawned || "0"),
-      icon: UserIcon,
+      value: Number.parseInt(stats.unitsSpawned || "0"),
+      icon: User,
       description: "Total units created in all matches",
       color: "from-green-800 to-green-950",
       iconColor: "text-green-400",
@@ -81,18 +80,16 @@ export default function GlobalStats(props: { initialStats: MatchStats }) {
               initial={{ y: 20 }}
               animate={{ y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className={`bg-gradient-to-br ${stat.color} rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-700`}
+              className={`bg-linear-to-br ${stat.color} rounded-xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-700`}
             >
               <div className="flex items-center justify-between mb-4">
                 <span className="text-4xl">
                   <stat.icon className={`w-10 h-10 ${stat.iconColor}`} />
                 </span>
-                <div className="text-gray-300 bg-gray-700 bg-opacity-30 rounded-full px-3 py-1 text-sm">
-                  Live
-                </div>
+                <Badge>Live</Badge>
               </div>
 
-              <h3 className="text-gray-300 text-xl font-semibold mb-2">
+              <h3 className="text-gray-100 text-xl font-semibold mb-2">
                 {stat.title}
               </h3>
 
@@ -100,7 +97,7 @@ export default function GlobalStats(props: { initialStats: MatchStats }) {
                 <AnimatedNumber value={stat.value} />
               </div>
 
-              <p className="text-gray-400 text-sm">{stat.description}</p>
+              <p className="text-gray-200 text-sm">{stat.description}</p>
             </motion.div>
           ))}
         </div>

@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { OAUTH_CONFIG, OAUTH_PROVIDERS } from "@/lib/constants/oauth";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getFortyTwoAuthUrl } from "@/app/actions/social-accounts";
+import { OAUTH_CONFIG } from "@/lib/constants/oauth";
 
 /**
  * Simplified hook for handling 42 School OAuth integration
@@ -55,13 +55,14 @@ export function use42Linking(onSuccess?: () => void): Use42LinkingReturn {
         }
 
         window.location.href = authUrl;
-      } catch (err: any) {
+      }
+      catch (err: any) {
         console.error("Failed to initiate 42 OAuth via backend:", err);
         setMessage({
           type: "error",
           text:
-            err?.message ||
-            "Failed to start 42 authentication. Please try again later.",
+            err?.message
+            || "Failed to start 42 authentication. Please try again later.",
         });
         setIsInitiating(false);
       }
@@ -85,11 +86,13 @@ export function use42Linking(onSuccess?: () => void): Use42LinkingReturn {
         const url = new URL(window.location.href);
         url.searchParams.delete("success");
         window.history.replaceState({}, "", url.toString());
-      } else if (error) {
+      }
+      else if (error) {
         // Only show messages for errors
         if (error === "invalid-provider") {
           setMessage({ type: "error", text: "Invalid OAuth provider" });
-        } else {
+        }
+        else {
           setMessage({ type: "error", text: error.replace(/-/g, " ") });
         }
       }

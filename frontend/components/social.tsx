@@ -1,4 +1,4 @@
-import { IconSvgProps } from "@/types";
+import type { IconSvgProps } from "@/types";
 import React from "react";
 
 const OpenCollectiveIcon: React.FC<IconSvgProps> = ({
@@ -659,27 +659,27 @@ const CoreLogoWhite: React.FC<IconSvgProps> = ({
 );
 
 export {
-  GoogleIcon,
-  FacebookIcon,
+  AcmeIcon,
   AppleIcon,
-  TwitterIcon,
+  AstroIcon,
+  CodeSandboxIcon,
+  CoreLogoWhite,
   DiscordIcon,
+  FacebookIcon,
   GithubIcon,
-  OpenCollectiveIcon,
-  PatreonIcon,
+  GoogleIcon,
+  JavascriptIcon,
+  NewNextJSIcon,
   NextJsIcon,
   NpmIcon,
   NpmSmallIcon,
+  OpenCollectiveIcon,
+  PatreonIcon,
   PnpmIcon,
-  YarnIcon,
-  AstroIcon,
   RemixIcon,
-  ViteIcon,
-  NewNextJSIcon,
   StorybookIcon,
-  CodeSandboxIcon,
-  JavascriptIcon,
+  TwitterIcon,
   TypescriptIcon,
-  AcmeIcon,
-  CoreLogoWhite,
+  ViteIcon,
+  YarnIcon,
 };

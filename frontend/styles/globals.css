@@ -1,6 +1,15 @@
-@config "../tailwind.config.mjs";
 @import "tailwindcss";
 @import "./themes/highlightjs/github-dark.css";
+@import "tw-animate-css";
+@import "./wiki.css";
+
+@plugin "@tailwindcss/typography";
+
+@source "./layouts/**/*.{js,ts,jsx,tsx,mdx}";
+@source "./app/**/*.{js,ts,jsx,tsx,mdx}";
+@source "./components/**/*.{js,ts,jsx,tsx,mdx}";
+
+@custom-variant dark (&:is(.dark *));
 
 @font-face {
   font-family: "Original";
@@ -9,122 +18,13 @@
   font-style: normal;
 }
 
-/* GitHub-style callouts */
-.wiki-content .callout {
-  margin: 1rem 0 !important;
-  padding: 1rem !important;
-  border-left: 4px solid !important;
-  border-radius: 0.5rem !important;
-  background: rgba(0, 0, 0, 0.02) !important;
-}
-
-.wiki-content .callout-header {
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.5rem !important;
-  font-weight: 600 !important;
-  margin-bottom: 0.5rem !important;
-}
-
-.wiki-content .callout-icon {
-  font-size: 1.2em !important;
-}
-
-.wiki-content .callout-content {
-  margin: 0 !important;
-}
-
-.wiki-content .callout-content > *:first-child {
-  margin-top: 0 !important;
-}
-
-.wiki-content .callout-content > *:last-child {
-  margin-bottom: 0 !important;
-}
-
-/* Callout type-specific styling */
-.wiki-content .callout-warning {
-  border-color: #f59e0b !important;
-  background: rgba(245, 158, 11, 0.1) !important;
-}
-
-.wiki-content .callout-warning .callout-title {
-  color: #d97706 !important;
-}
-
-.wiki-content .callout-info {
-  border-color: #3b82f6 !important;
-  background: rgba(59, 130, 246, 0.1) !important;
-}
-
-.wiki-content .callout-info .callout-title {
-  color: #2563eb !important;
-}
-
-.wiki-content .callout-note {
-  border-color: #6b7280 !important;
-  background: rgba(107, 114, 128, 0.1) !important;
-}
-
-.wiki-content .callout-note .callout-title {
-  color: #4b5563 !important;
-}
-
-.wiki-content .callout-tip {
-  border-color: #10b981 !important;
-  background: rgba(16, 185, 129, 0.1) !important;
-}
-
-.wiki-content .callout-tip .callout-title {
-  color: #059669 !important;
-}
-
-.wiki-content .callout-important {
-  border-color: #8b5cf6 !important;
-  background: rgba(139, 92, 246, 0.1) !important;
-}
-
-.wiki-content .callout-important .callout-title {
-  color: #7c3aed !important;
-}
-
-.wiki-content .callout-caution {
-  border-color: #ef4444 !important;
-  background: rgba(239, 68, 68, 0.1) !important;
-}
-
-.wiki-content .callout-caution .callout-title {
-  color: #dc2626 !important;
-}
-
-/* Dark mode support for callouts */
-@media (prefers-color-scheme: dark) {
-  .wiki-content .callout {
-    background: rgba(255, 255, 255, 0.05) !important;
-  }
-
-  .wiki-content .callout-warning {
-    background: rgba(245, 158, 11, 0.15) !important;
-  }
-
-  .wiki-content .callout-info {
-    background: rgba(59, 130, 246, 0.15) !important;
-  }
-
-  .wiki-content .callout-note {
-    background: rgba(107, 114, 128, 0.15) !important;
-  }
-
-  .wiki-content .callout-tip {
-    background: rgba(16, 185, 129, 0.15) !important;
-  }
-
-  .wiki-content .callout-important {
-    background: rgba(139, 92, 246, 0.15) !important;
-  }
-
-  .wiki-content .callout-caution {
-    background: rgba(239, 68, 68, 0.15) !important;
+@utility prose {
+  code {
+    &::before,
+    &::after {
+      display: none;
+    }
+    text-wrap: nowrap;
   }
 }
 
@@ -135,8 +35,15 @@
 }
 
 /* Smooth scrolling for anchor links */
-html {
+html,
+body {
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+  overflow-x: hidden;
+}
+
+body {
+  min-width: 100vw;
 }
 
 /* Offset for sticky header when jumping to anchors */
@@ -151,126 +58,6 @@ h6[id]::before {
   height: 80px;
   margin-top: -80px;
   visibility: hidden;
-}
-
-/* Wiki content styles */
-.wiki-content {
-  @apply text-foreground;
-}
-
-.wiki-content h1 {
-  @apply text-3xl font-bold mt-8 mb-4 text-foreground border-b border-divider pb-2;
-}
-
-.wiki-content h2 {
-  @apply text-2xl font-semibold mt-6 mb-3 text-foreground;
-}
-
-.wiki-content h3 {
-  @apply text-xl font-semibold mt-4 mb-2 text-foreground;
-}
-
-.wiki-content h4 {
-  @apply text-lg font-semibold mt-3 mb-2 text-foreground;
-}
-
-.wiki-content p {
-  @apply mb-4 leading-relaxed text-default-700;
-}
-
-.wiki-content ul,
-.wiki-content ol {
-  @apply mb-4 ml-6;
-}
-
-.wiki-content li {
-  @apply mb-2;
-}
-
-.wiki-content ul li {
-  @apply list-disc;
-}
-
-.wiki-content ol li {
-  @apply list-decimal;
-}
-
-.wiki-content a {
-  @apply text-primary hover:text-primary-600 underline;
-}
-
-.wiki-content code {
-  @apply bg-default-100 px-2 py-1 rounded text-sm font-mono text-default-800;
-}
-
-.wiki-content pre {
-  @apply bg-default-100 p-4 rounded-lg overflow-x-auto mb-4;
-}
-
-.wiki-content pre code {
-  @apply bg-transparent p-0;
-}
-
-.wiki-content blockquote {
-  @apply border-l-4 border-primary pl-4 italic text-default-600 mb-4;
-}
-
-.wiki-content table {
-  @apply w-full border-collapse border border-divider mb-4;
-}
-
-.wiki-content th,
-.wiki-content td {
-  @apply border border-divider px-4 py-2 text-left;
-}
-
-.wiki-content th {
-  @apply bg-default-100 font-semibold;
-}
-
-.wiki-content img {
-  @apply max-w-full h-auto rounded-lg shadow-sm;
-}
-
-.wiki-content hr {
-  @apply border-divider my-8;
-}
-
-/* Heading anchor styles */
-.wiki-content .heading-anchor {
-  @apply text-inherit no-underline;
-}
-
-.wiki-content .heading-anchor:hover {
-  @apply text-inherit;
-}
-
-.wiki-content h1 .heading-anchor,
-.wiki-content h2 .heading-anchor,
-.wiki-content h3 .heading-anchor,
-.wiki-content h4 .heading-anchor,
-.wiki-content h5 .heading-anchor,
-.wiki-content h6 .heading-anchor {
-  @apply relative;
-}
-
-.wiki-content h1 .heading-anchor::before,
-.wiki-content h2 .heading-anchor::before,
-.wiki-content h3 .heading-anchor::before,
-.wiki-content h4 .heading-anchor::before,
-.wiki-content h5 .heading-anchor::before,
-.wiki-content h6 .heading-anchor::before {
-  content: "#";
-  @apply absolute -left-6 text-default-400 opacity-0 transition-opacity;
-}
-
-.wiki-content h1:hover .heading-anchor::before,
-.wiki-content h2:hover .heading-anchor::before,
-.wiki-content h3:hover .heading-anchor::before,
-.wiki-content h4:hover .heading-anchor::before,
-.wiki-content h5:hover .heading-anchor::before,
-.wiki-content h6:hover .heading-anchor::before {
-  @apply opacity-100;
 }
 
 /* Search highlighting */
@@ -289,4 +76,124 @@ mark {
 .prose h5,
 .prose h6 {
   scroll-margin-top: 90px;
+}
+
+@theme {
+  --font-display: "Original", sans-serif;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

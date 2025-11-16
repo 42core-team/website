@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function SsoPage() {
   const router = useRouter();
@@ -15,9 +15,11 @@ export default function SsoPage() {
           router.replace("/");
           router.refresh();
         }
-      } catch (e) {
+      }
+      catch (e) {
         console.error("Failed to finalize SSO:", e);
-        if (!cancelled) router.replace("/auth/error");
+        if (!cancelled)
+          router.replace("/auth/error");
       }
     })();
     return () => {

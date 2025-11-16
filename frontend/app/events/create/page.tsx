@@ -1,10 +1,10 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/utils/authOptions";
+import { redirect } from "next/navigation";
 import { canUserCreateEvent } from "@/app/actions/event";
+import { authOptions } from "@/app/utils/authOptions";
 import { title } from "@/components/primitives";
 import CreateEventForm from "./CreateEventForm";
-import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Create Event",

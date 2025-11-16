@@ -1,8 +1,9 @@
 "use server";
 
+import type { ServerActionResponse } from "@/app/actions/errors";
+import type { EventState } from "@/app/actions/event-model";
 import axiosInstance, { handleError } from "@/app/actions/axios";
-import { isActionError, ServerActionResponse } from "@/app/actions/errors";
-import { EventState } from "@/app/actions/event-model";
+import { isActionError } from "@/app/actions/errors";
 
 export interface Event {
   id: string;
@@ -54,10 +55,12 @@ export async function isUserRegisteredForEvent(
 
 export async function shouldShowJoinNotice(eventId: string): Promise<boolean> {
   const isRegistered = await isUserRegisteredForEvent(eventId);
-  if (isRegistered) return false;
+  if (isRegistered)
+    return false;
 
   const event = await getEventById(eventId);
-  if (isActionError(event) || !event) return false;
+  if (isActionError(event) || !event)
+    return false;
 
   const endDate = new Date(event.endDate);
   return endDate > new Date();
@@ -120,7 +123,8 @@ export async function createEvent(
 export async function canUserCreateEvent(): Promise<boolean> {
   try {
     return (await axiosInstance.get<boolean>("user/canCreateEvent")).data;
-  } catch {
+  }
+  catch {
     return false;
   }
 }
@@ -139,7 +143,8 @@ export async function setEventTeamsLockDate(
 export async function getMyEvents(): Promise<Event[]> {
   try {
     return (await axiosInstance.get("event/my")).data as Event[];
-  } catch {
+  }
+  catch {
     return [];
   }
 }

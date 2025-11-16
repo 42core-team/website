@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/utils/authOptions";
+import { NextResponse } from "next/server";
 import axiosInstance from "@/app/actions/axios";
-import { OAUTH_URLS, OAUTH_PROVIDERS } from "@/lib/constants/oauth";
+import { authOptions } from "@/app/utils/authOptions";
+import { OAUTH_PROVIDERS, OAUTH_URLS } from "@/lib/constants/oauth";
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
         grant_type: "authorization_code",
         client_id: process.env.NEXT_PUBLIC_FORTY_TWO_CLIENT_ID!,
         client_secret: process.env.FORTY_TWO_CLIENT_SECRET!,
-        code: code,
+        code,
         redirect_uri: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/auth/callback/${OAUTH_PROVIDERS.FORTY_TWO}`,
       }),
     });
@@ -81,7 +82,8 @@ export async function POST(request: NextRequest) {
           email: profile.email,
         },
       });
-    } catch (linkError: any) {
+    }
+    catch (linkError: any) {
       console.error("Account linking failed:", linkError);
       return NextResponse.json(
         {
@@ -90,7 +92,8 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.error("42 linking error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
