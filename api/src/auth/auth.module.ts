@@ -6,6 +6,7 @@ import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { JwtStrategy } from "./jwt.strategy";
 import { GithubOAuthStrategy } from "./github.strategy";
+import { FortyTwoOAuthStrategy } from "./fortytwo.strategy";
 import { UserModule } from "../user/user.module";
 
 @Module({
@@ -24,7 +25,12 @@ import { UserModule } from "../user/user.module";
       }),
     }),
   ],
-  providers: [AuthService, JwtStrategy, GithubOAuthStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    GithubOAuthStrategy,
+    FortyTwoOAuthStrategy,
+  ],
   controllers: [AuthController],
   exports: [PassportModule, JwtModule],
 })
