@@ -20,7 +20,7 @@ import { UserModule } from "../user/user.module";
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>("JWT_SECRET") || "dev-secret",
         signOptions: {
-          expiresIn: "7d",
+          expiresIn: "30d",
         },
       }),
     }),
