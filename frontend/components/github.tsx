@@ -5,7 +5,7 @@ export default function GithubLoginButton() {
   async function githubLogin() {
     try {
       const base
-        = process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL || process.env.BACKEND_URL;
+        = process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
       window.location.href = `${base?.replace(/\/$/, "")}/auth/github/callback`;
     }
     catch (error) {
