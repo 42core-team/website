@@ -34,9 +34,10 @@ axiosInstance.interceptors.request.use(
     }
 
     config.baseURL = process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
-    config.headers.Authorization = getTokenFromCookieString(
-      document.cookie || "",
-    );
+    const token = getTokenFromCookieString(document.cookie || "");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {
