@@ -1,15 +1,15 @@
-import { title } from "@/components/primitives";
+import type { Metadata } from "next";
+import { getServerSession } from "next-auth";
+import Link from "next/link";
 import {
-  getEvents,
   canUserCreateEvent,
+  getEvents,
   getMyEvents,
 } from "@/app/actions/event";
 import EventsTabs from "@/app/events/EventsTabs";
-import { Button } from "@/components/clientHeroui";
-import type { Metadata } from "next";
-import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/utils/authOptions";
-import Link from "next/link";
+import { title } from "@/components/primitives";
+import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Events",
@@ -46,12 +46,12 @@ export default async function EventsPage() {
         <div className="flex flex-row items-center justify-center">
           <h1 className={title()}>Events</h1>
         </div>
-        <p className="text-lg text-default-600">
+        <p className="text-lg text-muted-foreground">
           Discover and join upcoming coding competitions
         </p>
         {canCreate && (
           <Link href="/events/create">
-            <Button color="primary">Create Event</Button>
+            <Button>Create Event</Button>
           </Link>
         )}
       </div>

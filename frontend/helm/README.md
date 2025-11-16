@@ -65,15 +65,15 @@ The chart supports an optional redirect ingress for handling domain redirects (e
 ```yaml
 ingressRedirect:
   enabled: true
-  className: "nginx"
+  className: nginx
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-  fromHost: "www.example.com"
-  toHost: "example.com"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  fromHost: www.example.com
+  toHost: example.com
   code: "308"
   tls:
     enabled: true
-    secretName: "www-example-com-tls"
+    secretName: www-example-com-tls
 ```
 
 #### Example: Production www redirect
@@ -81,15 +81,15 @@ ingressRedirect:
 ```yaml
 ingressRedirect:
   enabled: true
-  className: "nginx"
+  className: nginx
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-  fromHost: "www.coregame.de"
-  toHost: "coregame.de"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  fromHost: www.coregame.de
+  toHost: coregame.de
   code: "308"
   tls:
     enabled: true
-    secretName: "www-coregame-de-tls"
+    secretName: www-coregame-de-tls
 ```
 
 This configuration will:

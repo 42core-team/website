@@ -1,4 +1,4 @@
-import { WikiVersion } from "./markdown";
+import type { WikiVersion } from "./markdown";
 
 /**
  * Builds the navigation path for switching between wiki versions
@@ -22,7 +22,7 @@ export function buildVersionPath(
   pathParts.shift();
 
   // Remove current version if it exists
-  if (pathParts.length > 0 && versions.some((v) => v.slug === pathParts[0])) {
+  if (pathParts.length > 0 && versions.some(v => v.slug === pathParts[0])) {
     pathParts.shift();
   }
 
@@ -30,7 +30,8 @@ export function buildVersionPath(
   if (targetVersion === "latest") {
     // For latest, we don't include version in URL
     return pathParts.length > 0 ? `/wiki/${pathParts.join("/")}` : "/wiki";
-  } else {
+  }
+  else {
     // For specific versions, include version in URL
     return pathParts.length > 0
       ? `/wiki/${targetVersion}/${pathParts.join("/")}`

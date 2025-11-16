@@ -1,18 +1,20 @@
-import { Button } from "@heroui/react";
-import { GithubIcon } from "./icons";
 import { signIn } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { GithubIcon } from "./icons";
 
 export default function GithubLoginButton() {
   async function githubLogin() {
     try {
       await signIn("github");
-    } catch (error) {
-      console.log("error while logging in:", error);
+    }
+    catch (error) {
+      console.error("error while logging in:", error);
     }
   }
 
   return (
-    <Button variant="flat" onPress={githubLogin} startContent={<GithubIcon />}>
+    <Button onClick={githubLogin}>
+      <GithubIcon />
       Login
     </Button>
   );

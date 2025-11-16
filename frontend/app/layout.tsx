@@ -1,10 +1,10 @@
-import React from "react";
 import type { Metadata } from "next";
-
-import "@/styles/globals.css";
-import DefaultLayout from "@/layouts/default";
-import ClientProviders from "@/components/ClientProviders";
 import PlausibleProvider from "next-plausible";
+
+import React from "react";
+import ClientProviders from "@/components/ClientProviders";
+import DefaultLayout from "@/layouts/default";
+import "@/styles/globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXTAUTH_URL ?? "https://coregame.de"),

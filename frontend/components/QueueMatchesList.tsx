@@ -1,8 +1,10 @@
 "use client";
 
-import { Button, cn } from "@heroui/react";
+import type { Match } from "@/app/actions/tournament-model";
 import Link from "next/link";
-import { Match, MatchState } from "@/app/actions/tournament-model";
+import { MatchState } from "@/app/actions/tournament-model";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export default function QueueMatchesList(props: {
   eventId: string;
@@ -12,20 +14,22 @@ export default function QueueMatchesList(props: {
 
   if (!matches || matches.length === 0) {
     return (
-      <p className="text-center text-default-500">No past matches found</p>
+      <p className="text-center text-muted-foreground">No past matches found</p>
     );
   }
 
   return (
     <div className="flex flex-col gap-4 overflow-y-auto">
-      {matches.map((match) => (
+      {matches.map(match => (
         <div
           key={match.id}
-          className="rounded-lg border border-default-200 p-4 shadow-xs"
+          className="rounded-lg border p-4 shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-default-500">
-              Match ID: {match.id}
+            <span className="text-sm font-medium text-muted-foreground">
+              Match ID:
+              {" "}
+              {match.id}
             </span>
             <span
               className={cn(
@@ -34,7 +38,7 @@ export default function QueueMatchesList(props: {
                   ? "bg-success-100 text-success-700"
                   : match.state === MatchState.IN_PROGRESS
                     ? "bg-warning-100 text-warning-700"
-                    : "bg-default-100 text-default-700",
+                    : "bg-background text-foreground",
               )}
             >
               {match.state}
@@ -42,7 +46,7 @@ export default function QueueMatchesList(props: {
           </div>
 
           <div className="mt-3 space-y-3">
-            {match.results.length == 2 && (
+            {match.results.length === 2 && (
               <div className="flex items-center justify-center gap-2">
                 <div
                   className={cn(
@@ -60,12 +64,12 @@ export default function QueueMatchesList(props: {
                   </div>
                   <div className="text-xl font-bold mt-1">
                     {match.results.find(
-                      (result) => result.team?.id === match.teams[0]?.id,
+                      result => result.team?.id === match.teams[0]?.id,
                     )?.score || 0}
                   </div>
                 </div>
 
-                <div className="text-default-500 font-bold">VS</div>
+                <div className="text-muted-foreground font-bold">VS</div>
 
                 <div
                   className={cn(
@@ -83,7 +87,7 @@ export default function QueueMatchesList(props: {
                   </div>
                   <div className="text-xl font-bold mt-1">
                     {match.results.find(
-                      (result) => result.team?.id === match.teams[1]?.id,
+                      result => result.team?.id === match.teams[1]?.id,
                     )?.score || 0}
                   </div>
                 </div>
@@ -91,9 +95,9 @@ export default function QueueMatchesList(props: {
             )}
           </div>
 
-          <div className="mt-3 text-xs text-default-400 flex justify-between items-center">
+          <div className="mt-3 text-xs text-muted-foreground flex justify-between items-center">
             <span>{new Date(match.createdAt).toLocaleString()}</span>
-            <Link href={"/events/" + eventId + "/match/" + match.id}>
+            <Link href={`/events/${eventId}/match/${match.id}`}>
               <Button size="sm" color="secondary">
                 Replay
               </Button>

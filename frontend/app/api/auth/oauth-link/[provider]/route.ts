@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/utils/authOptions";
+import { NextResponse } from "next/server";
 import axiosInstance from "@/app/actions/axios";
-import { OAUTH_URLS, OAUTH_PROVIDERS } from "@/lib/constants/oauth";
+import { authOptions } from "@/app/utils/authOptions";
+import { OAUTH_PROVIDERS, OAUTH_URLS } from "@/lib/constants/oauth";
 
 interface RouteParams {
   params: Promise<{
@@ -48,7 +49,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       { error: `OAuth provider ${provider} not yet implemented` },
       { status: 400 },
     );
-  } catch (error) {
+  }
+  catch (error) {
     console.error("OAuth linking error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
@@ -57,7 +59,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-async function handle42OAuth(code: string, state: string, session: any) {
+async function handle42OAuth(code: string, _state: string, _session: any) {
   try {
     // Exchange authorization code for access token
     const tokenResponse = await fetch(OAUTH_URLS.FORTY_TWO_TOKEN, {
@@ -69,7 +71,7 @@ async function handle42OAuth(code: string, state: string, session: any) {
         grant_type: "authorization_code",
         client_id: process.env.NEXT_PUBLIC_FORTY_TWO_CLIENT_ID!,
         client_secret: process.env.FORTY_TWO_CLIENT_SECRET!,
-        code: code,
+        code,
         redirect_uri: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/auth/callback/${OAUTH_PROVIDERS.FORTY_TWO}`,
       }),
     });
@@ -119,7 +121,8 @@ async function handle42OAuth(code: string, state: string, session: any) {
           email: profile.email,
         },
       });
-    } catch (linkError: any) {
+    }
+    catch (linkError: any) {
       console.error("Account linking failed:", linkError);
       return NextResponse.json(
         {
@@ -128,7 +131,8 @@ async function handle42OAuth(code: string, state: string, session: any) {
         { status: 400 },
       );
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.error("42 OAuth error:", error);
     return NextResponse.json(
       { error: "Failed to process 42 OAuth" },

@@ -1,8 +1,8 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Input } from "@heroui/react";
+import { useEffect, useState } from "react";
 import { SearchIcon } from "@/components/icons";
-import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
 
 export default function TeamsSearchBar({
   initialValue,
@@ -16,7 +16,8 @@ export default function TeamsSearchBar({
   useEffect(() => {
     const handler = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value) params.set("q", value);
+      if (value)
+        params.set("q", value);
       else params.delete("q");
       router.replace(`?${params.toString()}`);
     }, 400); // 400ms debounce
@@ -31,7 +32,7 @@ export default function TeamsSearchBar({
         className="w-full pl-10"
         placeholder="Search teams..."
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={e => setValue(e.target.value)}
       />
     </div>
   );

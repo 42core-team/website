@@ -1,4 +1,4 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Datenschutzerklärung",
@@ -14,7 +14,8 @@ export default function DatenschtutzPage() {
       <div className="prose prose-lg dark:prose-invert max-w-none">
         <h1>Datenschutz&shy;erkl&auml;rung</h1>
         <h2>1. Datenschutz auf einen Blick</h2>
-        <h3>Allgemeine Hinweise</h3>{" "}
+        <h3>Allgemeine Hinweise</h3>
+        {" "}
         <p>
           Die folgenden Hinweise geben einen einfachen &Uuml;berblick
           dar&uuml;ber, was mit Ihren personenbezogenen Daten passiert, wenn Sie
@@ -23,30 +24,37 @@ export default function DatenschtutzPage() {
           Ausf&uuml;hrliche Informationen zum Thema Datenschutz entnehmen Sie
           unserer unter diesem Text aufgef&uuml;hrten Datenschutzerkl&auml;rung.
         </p>
-        <h3>Datenerfassung auf dieser Website</h3>{" "}
+        <h3>Datenerfassung auf dieser Website</h3>
+        {" "}
         <h4>
           Wer ist verantwortlich f&uuml;r die Datenerfassung auf dieser Website?
-        </h4>{" "}
+        </h4>
+        {" "}
         <p>
           Die Datenverarbeitung auf dieser Website erfolgt durch den
           Websitebetreiber. Dessen Kontaktdaten k&ouml;nnen Sie dem Abschnitt
           &bdquo;Hinweis zur Verantwortlichen Stelle&ldquo; in dieser
           Datenschutzerkl&auml;rung entnehmen.
-        </p>{" "}
-        <h4>Wie erfassen wir Ihre Daten?</h4>{" "}
+        </p>
+        {" "}
+        <h4>Wie erfassen wir Ihre Daten?</h4>
+        {" "}
         <p>
           Ihre Daten werden zum einen dadurch erhoben, dass Sie uns diese
           mitteilen. Hierbei kann es sich z.&nbsp;B. um Daten handeln, die Sie
           in ein Kontaktformular eingeben.
-        </p>{" "}
+        </p>
+        {" "}
         <p>
           Andere Daten werden automatisch oder nach Ihrer Einwilligung beim
           Besuch der Website durch unsere IT-Systeme erfasst. Das sind vor allem
           technische Daten (z.&nbsp;B. Internetbrowser, Betriebssystem oder
           Uhrzeit des Seitenaufrufs). Die Erfassung dieser Daten erfolgt
           automatisch, sobald Sie diese Website betreten.
-        </p>{" "}
-        <h4>Wof&uuml;r nutzen wir Ihre Daten?</h4>{" "}
+        </p>
+        {" "}
+        <h4>Wof&uuml;r nutzen wir Ihre Daten?</h4>
+        {" "}
         <p>
           Ein Teil der Daten wird erhoben, um eine fehlerfreie Bereitstellung
           der Website zu gew&auml;hrleisten. Andere Daten k&ouml;nnen zur
@@ -54,8 +62,10 @@ export default function DatenschtutzPage() {
           Website Vertr&auml;ge geschlossen oder angebahnt werden k&ouml;nnen,
           werden die &uuml;bermittelten Daten auch f&uuml;r Vertragsangebote,
           Bestellungen oder sonstige Auftragsanfragen verarbeitet.
-        </p>{" "}
-        <h4>Welche Rechte haben Sie bez&uuml;glich Ihrer Daten?</h4>{" "}
+        </p>
+        {" "}
+        <h4>Welche Rechte haben Sie bez&uuml;glich Ihrer Daten?</h4>
+        {" "}
         <p>
           Sie haben jederzeit das Recht, unentgeltlich Auskunft &uuml;ber
           Herkunft, Empf&auml;nger und Zweck Ihrer gespeicherten
@@ -67,24 +77,28 @@ export default function DatenschtutzPage() {
           Umst&auml;nden die Einschr&auml;nkung der Verarbeitung Ihrer
           personenbezogenen Daten zu verlangen. Des Weiteren steht Ihnen ein
           Beschwerderecht bei der zust&auml;ndigen Aufsichtsbeh&ouml;rde zu.
-        </p>{" "}
+        </p>
+        {" "}
         <p>
           Hierzu sowie zu weiteren Fragen zum Thema Datenschutz k&ouml;nnen Sie
           sich jederzeit an uns wenden.
         </p>
-        <h3>Analyse-Tools und Tools von Dritt&shy;anbietern</h3>{" "}
+        <h3>Analyse-Tools und Tools von Dritt&shy;anbietern</h3>
+        {" "}
         <p>
           Beim Besuch dieser Website kann Ihr Surf-Verhalten statistisch
           ausgewertet werden. Das geschieht vor allem mit sogenannten
           Analyseprogrammen.
-        </p>{" "}
+        </p>
+        {" "}
         <p>
           Detaillierte Informationen zu diesen Analyseprogrammen finden Sie in
           der folgenden Datenschutzerkl&auml;rung.
         </p>
         <h2>2. Hosting</h2>
         <p>Wir hosten die Inhalte unserer Website bei folgendem Anbieter:</p>
-        <h3>Externes Hosting</h3>{" "}
+        <h3>Externes Hosting</h3>
+        {" "}
         <p>
           Diese Website wird extern gehostet. Die personenbezogenen Daten, die
           auf dieser Website erfasst werden, werden auf den Servern des Hosters
@@ -92,7 +106,8 @@ export default function DatenschtutzPage() {
           IP-Adressen, Kontaktanfragen, Meta- und Kommunikationsdaten,
           Vertragsdaten, Kontaktdaten, Namen, Websitezugriffe und sonstige
           Daten, die &uuml;ber eine Website generiert werden, handeln.
-        </p>{" "}
+        </p>
+        {" "}
         <p>
           Das externe Hosting erfolgt zum Zwecke der Vertragserf&uuml;llung
           gegen&uuml;ber unseren potenziellen und bestehenden Kunden (Art. 6
@@ -105,29 +120,34 @@ export default function DatenschtutzPage() {
           Cookies oder den Zugriff auf Informationen im Endger&auml;t des
           Nutzers (z.&nbsp;B. Device-Fingerprinting) im Sinne des TDDDG umfasst.
           Die Einwilligung ist jederzeit widerrufbar.
-        </p>{" "}
+        </p>
+        {" "}
         <p>
           Unser(e) Hoster wird bzw. werden Ihre Daten nur insoweit verarbeiten,
           wie dies zur Erf&uuml;llung seiner Leistungspflichten erforderlich ist
           und unsere Weisungen in Bezug auf diese Daten befolgen.
-        </p>{" "}
+        </p>
+        {" "}
         <p>Wir setzen folgende(n) Hoster ein:</p>
         <p>
           STACKIT GmbH &amp; Co. KG
           <br />
-          Stiftsbergstra&szlig;e 1<br />
+          Stiftsbergstra&szlig;e 1
+          <br />
           74172 Neckarsulm
         </p>
         {/* TODO: check if exists */}
         {/* <h4>Auftragsverarbeitung</h4> <p>Wir haben einen Vertrag &uuml;ber Auftragsverarbeitung (AVV) zur Nutzung des oben genannten Dienstes geschlossen. Hierbei handelt es sich um einen datenschutzrechtlich vorgeschriebenen Vertrag, der gew&auml;hrleistet, dass dieser die personenbezogenen Daten unserer Websitebesucher nur nach unseren Weisungen und unter Einhaltung der DSGVO verarbeitet.</p> */}
         <h2>3. Allgemeine Hinweise und Pflicht&shy;informationen</h2>
-        <h3>Datenschutz</h3>{" "}
+        <h3>Datenschutz</h3>
+        {" "}
         <p>
           Die Betreiber dieser Seiten nehmen den Schutz Ihrer pers&ouml;nlichen
           Daten sehr ernst. Wir behandeln Ihre personenbezogenen Daten
           vertraulich und entsprechend den gesetzlichen Datenschutzvorschriften
           sowie dieser Datenschutzerkl&auml;rung.
-        </p>{" "}
+        </p>
+        {" "}
         <p>
           Wenn Sie diese Website benutzen, werden verschiedene personenbezogene
           Daten erhoben. Personenbezogene Daten sind Daten, mit denen Sie
@@ -135,38 +155,53 @@ export default function DatenschtutzPage() {
           Datenschutzerkl&auml;rung erl&auml;utert, welche Daten wir erheben und
           wof&uuml;r wir sie nutzen. Sie erl&auml;utert auch, wie und zu welchem
           Zweck das geschieht.
-        </p>{" "}
+        </p>
+        {" "}
         <p>
           Wir weisen darauf hin, dass die Daten&uuml;bertragung im Internet
           (z.&nbsp;B. bei der Kommunikation per E-Mail) Sicherheitsl&uuml;cken
           aufweisen kann. Ein l&uuml;ckenloser Schutz der Daten vor dem Zugriff
           durch Dritte ist nicht m&ouml;glich.
         </p>
-        <h3>Hinweis zur verantwortlichen Stelle</h3>{" "}
+        <h3>Hinweis zur verantwortlichen Stelle</h3>
+        {" "}
         <p>
           Die verantwortliche Stelle f&uuml;r die Datenverarbeitung auf dieser
           Website ist:
-        </p>{" "}
+        </p>
+        {" "}
         <p>Siehe Impressum</p>
         <p>
           Paul Großmann
           <br />
           Dammstraße 5/1
           <br />
-          74076 Heilbronn <br />
+          74076 Heilbronn
+          {" "}
+          <br />
         </p>
         <p>
-          <strong>Kontakt:</strong> <br />
-          Telefon:{" "}
+          <strong>Kontakt:</strong>
+          {" "}
+          <br />
+          Telefon:
+          {" "}
           <span>
-            +49<span className="hidden">phone.</span>175
-            <span className="hidden">-obf-</span>9954144
+            +49
+            <span className="hidden">phone.</span>
+            175
+            <span className="hidden">-obf-</span>
+            9954144
           </span>
           <br />
-          E-Mail:{" "}
+          E-Mail:
+          {" "}
           <span>
-            core@<span className="hidden">email.</span>paulgrossmann.
-            <span className="hidden">example.</span>de
+            core@
+            <span className="hidden">email.</span>
+            paulgrossmann.
+            <span className="hidden">example.</span>
+            de
           </span>
           <br />
         </p>
@@ -176,7 +211,8 @@ export default function DatenschtutzPage() {
           Mittel der Verarbeitung von personenbezogenen Daten (z.&nbsp;B. Namen,
           E-Mail-Adressen o. &Auml;.) entscheidet.
         </p>
-        <h3>Speicherdauer</h3>{" "}
+        <h3>Speicherdauer</h3>
+        {" "}
         <p>
           Soweit innerhalb dieser Datenschutzerkl&auml;rung keine speziellere
           Speicherdauer genannt wurde, verbleiben Ihre personenbezogenen Daten
@@ -192,7 +228,8 @@ export default function DatenschtutzPage() {
         <h3>
           Allgemeine Hinweise zu den Rechtsgrundlagen der Datenverarbeitung auf
           dieser Website
-        </h3>{" "}
+        </h3>
+        {" "}
         <p>
           Sofern Sie in die Datenverarbeitung eingewilligt haben, verarbeiten
           wir Ihre personenbezogenen Daten auf Grundlage von Art. 6 Abs. 1 lit.
@@ -216,7 +253,8 @@ export default function DatenschtutzPage() {
           jeweils im Einzelfall einschl&auml;gigen Rechtsgrundlagen wird in den
           folgenden Abs&auml;tzen dieser Datenschutzerkl&auml;rung informiert.
         </p>
-        <h3>Empf&auml;nger von personenbezogenen Daten</h3>{" "}
+        <h3>Empf&auml;nger von personenbezogenen Daten</h3>
+        {" "}
         <p>
           Im Rahmen unserer Gesch&auml;ftst&auml;tigkeit arbeiten wir mit
           verschiedenen externen Stellen zusammen. Dabei ist teilweise auch eine
@@ -233,7 +271,8 @@ export default function DatenschtutzPage() {
           Auftragsverarbeitung weiter. Im Falle einer gemeinsamen Verarbeitung
           wird ein Vertrag &uuml;ber gemeinsame Verarbeitung geschlossen.
         </p>
-        <h3>Widerruf Ihrer Einwilligung zur Datenverarbeitung</h3>{" "}
+        <h3>Widerruf Ihrer Einwilligung zur Datenverarbeitung</h3>
+        {" "}
         <p>
           Viele Datenverarbeitungsvorg&auml;nge sind nur mit Ihrer
           ausdr&uuml;cklichen Einwilligung m&ouml;glich. Sie k&ouml;nnen eine
@@ -244,7 +283,8 @@ export default function DatenschtutzPage() {
         <h3>
           Widerspruchsrecht gegen die Datenerhebung in besonderen F&auml;llen
           sowie gegen Direktwerbung (Art. 21 DSGVO)
-        </h3>{" "}
+        </h3>
+        {" "}
         <p>
           WENN DIE DATENVERARBEITUNG AUF GRUNDLAGE VON ART. 6 ABS. 1 LIT. E ODER
           F DSGVO ERFOLGT, HABEN SIE JEDERZEIT DAS RECHT, AUS GR&Uuml;NDEN, DIE
@@ -259,7 +299,8 @@ export default function DatenschtutzPage() {
           DIE IHRE INTERESSEN, RECHTE UND FREIHEITEN &Uuml;BERWIEGEN ODER DIE
           VERARBEITUNG DIENT DER GELTENDMACHUNG, AUS&Uuml;BUNG ODER VERTEIDIGUNG
           VON RECHTSANSPR&Uuml;CHEN (WIDERSPRUCH NACH ART. 21 ABS. 1 DSGVO).
-        </p>{" "}
+        </p>
+        {" "}
         <p>
           WERDEN IHRE PERSONENBEZOGENEN DATEN VERARBEITET, UM DIREKTWERBUNG ZU
           BETREIBEN, SO HABEN SIE DAS RECHT, JEDERZEIT WIDERSPRUCH GEGEN DIE
@@ -273,7 +314,8 @@ export default function DatenschtutzPage() {
         <h3>
           Beschwerde&shy;recht bei der zust&auml;ndigen
           Aufsichts&shy;beh&ouml;rde
-        </h3>{" "}
+        </h3>
+        {" "}
         <p>
           Im Falle von Verst&ouml;&szlig;en gegen die DSGVO steht den
           Betroffenen ein Beschwerderecht bei einer Aufsichtsbeh&ouml;rde,
@@ -282,7 +324,8 @@ export default function DatenschtutzPage() {
           Versto&szlig;es zu. Das Beschwerderecht besteht unbeschadet
           anderweitiger verwaltungsrechtlicher oder gerichtlicher Rechtsbehelfe.
         </p>
-        <h3>Recht auf Daten&shy;&uuml;bertrag&shy;barkeit</h3>{" "}
+        <h3>Recht auf Daten&shy;&uuml;bertrag&shy;barkeit</h3>
+        {" "}
         <p>
           Sie haben das Recht, Daten, die wir auf Grundlage Ihrer Einwilligung
           oder in Erf&uuml;llung eines Vertrags automatisiert verarbeiten, an
@@ -291,7 +334,8 @@ export default function DatenschtutzPage() {
           &Uuml;bertragung der Daten an einen anderen Verantwortlichen
           verlangen, erfolgt dies nur, soweit es technisch machbar ist.
         </p>
-        <h3>Auskunft, Berichtigung und L&ouml;schung</h3>{" "}
+        <h3>Auskunft, Berichtigung und L&ouml;schung</h3>
+        {" "}
         <p>
           Sie haben im Rahmen der geltenden gesetzlichen Bestimmungen jederzeit
           das Recht auf unentgeltliche Auskunft &uuml;ber Ihre gespeicherten
@@ -300,13 +344,15 @@ export default function DatenschtutzPage() {
           L&ouml;schung dieser Daten. Hierzu sowie zu weiteren Fragen zum Thema
           personenbezogene Daten k&ouml;nnen Sie sich jederzeit an uns wenden.
         </p>
-        <h3>Recht auf Einschr&auml;nkung der Verarbeitung</h3>{" "}
+        <h3>Recht auf Einschr&auml;nkung der Verarbeitung</h3>
+        {" "}
         <p>
           Sie haben das Recht, die Einschr&auml;nkung der Verarbeitung Ihrer
           personenbezogenen Daten zu verlangen. Hierzu k&ouml;nnen Sie sich
           jederzeit an uns wenden. Das Recht auf Einschr&auml;nkung der
           Verarbeitung besteht in folgenden F&auml;llen:
-        </p>{" "}
+        </p>
+        {" "}
         <ul>
           {" "}
           <li>
@@ -315,28 +361,33 @@ export default function DatenschtutzPage() {
             Zeit, um dies zu &uuml;berpr&uuml;fen. F&uuml;r die Dauer der
             Pr&uuml;fung haben Sie das Recht, die Einschr&auml;nkung der
             Verarbeitung Ihrer personenbezogenen Daten zu verlangen.
-          </li>{" "}
+          </li>
+          {" "}
           <li>
             Wenn die Verarbeitung Ihrer personenbezogenen Daten
             unrechtm&auml;&szlig;ig geschah/geschieht, k&ouml;nnen Sie statt der
             L&ouml;schung die Einschr&auml;nkung der Datenverarbeitung
             verlangen.
-          </li>{" "}
+          </li>
+          {" "}
           <li>
             Wenn wir Ihre personenbezogenen Daten nicht mehr ben&ouml;tigen, Sie
             sie jedoch zur Aus&uuml;bung, Verteidigung oder Geltendmachung von
             Rechtsanspr&uuml;chen ben&ouml;tigen, haben Sie das Recht, statt der
             L&ouml;schung die Einschr&auml;nkung der Verarbeitung Ihrer
             personenbezogenen Daten zu verlangen.
-          </li>{" "}
+          </li>
+          {" "}
           <li>
             Wenn Sie einen Widerspruch nach Art. 21 Abs. 1 DSGVO eingelegt
             haben, muss eine Abw&auml;gung zwischen Ihren und unseren Interessen
             vorgenommen werden. Solange noch nicht feststeht, wessen Interessen
             &uuml;berwiegen, haben Sie das Recht, die Einschr&auml;nkung der
             Verarbeitung Ihrer personenbezogenen Daten zu verlangen.
-          </li>{" "}
-        </ul>{" "}
+          </li>
+          {" "}
+        </ul>
+        {" "}
         <p>
           Wenn Sie die Verarbeitung Ihrer personenbezogenen Daten
           eingeschr&auml;nkt haben, d&uuml;rfen diese Daten &ndash; von ihrer
@@ -347,7 +398,8 @@ export default function DatenschtutzPage() {
           wichtigen &ouml;ffentlichen Interesses der Europ&auml;ischen Union
           oder eines Mitgliedstaats verarbeitet werden.
         </p>
-        <h3>SSL- bzw. TLS-Verschl&uuml;sselung</h3>{" "}
+        <h3>SSL- bzw. TLS-Verschl&uuml;sselung</h3>
+        {" "}
         <p>
           Diese Seite nutzt aus Sicherheitsgr&uuml;nden und zum Schutz der
           &Uuml;bertragung vertraulicher Inhalte, wie zum Beispiel Bestellungen
@@ -356,13 +408,15 @@ export default function DatenschtutzPage() {
           erkennen Sie daran, dass die Adresszeile des Browsers von
           &bdquo;http://&ldquo; auf &bdquo;https://&ldquo; wechselt und an dem
           Schloss-Symbol in Ihrer Browserzeile.
-        </p>{" "}
+        </p>
+        {" "}
         <p>
           Wenn die SSL- bzw. TLS-Verschl&uuml;sselung aktiviert ist, k&ouml;nnen
           die Daten, die Sie an uns &uuml;bermitteln, nicht von Dritten
           mitgelesen werden.
         </p>
-        <h3>Widerspruch gegen Werbe-E-Mails</h3>{" "}
+        <h3>Widerspruch gegen Werbe-E-Mails</h3>
+        {" "}
         <p>
           Der Nutzung von im Rahmen der Impressumspflicht ver&ouml;ffentlichten
           Kontaktdaten zur &Uuml;bersendung von nicht ausdr&uuml;cklich
@@ -397,23 +451,35 @@ export default function DatenschtutzPage() {
           Die Speicherung erfolgt auf Grundlage Ihrer Einwilligung gemäß Art. 6
           Abs. 1 lit. a DSGVO.
         </p>
-        <h3>Server-Log-Dateien</h3>{" "}
+        <h3>Server-Log-Dateien</h3>
+        {" "}
         <p>
           Der Provider der Seiten erhebt und speichert automatisch Informationen
           in so genannten Server-Log-Dateien, die Ihr Browser automatisch an uns
           &uuml;bermittelt. Dies sind:
-        </p>{" "}
+        </p>
+        {" "}
         <ul>
           {" "}
-          <li>Browsertyp und Browserversion</li>{" "}
-          <li>verwendetes Betriebssystem</li> <li>Referrer URL</li>{" "}
-          <li>Hostname des zugreifenden Rechners</li>{" "}
-          <li>Uhrzeit der Serveranfrage</li> <li>IP-Adresse</li>{" "}
-        </ul>{" "}
+          <li>Browsertyp und Browserversion</li>
+          {" "}
+          <li>verwendetes Betriebssystem</li>
+          {" "}
+          <li>Referrer URL</li>
+          {" "}
+          <li>Hostname des zugreifenden Rechners</li>
+          {" "}
+          <li>Uhrzeit der Serveranfrage</li>
+          {" "}
+          <li>IP-Adresse</li>
+          {" "}
+        </ul>
+        {" "}
         <p>
           Eine Zusammenf&uuml;hrung dieser Daten mit anderen Datenquellen wird
           nicht vorgenommen.
-        </p>{" "}
+        </p>
+        {" "}
         <p>
           Die Erfassung dieser Daten erfolgt auf Grundlage von Art. 6 Abs. 1
           lit. f DSGVO. Der Websitebetreiber hat ein berechtigtes Interesse an
@@ -444,7 +510,8 @@ export default function DatenschtutzPage() {
           weitergegeben.
         </p>
         <p>
-          Weitere Informationen finden Sie unter{" "}
+          Weitere Informationen finden Sie unter
+          {" "}
           <a
             href="https://plausible.io/data-policy"
             target="_blank"
@@ -455,7 +522,8 @@ export default function DatenschtutzPage() {
           .
         </p>
         <p>
-          Quelle:{" "}
+          Quelle:
+          {" "}
           <a href="https://www.e-recht24.de">https://www.e-recht24.de</a>
         </p>
       </div>

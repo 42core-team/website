@@ -1,8 +1,8 @@
 "use server";
 
+import type { ServerActionResponse } from "@/app/actions/errors";
+import type { Match, MatchLogs } from "@/app/actions/tournament-model";
 import axiosInstance, { handleError } from "@/app/actions/axios";
-import { Match, MatchLogs } from "@/app/actions/tournament-model";
-import { ServerActionResponse } from "@/app/actions/errors";
 
 export async function getSwissMatches(eventId: string, adminReveal: boolean) {
   const params = new URLSearchParams();

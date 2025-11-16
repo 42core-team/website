@@ -1,4 +1,4 @@
-import { Metadata } from "next/dist/lib/metadata/types/metadata-interface";
+import type { Metadata } from "next/dist/lib/metadata/types/metadata-interface";
 import AboutPageClient from "./aboutPage";
 
 export const metadata: Metadata = {

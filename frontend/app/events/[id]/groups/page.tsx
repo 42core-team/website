@@ -1,9 +1,8 @@
-import Actions from "@/app/events/[id]/groups/actions";
-import { getSwissMatches } from "@/app/actions/tournament";
-import GraphView from "@/app/events/[id]/groups/graphView";
-import { isEventAdmin } from "@/app/actions/event";
 import { isActionError } from "@/app/actions/errors";
-import { Switch } from "@heroui/react";
+import { isEventAdmin } from "@/app/actions/event";
+import { getSwissMatches } from "@/app/actions/tournament";
+import Actions from "@/app/events/[id]/groups/actions";
+import GraphView from "@/app/events/[id]/groups/graphView";
 
 export const metadata = {
   title: "Group Phase",

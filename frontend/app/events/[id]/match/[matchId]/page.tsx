@@ -1,13 +1,13 @@
+import type { Metadata } from "next/dist/lib/metadata/types/metadata-interface";
+import { isActionError } from "@/app/actions/errors";
+import { isEventAdmin } from "@/app/actions/event";
 import {
   getLogsOfMatch,
   getMatchById,
   getTournamentTeamCount,
 } from "@/app/actions/tournament";
-import MatchLogsDisplay from "@/components/match/MatchLogsDisplay";
-import { isActionError } from "@/app/actions/errors";
-import { isEventAdmin } from "@/app/actions/event";
 import MatchActions from "@/app/events/[id]/match/[matchId]/matchActions";
-import { Metadata } from "next/dist/lib/metadata/types/metadata-interface";
+import MatchLogsDisplay from "@/components/match/MatchLogsDisplay";
 
 export const metadata: Metadata = {
   title: "Match Details",
@@ -26,7 +26,8 @@ export default async function MatchPage({
     return <div className="text-red-500">Error fetching match data</div>;
   }
 
-  if (isActionError(matchLogs)) matchLogs = [];
+  if (isActionError(matchLogs))
+    matchLogs = [];
 
   const isAdmin = await isEventAdmin(id);
   if (isActionError(isAdmin))

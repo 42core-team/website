@@ -1,7 +1,7 @@
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 
-export type Release = {
+export interface Release {
   id: number;
   tag_name: string;
   name: string;
@@ -9,12 +9,13 @@ export type Release = {
   html_url: string;
   published_at: string; // ISO
   author: string | null;
-};
+}
 
 const DATA_PATH = path.join(process.cwd(), "content/changelog/releases.json");
 
 export function getAllReleases(): Release[] {
-  if (!fs.existsSync(DATA_PATH)) return [];
+  if (!fs.existsSync(DATA_PATH))
+    return [];
   const raw = fs.readFileSync(DATA_PATH, "utf8");
   const arr: Release[] = JSON.parse(raw);
   // defensive sort (newest first)

@@ -1,10 +1,26 @@
 "use client";
 
+import type { FormEvent } from "react";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChangeEvent, FormEvent, useCallback, useMemo, useState } from "react";
-import { Button } from "@heroui/button";
-import { DateRangePicker, Select, SelectItem } from "@heroui/react";
-import { parseAbsoluteToLocal, ZonedDateTime } from "@internationalized/date";
+import { useCallback, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 type Interval = "minute" | "hour" | "day";
 
@@ -23,19 +39,15 @@ export default function QueueMatchesControls({
 
   const [interval, setInterval] = useState<Interval>(initialInterval);
   const [range, setRange] = useState<{
-    start: ZonedDateTime;
-    end: ZonedDateTime;
+    start: Date | undefined;
+    end: Date | undefined;
   }>({
-    start: initialStartISO
-      ? parseAbsoluteToLocal(initialStartISO)
-      : parseAbsoluteToLocal(new Date().toISOString()),
-    end: initialEndISO
-      ? parseAbsoluteToLocal(initialEndISO)
-      : parseAbsoluteToLocal(new Date().toISOString()),
+    start: initialStartISO ? new Date(initialStartISO) : new Date(),
+    end: initialEndISO ? new Date(initialEndISO) : new Date(),
   });
 
-  const onChangeInterval = useCallback((e: ChangeEvent<HTMLSelectElement>) => {
-    const next = (e.target.value as Interval) || "hour";
+  const onChangeInterval = useCallback((value: string) => {
+    const next = (value as Interval) || "hour";
     setInterval(next);
   }, []);
 
@@ -46,14 +58,14 @@ export default function QueueMatchesControls({
       const params = new URLSearchParams(searchParams?.toString() ?? "");
       params.set("interval", interval);
 
-      const startISO = range.start
-        ? range.start.toDate().toISOString()
-        : undefined;
-      const endISO = range.end ? range.end.toDate().toISOString() : undefined;
+      const startISO = range.start ? range.start.toISOString() : undefined;
+      const endISO = range.end ? range.end.toISOString() : undefined;
 
-      if (startISO) params.set("start", startISO);
+      if (startISO)
+        params.set("start", startISO);
       else params.delete("start");
-      if (endISO) params.set("end", endISO);
+      if (endISO)
+        params.set("end", endISO);
       else params.delete("end");
 
       router.replace(`${pathname}?${params.toString()}`);
@@ -75,40 +87,116 @@ export default function QueueMatchesControls({
         <label className="block text-sm font-medium mb-1">
           Bucket interval
         </label>
-        <Select defaultSelectedKeys={[interval]} onChange={onChangeInterval}>
-          <SelectItem key="minute">Minute</SelectItem>
-          <SelectItem key="hour">Hour</SelectItem>
-          <SelectItem key="day">Day</SelectItem>
+        <Select value={interval} onValueChange={onChangeInterval}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select interval" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="minute">Minute</SelectItem>
+            <SelectItem value="hour">Hour</SelectItem>
+            <SelectItem value="day">Day</SelectItem>
+          </SelectContent>
         </Select>
       </div>
 
       <div className="flex-1 min-w-[280px]">
         <label className="block text-sm font-medium mb-1">Date range</label>
-        <DateRangePicker
-          hideTimeZone
-          showMonthAndYearPickers
-          granularity={
-            interval === "minute"
-              ? "minute"
-              : interval === "hour"
-                ? "hour"
-                : "day"
-          }
-          defaultValue={range}
-          onChange={(v) => {
-            if (v) setRange({ start: v.start, end: v.end });
-          }}
-          aria-label="Range"
-          className="w-full"
-        />
+        <div className="flex gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "flex-1 justify-start text-left font-normal",
+                  !range.start && "text-muted-foreground",
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {range.start
+                  ? (
+                      format(range.start, interval === "day" ? "PP" : "PPp")
+                    )
+                  : (
+                      <span>Start date</span>
+                    )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={range.start}
+                onSelect={date =>
+                  setRange(prev => ({ ...prev, start: date }))}
+                initialFocus
+              />
+              {interval !== "day" && (
+                <div className="p-3 border-t">
+                  <Input
+                    type="time"
+                    value={range.start ? format(range.start, "HH:mm") : ""}
+                    onChange={(e) => {
+                      const [hours, minutes] = e.target.value.split(":");
+                      const newDate = range.start
+                        ? new Date(range.start)
+                        : new Date();
+                      newDate.setHours(Number.parseInt(hours), Number.parseInt(minutes));
+                      setRange(prev => ({ ...prev, start: newDate }));
+                    }}
+                  />
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "flex-1 justify-start text-left font-normal",
+                  !range.end && "text-muted-foreground",
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {range.end
+                  ? (
+                      format(range.end, interval === "day" ? "PP" : "PPp")
+                    )
+                  : (
+                      <span>End date</span>
+                    )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={range.end}
+                onSelect={date =>
+                  setRange(prev => ({ ...prev, end: date }))}
+                initialFocus
+              />
+              {interval !== "day" && (
+                <div className="p-3 border-t">
+                  <Input
+                    type="time"
+                    value={range.end ? format(range.end, "HH:mm") : ""}
+                    onChange={(e) => {
+                      const [hours, minutes] = e.target.value.split(":");
+                      const newDate = range.end
+                        ? new Date(range.end)
+                        : new Date();
+                      newDate.setHours(Number.parseInt(hours), Number.parseInt(minutes));
+                      setRange(prev => ({ ...prev, end: newDate }));
+                    }}
+                  />
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
 
-      <Button
-        type="submit"
-        className="inline-flex items-center gap-1 rounded bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-sm"
-        onPress={() => apply()}
-        isDisabled={!canApply}
-      >
+      <Button type="submit" onClick={() => apply()} disabled={!canApply}>
         Apply
       </Button>
     </form>

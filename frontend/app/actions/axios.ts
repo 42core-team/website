@@ -1,13 +1,14 @@
-import axios, { AxiosResponse } from "axios";
+import type { AxiosResponse } from "axios";
+import type { ServerActionResponse } from "@/app/actions/errors";
+import axios from "axios";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/utils/authOptions";
-import { ServerActionResponse } from "@/app/actions/errors";
 
 const axiosInstance = axios.create({
   baseURL: process.env.BACKEND_URL,
   headers: {
     "Content-Type": "application/json",
-    Authorization: `${process.env.BACKEND_SECRET}`,
+    "Authorization": `${process.env.BACKEND_SECRET}`,
   },
 });
 
@@ -37,7 +38,8 @@ export async function handleError<T>(
   try {
     const response = await promise;
     return response.data;
-  } catch (error: any) {
+  }
+  catch (error: any) {
     return {
       error: error.response?.data?.message || "An unexpected error occurred",
     };

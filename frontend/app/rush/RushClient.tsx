@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { title } from "@/components/primitives";
+import { useEffect, useState } from "react";
 import { DownloadIcon } from "@/components/icons";
+import { title } from "@/components/primitives";
 
 export default function RushClient() {
   const [mounted, setMounted] = useState(false);
-  const pdfUrl =
-    "https://core-files.object.storage.eu01.onstackit.cloud/subjects/rush/rush-02.pdf";
+  const pdfUrl
+    = "https://core-files.object.storage.eu01.onstackit.cloud/subjects/rush/rush-02.pdf";
 
   useEffect(() => {
     setMounted(true);

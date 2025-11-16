@@ -1,18 +1,19 @@
 "use client";
-import { useEffect, useState } from "react";
+import type {
+  Node,
+} from "reactflow";
+import type { Match } from "@/app/actions/tournament-model";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import ReactFlow, {
   Background,
-  Node,
   useEdgesState,
   useNodesState,
 } from "reactflow";
-import "reactflow/dist/style.css";
+import { MatchState } from "@/app/actions/tournament-model";
 import { MatchNode } from "@/components/match";
-import { Match, MatchState } from "@/app/actions/tournament-model";
-import { useParams, useRouter } from "next/navigation";
-import { isEventAdmin } from "@/app/actions/event";
-import { Button, Switch } from "@heroui/react";
-import { getSwissMatches } from "@/app/actions/tournament";
+import { Switch } from "@/components/ui/switch";
+import "reactflow/dist/style.css";
 
 const MATCH_WIDTH = 200;
 const MATCH_HEIGHT = 80;
@@ -28,8 +29,8 @@ function createTreeCoordinate(matchCount: number): { x: number; y: number }[] {
   const totalRounds = Math.ceil(Math.log2(matchCount + 1));
 
   for (let round = 0; round < totalRounds; round++) {
-    const matchesInRound = Math.pow(2, totalRounds - round - 1);
-    const spacing = Math.pow(2, round) * VERTICAL_SPACING;
+    const matchesInRound = 2 ** (totalRounds - round - 1);
+    const spacing = 2 ** round * VERTICAL_SPACING;
 
     for (let match = 0; match < matchesInRound; match++) {
       const x = round * ROUND_SPACING;
@@ -54,7 +55,7 @@ export default function GraphView({
   isAdminView: boolean;
 }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [edges, _setEdges, onEdgesChange] = useEdgesState([]);
 
   const router = useRouter();
   const eventId = useParams().id as string;
@@ -122,7 +123,8 @@ export default function GraphView({
   return (
     <div className="w-full">
       <div style={{ width: "100%", height: "80vh" }}>
-        <style jsx global>{`
+        <style jsx global>
+          {`
           .react-flow__handle {
             display: none;
           }
@@ -132,17 +134,18 @@ export default function GraphView({
               -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
               "Helvetica Neue", Arial, sans-serif;
           }
-        `}</style>
+        `}
+        </style>
         {isEventAdmin && (
           <div className="flex items-center mb-2 mt-2 gap-4">
             Toggle admin view
             <Switch
-              onValueChange={(value) => {
+              onCheckedChange={(value: boolean) => {
                 const params = new URLSearchParams(window.location.search);
                 params.set("adminReveal", value ? "true" : "false");
                 router.replace(`?${params.toString()}`);
               }}
-              defaultSelected={isAdminView}
+              defaultChecked={isAdminView}
             />
           </div>
         )}

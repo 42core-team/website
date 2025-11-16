@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
+import { usePlausible } from "next-plausible";
 import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { isActionError } from "@/app/actions/errors";
 import { createTeam } from "@/app/actions/team";
 import { TeamCreationSection } from "@/components/team";
-import { isActionError } from "@/app/actions/errors";
 import { validateTeamName } from "@/lib/utils/validation";
-import { usePlausible } from "next-plausible";
 
 export default function TeamCreationForm() {
   const plausible = usePlausible();
@@ -45,10 +45,12 @@ export default function TeamCreationForm() {
 
       // Use Next.js router to refresh the page
       router.refresh();
-    } catch (err) {
+    }
+    catch (err) {
       console.error("Error creating team:", err);
       setErrorMessage("An unexpected error occurred while creating the team.");
-    } finally {
+    }
+    finally {
       setIsLoading(false);
     }
   }

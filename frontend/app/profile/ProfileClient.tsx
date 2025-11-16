@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Card, CardBody, CardHeader, User } from "@heroui/react";
+import { Suspense, useEffect } from "react";
 import { title } from "@/components/primitives";
 import SocialAccountsDisplay from "@/components/social-accounts-display";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { User } from "@/components/user";
 
 function ProfileContent() {
   const router = useRouter();
@@ -20,27 +21,28 @@ function ProfileContent() {
   if (status === "loading") {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="text-default-500">Loading...</div>
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
-  if (!session) return null;
+  if (!session)
+    return null;
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="text-center">
           <h1 className={title()}>Profile</h1>
-          <p className="mt-4 text-lg text-default-600">
+          <p className="mt-4 text-lg text-muted-foreground">
             Manage your account and linked social platforms
           </p>
         </div>
 
         <Card>
           <CardHeader>
-            <h2 className="text-xl font-semibold">Account Information</h2>
+            <CardTitle>Account Information</CardTitle>
           </CardHeader>
-          <CardBody className="pt-2 pb-4">
+          <CardContent className="pt-2 pb-4">
             <User
               name={session!.user?.name}
               description={session!.user?.email}
@@ -51,7 +53,7 @@ function ProfileContent() {
               }}
               className="justify-start gap-4"
             />
-          </CardBody>
+          </CardContent>
         </Card>
 
         <SocialAccountsDisplay />
@@ -63,11 +65,11 @@ function ProfileContent() {
 export default function ProfileClient() {
   return (
     <Suspense
-      fallback={
+      fallback={(
         <div className="flex justify-center items-center min-h-[200px]">
-          <div className="text-default-500">Loading...</div>
+          <div className="text-muted-foreground">Loading...</div>
         </div>
-      }
+      )}
     >
       <ProfileContent />
     </Suspense>

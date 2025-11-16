@@ -1,9 +1,9 @@
 "use client";
 
+import type { Match } from "@/app/actions/tournament-model";
 import { motion } from "framer-motion";
 import { memo } from "react";
-import { Match, MatchState } from "@/app/actions/tournament-model";
-import { Handle, Position } from "reactflow";
+import { MatchState } from "@/app/actions/tournament-model";
 
 interface MatchNodeData {
   match: Match;
@@ -16,7 +16,7 @@ interface MatchNodeProps {
   data: MatchNodeData;
 }
 
-const getMatchStateStyles = (state: MatchState) => {
+function getMatchStateStyles(state: MatchState) {
   switch (state) {
     case MatchState.FINISHED:
       return {
@@ -43,9 +43,9 @@ const getMatchStateStyles = (state: MatchState) => {
         textColor: "#475569",
       };
   }
-};
+}
 
-const getMatchStateIcon = (state: MatchState) => {
+function getMatchStateIcon(state: MatchState) {
   switch (state) {
     case MatchState.FINISHED:
       return "✓";
@@ -56,7 +56,7 @@ const getMatchStateIcon = (state: MatchState) => {
     default:
       return "?";
   }
-};
+}
 
 function MatchNode({ data }: MatchNodeProps) {
   const { match, width = 200, height = 80, onClick } = data;
@@ -75,7 +75,7 @@ function MatchNode({ data }: MatchNodeProps) {
 
   return (
     <motion.div
-      className={`relative rounded-lg border-2 shadow-xs cursor-pointer transition-all duration-200 hover:shadow-sm`}
+      className="relative rounded-lg border-2 shadow-xs cursor-pointer transition-all duration-200 hover:shadow-sm"
       style={{
         width,
         height,
@@ -112,42 +112,46 @@ function MatchNode({ data }: MatchNodeProps) {
         {/* Match info */}
         <div className="flex-1">
           <div className="text-xs font-semibold mb-1 opacity-75">
-            Match {match.id.slice(0, 4)}
+            Match
+            {" "}
+            {match.id.slice(0, 4)}
           </div>
 
           {/* Teams */}
           <div className="space-y-1">
-            {match.teams &&
-            match.state == MatchState.FINISHED &&
-            match.teams.length > 0 ? (
-              match.teams.map((team, index) => (
-                <div
-                  key={index}
-                  className={`text-sm font-medium flex justify-between items-center ${
-                    match.winner?.name === team.name ? "font-bold" : ""
-                  }`}
-                >
-                  <span className="truncate flex-1">
-                    {formatTeamName(team.name)}
-                    {team.id === match.winner?.id && (
-                      <span className="ml-1 text-green-600">👑</span>
-                    )}
-                  </span>
-                  {match.state === MatchState.FINISHED &&
-                    team.score !== undefined && (
-                      <span className="ml-2 text-xs">
-                        {(match.results || []).find(
-                          (result) => result?.team?.id === team.id,
-                        )?.score || team.score}
+            {match.teams
+              && match.state === MatchState.FINISHED
+              && match.teams.length > 0
+              ? (
+                  match.teams.map((team, index) => (
+                    <div
+                      key={index}
+                      className={`text-sm font-medium flex justify-between items-center ${
+                        match.winner?.name === team.name ? "font-bold" : ""
+                      }`}
+                    >
+                      <span className="truncate flex-1">
+                        {formatTeamName(team.name)}
+                        {team.id === match.winner?.id && (
+                          <span className="ml-1 text-green-600">👑</span>
+                        )}
                       </span>
-                    )}
-                </div>
-              ))
-            ) : (
-              <div className="text-sm font-medium text-center opacity-60">
-                TBD
-              </div>
-            )}
+                      {match.state === MatchState.FINISHED
+                        && team.score !== undefined && (
+                        <span className="ml-2 text-xs">
+                          {(match.results || []).find(
+                            result => result?.team?.id === team.id,
+                          )?.score || team.score}
+                        </span>
+                      )}
+                    </div>
+                  ))
+                )
+              : (
+                  <div className="text-sm font-medium text-center opacity-60">
+                    TBD
+                  </div>
+                )}
           </div>
         </div>
       </div>

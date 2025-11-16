@@ -1,20 +1,22 @@
 "use client";
 
+import type { Event } from "@/app/actions/event";
+import { useRouter } from "next/navigation";
+
+import { EventState } from "@/app/actions/event-model";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
-  TableHeader,
   TableBody,
-  TableColumn,
-  TableRow,
   TableCell,
-  Chip,
-} from "@heroui/react";
-import { useRouter } from "next/navigation";
-import { Event } from "@/app/actions/event";
-import { EventState } from "@/app/actions/event-model";
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function EventsTable({ events }: { events: Event[] }) {
   const router = useRouter();
+
   const formatState = (state: EventState) => {
     switch (state) {
       case EventState.TEAM_FINDING:
@@ -32,58 +34,78 @@ export default function EventsTable({ events }: { events: Event[] }) {
     }
   };
 
-  const stateColor = (
+  const stateVariant = (
     state: EventState,
-  ): "default" | "primary" | "secondary" | "success" | "warning" | "danger" => {
+  ): "default" | "secondary" | "destructive" | "outline" => {
     switch (state) {
       case EventState.TEAM_FINDING:
-        return "primary";
+        return "default";
       case EventState.CODING_PHASE:
         return "secondary";
       case EventState.SWISS_ROUND:
-        return "warning";
+        return "outline";
       case EventState.ELIMINATION_ROUND:
-        return "warning";
+        return "outline";
       case EventState.FINISHED:
-        return "success";
+        return "secondary";
       default:
         return "default";
     }
   };
 
   return (
-    <Table
-      aria-label="Events table"
-      className="mb-8"
-      onRowAction={(key) => router.push(`/events/${String(key)}`)}
-    >
-      <TableHeader>
-        <TableColumn>Name</TableColumn>
-        <TableColumn>Start Date</TableColumn>
-        <TableColumn>Team Size</TableColumn>
-        <TableColumn>State</TableColumn>
-      </TableHeader>
-      <TableBody items={events} emptyContent="No events found">
-        {(event) => (
-          <TableRow
-            key={event.id}
-            className="cursor-pointer transition-colors hover:bg-default-100"
-          >
-            <TableCell>{event.name}</TableCell>
-            <TableCell>
-              {new Date(event.startDate).toLocaleDateString()}
-            </TableCell>
-            <TableCell>
-              {event.minTeamSize} - {event.maxTeamSize} members
-            </TableCell>
-            <TableCell>
-              <Chip size="sm" variant="flat" color={stateColor(event.state)}>
-                {formatState(event.state)}
-              </Chip>
-            </TableCell>
+    <div className="mb-8">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Start Date</TableHead>
+            <TableHead>Team Size</TableHead>
+            <TableHead>State</TableHead>
           </TableRow>
-        )}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {events.length === 0
+            ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center text-muted-foreground"
+                  >
+                    No events found
+                  </TableCell>
+                </TableRow>
+              )
+            : (
+                events.map(event => (
+                  <TableRow
+                    key={event.id}
+                    className="cursor-pointer transition-colors hover:bg-muted/50"
+                    onClick={() => router.push(`/events/${event.id}`)}
+                  >
+                    <TableCell className="font-medium">{event.name}</TableCell>
+                    <TableCell>
+                      {new Date(event.startDate).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {event.minTeamSize}
+                      {" "}
+                      -
+                      {" "}
+                      {event.maxTeamSize}
+                      {" "}
+                      members
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={stateVariant(event.state)}>
+                        {formatState(event.state)}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

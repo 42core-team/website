@@ -1,11 +1,11 @@
-import { Metadata } from "next";
-import { getQueueMatchesAdmin } from "@/app/actions/team";
+import type { Metadata } from "next";
 import { isActionError } from "@/app/actions/errors";
 import { isEventAdmin } from "@/app/actions/event";
-import QueueMatchesList from "@/components/QueueMatchesList";
-import QueueMatchesChart from "@/components/QueueMatchesChart";
 import { getQueueMatchesTimeSeries } from "@/app/actions/stats";
+import { getQueueMatchesAdmin } from "@/app/actions/team";
+import QueueMatchesChart from "@/components/QueueMatchesChart";
 import QueueMatchesControls from "@/components/QueueMatchesControls";
+import QueueMatchesList from "@/components/QueueMatchesList";
 
 export const metadata: Metadata = {
   title: "Queue Matches",
@@ -40,8 +40,8 @@ export default async function EventQueueMatchesAdminPage({
 
   const sp = await searchParams;
   const rawInterval = (sp.interval || "hour").toLowerCase();
-  const interval: "minute" | "hour" | "day" =
-    rawInterval === "minute" || rawInterval === "hour" || rawInterval === "day"
+  const interval: "minute" | "hour" | "day"
+    = rawInterval === "minute" || rawInterval === "hour" || rawInterval === "day"
       ? (rawInterval as any)
       : "hour";
 
