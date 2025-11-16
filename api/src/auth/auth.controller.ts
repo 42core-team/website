@@ -29,16 +29,6 @@ export class AuthController {
     private socialAccountService: SocialAccountService,
   ) {}
 
-  @UseGuards(JwtAuthGuard)
-  @Post("login")
-  login(@Body() body: { token?: string }, @Res() res: Response) {
-    if (!body.token)
-      throw new BadRequestException("Token is required for login.");
-
-    res.cookie("token", body.token);
-    res.json({ message: "Login successful" });
-  }
-
   @Get("/github/callback")
   @UseGuards(AuthGuard("github"))
   githubCallback(@Req() req: Request, @Res() res: Response) {
