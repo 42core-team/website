@@ -39,7 +39,7 @@ brew install pnpm
 2. Set up environment variables:
 
    ```bash
-   cp .env.example .env.local
+   cp .env.example .env
    ```
 
    Edit `.env.local` with your configuration (see [Environment Variables](#environment-variables) below).

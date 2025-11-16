@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { title } from "@/components/primitives";
 import { CoreLogoWhite } from "@/components/social";
 import Link from "next/link";
-import { LinkedinIcon, LucideLinkedin } from "lucide-react";
+import { LinkedinIcon, LucideGithub, LucideLinkedin } from "lucide-react";
 
 export default function AboutPageClient() {
   return (
@@ -132,13 +132,21 @@ export default function AboutPageClient() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              <Image
-                src="/team/fschuber.jpg"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
+              <div className="relative">
+                <Image
+                  src="/team/fschuber.jpg"
+                  alt="Team member"
+                  width={200}
+                  height={200}
+                  className="w-40 h-40 rounded-full object-cover mb-4"
+                />
+                <a
+                  href={"https://www.linkedin.com/in/frederick-m-schubert/"}
+                  className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
+                >
+                  <LucideLinkedin />
+                </a>
+              </div>
               <h3 className="text-xl font-semibold">Frederick Schubert</h3>
               <p className="text-default-600">Server and Game</p>
             </motion.div>
@@ -149,13 +157,21 @@ export default function AboutPageClient() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <Image
-                src="/team/pgrossma.jpeg"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
+              <div className="relative">
+                <Image
+                  src="/team/pgrossma.jpeg"
+                  alt="Team member"
+                  width={200}
+                  height={200}
+                  className="w-40 h-40 rounded-full object-cover mb-4"
+                />
+                <a
+                  href={"https://www.linkedin.com/in/pgrossma/"}
+                  className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
+                >
+                  <LucideLinkedin />
+                </a>
+              </div>
               <h3 className="text-xl font-semibold">Paul Großmann</h3>
               <p className="text-default-600">Programs the rest</p>
             </motion.div>
@@ -176,7 +192,7 @@ export default function AboutPageClient() {
                 />
 
                 <a
-                  href={"https://www.linkedin.com/in/emil-ebert/"}
+                  href={"https://www.youtube.com/watch?v=dQw4w9WgXcQ"}
                   className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
                 >
                   <LucideLinkedin />
@@ -216,13 +232,21 @@ export default function AboutPageClient() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.4 }}
             >
-              <Image
-                src="/team/tpaesch.jpeg"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
+              <div className="relative">
+                <Image
+                  src="/team/tpaesch.jpeg"
+                  alt="Team member"
+                  width={200}
+                  height={200}
+                  className="w-40 h-40 rounded-full object-cover mb-4"
+                />
+                <a
+                  href={"https://www.linkedin.com/in/tpaesch/"}
+                  className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
+                >
+                  <LucideLinkedin />
+                </a>
+              </div>
               <h3 className="text-xl font-semibold">Theo Paesch</h3>
               <p className="text-default-600">Event Management and Design</p>
             </motion.div>
@@ -233,13 +257,22 @@ export default function AboutPageClient() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.5 }}
             >
-              <Image
-                src="https://cdn.intra.42.fr/users/b70f90a3f5b8abafd72246cad22bda34/medium_jmoritz.jpg"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
+              <div className="relative">
+                <Image
+                  src="https://cdn.intra.42.fr/users/b70f90a3f5b8abafd72246cad22bda34/medium_jmoritz.jpg"
+                  alt="Team member"
+                  width={200}
+                  height={200}
+                  className="w-40 h-40 rounded-full object-cover mb-4"
+                />
+
+                <a
+                  href={"https://www.linkedin.com/in/johannes-moritz"}
+                  className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
+                >
+                  <LucideLinkedin />
+                </a>
+              </div>
               <h3 className="text-xl font-semibold">Johannes Moritz</h3>
               <p className="text-default-600">Head of money spending</p>
             </motion.div>
@@ -250,13 +283,22 @@ export default function AboutPageClient() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.6 }}
             >
-              <Image
-                src="/team/jgotz.png"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
+              <div className="relative">
+                <Image
+                  src="/team/jgotz.png"
+                  alt="Team member"
+                  width={200}
+                  height={200}
+                  className="w-40 h-40 rounded-full object-cover mb-4"
+                />
+
+                <a
+                  href={"https://www.linkedin.com/in/jonas-götz-7b66b61bb"}
+                  className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
+                >
+                  <LucideLinkedin />
+                </a>
+              </div>
               <h3 className="text-xl font-semibold">Jonas Götz</h3>
               <p className="text-default-600">Head of Server and Kubernetes</p>
             </motion.div>
@@ -267,13 +309,21 @@ export default function AboutPageClient() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.7 }}
             >
-              <Image
-                src="/team/flfische.jpg"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
+              <div className="relative">
+                <Image
+                  src="/team/flfische.jpg"
+                  alt="Team member"
+                  width={200}
+                  height={200}
+                  className="w-40 h-40 rounded-full object-cover mb-4"
+                />
+                <a
+                  href={"https://www.linkedin.com/in/flo-fischer/"}
+                  className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
+                >
+                  <LucideLinkedin />
+                </a>
+              </div>
               <h3 className="text-xl font-semibold">Florian Fischer</h3>
               <p className="text-default-600">Visualizer</p>
             </motion.div>
@@ -284,15 +334,23 @@ export default function AboutPageClient() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.8 }}
             >
-              <Image
-                src="/team/jkauker.jpg"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
+              <div className="relative">
+                <Image
+                  src="/team/jkauker.jpg"
+                  alt="Team member"
+                  width={200}
+                  height={200}
+                  className="w-40 h-40 rounded-full object-cover mb-4"
+                />
+                <a
+                  href={"https://www.linkedin.com/in/jonas-kauker-777894258/"}
+                  className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
+                >
+                  <LucideLinkedin />
+                </a>
+              </div>
               <h3 className="text-xl font-semibold">Jonas Kauker</h3>
-              <p className="text-default-600">Wiki and Video</p>
+              <p className="text-default-600">Video</p>
             </motion.div>
 
             <motion.div
@@ -301,13 +359,23 @@ export default function AboutPageClient() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.9 }}
             >
-              <Image
-                src="https://cdn.intra.42.fr/users/f69eb7c83b6b91f6d84d6635cc33e953/medium_apregitz.jpg"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
+              <div className="relative">
+                <Image
+                  src="https://cdn.intra.42.fr/users/f69eb7c83b6b91f6d84d6635cc33e953/medium_apregitz.jpg"
+                  alt="Team member"
+                  width={200}
+                  height={200}
+                  className="w-40 h-40 rounded-full object-cover mb-4"
+                />
+                <a
+                  href={
+                    "https://www.linkedin.com/in/anakin-pregitzer-927555368/"
+                  }
+                  className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
+                >
+                  <LucideLinkedin />
+                </a>
+              </div>
               <h3 className="text-xl font-semibold">Anakin Pregitzer</h3>
               <p className="text-default-600">Head of Rush</p>
             </motion.div>
@@ -318,13 +386,21 @@ export default function AboutPageClient() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 1 }}
             >
-              <Image
-                src="https://cdn.intra.42.fr/users/c86f2d994f58da1df739af962abca534/medium_chuhlig.jpg"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
+              <div className="relative">
+                <Image
+                  src="https://cdn.intra.42.fr/users/c86f2d994f58da1df739af962abca534/medium_chuhlig.jpg"
+                  alt="Team member"
+                  width={200}
+                  height={200}
+                  className="w-40 h-40 rounded-full object-cover mb-4"
+                />
+                <a
+                  href={"https://github.com/cuhlig42"}
+                  className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
+                >
+                  <LucideGithub />
+                </a>
+              </div>
               <h3 className="text-xl font-semibold">Christopher Uhlig</h3>
               <p className="text-default-600">Head of Balancing</p>
             </motion.div>
@@ -335,13 +411,21 @@ export default function AboutPageClient() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 1.1 }}
             >
-              <Image
-                src="https://cdn.intra.42.fr/users/12e74e15f7b4926f9b9c1e1554b6bcd9/medium_kmuhlbau.jpg"
-                alt="Team member"
-                width={200}
-                height={200}
-                className="w-40 h-40 rounded-full object-cover mb-4"
-              />
+              <div className="relative">
+                <Image
+                  src="https://cdn.intra.42.fr/users/12e74e15f7b4926f9b9c1e1554b6bcd9/medium_kmuhlbau.jpg"
+                  alt="Team member"
+                  width={200}
+                  height={200}
+                  className="w-40 h-40 rounded-full object-cover mb-4"
+                />
+                <a
+                  href={"https://www.linkedin.com/in/konrad-muehlbauer/"}
+                  className="absolute bottom-[10px] right-[10px] bg-primary text-white rounded-full p-2  hover:scale-110 transition-transform"
+                >
+                  <LucideLinkedin />
+                </a>
+              </div>
               <h3 className="text-xl font-semibold">Konrad Mühlbauer</h3>
               <p className="text-default-600">Website</p>
             </motion.div>
