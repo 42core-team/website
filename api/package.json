@@ -28,7 +28,7 @@
     "migration:revert-local": "npm run typeorm:ts -- -d ./typeOrm.config.ts migration:revert"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.7",
+    "@nestjs/common": "^11.1.8",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.7",
     "@nestjs/microservices": "^11.1.7",
