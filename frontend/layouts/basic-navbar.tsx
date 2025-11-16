@@ -190,7 +190,7 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
                       <button className="outline-none rounded-full">
                         <Image
                           className="transition-transform rounded-full"
-                          src={session?.user?.image}
+                          src={session?.user?.profilePicture}
                           alt="Profile"
                           width={40}
                           height={40}

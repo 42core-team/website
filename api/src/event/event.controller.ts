@@ -15,7 +15,8 @@ import { TeamService } from "../team/team.service";
 import { UserService } from "../user/user.service";
 import { CreateEventDto } from "./dtos/createEventDto";
 import { SetLockTeamsDateDto } from "./dtos/setLockTeamsDateDto";
-import { UserGuard, UserId } from "../guards/UserGuard";
+import { UserId } from "../guards/UserGuard";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 @Controller("event")
 export class EventController {
@@ -25,7 +26,7 @@ export class EventController {
     private readonly userService: UserService,
   ) {}
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Get("my")
   async getMyEvents(@UserId() userId: string) {
     return this.eventService.getEventsForUser(userId);
@@ -51,7 +52,7 @@ export class EventController {
     return await this.eventService.getCurrentLiveEvent();
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Post()
   createEvent(
     @UserId() userId: string,
@@ -94,7 +95,7 @@ export class EventController {
     return this.userService.getUserCountOfEvent(eventId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Get(":id/isUserRegistered")
   getEventByUserId(
     @Param("id", new ParseUUIDPipe()) eventId: string,
@@ -103,7 +104,7 @@ export class EventController {
     return this.eventService.isUserRegisteredForEvent(eventId, userId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Get(":id/isEventAdmin")
   isEventAdmin(
     @Param("id", new ParseUUIDPipe()) eventId: string,
@@ -112,7 +113,7 @@ export class EventController {
     return this.eventService.isEventAdmin(eventId, userId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Put(":id/join")
   async joinEvent(
     @Param("id", new ParseUUIDPipe()) eventId: string,
@@ -136,7 +137,7 @@ export class EventController {
     return this.userService.joinEvent(userId, eventId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Put(":id/lock")
   async lockEvent(
     @Param("id", new ParseUUIDPipe()) eventId: string,
@@ -150,7 +151,7 @@ export class EventController {
     return this.eventService.lockEvent(eventId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Put(":id/lockTeamsDate")
   async lockTeamsDate(
     @Param("id", new ParseUUIDPipe()) eventId: string,
