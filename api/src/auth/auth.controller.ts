@@ -114,8 +114,16 @@ export class AuthController {
 
       return res.redirect(redirectUrl);
     } catch (e) {
-      console.log("Error in FortyTwo callback: ", e);
-      throw new BadRequestException("Invalid state parameter.");
+      // Use a more detailed log, and preserve specific error messages for BadRequestException
+      console.error("Error in FortyTwo callback:", e);
+      if (e instanceof BadRequestException) {
+        throw e;
+      }
+      throw new BadRequestException(
+        e && typeof e.message === "string"
+          ? `Invalid state parameter: ${e.message}`
+          : "Invalid state parameter."
+      );
     }
   }
 
