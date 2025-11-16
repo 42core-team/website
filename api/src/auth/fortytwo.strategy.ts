@@ -55,7 +55,7 @@ export class FortyTwoOAuthStrategy extends PassportStrategy(Strategy, "42") {
           platformUserId,
           username,
           email,
-        }
+        },
       });
     } catch (err) {
       done(err, undefined);

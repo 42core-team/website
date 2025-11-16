@@ -67,7 +67,8 @@ export class AuthController {
       this.configService.getOrThrow<string>("API_SECRET_ENCRYPTION_KEY"),
     ).toString();
 
-    const base64EncodedEncryptedUserId = Buffer.from(encryptedUserId).toString("base64");
+    const base64EncodedEncryptedUserId =
+      Buffer.from(encryptedUserId).toString("base64");
 
     return `https://api.intra.42.fr/oauth/authorize?client_id=${this.configService.getOrThrow<string>("FORTYTWO_CLIENT_ID")}&redirect_uri=${encodeURIComponent(this.configService.getOrThrow<string>("FORTYTWO_CALLBACK_URL"))}&response_type=code&state=${base64EncodedEncryptedUserId}`;
   }
@@ -83,13 +84,16 @@ export class AuthController {
           username: string;
           email: string;
         };
-      }
+      };
     },
     @Res() res: Response,
     @Query("state") encryptedUserId: string,
   ) {
-    try{
-      const base64DecodedEncryptedUserId = Buffer.from(encryptedUserId, "base64").toString("utf-8");
+    try {
+      const base64DecodedEncryptedUserId = Buffer.from(
+        encryptedUserId,
+        "base64",
+      ).toString("utf-8");
 
       const userId = CryptoJS.AES.decrypt(
         base64DecodedEncryptedUserId,
@@ -109,8 +113,8 @@ export class AuthController {
       );
 
       return res.redirect(redirectUrl);
-    }catch(e){
-      console.log("Error in FortyTwo callback: ", e)
+    } catch (e) {
+      console.log("Error in FortyTwo callback: ", e);
       throw new BadRequestException("Invalid state parameter.");
     }
   }

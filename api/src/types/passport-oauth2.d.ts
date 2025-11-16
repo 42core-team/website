@@ -13,4 +13,3 @@ declare module "passport-oauth2" {
     constructor(options: StrategyOptions, verify?: any);
   }
 }
-
