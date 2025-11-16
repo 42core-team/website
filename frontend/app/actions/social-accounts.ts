@@ -57,3 +57,15 @@ export async function getSocialAccountByPlatform(
     );
   }
 }
+
+export async function getFortyTwoAuthUrl(): Promise<string> {
+  try {
+    const response = await axiosInstance.get("/auth/42/getUrl");
+    return response.data;
+  } catch (error: any) {
+    console.error("Error fetching 42 auth URL:", error);
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch 42 auth URL",
+    );
+  }
+}

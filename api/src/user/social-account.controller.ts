@@ -30,28 +30,6 @@ class LinkSocialAccountDto {
 export class SocialAccountController {
   constructor(private readonly socialAccountService: SocialAccountService) {}
 
-  @Post("link")
-  @ApiOperation({ summary: "Link a social account to the authenticated user" })
-  @ApiResponse({
-    status: 200,
-    description: "Social account linked successfully",
-  })
-  @ApiResponse({
-    status: 409,
-    description: "Social account already linked to another user",
-  })
-  async linkSocialAccount(
-    @UserId() userId: string,
-    @Body() linkDto: LinkSocialAccountDto,
-  ): Promise<SocialAccountEntity> {
-    return await this.socialAccountService.linkSocialAccount(
-      userId,
-      linkDto.platform,
-      linkDto.username,
-      linkDto.platformUserId,
-    );
-  }
-
   @Delete(":platform")
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
