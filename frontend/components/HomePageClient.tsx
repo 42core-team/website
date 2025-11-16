@@ -72,39 +72,12 @@ export default function HomePageClient(props: {
 
   return (
     <div>
-      {props.currentLiveEvent && timeLeftMs > 0 && (
-        <Card className="absolute right-20 top-20 z-20 md:block hidden">
-          <CardHeader className="flex items-center gap-3">
-            <CardTitle className="text-lg font-semibold">
-              {props.currentLiveEvent.name}
-            </CardTitle>
-            <CardDescription>
-              <Badge>Live</Badge>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <span className="text-foreground-500"></span>
-            <Badge>
-              Ends in
-              {formatTimeLeft(timeLeftMs)}
-            </Badge>
-            <div className="mt-1">
-              <Button asChild>
-                <Link href={`/events/${props.currentLiveEvent.id}`}>
-                  View event
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
       <section className="flex flex-col items-center justify-center mb-15">
         {/* Foreground (logo + text + links) */}
-        <div className="relative z-10 inline-block text-center justify-center w-full mb-25">
+        <div className="flex flex-col text-center justify-center w-full mb-25">
           <CoreLogoWhite className="mx-auto w-[30%] h-auto" />
-          <h1 className="text-2xl font-bold block mt-2">
+          <h1 className="mx-auto text-balance text-2xl font-bold block mt-2 max-w-2xl">
             Imagine a game contest that brings people
-            <br />
             from around the world together for fun and learning.
           </h1>
           <div className="mt-6 flex items-center justify-center gap-3">
@@ -125,6 +98,30 @@ export default function HomePageClient(props: {
               </Link>
             </Button>
           </div>
+          {props.currentLiveEvent && timeLeftMs > 0 && (
+            <Card className="mt-6 mx-auto max-w-sm">
+              <CardHeader className="flex flex-row justify-between items-center gap-3">
+                <CardTitle className="text-lg font-semibold">
+                  {props.currentLiveEvent.name}
+                </CardTitle>
+                <CardDescription className="space-x-2">
+                  <Badge>Live</Badge>
+                  <Badge>
+                    Ends in
+                    {" "}
+                    {formatTimeLeft(timeLeftMs)}
+                  </Badge>
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild>
+                  <Link href={`/events/${props.currentLiveEvent.id}`}>
+                    View event
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Visualizer Embed under the logo */}
@@ -169,7 +166,14 @@ export default function HomePageClient(props: {
                 <div className="flex flex-col items-center gap-4">
                   <h2 className="text-4xl font-bold">What the Game is About</h2>
                   <p className="text-2xl"></p>
-                  <p className="text-xl text-muted-foreground">CORE Game is a competitive coding challenge where you design and program your own bots to battle it out in a dynamic 2D arena. Every decision matters—strategy, efficiency, and adaptability will determine whether your bot rises to victory or falls in defeat. Are you ready to code your way to the top?</p>
+                  <p className="text-xl text-muted-foreground">
+                    CORE Game is a competitive coding challenge where you design
+                    and program your own bots to battle it out in a dynamic 2D
+                    arena. Every decision matters—strategy, efficiency, and
+                    adaptability will determine whether your bot rises to
+                    victory or falls in defeat. Are you ready to code your way
+                    to the top?
+                  </p>
                 </div>
               ),
               delay: 0.2,

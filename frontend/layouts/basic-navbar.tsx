@@ -156,30 +156,31 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
                 CORE
               </span>
             </Link>
-
-            {/* Desktop nav */}
-            <NavigationMenu className="ml-6 hidden md:block">
-              <NavigationMenuList className="gap-2">
-                {navLinks.map(link => (
-                  <NavigationMenuItem key={link.href}>
-                    <Link
-                      href={link.href}
-                      className={cn(
-                        "inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                        isActive(link.href)
-                          ? "bg-accent text-accent-foreground"
-                          : "text-foreground/80 hover:text-foreground",
-                      )}
-                    >
-                      {link.label}
-                    </Link>
-                  </NavigationMenuItem>
-                ))}
-              </NavigationMenuList>
-            </NavigationMenu>
           </div>
 
-          {/* Right side */}
+          {/* Desktop nav (centered) */}
+          <NavigationMenu className="hidden md:flex flex-1 justify-center">
+            <NavigationMenuList className="gap-2">
+              {navLinks.map(link => (
+                <NavigationMenuItem key={link.href}>
+                  <Link
+                    href={link.href}
+                    className={cn(
+                      "inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                      isActive(link.href)
+                        ? "bg-accent text-accent-foreground"
+                        : "text-foreground/80 hover:text-foreground",
+                    )}
+                  >
+                    {link.label}
+                  </Link>
+                </NavigationMenuItem>
+              ))}
+            </NavigationMenuList>
+          </NavigationMenu>
+
+          {/* Right side */
+          }
           <div className="flex items-center gap-2">
             <ThemeSwitch />
             {session?.user?.id

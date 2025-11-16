@@ -104,7 +104,7 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
 
       <Accordion
         type="multiple"
-        className="rounded-md border"
+        className="rounded-md border bg-card text-card-foreground"
         {...(page === 1 && releases[0]
           ? { defaultValue: [String(releases[0].id)] }
           : {})}

@@ -66,52 +66,50 @@ export default function EventNavbar({
   }, [eventId, isUserRegistered, isEventAdmin, event.state]);
 
   return (
-    <div className="w-full">
-      <div className="container mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
-        {/* Desktop navigation */}
-        <NavigationMenu className="hidden md:flex">
-          <NavigationMenuList>
+    <div className="py-4 flex items-center justify-center">
+      {/* Desktop navigation */}
+      <NavigationMenu className="hidden md:flex">
+        <NavigationMenuList>
+          {navItems.map((item) => {
+            const isActive = pathname === item.path;
+            return (
+              <NavigationMenuItem key={item.path}>
+                <NavigationMenuLink
+                  asChild
+                  className={cn(
+                    navigationMenuTriggerStyle(),
+                    isActive && "bg-accent text-accent-foreground",
+                  )}
+                >
+                  <Link href={item.path}>{item.name}</Link>
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+            );
+          })}
+        </NavigationMenuList>
+      </NavigationMenu>
+
+      {/* Mobile navigation dropdown */}
+      <div className="px-3 flex md:hidden">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label="Open navigation menu">
+              <Menu className="size-5" />
+              {" "}
+              Event Menu
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-56">
             {navItems.map((item) => {
               const isActive = pathname === item.path;
               return (
-                <NavigationMenuItem key={item.path}>
-                  <NavigationMenuLink
-                    asChild
-                    className={cn(
-                      navigationMenuTriggerStyle(),
-                      isActive && "bg-accent text-accent-foreground",
-                    )}
-                  >
-                    <Link href={item.path}>{item.name}</Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
+                <DropdownMenuItem key={item.path} asChild className={cn(isActive && "bg-accent text-accent-foreground")}>
+                  <Link href={item.path}>{item.name}</Link>
+                </DropdownMenuItem>
               );
             })}
-          </NavigationMenuList>
-        </NavigationMenu>
-
-        {/* Mobile navigation dropdown */}
-        <div className="px-3 flex md:hidden">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Open navigation menu">
-                <Menu className="size-5" />
-                {" "}
-                Event Menu
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-56">
-              {navItems.map((item) => {
-                const isActive = pathname === item.path;
-                return (
-                  <DropdownMenuItem key={item.path} asChild className={cn(isActive && "bg-accent text-accent-foreground")}>
-                    <Link href={item.path}>{item.name}</Link>
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
