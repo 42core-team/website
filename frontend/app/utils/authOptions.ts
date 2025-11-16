@@ -54,7 +54,7 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
-    async session({ session, _ }) {
+    async session({ session }) {
       try {
         const res = await axiosInstance.get<{
           id: string;
