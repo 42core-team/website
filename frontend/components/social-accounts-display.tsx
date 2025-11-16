@@ -206,12 +206,12 @@ export default function SocialAccountsDisplay() {
         {message && message.type === "error" && (
           <div className="p-4 bg-danger-50 border border-danger-200 rounded-lg dark:bg-danger-100/10">
             <div className="flex items-start gap-3">
-              <span className="text-danger text-lg shrink-0 mt-0.5">⚠️</span>
+              <span className="text-destructive text-lg shrink-0 mt-0.5">⚠️</span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-danger">
+                <p className="text-sm font-medium text-destructive">
                   Connection Failed
                 </p>
-                <p className="text-xs text-danger-600 mt-1 wrap-break-word">
+                <p className="text-xs text-destructive-600 mt-1 wrap-break-word">
                   {message.text}
                 </p>
                 <div className="flex gap-2 mt-3">

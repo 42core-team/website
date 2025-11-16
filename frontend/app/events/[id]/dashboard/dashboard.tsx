@@ -21,6 +21,13 @@ import {
   startTournamentMatches,
 } from "@/app/actions/tournament";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 interface DashboardPageProps {
@@ -76,83 +83,67 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
   if (loading || !event) {
     return (
-      <div className="flex justify-center items-center min-h-[50vh] text-white">
+      <div className="flex justify-center items-center min-h-[50vh]">
         Loading dashboard...
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 bg-gray-900 min-h-lvh p-6">
-      <h1 className="text-3xl font-bold text-white">Event Dashboard</h1>
+    <div className="container mx-auto flex flex-col gap-6 min-h-lvh py-6">
+      <h1 className="text-3xl font-bold">Event Dashboard</h1>
 
       {/* Admin Actions */}
       {isAdmin && (
         <>
-          <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
-            <h2 className="text-xl font-semibold mb-4 text-white">
-              Event Overview
-            </h2>
-            <div className="flex flex-col gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Event Overview</CardTitle>
+              <CardDescription>Key live metrics for this event.</CardDescription>
+            </CardHeader>
+            <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold text-white mb-2">
-                    Participants
-                  </h3>
-                  <p className="text-2xl font-bold text-white">
-                    {participantsCount}
-                  </p>
+                <div className="rounded-lg border p-4">
+                  <h3 className="text-sm font-medium mb-2">Participants</h3>
+                  <p className="text-2xl font-bold">{participantsCount}</p>
                 </div>
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold text-white mb-2">
-                    Teams
-                  </h3>
-                  <p className="text-2xl font-bold text-white">{teamsCount}</p>
+                <div className="rounded-lg border p-4">
+                  <h3 className="text-sm font-medium mb-2">Teams</h3>
+                  <p className="text-2xl font-bold">{teamsCount}</p>
                 </div>
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold text-white mb-2">
-                    Current Round
-                  </h3>
-                  <p className="text-2xl font-bold text-white">
-                    {event.currentRound}
-                  </p>
+                <div className="rounded-lg border p-4">
+                  <h3 className="text-sm font-medium mb-2">Current Round</h3>
+                  <p className="text-2xl font-bold">{event.currentRound}</p>
                 </div>
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold text-white mb-2">
-                    Event State
-                  </h3>
-                  <p className="text-2xl font-bold text-white">
-                    {event.state.toLowerCase()}
-                  </p>
+                <div className="rounded-lg border p-4">
+                  <h3 className="text-sm font-medium mb-2">Event State</h3>
+                  <p className="text-2xl font-bold">{event.state.toLowerCase()}</p>
                 </div>
               </div>
-            </div>
-          </div>
-          <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
-            <h2 className="text-xl font-semibold mb-4 text-white">
-              Docker Configuration
-            </h2>
-            <div className="space-y-4">
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Docker Configuration</CardTitle>
+              <CardDescription>Images & repository info configured for this event.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               {event.monorepoUrl && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                  <div className="bg-gray-700 p-4 rounded-lg">
-                    <h3 className="text-lg font-semibold text-white mb-2">
-                      Monorepo URL
-                    </h3>
+                  <div className="rounded-lg border p-4">
+                    <h3 className="text-sm font-medium mb-2">Monorepo URL</h3>
                     <a
                       href={event.monorepoUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-400 hover:text-blue-300 break-all"
+                      className="text-primary underline break-all"
                     >
                       {event.monorepoUrl}
                     </a>
                   </div>
-                  <div className="bg-gray-700 p-4 rounded-lg">
-                    <h3 className="text-lg font-semibold text-white mb-2">
-                      Monorepo Version
-                    </h3>
-                    <p className="text-white font-mono break-all">
+                  <div className="rounded-lg border p-4">
+                    <h3 className="text-sm font-medium mb-2">Monorepo Version</h3>
+                    <p className="font-mono break-all">
                       {event.monorepoVersion}
                     </p>
                   </div>
@@ -160,33 +151,27 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
               )}
 
               {event.gameServerDockerImage && (
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold text-white mb-2">
-                    Game Server Docker Image
-                  </h3>
-                  <p className="text-white font-mono break-all">
+                <div className="rounded-lg border p-4">
+                  <h3 className="text-sm font-medium mb-2">Game Server Docker Image</h3>
+                  <p className="font-mono break-all">
                     {event.gameServerDockerImage}
                   </p>
                 </div>
               )}
 
               {event.myCoreBotDockerImage && (
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold text-white mb-2">
-                    My Core Bot Docker Image
-                  </h3>
-                  <p className="text-white font-mono break-all">
+                <div className="rounded-lg border p-4">
+                  <h3 className="text-sm font-medium mb-2">My Core Bot Docker Image</h3>
+                  <p className="font-mono break-all">
                     {event.myCoreBotDockerImage}
                   </p>
                 </div>
               )}
 
               {event.visualizerDockerImage && (
-                <div className="bg-gray-700 p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold text-white mb-2">
-                    Visualizer Docker Image
-                  </h3>
-                  <p className="text-white font-mono break-all">
+                <div className="rounded-lg border p-4">
+                  <h3 className="text-sm font-medium mb-2">Visualizer Docker Image</h3>
+                  <p className="font-mono break-all">
                     {event.visualizerDockerImage}
                   </p>
                 </div>
@@ -195,120 +180,124 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
               {!event.monorepoUrl
                 && !event.gameServerDockerImage
                 && !event.myCoreBotDockerImage && (
-                <p className="text-gray-400 italic">
+                <p className="text-muted-foreground italic">
                   No Docker configuration set for this event.
                 </p>
               )}
-            </div>
-          </div>
-          <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
-            <h2 className="text-xl font-semibold mb-4 text-white">
-              Admin Actions
-            </h2>
-            <div className="flex flex-wrap gap-3">
-              <Button
-                disabled={event.lockedAt != null || lockingTeamsLoading}
-                onClick={() => {
-                  setLockingTeamsLoading(true);
-                  lockEvent(eventId)
-                    .then(() => {
-                      alert("locked team repositories");
-                    })
-                    .catch(() => {
-                      alert("error occurred");
-                    })
-                    .finally(() => {
-                      setLockingTeamsLoading(false);
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin Actions</CardTitle>
+              <CardDescription>Operational controls for advancing the event.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  disabled={event.lockedAt != null || lockingTeamsLoading}
+                  onClick={() => {
+                    setLockingTeamsLoading(true);
+                    lockEvent(eventId)
+                      .then(() => {
+                        console.warn("locked team repositories");
+                      })
+                      .catch(() => {
+                        console.error("error occurred");
+                      })
+                      .finally(() => {
+                        setLockingTeamsLoading(false);
+                      });
+                  }}
+                  variant="secondary"
+                >
+                  Lock Team Repositories
+                </Button>
+
+                <Button
+                  disabled={
+                    event.state !== EventState.SWISS_ROUND || startingGroupPhase
+                  }
+                  onClick={() => {
+                    setStartingGroupPhase(true);
+                    startSwissMatches(eventId)
+                      .then(() => {
+                        alert("started group phase");
+                      })
+                      .catch(() => {
+                        alert("error occurred");
+                        setStartingGroupPhase(false);
+                      })
+                      .finally(() => {});
+                  }}
+                  variant="secondary"
+                >
+                  Start Group Phase
+                </Button>
+
+                <Button
+                  disabled={
+                    event.state !== EventState.ELIMINATION_ROUND
+                    || startingTournament
+                  }
+                  onClick={() => {
+                    setStartingTournament(true);
+                    startTournamentMatches(eventId)
+                      .then(() => {
+                        alert("started tournament phase");
+                      })
+                      .catch(() => {
+                        alert("error occurred");
+                        setStartingTournament(false);
+                      })
+                      .finally(() => {});
+                  }}
+                  variant="secondary"
+                >
+                  Start Tournament Phase
+                </Button>
+              </div>
+
+              <h3 className="mt-4 text-sm font-medium">Team auto lock</h3>
+
+              <div className="mt-2 flex gap-3">
+                <Input
+                  type="datetime-local"
+                  value={teamAutoLockTime}
+                  onChange={e => setTeamAutoLockTime(e.target.value)}
+                  className="max-w-[300px]"
+                  placeholder="lock repo"
+                />
+
+                <Button
+                  onClick={() =>
+                    setEventTeamsLockDate(
+                      eventId,
+                      new Date(teamAutoLockTime).getTime(),
+                    ).then(() => {
+                      alert("set team auto lock date");
+                    })}
+                >
+                  Save
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setEventTeamsLockDate(eventId, null).then(() => {
+                      alert("reset team auto lock date");
+                      setTeamAutoLockTime("");
                     });
-                }}
-                className="bg-gray-700 hover:bg-gray-600 text-white"
-              >
-                Lock Team Repositories
-              </Button>
+                  }}
+                >
+                  Reset
+                </Button>
+              </div>
 
-              <Button
-                disabled={
-                  event.state !== EventState.SWISS_ROUND || startingGroupPhase
-                }
-                onClick={() => {
-                  setStartingGroupPhase(true);
-                  startSwissMatches(eventId)
-                    .then(() => {
-                      alert("started group phase");
-                    })
-                    .catch(() => {
-                      alert("error occurred");
-                      setStartingGroupPhase(false);
-                    })
-                    .finally(() => {});
-                }}
-                className="bg-gray-700 hover:bg-gray-600 text-white"
-              >
-                Start Group Phase
-              </Button>
-
-              <Button
-                disabled={
-                  event.state !== EventState.ELIMINATION_ROUND
-                  || startingTournament
-                }
-                onClick={() => {
-                  setStartingTournament(true);
-                  startTournamentMatches(eventId)
-                    .then(() => {
-                      alert("started tournament phase");
-                    })
-                    .catch(() => {
-                      alert("error occurred");
-                      setStartingTournament(false);
-                    })
-                    .finally(() => {});
-                }}
-                className="bg-gray-700 hover:bg-gray-600 text-white"
-              >
-                Start Tournament Phase
-              </Button>
-            </div>
-
-            <h3 className="mt-4">Team auto lock</h3>
-
-            <div className="mt-2 flex gap-3">
-              <Input
-                type="datetime-local"
-                value={teamAutoLockTime}
-                onChange={e => setTeamAutoLockTime(e.target.value)}
-                className="max-w-[300px]"
-                placeholder="lock repo"
-              />
-
-              <Button
-                onClick={() =>
-                  setEventTeamsLockDate(
-                    eventId,
-                    new Date(teamAutoLockTime).getTime(),
-                  ).then(() => {
-                    alert("set team auto lock date");
-                  })}
-              >
-                save
-              </Button>
-              <Button
-                onClick={() => {
-                  setEventTeamsLockDate(eventId, null).then(() => {
-                    alert("reset team auto lock date");
-                    setTeamAutoLockTime("");
-                  });
-                }}
-              >
-                reset
-              </Button>
-            </div>
-
-            <p className="text-sm text-gray-400 mt-4">
-              Note: Advancing the tournament will move to the next round or
-              phase depending on the current state.
-            </p>
-          </div>
+              <p className="text-sm text-muted-foreground mt-4">
+                Note: Advancing the tournament will move to the next round or
+                phase depending on the current state.
+              </p>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

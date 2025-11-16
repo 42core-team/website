@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+
 import { Label } from "../ui/label";
 
 interface TeamCreationSectionProps {
@@ -20,10 +22,12 @@ export function TeamCreationSection({
   validationError,
 }: TeamCreationSectionProps) {
   return (
-    <div className="bg-default-50 p-5 rounded-lg border border-default-200">
-      <h2 className="text-xl font-semibold mb-4">Create Your Team</h2>
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-2 items-center">
+    <Card className=" p-5 rounded-lg border border-default-200">
+      <CardHeader>
+        <CardTitle className="text-xl font-semibold">Create Your Team</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2 items-end">
           <div className="grid w-full max-w-sm items-center gap-3">
             <Label htmlFor="team-name">Team Name:</Label>
             <Input
@@ -35,7 +39,6 @@ export function TeamCreationSection({
             />
           </div>
           <Button
-            color="primary"
             onClick={handleCreateTeam}
             // TODO: isLoading={isLoading}
             disabled={!newTeamName || !!validationError}
@@ -44,13 +47,13 @@ export function TeamCreationSection({
           </Button>
         </div>
         {validationError && (
-          <div className="text-danger text-sm mt-1">{validationError}</div>
+          <div className="text-destructive text-sm mt-1">{validationError}</div>
         )}
         {errorMessage && (
-          <div className="text-danger text-sm mt-1">{errorMessage}</div>
+          <div className="text-destructive text-sm mt-1">{errorMessage}</div>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -1,9 +1,25 @@
 "use client";
 import type { Event } from "@/app/actions/event";
+import { Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { EventState } from "@/app/actions/event-model";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu";
+import { cn } from "@/lib/utils";
 
 interface EventNavbarProps {
   eventId: string;
@@ -19,11 +35,6 @@ export default function EventNavbar({
   event,
 }: EventNavbarProps) {
   const pathname = usePathname();
-  const [activeTab, setActiveTab] = useState<string | null>(null);
-
-  useEffect(() => {
-    setActiveTab(pathname);
-  }, [pathname]);
 
   const navItems = useMemo(() => {
     const baseItems = [
@@ -55,24 +66,53 @@ export default function EventNavbar({
   }, [eventId, isUserRegistered, isEventAdmin, event.state]);
 
   return (
-    <div className="w-full border-t">
-      <nav className="container mx-auto max-w-7xl px-6 h-16 flex items-center justify-center gap-8">
-        {navItems.map(item => (
-          <Link
-            key={item.path}
-            href={item.path}
-            onPointerDown={() => setActiveTab(item.path)}
-            onClick={() => setActiveTab(item.path)}
-            className={`text-base hover:text-primary transition-colors ${
-              (activeTab || pathname) === item.path
-                ? "text-primary font-medium border-b-2 border-primary pb-1"
-                : "text-foreground-500"
-            }`}
-          >
-            {item.name}
-          </Link>
-        ))}
-      </nav>
+    <div className="w-full">
+      <div className="container mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
+        {/* Desktop navigation */}
+        <NavigationMenu className="hidden md:flex">
+          <NavigationMenuList>
+            {navItems.map((item) => {
+              const isActive = pathname === item.path;
+              return (
+                <NavigationMenuItem key={item.path}>
+                  <NavigationMenuLink
+                    asChild
+                    className={cn(
+                      navigationMenuTriggerStyle(),
+                      isActive && "bg-accent text-accent-foreground",
+                    )}
+                  >
+                    <Link href={item.path}>{item.name}</Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+              );
+            })}
+          </NavigationMenuList>
+        </NavigationMenu>
+
+        {/* Mobile navigation dropdown */}
+        <div className="px-3 flex md:hidden">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Open navigation menu">
+                <Menu className="size-5" />
+                {" "}
+                Event Menu
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-56">
+              {navItems.map((item) => {
+                const isActive = pathname === item.path;
+                return (
+                  <DropdownMenuItem key={item.path} asChild className={cn(isActive && "bg-accent text-accent-foreground")}>
+                    <Link href={item.path}>{item.name}</Link>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
     </div>
   );
 }

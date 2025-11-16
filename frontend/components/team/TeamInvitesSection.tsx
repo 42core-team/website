@@ -112,7 +112,7 @@ export function TeamInvitesSection() {
 
   if (isLoading) {
     return (
-      <div className="bg-default-50 p-6 rounded-lg border border-default-200 mb-6">
+      <div className=" p-6 rounded-lg border border-default-200 mb-6">
         <h2 className="text-xl font-semibold mb-4">Team Invitations</h2>
         <p className="text-muted-foreground">Loading invitations...</p>
       </div>
@@ -120,7 +120,7 @@ export function TeamInvitesSection() {
   }
 
   return (
-    <div className="bg-default-50 p-6 rounded-lg border border-default-200 mb-6">
+    <div className=" p-6 rounded-lg border border-default-200 mb-6">
       <h2 className="text-xl font-semibold mb-4">Team Invitations</h2>
       {invites.length === 0
         ? (
@@ -139,7 +139,7 @@ export function TeamInvitesSection() {
                   </div>
                   <div className="flex gap-2 items-center">
                     {actionStates[invite.id]?.message && (
-                      <span className="text-danger text-sm mr-2">
+                      <span className="text-destructive text-sm mr-2">
                         {actionStates[invite.id]?.message}
                       </span>
                     )}

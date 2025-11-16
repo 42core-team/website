@@ -200,7 +200,7 @@ export function WikiNavigation({
 
           {/* Show table of contents under the active page */}
           {isActive && toc.length > 0 && (
-            <div className="ml-1 sm:ml-2 mt-1 mb-2 bg-default-50 border border-default-200 rounded-md p-2">
+            <div className="ml-1 sm:ml-2 mt-1 mb-2  border border-default-200 rounded-md p-2">
               <div className="text-xs font-semibold text-muted-foreground mb-2 px-2 py-1 bg-default-100 rounded">
                 On this page
               </div>

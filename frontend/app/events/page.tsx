@@ -51,7 +51,7 @@ export default async function EventsPage() {
         </p>
         {canCreate && (
           <Link href="/events/create">
-            <Button color="primary">Create Event</Button>
+            <Button>Create Event</Button>
           </Link>
         )}
       </div>

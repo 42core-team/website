@@ -85,7 +85,7 @@ export default function EventJoinNotice({
                   Join this event to participate with your team!
                 </p>
                 <div className="flex items-center gap-4">
-                  {error && <span className="text-danger text-sm">{error}</span>}
+                  {error && <span className="text-destructive text-sm">{error}</span>}
                   <Button
                     color="primary"
                     // TODO: isLoading={isJoining}

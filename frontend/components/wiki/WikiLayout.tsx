@@ -144,7 +144,7 @@ export function WikiLayout({
               : "opacity-100"
           }`}
         >
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between gap-4">
             {/* Mobile Menu Button */}
             <Button
               variant="ghost"

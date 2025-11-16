@@ -1,10 +1,12 @@
 import type { Metadata } from "next/dist/lib/metadata/types/metadata-interface";
+import { AlertCircleIcon } from "lucide-react";
 import {
   getMyEventTeam,
   getQueueMatches,
   getQueueState,
 } from "@/app/actions/team";
 import QueueState from "@/app/events/[id]/queue/queueState";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export const metadata: Metadata = {
   title: "Queue",
@@ -22,9 +24,19 @@ export default async function EventQueuePage({
 
   if (!myTeam) {
     return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <p>You are not part of any team for this event.</p>
-      </div>
+      <Alert variant="destructive" className="mt-6">
+        <AlertCircleIcon />
+        <AlertTitle>You are not part of any team</AlertTitle>
+        <AlertDescription>
+          Join or create a team to access the event queue. You can do this in the
+          {" "}
+          <a href={`/events/${id}/my-team`} className="underline">
+            My Team
+          </a>
+          {" "}
+          section.
+        </AlertDescription>
+      </Alert>
     );
   }
 

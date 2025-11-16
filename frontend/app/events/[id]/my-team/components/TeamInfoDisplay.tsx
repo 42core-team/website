@@ -100,7 +100,7 @@ export default function TeamInfoDisplay({
   return (
     <>
       {errorMessage && (
-        <div className="bg-danger-50 border border-danger-200 text-danger-800 px-4 py-3 rounded mb-4">
+        <div className="bg-danger-50 border border-danger-200 text-destructive-800 px-4 py-3 rounded mb-4">
           {errorMessage}
         </div>
       )}

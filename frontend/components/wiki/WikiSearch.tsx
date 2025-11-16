@@ -143,7 +143,7 @@ export function WikiSearch({
 
       {query && (
         <div
-          className="absolute top-full left-0 right-0 mt-2 bg-content1 border rounded-lg shadow-lg max-h-96 overflow-y-auto z-20"
+          className="absolute top-full left-0 right-0 mt-2 bg-background border rounded-lg shadow-lg max-h-96 overflow-y-auto z-20"
           role="listbox"
           aria-label="Search results"
         >

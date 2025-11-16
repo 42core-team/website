@@ -130,18 +130,18 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
         <div className="max-w-md mx-auto text-center">
           <div className="p-6 bg-danger-50 border border-danger-200 rounded-lg dark:bg-danger-100/10">
             <div className="flex items-start gap-3">
-              <span className="text-danger text-2xl shrink-0">⚠️</span>
+              <span className="text-destructive text-2xl shrink-0">⚠️</span>
               <div className="flex-1 min-w-0">
-                <p className="text-lg font-medium text-danger mb-2">
+                <p className="text-lg font-medium text-destructive mb-2">
                   OAuth Error
                 </p>
-                <p className="text-sm text-danger-600 mb-4 wrap-break-word">
+                <p className="text-sm text-destructive-600 mb-4 wrap-break-word">
                   {error}
                 </p>
                 <div className="flex gap-2 justify-center">
                   <button
                     onClick={() => router.push("/profile")}
-                    className="px-4 py-2 bg-danger-100 text-danger-700 rounded-md hover:bg-danger-200 transition-colors"
+                    className="px-4 py-2 bg-danger-100 text-destructive-700 rounded-md hover:bg-danger-200 transition-colors"
                   >
                     Go to Profile
                   </button>
