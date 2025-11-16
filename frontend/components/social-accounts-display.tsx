@@ -122,7 +122,7 @@ export default function SocialAccountsDisplay() {
                 {socialAccounts.map(account => (
                   <div
                     key={account.id}
-                    className="flex items-center justify-between p-3 border border-default-200 rounded-lg"
+                    className="flex items-center justify-between p-3 border rounded-lg"
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex items-center justify-center w-8 h-8 text-2xl">
@@ -152,8 +152,8 @@ export default function SocialAccountsDisplay() {
             )}
 
         {!get42Account() && (
-          <div className="border-t border-default-200 pt-4">
-            <div className="flex items-center justify-between p-3 border border-default-200 rounded-lg border-dashed">
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between p-3 border rounded-lg border-dashed">
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-8 h-8 text-2xl">
                   {getPlatformIcon(OAUTH_PROVIDERS.FORTY_TWO)}

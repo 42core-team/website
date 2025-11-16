@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useEffect } from "react";
 
 interface TeamInviteModalProps {
   isOpen: boolean;
@@ -36,31 +38,24 @@ export function TeamInviteModal({
   const plausible = usePlausible();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(searchQuery, 300);
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isInviting, setIsInviting] = useState<Record<string, boolean>>({});
 
-  // Handle search input change
-  const handleSearchChange = async (value: string) => {
-    setSearchQuery(value);
-
-    if (value.length >= 2) {
+  // Perform search when debounced query changes
+  useEffect(() => {
+    if (debouncedQuery.length >= 2) {
       setIsSearching(true);
-      try {
-        const results = await searchUsersForInvite(eventId, value);
-        setSearchResults(results);
-      }
-      catch (error) {
-        console.error("Error searching users:", error);
-      }
-      finally {
-        setIsSearching(false);
-      }
+      searchUsersForInvite(eventId, debouncedQuery)
+        .then(results => setSearchResults(results))
+        .catch(error => console.error("Error searching users:", error))
+        .finally(() => setIsSearching(false));
     }
     else {
       setSearchResults([]);
     }
-  };
+  }, [debouncedQuery, eventId]);
 
   // Send invite to a user
   const handleInviteUser = async (userId: string) => {
@@ -121,7 +116,7 @@ export function TeamInviteModal({
               id="search"
               placeholder="Search by username or name"
               value={searchQuery}
-              onChange={e => handleSearchChange(e.target.value)}
+              onChange={e => setSearchQuery(e.target.value)}
               className="mb-4"
               autoFocus={true}
               onKeyDown={(e) => {
@@ -155,7 +150,7 @@ export function TeamInviteModal({
                       searchResults.map(user => (
                         <div
                           key={user.id}
-                          className="flex justify-between items-center p-2 border-b border-default-200 last:border-0"
+                          className="flex justify-between items-center p-2 border-b last:border-0"
                         >
                           <div className="flex items-center gap-3">
                             <Avatar>

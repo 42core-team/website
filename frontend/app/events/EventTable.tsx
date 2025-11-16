@@ -91,6 +91,7 @@ export default function EventsTable({ events }: { events: Event[] }) {
                       {event.minTeamSize}
                       {" "}
                       -
+                      {" "}
                       {event.maxTeamSize}
                       {" "}
                       members

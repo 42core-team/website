@@ -79,7 +79,7 @@ export default function TeamInvitesDisplay({
   };
 
   return (
-    <Card className=" p-6 rounded-lg border border-default-200 mb-6">
+    <Card className="rounded-lg border">
       <CardHeader>
         <CardTitle className="text-xl font-semibold">Team Invitations</CardTitle>
       </CardHeader>

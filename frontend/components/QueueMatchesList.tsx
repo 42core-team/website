@@ -23,7 +23,7 @@ export default function QueueMatchesList(props: {
       {matches.map(match => (
         <div
           key={match.id}
-          className="rounded-lg border border-default-200 p-4 shadow-xs"
+          className="rounded-lg border p-4 shadow-xs"
         >
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">

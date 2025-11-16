@@ -70,7 +70,7 @@ export function TeamInfoSection({
   };
 
   return (
-    <Card className=" p-6 rounded-lg border border-default-200">
+    <Card className="rounded-lg border">
       <CardHeader>
         <CardTitle className="text-2xl font-bold">
           Team:
@@ -79,9 +79,8 @@ export function TeamInfoSection({
         </CardTitle>
         {myTeam.locked && <Badge variant="destructive">Locked</Badge>}
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-2">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-
           <div>
             <p className="text-sm text-muted-foreground">Repository</p>
             <div className="font-medium">
@@ -124,11 +123,11 @@ export function TeamInfoSection({
         </div>
 
         {/* Team Members Section */}
-        <div>
-          <div className="flex justify-between items-center mb-3">
+        <div className="p-4 border rounded-lg">
+          <div className="flex justify-between items-center mb-1.5">
             <h3 className="text-lg font-semibold">Team Members</h3>
             {!myTeam.locked && (
-              <Button onClick={() => setIsOpen(true)}>
+              <Button size="sm" onClick={() => setIsOpen(true)}>
                 <Plus className="size-4" />
                 Invite Others
               </Button>

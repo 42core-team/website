@@ -2,8 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-import { Label } from "../ui/label";
-
 interface TeamCreationSectionProps {
   newTeamName: string;
   setNewTeamName: (name: string) => void;
@@ -22,22 +20,18 @@ export function TeamCreationSection({
   validationError,
 }: TeamCreationSectionProps) {
   return (
-    <Card className=" p-5 rounded-lg border border-default-200">
+    <Card className="rounded-lg border">
       <CardHeader>
         <CardTitle className="text-xl font-semibold">Create Your Team</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-2 items-end">
-          <div className="grid w-full max-w-sm items-center gap-3">
-            <Label htmlFor="team-name">Team Name:</Label>
-            <Input
-              id="team-name"
-              placeholder="Enter team name"
-              value={newTeamName}
-              onChange={e => setNewTeamName(e.target.value)}
-              className="flex-1"
-            />
-          </div>
+        <div className="flex flex-row gap-2">
+          <Input
+            id="team-name"
+            placeholder="Enter team name"
+            value={newTeamName}
+            onChange={e => setNewTeamName(e.target.value)}
+          />
           <Button
             onClick={handleCreateTeam}
             // TODO: isLoading={isLoading}
@@ -46,12 +40,14 @@ export function TeamCreationSection({
             Create Team
           </Button>
         </div>
-        {validationError && (
-          <div className="text-destructive text-sm mt-1">{validationError}</div>
-        )}
-        {errorMessage && (
-          <div className="text-destructive text-sm mt-1">{errorMessage}</div>
-        )}
+        <div className="mt-2">
+          {validationError && (
+            <div className="text-destructive text-sm">{validationError}</div>
+          )}
+          {errorMessage && (
+            <div className="text-destructive text-sm">{errorMessage}</div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

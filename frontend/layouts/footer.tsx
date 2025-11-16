@@ -27,7 +27,7 @@ export default function Footer() {
     location.href = `${base}?labels=feedback&title=${title}&body=${body}`;
   };
   return (
-    <footer className="w-full border-t border-default-200">
+    <footer className="w-full border-t">
       <div className="container mx-auto max-w-7xl py-12 px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Logo and Description */}
@@ -111,7 +111,7 @@ export default function Footer() {
         </div>
 
         {/* Bottom Section */}
-        <div className="mt-8 pt-8 border-t border-default-200">
+        <div className="mt-8 pt-8 border-t">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-muted-foreground text-sm">
               © 2025 CORE Game. All rights reserved.
