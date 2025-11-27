@@ -1,6 +1,7 @@
 "use client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePlausible } from "next-plausible";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useState } from "react";
 import { isActionError } from "@/app/actions/errors";
 import { createTeam } from "@/app/actions/team";
@@ -11,11 +12,10 @@ export default function TeamCreationForm() {
   const plausible = usePlausible();
 
   const [newTeamName, setNewTeamName] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const eventId = useParams().id as string;
-  const router = useRouter();
+  const queryClient = useQueryClient();
 
   function handleTeamNameChange(name: string) {
     setNewTeamName(name);
@@ -23,36 +23,42 @@ export default function TeamCreationForm() {
     setValidationError(validation.isValid ? null : validation.error!);
   }
 
-  async function handleCreateTeam() {
-    plausible("create_team");
+  const createTeamMutation = useMutation({
+    mutationFn: async () => {
+      const validation = validateTeamName(newTeamName);
+      if (!validation.isValid) {
+        throw new Error(validation.error!);
+      }
 
-    const validation = validateTeamName(newTeamName);
-    if (!validation.isValid) {
-      setValidationError(validation.error!);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setErrorMessage(null);
-      setValidationError(null);
       const result = await createTeam(newTeamName, eventId);
 
       if (isActionError(result)) {
-        setErrorMessage(result.error);
-        return;
+        throw new Error(result.error);
       }
+    },
+    onMutate: () => {
+      plausible("create_team");
+      setErrorMessage(null);
+      setValidationError(null);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["event", eventId, "my-team"] }),
+        queryClient.invalidateQueries({ queryKey: ["event", eventId, "pending-invites"] }),
+      ]);
+    },
+    onError: (error: Error) => {
+      if (error.message && !error.message.startsWith("An unexpected")) {
+        setErrorMessage(error.message);
+      }
+      else {
+        setErrorMessage("An unexpected error occurred while creating the team.");
+      }
+    },
+  });
 
-      // Use Next.js router to refresh the page
-      router.refresh();
-    }
-    catch (err) {
-      console.error("Error creating team:", err);
-      setErrorMessage("An unexpected error occurred while creating the team.");
-    }
-    finally {
-      setIsLoading(false);
-    }
+  async function handleCreateTeam() {
+    await createTeamMutation.mutateAsync();
   }
 
   return (
@@ -60,7 +66,7 @@ export default function TeamCreationForm() {
       newTeamName={newTeamName}
       setNewTeamName={handleTeamNameChange}
       handleCreateTeam={handleCreateTeam}
-      isLoading={isLoading}
+      isLoading={createTeamMutation.isPending}
       errorMessage={errorMessage}
       validationError={validationError}
     />
