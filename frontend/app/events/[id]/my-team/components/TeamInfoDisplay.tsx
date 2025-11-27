@@ -24,9 +24,7 @@ export default function TeamInfoDisplay({
   const [isRepoPending] = useState<boolean>(false);
   const eventId = useParams().id as string;
 
-  const {
-    data: team,
-  } = useQuery<Team | null>({
+  const { data: team } = useQuery<Team | null>({
     refetchInterval: 3000,
     queryKey: ["event", eventId, "my-team"],
     queryFn: async () => {
@@ -70,8 +68,7 @@ export default function TeamInfoDisplay({
     try {
       await leaveTeamMutation.mutateAsync();
       return true;
-    }
-    catch {
+    } catch {
       return false;
     }
   }

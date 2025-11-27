@@ -38,18 +38,16 @@ async function markdownToHtml(md: string): Promise<string> {
 
 // determines which version number was incremented in a release (e.g. v1.2.3.4 -> v1.3.0.0 is a level 2 bump)
 function bumpLevel(curr: string, prev?: string): 1 | 2 | 3 | 4 {
-  if (!prev)
-    return 4;
+  if (!prev) return 4;
   const toNums = (t: string) =>
     t
       .replace(/^v/i, "")
       .split(".")
-      .map(n => Number.parseInt(n, 10) || 0);
+      .map((n) => Number.parseInt(n, 10) || 0);
   const c = toNums(curr);
   const p = toNums(prev);
   for (let i = 0; i < 4; i++) {
-    if ((c[i] ?? 0) !== (p[i] ?? 0))
-      return (i + 1) as 1 | 2 | 3 | 4;
+    if ((c[i] ?? 0) !== (p[i] ?? 0)) return (i + 1) as 1 | 2 | 3 | 4;
   }
   return 4;
 }
@@ -73,7 +71,7 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
   );
 
   const renderedBodies = await Promise.all(
-    releases.map(r => markdownToHtml(r.body)),
+    releases.map((r) => markdownToHtml(r.body)),
   );
 
   return (
@@ -81,8 +79,7 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
       <header className="mb-4">
         <h1 className="text-4xl font-bold pb-2">Changelog</h1>
         <p className="text-muted-foreground">
-          All changes from
-          {" "}
+          All changes from{" "}
           <a
             href="https://github.com/42core-team/monorepo/releases"
             className="underline hover:no-underline"
@@ -91,14 +88,8 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
           >
             42core-team/monorepo
           </a>
-          .
-          {" "}
-          {total}
-          {" "}
-          release
-          {total === 1 ? "" : "s"}
-          {" "}
-          total.
+          . {total} release
+          {total === 1 ? "" : "s"} total.
         </p>
       </header>
 
@@ -117,8 +108,8 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
           const prevTag = releases[idx + 1]?.tag_name;
           const level = bumpLevel(rel.tag_name, prevTag);
 
-          const sizeClass
-            = level === 1
+          const sizeClass =
+            level === 1
               ? "text-4xl"
               : level === 2
                 ? "text-3xl"
@@ -126,8 +117,8 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
                   ? "text-xl"
                   : "text-base";
 
-          const weightClass
-            = level === 1
+          const weightClass =
+            level === 1
               ? "font-black"
               : level === 2
                 ? "font-extrabold"
@@ -135,14 +126,12 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
                   ? "font-bold"
                   : "font-medium";
 
-          const latestBadge
-            = globalIndex === 0
-              ? (
-                  <Badge variant="secondary" className="ml-2">
-                    latest
-                  </Badge>
-                )
-              : null;
+          const latestBadge =
+            globalIndex === 0 ? (
+              <Badge variant="secondary" className="ml-2">
+                latest
+              </Badge>
+            ) : null;
 
           return (
             <AccordionItem key={rel.id} value={String(rel.id)}>
@@ -153,9 +142,7 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
                       {rel.name}
                     </span>
                     <span className="text-muted-foreground">
-                      (
-                      {rel.tag_name}
-                      )
+                      ({rel.tag_name})
                     </span>
                     {latestBadge}
                   </div>
@@ -165,18 +152,16 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-4">
-                {html.trim()
-                  ? (
-                      <article
-                        className="prose dark:prose-invert max-w-none"
-                        dangerouslySetInnerHTML={{ __html: html }}
-                      />
-                    )
-                  : (
-                      <p className="text-muted-foreground italic">
-                        No description.
-                      </p>
-                    )}
+                {html.trim() ? (
+                  <article
+                    className="prose dark:prose-invert max-w-none"
+                    dangerouslySetInnerHTML={{ __html: html }}
+                  />
+                ) : (
+                  <p className="text-muted-foreground italic">
+                    No description.
+                  </p>
+                )}
 
                 <div className="mt-4">
                   <Button asChild variant="link">
@@ -193,49 +178,33 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
 
       {/* Pagination */}
       <nav className="mt-8 flex items-center justify-between">
-        {page <= 1
-          ? (
-              <Button variant="outline" disabled>
-                ← Newer
-              </Button>
-            )
-          : (
-              <Button asChild variant="outline">
-                <Link href={`/changelog?page=${Math.max(1, page - 1)}`}>
-                  ← Newer
-                </Link>
-              </Button>
-            )}
+        {page <= 1 ? (
+          <Button variant="outline" disabled>
+            ← Newer
+          </Button>
+        ) : (
+          <Button asChild variant="outline">
+            <Link href={`/changelog?page=${Math.max(1, page - 1)}`}>
+              ← Newer
+            </Link>
+          </Button>
+        )}
 
         <span className="text-sm text-muted-foreground">
-          Page
-          {" "}
-          {page}
-          {" "}
-          /
-          {" "}
-          {totalPages}
-          {" "}
-          &middot;
-          {" "}
-          {perPage}
-          {" "}
-          per page
+          Page {page} / {totalPages} &middot; {perPage} per page
         </span>
 
-        {page >= totalPages
-          ? (
-              <Button variant="outline" disabled>
-                Older →
-              </Button>
-            )
-          : (
-              <Button asChild variant="outline">
-                <Link href={`/changelog?page=${Math.min(totalPages, page + 1)}`}>
-                  Older →
-                </Link>
-              </Button>
-            )}
+        {page >= totalPages ? (
+          <Button variant="outline" disabled>
+            Older →
+          </Button>
+        ) : (
+          <Button asChild variant="outline">
+            <Link href={`/changelog?page=${Math.min(totalPages, page + 1)}`}>
+              Older →
+            </Link>
+          </Button>
+        )}
       </nav>
     </div>
   );

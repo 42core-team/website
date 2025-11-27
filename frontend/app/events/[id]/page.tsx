@@ -80,34 +80,35 @@ export default async function EventPage({
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Description</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">
+              Description
+            </h3>
             <div
               className="prose dark:prose-invert max-w-none mt-1"
               dangerouslySetInnerHTML={{ __html: renderedDescription }}
-            >
-            </div>
+            ></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Start Date</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Start Date
+              </h3>
               <TimeBadge className="mt-1" time={event.startDate} />
             </div>
             <div>
-              <h3 className="text-sm font-medium text-muted-foreground">End Date</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">
+                End Date
+              </h3>
               <TimeBadge className="mt-1" time={event.endDate} />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Team Size</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Team Size
+              </h3>
               <p className="mt-1">
-                {event.minTeamSize}
-                {" "}
-                -
-                {" "}
-                {event.maxTeamSize}
-                {" "}
-                members
+                {event.minTeamSize} - {event.maxTeamSize} members
               </p>
             </div>
             {event.repoLockDate && (

@@ -1,8 +1,6 @@
 "use client";
 
-import type {
-  Event,
-} from "@/app/actions/event";
+import type { Event } from "@/app/actions/event";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { isActionError } from "@/app/actions/errors";
@@ -42,8 +40,8 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   const [participantsCount, setParticipantsCount] = useState<number>(0);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
-  const [lockingTeamsLoading, setLockingTeamsLoading]
-    = useState<boolean>(false);
+  const [lockingTeamsLoading, setLockingTeamsLoading] =
+    useState<boolean>(false);
   const [startingGroupPhase, setStartingGroupPhase] = useState<boolean>(false);
   const [startingTournament, setStartingTournament] = useState<boolean>(false);
   const [teamAutoLockTime, setTeamAutoLockTime] = useState<string>("");
@@ -71,8 +69,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
         }
         setIsAdmin(true);
         setLoading(false);
-      }
-      catch (error) {
+      } catch (error) {
         console.error("Error loading dashboard data:", error);
         setLoading(false);
       }
@@ -99,7 +96,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Event Overview</CardTitle>
-              <CardDescription>Key live metrics for this event.</CardDescription>
+              <CardDescription>
+                Key live metrics for this event.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -117,7 +116,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 </div>
                 <div className="rounded-lg border p-4">
                   <h3 className="text-sm font-medium mb-2">Event State</h3>
-                  <p className="text-2xl font-bold">{event.state.toLowerCase()}</p>
+                  <p className="text-2xl font-bold">
+                    {event.state.toLowerCase()}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -125,7 +126,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Docker Configuration</CardTitle>
-              <CardDescription>Images & repository info configured for this event.</CardDescription>
+              <CardDescription>
+                Images & repository info configured for this event.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {event.monorepoUrl && (
@@ -142,7 +145,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     </a>
                   </div>
                   <div className="rounded-lg border p-4">
-                    <h3 className="text-sm font-medium mb-2">Monorepo Version</h3>
+                    <h3 className="text-sm font-medium mb-2">
+                      Monorepo Version
+                    </h3>
                     <p className="font-mono break-all">
                       {event.monorepoVersion}
                     </p>
@@ -152,7 +157,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
               {event.gameServerDockerImage && (
                 <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">Game Server Docker Image</h3>
+                  <h3 className="text-sm font-medium mb-2">
+                    Game Server Docker Image
+                  </h3>
                   <p className="font-mono break-all">
                     {event.gameServerDockerImage}
                   </p>
@@ -161,7 +168,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
               {event.myCoreBotDockerImage && (
                 <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">My Core Bot Docker Image</h3>
+                  <h3 className="text-sm font-medium mb-2">
+                    My Core Bot Docker Image
+                  </h3>
                   <p className="font-mono break-all">
                     {event.myCoreBotDockerImage}
                   </p>
@@ -170,26 +179,30 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
               {event.visualizerDockerImage && (
                 <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">Visualizer Docker Image</h3>
+                  <h3 className="text-sm font-medium mb-2">
+                    Visualizer Docker Image
+                  </h3>
                   <p className="font-mono break-all">
                     {event.visualizerDockerImage}
                   </p>
                 </div>
               )}
 
-              {!event.monorepoUrl
-                && !event.gameServerDockerImage
-                && !event.myCoreBotDockerImage && (
-                <p className="text-muted-foreground italic">
-                  No Docker configuration set for this event.
-                </p>
-              )}
+              {!event.monorepoUrl &&
+                !event.gameServerDockerImage &&
+                !event.myCoreBotDockerImage && (
+                  <p className="text-muted-foreground italic">
+                    No Docker configuration set for this event.
+                  </p>
+                )}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
               <CardTitle>Admin Actions</CardTitle>
-              <CardDescription>Operational controls for advancing the event.</CardDescription>
+              <CardDescription>
+                Operational controls for advancing the event.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-3">
@@ -238,8 +251,8 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
                 <Button
                   disabled={
-                    event.state !== EventState.ELIMINATION_ROUND
-                    || startingTournament
+                    event.state !== EventState.ELIMINATION_ROUND ||
+                    startingTournament
                   }
                   onClick={() => {
                     setStartingTournament(true);
@@ -267,7 +280,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 <Input
                   type="datetime-local"
                   value={teamAutoLockTime}
-                  onChange={e => setTeamAutoLockTime(e.target.value)}
+                  onChange={(e) => setTeamAutoLockTime(e.target.value)}
                   className="max-w-[300px]"
                   placeholder="lock repo"
                 />
@@ -280,7 +293,8 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     ).then(() => {
                       // eslint-disable-next-line no-alert
                       alert("set team auto lock date");
-                    })}
+                    })
+                  }
                 >
                   Save
                 </Button>

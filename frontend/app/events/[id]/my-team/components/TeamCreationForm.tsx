@@ -43,16 +43,21 @@ export default function TeamCreationForm() {
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["event", eventId, "my-team"] }),
-        queryClient.invalidateQueries({ queryKey: ["event", eventId, "pending-invites"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["event", eventId, "my-team"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["event", eventId, "pending-invites"],
+        }),
       ]);
     },
     onError: (error: Error) => {
       if (error.message && !error.message.startsWith("An unexpected")) {
         setErrorMessage(error.message);
-      }
-      else {
-        setErrorMessage("An unexpected error occurred while creating the team.");
+      } else {
+        setErrorMessage(
+          "An unexpected error occurred while creating the team.",
+        );
       }
     },
   });

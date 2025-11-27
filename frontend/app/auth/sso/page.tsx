@@ -15,11 +15,9 @@ export default function SsoPage() {
           router.replace("/");
           router.refresh();
         }
-      }
-      catch (e) {
+      } catch (e) {
         console.error("Failed to finalize SSO:", e);
-        if (!cancelled)
-          router.replace("/auth/error");
+        if (!cancelled) router.replace("/auth/error");
       }
     })();
     return () => {

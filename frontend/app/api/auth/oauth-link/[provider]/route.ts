@@ -49,8 +49,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       { error: `OAuth provider ${provider} not yet implemented` },
       { status: 400 },
     );
-  }
-  catch (error) {
+  } catch (error) {
     console.error("OAuth linking error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
@@ -121,8 +120,7 @@ async function handle42OAuth(code: string, _state: string, _session: any) {
           email: profile.email,
         },
       });
-    }
-    catch (linkError: any) {
+    } catch (linkError: any) {
       console.error("Account linking failed:", linkError);
       return NextResponse.json(
         {
@@ -131,8 +129,7 @@ async function handle42OAuth(code: string, _state: string, _session: any) {
         { status: 400 },
       );
     }
-  }
-  catch (error) {
+  } catch (error) {
     console.error("42 OAuth error:", error);
     return NextResponse.json(
       { error: "Failed to process 42 OAuth" },

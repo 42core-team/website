@@ -53,7 +53,6 @@ export const metadata: Metadata = {
   category: "coding game",
 };
 
-
 export default function App({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>

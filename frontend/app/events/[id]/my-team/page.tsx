@@ -1,5 +1,9 @@
 import type { Team, TeamMember } from "@/app/actions/team";
-import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+} from "@tanstack/react-query";
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 import axiosInstance from "@/app/actions/axios";
@@ -48,10 +52,7 @@ export default async function Page({
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <TeamView
-        eventId={eventId}
-        canCreateTeam={event.canCreateTeam}
-      />
+      <TeamView eventId={eventId} canCreateTeam={event.canCreateTeam} />
     </HydrationBoundary>
   );
 }

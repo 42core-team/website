@@ -40,8 +40,8 @@ export default async function EventQueueMatchesAdminPage({
 
   const sp = await searchParams;
   const rawInterval = (sp.interval || "hour").toLowerCase();
-  const interval: "minute" | "hour" | "day"
-    = rawInterval === "minute" || rawInterval === "hour" || rawInterval === "day"
+  const interval: "minute" | "hour" | "day" =
+    rawInterval === "minute" || rawInterval === "hour" || rawInterval === "day"
       ? (rawInterval as any)
       : "hour";
 

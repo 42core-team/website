@@ -1,14 +1,9 @@
 "use client";
-import type {
-  Node,
-} from "reactflow";
+import type { Node } from "reactflow";
 import type { Match } from "@/app/actions/tournament-model";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import ReactFlow, {
-  Background,
-  useNodesState,
-} from "reactflow";
+import ReactFlow, { Background, useNodesState } from "reactflow";
 import { MatchState } from "@/app/actions/tournament-model";
 import { MatchNode } from "@/components/match";
 import { Switch } from "@/components/ui/switch";
@@ -34,13 +29,11 @@ export default function GraphView({
   const eventId = useParams().id as string;
 
   useEffect(() => {
-    if (!matches || matches.length === 0)
-      return;
+    if (!matches || matches.length === 0) return;
 
     const matchesByRound = matches.reduce(
       (acc, match) => {
-        if (!acc[match.round])
-          acc[match.round] = [];
+        if (!acc[match.round]) acc[match.round] = [];
         acc[match.round].push(match);
         return acc;
       },
@@ -88,10 +81,10 @@ export default function GraphView({
 
       // Add match nodes
       roundMatches.forEach((match, matchIndex) => {
-        const xPos
-          = roundIndex * COLUMN_WIDTH
-            + PADDING
-            + (COLUMN_WIDTH - MATCH_WIDTH - PADDING * 2) / 2;
+        const xPos =
+          roundIndex * COLUMN_WIDTH +
+          PADDING +
+          (COLUMN_WIDTH - MATCH_WIDTH - PADDING * 2) / 2;
         const yPos = (matchIndex + 1) * ROW_HEIGHT + PADDING + 20; // +60 for header space
 
         newNodes.push({

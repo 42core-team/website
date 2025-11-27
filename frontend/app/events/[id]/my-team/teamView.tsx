@@ -32,10 +32,9 @@ export default function TeamView({ eventId, canCreateTeam }: TeamViewProps) {
 
   const teamId = team?.id;
 
-  const {
-    data: teamMembers = [],
-    isError: isTeamMembersError,
-  } = useQuery<TeamMember[]>({
+  const { data: teamMembers = [], isError: isTeamMembersError } = useQuery<
+    TeamMember[]
+  >({
     queryKey: ["team", teamId, "members"],
     queryFn: async () => {
       const response = await axiosInstance.get<TeamMember[]>(
@@ -46,10 +45,9 @@ export default function TeamView({ eventId, canCreateTeam }: TeamViewProps) {
     enabled: !!teamId,
   });
 
-  const {
-    data: pendingInvites = [],
-    isError: isInvitesError,
-  } = useQuery<Team[]>({
+  const { data: pendingInvites = [], isError: isInvitesError } = useQuery<
+    Team[]
+  >({
     queryKey: ["event", eventId, "pending-invites"],
     queryFn: async () => {
       const response = await axiosInstance.get<Team[]>(
@@ -65,7 +63,7 @@ export default function TeamView({ eventId, canCreateTeam }: TeamViewProps) {
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto mb-8 mt-3">
-        <Spinner/>
+        <Spinner />
       </div>
     );
   }
