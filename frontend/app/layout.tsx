@@ -4,6 +4,7 @@ import PlausibleProvider from "next-plausible";
 import React from "react";
 import ClientProviders from "@/components/ClientProviders";
 import DefaultLayout from "@/layouts/default";
+import Providers from "@/app/providers";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
@@ -52,22 +53,25 @@ export const metadata: Metadata = {
   category: "coding game",
 };
 
+
 export default function App({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <PlausibleProvider
-          domain={process.env.PLAUSIBLE_DOMAIN ?? "coregame.de"}
-          customDomain={process.env.PLAUSIBLE_CUSTOM_DOMAIN}
-          selfHosted={true}
-          trackOutboundLinks={true}
-          trackFileDownloads={true}
-          taggedEvents={true}
-        >
-          <ClientProviders>
-            <DefaultLayout>{children}</DefaultLayout>
-          </ClientProviders>
-        </PlausibleProvider>
+        <Providers>
+          <PlausibleProvider
+            domain={process.env.PLAUSIBLE_DOMAIN ?? "coregame.de"}
+            customDomain={process.env.PLAUSIBLE_CUSTOM_DOMAIN}
+            selfHosted={true}
+            trackOutboundLinks={true}
+            trackFileDownloads={true}
+            taggedEvents={true}
+          >
+            <ClientProviders>
+              <DefaultLayout>{children}</DefaultLayout>
+            </ClientProviders>
+          </PlausibleProvider>
+        </Providers>
       </body>
     </html>
   );
