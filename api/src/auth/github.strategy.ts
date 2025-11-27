@@ -11,7 +11,7 @@ export class GithubOAuthStrategy extends PassportStrategy(
 ) {
   constructor(
     config: ConfigService,
-    private users: UserService,
+    private readonly users: UserService,
   ) {
     super({
       clientID: config.getOrThrow<string>("GITHUB_CLIENT_ID"),
@@ -29,25 +29,15 @@ export class GithubOAuthStrategy extends PassportStrategy(
   ) {
     try {
       const githubId = profile.id;
-      const email = profile.emails && profile.emails[0]?.value;
+      const email = profile.emails?.[0]?.value;
       const username =
         profile.username || profile.displayName || email || githubId;
       const name = profile.displayName || username;
-      const profilePicture = profile.photos && profile.photos[0]?.value;
+      const profilePicture = profile.photos?.[0]?.value;
 
       let user = await this.users.getUserByGithubId(githubId);
 
-      if (!user) {
-        user = await this.users.createUser(
-          email || `${githubId}@users.noreply.github.com`,
-          username,
-          name,
-          profilePicture,
-          githubId,
-          accessToken,
-          false,
-        );
-      } else {
+      if (user) {
         await this.users.updateUser(
           user.id,
           email || user.email,
@@ -58,6 +48,16 @@ export class GithubOAuthStrategy extends PassportStrategy(
           accessToken,
         );
         user = await this.users.getUserById(user.id);
+      } else {
+        user = await this.users.createUser(
+          email || `${githubId}@users.noreply.github.com`,
+          username,
+          name,
+          profilePicture,
+          githubId,
+          accessToken,
+          false,
+        );
       }
 
       done(null, user);
