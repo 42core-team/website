@@ -1,8 +1,10 @@
 "use client";
 import type { Team, TeamMember } from "@/app/actions/team";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { usePlausible } from "next-plausible";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
+import { useState } from "react";
+import axiosInstance from "@/app/actions/axios";
 import { isActionError } from "@/app/actions/errors";
 import { leaveTeam } from "@/app/actions/team";
 import { TeamInfoSection } from "@/components/team";
@@ -13,88 +15,69 @@ interface TeamInfoDisplayProps {
 }
 
 export default function TeamInfoDisplay({
-  team,
-  teamMembers,
+  team: initialTeam,
+  teamMembers: initialTeamMembers,
 }: TeamInfoDisplayProps) {
   const plausible = usePlausible();
 
-  const [isLeaving, setIsLeaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isRepoPending, setIsRepoPending] = useState<boolean>(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const attemptsRef = useRef<number>(0);
-  const delayRef = useRef<number>(0);
+  const [isRepoPending] = useState<boolean>(false);
   const eventId = useParams().id as string;
-  const router = useRouter();
 
-  useEffect(() => {
-    function clearTimer() {
-      if (timeoutRef.current)
-        clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
+  const {
+    data: team,
+  } = useQuery<Team | null>({
+    refetchInterval: 3000,
+    queryKey: ["event", eventId, "my-team"],
+    queryFn: async () => {
+      const response = await axiosInstance.get<Team | null>(
+        `/team/event/${eventId}/my`,
+      );
+      return response.data;
+    },
+    initialData: initialTeam,
+  });
 
-    function scheduleNext(firstRun: boolean = false) {
-      timeoutRef.current = setTimeout(() => {
-        if (firstRun) {
-          delayRef.current = 250;
-        }
-        // If repo appeared in the meantime, stop
-        if (team?.repo) {
-          setIsRepoPending(false);
-          clearTimer();
-          return;
-        }
+  const { data: teamMembers = [] } = useQuery<TeamMember[]>({
+    queryKey: ["team", team?.id, "members"],
+    queryFn: async () => {
+      const response = await axiosInstance.get<TeamMember[]>(
+        `/team/${team?.id}/members`,
+      );
+      return response.data;
+    },
+    enabled: Boolean(team?.id),
+    initialData: initialTeamMembers,
+  });
 
-        attemptsRef.current += 1;
-        router.refresh();
-
-        const maxAttempts = 10;
-        if (attemptsRef.current >= maxAttempts) {
-          setIsRepoPending(false);
-          clearTimer();
-          return;
-        }
-
-        // exponential backoff
-        delayRef.current = delayRef.current * 1.5;
-        scheduleNext();
-      }, delayRef.current);
-    }
-
-    if (!team?.repo) {
-      setIsRepoPending(true);
-      // reset counters when repo missing
-      attemptsRef.current = 0;
-      delayRef.current = 2500;
-      scheduleNext(true);
-    }
-    else {
-      setIsRepoPending(false);
-      clearTimer();
-    }
-
-    return () => {
-      clearTimer();
-    };
-    // Only depend on repo presence and eventId
-  }, [team?.repo, eventId]);
+  const leaveTeamMutation = useMutation({
+    mutationFn: async () => {
+      const result = await leaveTeam(eventId);
+      if (isActionError(result)) {
+        throw new Error(result.error);
+      }
+    },
+    onMutate: () => {
+      plausible("leave_team");
+      setErrorMessage(null);
+    },
+    onError: (error: Error) => {
+      setErrorMessage(error.message);
+    },
+  });
 
   async function handleLeaveTeam(): Promise<boolean> {
-    plausible("leave_team");
-    setIsLeaving(true);
-    setErrorMessage(null);
-
-    const result = await leaveTeam(eventId);
-    if (isActionError(result)) {
-      setErrorMessage(result.error);
-      setIsLeaving(false);
+    try {
+      await leaveTeamMutation.mutateAsync();
+      return true;
+    }
+    catch {
       return false;
     }
+  }
 
-    // Use Next.js router to refresh the page
-    router.refresh();
-    return true;
+  if (!team) {
+    return null;
   }
 
   return (
@@ -107,7 +90,7 @@ export default function TeamInfoDisplay({
       <TeamInfoSection
         myTeam={team}
         onLeaveTeam={handleLeaveTeam}
-        isLeaving={isLeaving}
+        isLeaving={leaveTeamMutation.isPending}
         teamMembers={teamMembers}
         isRepoPending={isRepoPending}
       />
