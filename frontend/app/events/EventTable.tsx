@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export default function EventsTable({ events }: { events: Event[] }) {
+export default function EventsTable({ events }: Readonly<{ events: Event[] }>) {
   const router = useRouter();
 
   const formatState = (state: EventState) => {
@@ -65,45 +65,37 @@ export default function EventsTable({ events }: { events: Event[] }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {events.length === 0
-            ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={4}
-                    className="text-center text-muted-foreground"
-                  >
-                    No events found
-                  </TableCell>
-                </TableRow>
-              )
-            : (
-                events.map(event => (
-                  <TableRow
-                    key={event.id}
-                    className="cursor-pointer transition-colors hover:bg-muted/50"
-                    onClick={() => router.push(`/events/${event.id}`)}
-                  >
-                    <TableCell className="font-medium">{event.name}</TableCell>
-                    <TableCell>
-                      {new Date(event.startDate).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {event.minTeamSize}
-                      {" "}
-                      -
-                      {" "}
-                      {event.maxTeamSize}
-                      {" "}
-                      members
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={stateVariant(event.state)}>
-                        {formatState(event.state)}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+          {events.length === 0 ? (
+            <TableRow>
+              <TableCell
+                colSpan={4}
+                className="text-center text-muted-foreground"
+              >
+                No events found
+              </TableCell>
+            </TableRow>
+          ) : (
+            events.map((event) => (
+              <TableRow
+                key={event.id}
+                className="cursor-pointer transition-colors hover:bg-muted/50"
+                onClick={() => router.push(`/events/${event.id}`)}
+              >
+                <TableCell className="font-medium">{event.name}</TableCell>
+                <TableCell>
+                  {new Date(event.startDate).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  {event.minTeamSize} - {event.maxTeamSize} members
+                </TableCell>
+                <TableCell>
+                  <Badge variant={stateVariant(event.state)}>
+                    {formatState(event.state)}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
     </div>
