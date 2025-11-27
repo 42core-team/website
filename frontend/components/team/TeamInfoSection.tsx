@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import TeamInviteModal from "./TeamInviteModal";
 
@@ -36,19 +37,19 @@ interface TeamInfoSectionProps {
 export function TeamInfoSection({
   myTeam,
   onLeaveTeam,
+  isLeaving,
   teamMembers,
-  isRepoPending = false,
-}: TeamInfoSectionProps) {
+}: Readonly<TeamInfoSectionProps>) {
   const eventId = useParams().id as string;
   const [isOpen, setIsOpen] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
   const [githubOrg, setGithubOrg] = useState<string | null>(null);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
 
   useEffect(() => {
     const loadGithubOrg = async () => {
       const event = await getEventById(eventId);
-      if (isActionError(event))
-        return;
+      if (isActionError(event)) return;
 
       setGithubOrg(event.githubOrg);
     };
@@ -66,16 +67,17 @@ export function TeamInfoSection({
       setLeaveError(
         "Failed to leave team. Try refreshing the page or trying again later.",
       );
+      return;
     }
+
+    setIsLeaveDialogOpen(false);
   };
 
   return (
     <Card className="rounded-lg border">
       <CardHeader>
         <CardTitle className="text-2xl font-bold">
-          Team:
-          {" "}
-          {myTeam.name}
+          Team: {myTeam.name}
         </CardTitle>
         {myTeam.locked && <Badge variant="destructive">Locked</Badge>}
       </CardHeader>
@@ -84,24 +86,18 @@ export function TeamInfoSection({
           <div>
             <p className="text-sm text-muted-foreground">Repository</p>
             <div className="font-medium">
-              {myTeam.repo
-                ? (
-                    <a
-                      href={getRepoUrl()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {myTeam.repo}
-                    </a>
-                  )
-                : isRepoPending
-                  ? (
-                      <Skeleton className="h-5 w-75 rounded-md m-2" />
-                    )
-                  : (
-                      "Not yet configured"
-                    )}
+              {myTeam.repo ? (
+                <a
+                  href={getRepoUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {myTeam.repo}
+                </a>
+              ) : (
+                <Skeleton className="h-5 w-75 rounded-md m-2" />
+              )}
             </div>
           </div>
           <div>
@@ -134,44 +130,44 @@ export function TeamInfoSection({
             )}
           </div>
           <div className="flex gap-3 items-start flex-wrap">
-            {teamMembers.length > 0
-              ? (
-                  teamMembers.map(member => (
-                    <Link
-                      key={member.id}
-                      href={`https://github.com/${member.username}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group w-full max-w-32 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-xl"
-                      aria-label={`Open ${member.username}'s GitHub profile`}
+            {teamMembers.length > 0 ? (
+              teamMembers.map((member) => (
+                <Link
+                  key={member.id}
+                  href={`https://github.com/${member.username}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group w-full max-w-32 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-xl"
+                  aria-label={`Open ${member.username}'s GitHub profile`}
+                >
+                  <div className="flex flex-col items-center rounded-xl bg-content1/50 p-4 ring-1 ring-default-200 shadow-sm transition hover:shadow-md hover:ring-primary/60">
+                    <Avatar
+                      className={cn(
+                        "mb-2",
+                        member.isEventAdmin
+                          ? "outline-orange-500 outline-2"
+                          : "",
+                      )}
                     >
-                      <div className="flex flex-col items-center rounded-xl bg-content1/50 p-4 ring-1 ring-default-200 shadow-sm transition hover:shadow-md hover:ring-primary/60">
-                        <Avatar
-                          className={cn(
-                            "mb-2",
-                            member.isEventAdmin ? "outline-orange-500 outline-2" : "",
-                          )}
-                        >
-                          <AvatarImage
-                            src={member.profilePicture}
-                            alt={member.name}
-                          />
-                          <AvatarFallback>
-                            {member.name.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm font-medium text-center truncate w-full group-hover:text-primary">
-                          {member.username}
-                        </span>
-                      </div>
-                    </Link>
-                  ))
-                )
-              : (
-                  <p className="text-muted-foreground col-span-full text-center">
-                    No team members found
-                  </p>
-                )}
+                      <AvatarImage
+                        src={member.profilePicture}
+                        alt={member.name}
+                      />
+                      <AvatarFallback>
+                        {member.name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium text-center truncate w-full group-hover:text-primary">
+                      {member.username}
+                    </span>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <p className="text-muted-foreground col-span-full text-center">
+                No team members found
+              </p>
+            )}
           </div>
         </div>
 
@@ -184,46 +180,42 @@ export function TeamInfoSection({
           )}
           <div className="flex justify-end items-center">
             {!myTeam.locked && (
-              <Dialog>
+              <Dialog
+                open={isLeaveDialogOpen}
+                onOpenChange={setIsLeaveDialogOpen}
+              >
                 <DialogTrigger asChild>
-                  <Button
-                    variant="destructive"
-                  >
-                    Leave Team
-                  </Button>
+                  <Button variant="destructive">Leave Team</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle className="text-xl font-semibold">
                       Leave Team
                     </DialogTitle>
-
                   </DialogHeader>
                   <DialogDescription>
                     <p>
-                      Are you sure you want to leave this team? This action cannot be
-                      undone.
+                      Are you sure you want to leave this team? This action
+                      cannot be undone.
                     </p>
                     {teamMembers.length === 1 && (
                       <p className="mt-2 text-destructive-500">
-                        Warning: You are the last member of this team. Leaving will
-                        delete the team.
+                        Warning: You are the last member of this team. Leaving
+                        will delete the team.
                       </p>
                     )}
                   </DialogDescription>
                   <DialogFooter>
                     <DialogClose asChild>
-                      <Button className="mr-2">
-                        Cancel
-                      </Button>
+                      <Button className="mr-2">Cancel</Button>
                     </DialogClose>
                     <Button
                       type="submit"
                       variant="destructive"
                       onClick={handleConfirmLeave}
-                    // TODO: isLoading={isLeaving}
+                      disabled={isLeaving}
                     >
-                      Leave Team
+                      {isLeaving ? <Spinner /> : "Leave Team"}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -239,7 +231,6 @@ export function TeamInfoSection({
           teamId={myTeam.id}
           eventId={eventId}
         />
-
       </CardContent>
     </Card>
   );
