@@ -3,12 +3,19 @@
 import type { Team, TeamMember } from "@/app/actions/team";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircleIcon } from "lucide-react";
-import axiosInstance from "@/app/actions/axios";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
 import TeamCreationForm from "./components/TeamCreationForm";
 import TeamInfoDisplay from "./components/TeamInfoDisplay";
 import TeamInvitesDisplay from "./components/TeamInvitesDisplay";
+import {
+  myTeamQueryFn,
+  myTeamQueryKey,
+  pendingInvitesQueryFn,
+  pendingInvitesQueryKey,
+  teamMembersQueryFn,
+  teamMembersQueryKey,
+} from "./queries";
 
 interface TeamViewProps {
   eventId: string;
@@ -21,49 +28,48 @@ export default function TeamView({ eventId, canCreateTeam }: TeamViewProps) {
     isLoading: isTeamLoading,
     isError: isTeamError,
   } = useQuery<Team | null>({
-    queryKey: ["event", eventId, "my-team"],
-    queryFn: async () => {
-      const response = await axiosInstance.get<Team | null>(
-        `/team/event/${eventId}/my`,
-      );
-      return response.data;
-    },
+    queryKey: myTeamQueryKey(eventId),
+    queryFn: () => myTeamQueryFn(eventId),
   });
 
   const teamId = team?.id;
 
-  const { data: teamMembers = [], isError: isTeamMembersError } = useQuery<
+  const { data: teamMembers = [], isError: isTeamMembersError, isLoading: isTeamMembersLoading } = useQuery<
     TeamMember[]
   >({
-    queryKey: ["team", teamId, "members"],
-    queryFn: async () => {
-      const response = await axiosInstance.get<TeamMember[]>(
-        `/team/${teamId}/members`,
-      );
-      return response.data;
-    },
+    queryKey: teamMembersQueryKey(teamId),
+    queryFn: () => teamMembersQueryFn(teamId),
     enabled: !!teamId,
   });
 
-  const { data: pendingInvites = [], isError: isInvitesError } = useQuery<
+  const { data: pendingInvites = [], isError: isInvitesError, isLoading: isInviteLoading } = useQuery<
     Team[]
   >({
-    queryKey: ["event", eventId, "pending-invites"],
-    queryFn: async () => {
-      const response = await axiosInstance.get<Team[]>(
-        `/team/event/${eventId}/pending`,
-      );
-      return response.data;
-    },
+    queryKey: pendingInvitesQueryKey(eventId),
+    queryFn: () => pendingInvitesQueryFn(eventId),
   });
 
-  const isLoading = isTeamLoading;
+  const isLoading = isTeamLoading || isTeamMembersLoading || isInviteLoading;
   const isError = isTeamError || isTeamMembersError || isInvitesError;
 
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto mb-8 mt-3">
         <Spinner />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="max-w-4xl mx-auto mb-8 mt-3">
+        <Alert variant="destructive">
+          <AlertCircleIcon />
+          <AlertTitle>Something went wrong</AlertTitle>
+          <AlertDescription>
+            We couldn't load your team information. Please try again later.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -77,20 +83,6 @@ export default function TeamView({ eventId, canCreateTeam }: TeamViewProps) {
           <AlertDescription>
             Team creation for this event has ended. If you already have a team,
             you can view or manage it. Contact the event organizers for help.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="max-w-4xl mx-auto mb-8 mt-3">
-        <Alert variant="destructive">
-          <AlertCircleIcon />
-          <AlertTitle>Something went wrong</AlertTitle>
-          <AlertDescription>
-            We couldn't load your team information. Please try again later.
           </AlertDescription>
         </Alert>
       </div>

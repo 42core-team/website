@@ -108,7 +108,7 @@ export default async function EventPage({
                 Team Size
               </h3>
               <p className="mt-1">
-                {event.minTeamSize} - {event.maxTeamSize} members
+                {event.minTeamSize} -{event.maxTeamSize} members
               </p>
             </div>
             {event.repoLockDate && (

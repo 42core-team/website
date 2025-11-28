@@ -1,4 +1,4 @@
-import type { Team, TeamMember } from "@/app/actions/team";
+import type { Team } from "@/app/actions/team";
 import {
   dehydrate,
   HydrationBoundary,
@@ -6,10 +6,17 @@ import {
 } from "@tanstack/react-query";
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
-import axiosInstance from "@/app/actions/axios";
 import { isActionError } from "@/app/actions/errors";
 import { getEventById, isUserRegisteredForEvent } from "@/app/actions/event";
 import { authOptions } from "@/app/utils/authOptions";
+import {
+  myTeamQueryFn,
+  myTeamQueryKey,
+  pendingInvitesQueryFn,
+  pendingInvitesQueryKey,
+  teamMembersQueryFn,
+  teamMembersQueryKey,
+} from "./queries";
 import TeamView from "./teamView";
 
 export const metadata = {
@@ -40,14 +47,24 @@ export default async function Page({
   }
 
   const queryClient = new QueryClient();
+
+  const team = await queryClient.fetchQuery({
+    queryKey: myTeamQueryKey(eventId),
+    queryFn: () => myTeamQueryFn(eventId),
+  });
+
+  const teamId = (team as Team | null)?.id;
+
+  if (teamId) {
+    await queryClient.prefetchQuery({
+      queryKey: teamMembersQueryKey(teamId),
+      queryFn: () => teamMembersQueryFn(teamId),
+    });
+  }
+
   await queryClient.prefetchQuery({
-    queryKey: ["event", eventId, "my-team"],
-    queryFn: async () => {
-      const response = await axiosInstance.get<Team | null>(
-        `/team/event/${eventId}/my`,
-      );
-      return response.data;
-    },
+    queryKey: pendingInvitesQueryKey(eventId),
+    queryFn: () => pendingInvitesQueryFn(eventId),
   });
 
   return (
