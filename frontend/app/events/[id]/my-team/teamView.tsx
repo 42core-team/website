@@ -68,20 +68,6 @@ export default function TeamView({ eventId, canCreateTeam }: TeamViewProps) {
     );
   }
 
-  if (isError) {
-    return (
-      <div className="max-w-4xl mx-auto mb-8 mt-3">
-        <Alert variant="destructive">
-          <AlertCircleIcon />
-          <AlertTitle>Something went wrong</AlertTitle>
-          <AlertDescription>
-            We couldn't load your team information. Please try again later.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
   if (!team && !canCreateTeam) {
     return (
       <div className="max-w-4xl mx-auto mb-8 mt-3">
@@ -91,6 +77,20 @@ export default function TeamView({ eventId, canCreateTeam }: TeamViewProps) {
           <AlertDescription>
             Team creation for this event has ended. If you already have a team,
             you can view or manage it. Contact the event organizers for help.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="max-w-4xl mx-auto mb-8 mt-3">
+        <Alert variant="destructive">
+          <AlertCircleIcon />
+          <AlertTitle>Something went wrong</AlertTitle>
+          <AlertDescription>
+            We couldn't load your team information. Please try again later.
           </AlertDescription>
         </Alert>
       </div>
