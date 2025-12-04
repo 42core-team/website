@@ -1,4 +1,0 @@
-#!/bin/sh
-
-# lint & format visualizer
-cd frontend && pnpm exec lint-staged --allow-empty

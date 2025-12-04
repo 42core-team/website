@@ -1,50 +1,18 @@
 import {
-  Body,
   Controller,
   Get,
   Param,
-  ParseUUIDPipe,
-  Post,
-  Put,
   UseGuards,
 } from "@nestjs/common";
 import { UserService } from "./user.service";
-import { CreateUserDto } from "./dtos/user.dto";
-import { UserGuard, UserId } from "../guards/UserGuard";
+import { UserId } from "../guards/UserGuard";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 @Controller("user")
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Post()
-  async createUser(@Body() user: CreateUserDto) {
-    return this.userService.createUser(
-      user.email,
-      user.username,
-      user.name,
-      user.profilePicture,
-      user.githubId,
-      user.githubAccessToken,
-    );
-  }
-
-  @Put(":id")
-  async updateUser(
-    @Body() user: CreateUserDto,
-    @Param("id", new ParseUUIDPipe()) id: string,
-  ) {
-    return this.userService.updateUser(
-      id,
-      user.email,
-      user.username,
-      user.name,
-      user.profilePicture,
-      user.githubId,
-      user.githubAccessToken,
-    );
-  }
-
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Get("canCreateEvent")
   async canCreateEvent(@UserId() id: string) {
     return this.userService.canCreateEvent(id);
