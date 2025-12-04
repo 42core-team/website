@@ -24,7 +24,7 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.7",
     "@nestjs/microservices": "^11.1.7",
-    "@nestjs/platform-express": "^11.1.7",
+    "@nestjs/platform-express": "^11.1.8",
     "@types/crypto-js": "^4.2.2",
     "amqp-connection-manager": "^5.0.0",
     "amqplib": "^0.10.9",
