@@ -164,7 +164,7 @@ importers:
     devDependencies:
       '@antfu/eslint-config':
         specifier: ^6.2.0
-        version: 6.2.0(@eslint-react/eslint-plugin@2.3.5(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3))(@next/eslint-plugin-next@16.0.3)(@vue/compiler-sfc@3.5.24)(eslint-plugin-format@1.0.2(eslint@9.39.1(jiti@2.6.1)))(eslint-plugin-react-hooks@7.0.1(eslint@9.39.1(jiti@2.6.1)))(eslint-plugin-react-refresh@0.4.24(eslint@9.39.1(jiti@2.6.1)))(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
+        version: 6.2.0(@eslint-react/eslint-plugin@2.3.5(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3))(@next/eslint-plugin-next@16.0.3)(@vue/compiler-sfc@3.5.24)(eslint-plugin-format@1.1.0(eslint@9.39.1(jiti@2.6.1)))(eslint-plugin-react-hooks@7.0.1(eslint@9.39.1(jiti@2.6.1)))(eslint-plugin-react-refresh@0.4.24(eslint@9.39.1(jiti@2.6.1)))(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
       '@eslint-react/eslint-plugin':
         specifier: ^2.2.4
         version: 2.3.5(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
@@ -190,8 +190,8 @@ importers:
         specifier: ^9.38.0
         version: 9.39.1(jiti@2.6.1)
       eslint-plugin-format:
-        specifier: ^1.0.2
-        version: 1.0.2(eslint@9.39.1(jiti@2.6.1))
+        specifier: ^1.1.0
+        version: 1.1.0(eslint@9.39.1(jiti@2.6.1))
       eslint-plugin-react-hooks:
         specifier: ^7.0.1
         version: 7.0.1(eslint@9.39.1(jiti@2.6.1))
@@ -721,10 +721,6 @@ packages:
 
   '@panva/hkdf@1.2.1':
     resolution: {integrity: sha512-6oclG6Y3PiDFcoyk8srjLfVKyMfVCKJ27JwNPViuXziFpmdz+MZnZN/aKY0JGXgYuO/VghU0jcOAZgWXZ1Dmrw==}
-
-  '@pkgr/core@0.1.2':
-    resolution: {integrity: sha512-fdDH1LSGfZdTH2sxdpVMw31BanV28K/Gry0cVFxaNP77neJSkd82mM8ErPNYs9e+0O7SdHBLTDzDgwUuy18RnQ==}
-    engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
 
   '@pkgr/core@0.2.9':
     resolution: {integrity: sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA==}
@@ -2035,8 +2031,8 @@ packages:
     peerDependencies:
       eslint: '>=8'
 
-  eslint-plugin-format@1.0.2:
-    resolution: {integrity: sha512-ySrDaLQZbreNAr/Betq6ocd5Hxy3+LBIfWNV2621EQQ6yGf/ZSLtN2MiM62WO2YQTX+nSFhv332Tpp51q+AkZQ==}
+  eslint-plugin-format@1.1.0:
+    resolution: {integrity: sha512-zjGPZcftddkO9GydBwvTKBV4ICN6a++XK0zIPi3HZHlU8W9EaftTA3XAanJvGAXQUYEqAADtgQi08SX+afbPrg==}
     peerDependencies:
       eslint: ^8.40.0 || ^9.0.0
 
@@ -3086,6 +3082,11 @@ packages:
     engines: {node: '>=14'}
     hasBin: true
 
+  prettier@3.7.4:
+    resolution: {integrity: sha512-v6UNi1+3hSlVvv8fSaoUbggEM5VErKmmpGA7Pl3HF8V6uKY7rvClBOJlH6yNwQtfTueNkGVpOv/mtWL9L4bgRA==}
+    engines: {node: '>=14'}
+    hasBin: true
+
   pretty-format@3.8.0:
     resolution: {integrity: sha512-WuxUnVtlWL1OfZFQFuqvnvs6MiAGk9UNsBostyBOB0Is9wb5uRESevA6rnl/rkksXaGX3GzZhPup5d6Vp1nFew==}
 
@@ -3371,10 +3372,6 @@ packages:
     resolution: {integrity: sha512-MeQTA1r0litLUf0Rp/iisCaL8761lKAZHaimlbGK4j0HysC4PLfqygQj9srcs0m2RdtDYnF8UuYyKpbjHYp7Jw==}
     engines: {node: ^14.18.0 || >=16.0.0}
 
-  synckit@0.9.3:
-    resolution: {integrity: sha512-JJoOEKTfL1urb1mDoEblhD9NhEbWmq9jHEMEnxoC4ujUaZ4itA8vKgwkFAyNClgxplLi9tsUKX+EduK0p/l7sg==}
-    engines: {node: ^14.18.0 || >=16.0.0}
-
   tailwind-merge@3.4.0:
     resolution: {integrity: sha512-uSaO4gnW+b3Y2aWoWfFpX62vn2sR3skfhbjsEnaBI81WD1wBLlHZe5sWf0AqjksNdYTbGBEd0UasQMT3SNV15g==}
 
@@ -3603,7 +3600,7 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@antfu/eslint-config@6.2.0(@eslint-react/eslint-plugin@2.3.5(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3))(@next/eslint-plugin-next@16.0.3)(@vue/compiler-sfc@3.5.24)(eslint-plugin-format@1.0.2(eslint@9.39.1(jiti@2.6.1)))(eslint-plugin-react-hooks@7.0.1(eslint@9.39.1(jiti@2.6.1)))(eslint-plugin-react-refresh@0.4.24(eslint@9.39.1(jiti@2.6.1)))(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)':
+  '@antfu/eslint-config@6.2.0(@eslint-react/eslint-plugin@2.3.5(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3))(@next/eslint-plugin-next@16.0.3)(@vue/compiler-sfc@3.5.24)(eslint-plugin-format@1.1.0(eslint@9.39.1(jiti@2.6.1)))(eslint-plugin-react-hooks@7.0.1(eslint@9.39.1(jiti@2.6.1)))(eslint-plugin-react-refresh@0.4.24(eslint@9.39.1(jiti@2.6.1)))(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)':
     dependencies:
       '@antfu/install-pkg': 1.1.0
       '@clack/prompts': 0.11.0
@@ -3645,7 +3642,7 @@ snapshots:
     optionalDependencies:
       '@eslint-react/eslint-plugin': 2.3.5(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
       '@next/eslint-plugin-next': 16.0.3
-      eslint-plugin-format: 1.0.2(eslint@9.39.1(jiti@2.6.1))
+      eslint-plugin-format: 1.1.0(eslint@9.39.1(jiti@2.6.1))
       eslint-plugin-react-hooks: 7.0.1(eslint@9.39.1(jiti@2.6.1))
       eslint-plugin-react-refresh: 0.4.24(eslint@9.39.1(jiti@2.6.1))
     transitivePeerDependencies:
@@ -4139,8 +4136,6 @@ snapshots:
       fastq: 1.19.1
 
   '@panva/hkdf@1.2.1': {}
-
-  '@pkgr/core@0.1.2': {}
 
   '@pkgr/core@0.2.9': {}
 
@@ -5493,7 +5488,7 @@ snapshots:
       eslint: 9.39.1(jiti@2.6.1)
       eslint-compat-utils: 0.5.1(eslint@9.39.1(jiti@2.6.1))
 
-  eslint-plugin-format@1.0.2(eslint@9.39.1(jiti@2.6.1)):
+  eslint-plugin-format@1.1.0(eslint@9.39.1(jiti@2.6.1)):
     dependencies:
       '@dprint/formatter': 0.3.0
       '@dprint/markdown': 0.17.8
@@ -5501,8 +5496,8 @@ snapshots:
       eslint: 9.39.1(jiti@2.6.1)
       eslint-formatting-reporter: 0.0.0(eslint@9.39.1(jiti@2.6.1))
       eslint-parser-plain: 0.1.1
-      prettier: 3.6.2
-      synckit: 0.9.3
+      prettier: 3.7.4
+      synckit: 0.11.11
 
   eslint-plugin-import-lite@0.3.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3):
     dependencies:
@@ -6883,6 +6878,8 @@ snapshots:
 
   prettier@3.6.2: {}
 
+  prettier@3.7.4: {}
+
   pretty-format@3.8.0: {}
 
   property-information@6.5.0: {}
@@ -7219,11 +7216,6 @@ snapshots:
   synckit@0.11.11:
     dependencies:
       '@pkgr/core': 0.2.9
-
-  synckit@0.9.3:
-    dependencies:
-      '@pkgr/core': 0.1.2
-      tslib: 2.8.1
 
   tailwind-merge@3.4.0: {}
 
