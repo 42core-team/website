@@ -26,12 +26,17 @@ export const getRabbitmqConfig: any = (
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
   app.useGlobalPipes(new ValidationPipe());
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.useGlobalFilters(new TypeormExceptionFilter());
-  app.enableCors();
-
-  const configService = app.get(ConfigService);
+  app.enableCors({
+    origin: configService.getOrThrow<string>("CORS_ORIGIN"),
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    credentials: true,
+    allowedHeaders:
+      "Content-Type, Accept, Authorization, X-Requested-With, X-HTTP-Method-Override, X-Auth-Token, X-Refresh-Token",
+  });
 
   app.connectMicroservice<MicroserviceOptions>(
     getRabbitmqConfig(configService, "game_results"),

@@ -13,8 +13,9 @@ import {
 import { MatchService } from "./match.service";
 import { EventService } from "../event/event.service";
 import { EventState } from "../event/entities/event.entity";
-import { UserGuard, UserId } from "../guards/UserGuard";
+import { UserId } from "../guards/UserGuard";
 import { MatchEntity } from "./entites/match.entity";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 @Controller("match")
 export class MatchController {
@@ -25,7 +26,7 @@ export class MatchController {
 
   private logger = new Logger("MatchController");
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Get("swiss/:eventId")
   getSwissMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
@@ -39,7 +40,7 @@ export class MatchController {
     );
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Put("swiss/:eventId")
   async startSwissMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
@@ -57,7 +58,7 @@ export class MatchController {
     return await this.matchService.createNextSwissMatches(eventId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Put("tournament/:eventId")
   async startTournamentMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
@@ -75,7 +76,7 @@ export class MatchController {
     return this.matchService.getTournamentTeamCount(eventId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Get("tournament/:eventId")
   getTournamentMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
@@ -89,7 +90,7 @@ export class MatchController {
     );
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Get("queue/:eventId")
   async getQueueMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
@@ -98,7 +99,7 @@ export class MatchController {
     return await this.matchService.getQueueMatches(eventId, userId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Get("queue/:eventId/admin")
   async getAllQueueMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
@@ -111,7 +112,7 @@ export class MatchController {
     return await this.matchService.getAllQueueMatches(eventId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Get("logs/:matchId")
   async getMatchLogs(
     @Param("matchId", ParseUUIDPipe) matchId: string,
@@ -125,7 +126,7 @@ export class MatchController {
     return logs;
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Put("reveal/:matchId")
   async revealMatch(
     @Param("matchId", ParseUUIDPipe) matchId: string,
@@ -155,7 +156,7 @@ export class MatchController {
     return await this.matchService.getMatchById(matchId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Get("queue/:eventId/timeseries")
   async getQueueMatchesTimeSeries(
     @Param("eventId") eventId: string,

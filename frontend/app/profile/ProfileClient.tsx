@@ -47,7 +47,7 @@ function ProfileContent() {
               name={session!.user?.name}
               description={session!.user?.email}
               avatarProps={{
-                src: session!.user?.image || "/placeholder-avatar.png",
+                src: session!.user?.profilePicture || "/placeholder-avatar.png",
                 size: "lg",
                 isBordered: true,
               }}

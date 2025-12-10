@@ -70,7 +70,7 @@ export function TeamInviteModal({
       );
     }
     catch (error: any) {
-      // You can customize this error message as needed
+      // eslint-disable-next-line no-alert
       alert(
         error?.response?.data?.message
         || error?.message
