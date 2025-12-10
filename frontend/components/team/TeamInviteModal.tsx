@@ -3,7 +3,7 @@ import type {
 } from "@/app/actions/team";
 
 import { usePlausible } from "next-plausible";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   searchUsersForInvite,
   sendTeamInvite,
@@ -21,7 +21,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { useEffect } from "react";
 
 interface TeamInviteModalProps {
   isOpen: boolean;

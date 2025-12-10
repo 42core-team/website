@@ -66,7 +66,7 @@ export default function EventNavbar({
   }, [eventId, isUserRegistered, isEventAdmin, event.state]);
 
   return (
-    <div className="py-4 flex items-center justify-center">
+    <div className="py-4 flex items-center pl-12 md:pl-0 justify-start md:justify-center">
       {/* Desktop navigation */}
       <NavigationMenu className="hidden md:flex">
         <NavigationMenuList>
@@ -93,7 +93,7 @@ export default function EventNavbar({
       <div className="px-3 flex md:hidden">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Open navigation menu">
+            <Button variant="ghost" className="w-fit" size="icon" aria-label="Open navigation menu">
               <Menu className="size-5" />
               {" "}
               Event Menu
