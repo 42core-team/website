@@ -54,7 +54,8 @@ export default function TeamCreationForm() {
     onError: (error: Error) => {
       if (error.message && !error.message.startsWith("An unexpected")) {
         setErrorMessage(error.message);
-      } else {
+      }
+      else {
         setErrorMessage(
           "An unexpected error occurred while creating the team.",
         );

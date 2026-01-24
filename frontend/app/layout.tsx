@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import PlausibleProvider from "next-plausible";
 
 import React from "react";
+import Providers from "@/app/providers";
 import ClientProviders from "@/components/ClientProviders";
 import DefaultLayout from "@/layouts/default";
-import Providers from "@/app/providers";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {

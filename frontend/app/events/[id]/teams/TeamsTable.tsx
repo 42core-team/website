@@ -69,7 +69,7 @@ export default function TeamsTable({ teams, eventId }: TeamsTableProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          {table.getHeaderGroups()[0].headers.map((header) => (
+          {table.getHeaderGroups()[0].headers.map(header => (
             <TableHead
               key={header.id}
               onClick={header.column.getToggleSortingHandler()}
@@ -83,27 +83,28 @@ export default function TeamsTable({ teams, eventId }: TeamsTableProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {table.getRowModel().rows.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={columns.length}>No teams found</TableCell>
-          </TableRow>
-        ) : (
-          table.getRowModel().rows.map((row) => (
-            <TableRow
-              key={row.id}
-              className="cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={() =>
-                router.push(`/events/${eventId}/teams/${row.original.id}`)
-              }
-            >
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))
-        )}
+        {table.getRowModel().rows.length === 0
+          ? (
+              <TableRow>
+                <TableCell colSpan={columns.length}>No teams found</TableCell>
+              </TableRow>
+            )
+          : (
+              table.getRowModel().rows.map(row => (
+                <TableRow
+                  key={row.id}
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() =>
+                    router.push(`/events/${eventId}/teams/${row.original.id}`)}
+                >
+                  {row.getVisibleCells().map(cell => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
       </TableBody>
     </Table>
   );

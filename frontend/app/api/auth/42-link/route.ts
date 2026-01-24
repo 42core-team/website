@@ -82,7 +82,8 @@ export async function POST(request: NextRequest) {
           email: profile.email,
         },
       });
-    } catch (linkError: any) {
+    }
+    catch (linkError: any) {
       console.error("Account linking failed:", linkError);
       return NextResponse.json(
         {
@@ -91,7 +92,8 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.error("42 linking error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

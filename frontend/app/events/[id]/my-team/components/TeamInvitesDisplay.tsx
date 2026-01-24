@@ -33,7 +33,7 @@ export default function TeamInvitesDisplay({
 
   const handleAcceptInvite = async (teamId: string) => {
     plausible("accept_team_invite");
-    setActionStates((prev) => ({
+    setActionStates(prev => ({
       ...prev,
       [teamId]: { ...prev[teamId], isAccepting: true, message: undefined },
     }));
@@ -41,7 +41,7 @@ export default function TeamInvitesDisplay({
     const result = await acceptTeamInvite(eventId, teamId);
 
     if (isActionError(result)) {
-      setActionStates((prev) => ({
+      setActionStates(prev => ({
         ...prev,
         [teamId]: {
           ...prev[teamId],
@@ -58,14 +58,14 @@ export default function TeamInvitesDisplay({
 
   const handleDeclineInvite = async (teamId: string) => {
     plausible("decline_team_invite");
-    setActionStates((prev) => ({
+    setActionStates(prev => ({
       ...prev,
       [teamId]: { ...prev[teamId], isDeclining: true, message: undefined },
     }));
 
     const result = await declineTeamInvite(eventId, teamId);
     if (isActionError(result)) {
-      setActionStates((prev) => ({
+      setActionStates(prev => ({
         ...prev,
         [teamId]: {
           ...prev[teamId],
@@ -75,7 +75,7 @@ export default function TeamInvitesDisplay({
       }));
       return;
     }
-    setInvites((prev) => prev.filter((invite) => invite.id !== teamId));
+    setInvites(prev => prev.filter(invite => invite.id !== teamId));
   };
 
   return (
@@ -90,7 +90,7 @@ export default function TeamInvitesDisplay({
           <p className="text-muted-foreground">No pending team invitations</p>
         ) : (
           <div className="divide-y">
-            {invites.map((invite) => (
+            {invites.map(invite => (
               <div
                 key={invite.id}
                 className="py-3 flex items-center justify-between"

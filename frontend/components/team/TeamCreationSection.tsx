@@ -37,7 +37,7 @@ export function TeamCreationSection({
             onClick={handleCreateTeam}
             disabled={!newTeamName || !!validationError || isLoading}
           >
-            {isLoading ? <Spinner/> : "Create Team"}
+            {isLoading ? <Spinner /> : "Create Team"}
           </Button>
         </div>
         <div className="mt-2">

@@ -26,7 +26,8 @@ export default async function MatchPage({
     return <div className="text-red-500">Error fetching match data</div>;
   }
 
-  if (isActionError(matchLogs)) matchLogs = [];
+  if (isActionError(matchLogs))
+    matchLogs = [];
 
   const isAdmin = await isEventAdmin(id);
   if (isActionError(isAdmin))

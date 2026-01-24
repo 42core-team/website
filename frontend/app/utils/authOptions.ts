@@ -2,8 +2,8 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import axiosInstance from "@/app/actions/axios";
 
-const BACKEND_BASE_URL =
-  process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
+const BACKEND_BASE_URL
+  = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -34,7 +34,8 @@ export const authOptions: NextAuthOptions = {
             email: res.data.email,
             profilePicture: res.data.profilePicture,
           };
-        } catch (e) {
+        }
+        catch (e) {
           console.error("Authorize failed:", e);
           return null;
         }
@@ -66,7 +67,8 @@ export const authOptions: NextAuthOptions = {
         session.user.email = res.data.email;
         session.user.name = res.data.username;
         session.user.profilePicture = res.data.profilePicture;
-      } catch {
+      }
+      catch {
         session.user.id = "";
       }
 

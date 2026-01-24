@@ -17,7 +17,8 @@ axiosInstance.interceptors.request.use(
       // eslint-disable-next-line ts/no-require-imports
       const cookieData = await require("next/headers").cookies();
       const token = cookieData.get("token");
-      if (token) config.headers.Cookie = `token=${token.value}`;
+      if (token)
+        config.headers.Cookie = `token=${token.value}`;
 
       config.baseURL = process.env.BACKEND_URL;
       return config;
@@ -38,7 +39,8 @@ export async function handleError<T>(
   try {
     const response = await promise;
     return response.data;
-  } catch (error: any) {
+  }
+  catch (error: any) {
     return {
       error: error.response?.data?.message || "An unexpected error occurred",
     };

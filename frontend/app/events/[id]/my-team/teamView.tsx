@@ -91,15 +91,17 @@ export default function TeamView({ eventId, canCreateTeam }: TeamViewProps) {
 
   return (
     <div className="max-w-4xl mx-auto mb-8 mt-3">
-      {team ? (
-        <TeamInfoDisplay team={team} teamMembers={teamMembers} />
-      ) : (
-        <>
-          <TeamCreationForm />
-          <div className="mb-5"></div>
-          <TeamInvitesDisplay pendingInvites={pendingInvites} />
-        </>
-      )}
+      {team
+        ? (
+            <TeamInfoDisplay team={team} teamMembers={teamMembers} />
+          )
+        : (
+            <>
+              <TeamCreationForm />
+              <div className="mb-5"></div>
+              <TeamInvitesDisplay pendingInvites={pendingInvites} />
+            </>
+          )}
     </div>
   );
 }

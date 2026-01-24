@@ -25,7 +25,8 @@ function ProfileContent() {
       </div>
     );
   }
-  if (!session) return null;
+  if (!session)
+    return null;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -64,11 +65,11 @@ function ProfileContent() {
 export default function ProfileClient() {
   return (
     <Suspense
-      fallback={
+      fallback={(
         <div className="flex justify-center items-center min-h-[200px]">
           <div className="text-muted-foreground">Loading...</div>
         </div>
-      }
+      )}
     >
       <ProfileContent />
     </Suspense>

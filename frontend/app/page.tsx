@@ -15,11 +15,11 @@ export default async function HomePage() {
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "CORE Game",
-    url: baseUrl,
-    potentialAction: {
+    "name": "CORE Game",
+    "url": baseUrl,
+    "potentialAction": {
       "@type": "SearchAction",
-      target: `${baseUrl}/wiki?query={search_term_string}`,
+      "target": `${baseUrl}/wiki?query={search_term_string}`,
       "query-input": "required name=search_term_string",
     },
   };
@@ -27,26 +27,26 @@ export default async function HomePage() {
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "CORE Game",
-    url: baseUrl,
-    logo: `${baseUrl}/CORE-LOGO.svg`,
-    sameAs: ["https://github.com/42core-team"],
+    "name": "CORE Game",
+    "url": baseUrl,
+    "logo": `${baseUrl}/CORE-LOGO.svg`,
+    "sameAs": ["https://github.com/42core-team"],
   };
 
   const eventJsonLd = currentLiveEvent
     ? {
         "@context": "https://schema.org",
         "@type": "Event",
-        name: currentLiveEvent.name,
-        startDate: currentLiveEvent.startDate,
-        endDate: currentLiveEvent.endDate,
-        eventStatus: "https://schema.org/EventScheduled",
-        eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
-        url: `${baseUrl}/events/${currentLiveEvent.id}`,
-        organizer: {
+        "name": currentLiveEvent.name,
+        "startDate": currentLiveEvent.startDate,
+        "endDate": currentLiveEvent.endDate,
+        "eventStatus": "https://schema.org/EventScheduled",
+        "eventAttendanceMode": "https://schema.org/OnlineEventAttendanceMode",
+        "url": `${baseUrl}/events/${currentLiveEvent.id}`,
+        "organizer": {
           "@type": "Organization",
-          name: "CORE Game",
-          url: baseUrl,
+          "name": "CORE Game",
+          "url": baseUrl,
         },
       }
     : null;

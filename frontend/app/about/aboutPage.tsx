@@ -240,11 +240,13 @@ export default function AboutPageClient() {
                         className="absolute bottom-2.5 right-2.5 bg-primary text-primary-foreground rounded-full p-2 hover:scale-110 transition-transform"
                         aria-label={`${m.name} profile link`}
                       >
-                        {m.linkType === "github" ? (
-                          <LucideGithub />
-                        ) : (
-                          <LucideLinkedin />
-                        )}
+                        {m.linkType === "github"
+                          ? (
+                              <LucideGithub />
+                            )
+                          : (
+                              <LucideLinkedin />
+                            )}
                       </a>
                     </div>
                     <h3 className="text-xl font-semibold text-center">

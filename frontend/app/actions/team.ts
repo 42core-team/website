@@ -83,7 +83,8 @@ export async function getTeamById(teamId: string): Promise<Team | null> {
 export async function getMyEventTeam(eventId: string): Promise<Team | null> {
   const team = (await axiosInstance.get(`team/event/${eventId}/my`)).data;
 
-  if (!team) return null;
+  if (!team)
+    return null;
 
   // TODO: directly return team object if API response is already in the correct format
   return {

@@ -68,7 +68,8 @@ export default function TeamInfoDisplay({
     try {
       await leaveTeamMutation.mutateAsync();
       return true;
-    } catch {
+    }
+    catch {
       return false;
     }
   }
