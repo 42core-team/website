@@ -10,7 +10,7 @@ export default async function HomePage() {
     throw new Error("Failed to load current live event");
   }
 
-  const baseUrl = process.env.NEXTAUTH_URL ?? "https://coregame.de";
+  const baseUrl = process.env.NEXTAUTH_URL ?? "https://coregame.sh";
 
   const websiteJsonLd = {
     "@context": "https://schema.org",

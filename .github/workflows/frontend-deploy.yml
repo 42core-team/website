@@ -124,12 +124,12 @@ jobs:
             "prod")
               VALUES_FILE="values-prod.yaml"
               NAMESPACE="production"
-              ENVIRONMENT_URL="https://coregame.de"
+              ENVIRONMENT_URL="https://coregame.sh"
               ;;
             "dev")
               VALUES_FILE="values-dev.yaml"
               NAMESPACE="development"
-              ENVIRONMENT_URL="https://dev.coregame.de"
+              ENVIRONMENT_URL="https://dev.coregame.sh"
               ;;
             *)
               echo "Unknown environment: ${ENVIRONMENT}"

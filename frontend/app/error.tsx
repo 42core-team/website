@@ -32,12 +32,12 @@ export default function Error({ error }: { error: Error }) {
             If the problem persists, you can check
             {" "}
             <Link
-              href="https://status.coregame.de"
+              href="https://status.coregame.sh"
               className="hover:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
-              status.coregame.de
+              status.coregame.sh
             </Link>
             {" "}
             for known issues.

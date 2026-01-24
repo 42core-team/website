@@ -8,7 +8,7 @@ import DefaultLayout from "@/layouts/default";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXTAUTH_URL ?? "https://coregame.de"),
+  metadataBase: new URL(process.env.NEXTAUTH_URL ?? "https://coregame.sh"),
   title: {
     default: "CORE Game",
     template: "%s | CORE Game",
@@ -59,7 +59,7 @@ export default function App({ children }: { children: React.ReactNode }) {
       <body>
         <Providers>
           <PlausibleProvider
-            domain={process.env.PLAUSIBLE_DOMAIN ?? "coregame.de"}
+            domain={process.env.PLAUSIBLE_DOMAIN ?? "coregame.sh"}
             customDomain={process.env.PLAUSIBLE_CUSTOM_DOMAIN}
             selfHosted={true}
             trackOutboundLinks={true}
