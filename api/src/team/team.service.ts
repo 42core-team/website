@@ -1,18 +1,19 @@
 import {
-  BadRequestException,
   forwardRef,
   Inject,
   Injectable,
   Logger,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
+import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { TeamEntity } from "./entities/team.entity";
-import { Repository } from "typeorm";
+import { DataSource, IsNull, LessThanOrEqual, Repository } from "typeorm";
 import { GithubApiService } from "../github-api/github-api.service";
 import { EventService } from "../event/event.service";
 import { UserService } from "../user/user.service";
 import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations";
 import { MatchService } from "../match/match.service";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { LockKeys } from "../constants";
 
 @Injectable()
 export class TeamService {
@@ -25,9 +26,47 @@ export class TeamService {
     private readonly userService: UserService,
     @Inject(forwardRef(() => MatchService))
     private readonly matchService: MatchService,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {}
 
   logger = new Logger("TeamService");
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async autoLockEvents() {
+    const lockKey = LockKeys.CREATE_TEAM_REPOS;
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+
+    try {
+      const gotLock = await queryRunner.query(
+        "SELECT pg_try_advisory_lock($1)",
+        [lockKey],
+      );
+
+      if (gotLock[0].pg_try_advisory_lock) {
+        try {
+          const teams = await this.teamRepository.findBy({
+            startedRepoCreationAt: IsNull(),
+            event: {
+              startDate: LessThanOrEqual(new Date()),
+            },
+          });
+          for (const team of teams) {
+            this.logger.log(
+              `Starting repo creation for team ${team.name} as its event has started.`,
+            );
+
+            await this.createTeamRepository(team.id);
+          }
+        } finally {
+          await queryRunner.query("SELECT pg_advisory_unlock($1)", [lockKey]);
+        }
+      }
+    } finally {
+      await queryRunner.release();
+    }
+  }
 
   getTeamById(
     id: string,
@@ -91,42 +130,69 @@ export class TeamService {
     });
   }
 
-  async createTeam(name: string, userId: string, eventId: string) {
-    const event = await this.eventService.getEventById(eventId);
-    const user = await this.userService.getUserById(userId);
-    const team = await this.teamRepository.save({
-      name,
-      event: { id: eventId },
-      users: [{ id: userId }],
-    });
+  async createTeamRepository(teamId: string) {
+    return await this.dataSource.transaction(async (transaction) => {
+      const teamRepository = transaction.getRepository(TeamEntity);
+      const team = await teamRepository.findOneOrFail({
+        where: {
+          startedRepoCreationAt: IsNull(),
+          id: teamId,
+        },
+        relations: {
+          users: true,
+          event: true,
+        },
+      });
 
-    const repoName = event.name + "-" + name + "-" + team.id;
-    try {
+      if (!team.event) {
+        this.logger.error(
+          `While creating repo for team ${teamId}, event was not found.`,
+        );
+        return;
+      }
+
+      const repoName = team.event.name + "-" + team.name + "-" + team.id;
+
       await this.githubApiService.createTeamRepository(
         repoName,
         team.name,
-        user.username,
-        user.githubAccessToken,
-        event.githubOrg,
-        event.githubOrgSecret,
+        team.users.map((user) => ({
+          username: user.username,
+          githubAccessToken: user.githubAccessToken,
+        })),
+        team.event.githubOrg,
+        team.event.githubOrgSecret,
         team.id,
-        event.monorepoUrl,
-        event.monorepoVersion,
-        event.myCoreBotDockerImage,
-        event.visualizerDockerImage,
-        event.id,
+        team.event.monorepoUrl,
+        team.event.monorepoVersion,
+        team.event.myCoreBotDockerImage,
+        team.event.visualizerDockerImage,
+        team.event.id,
       );
 
-      await this.teamRepository.save(team);
-    } catch (e) {
-      this.logger.error(`Failed to create repository for team ${team.id}`, e);
-      await this.teamRepository.delete(team.id);
-      throw new BadRequestException(
-        "Failed to create repository for team. Please try again later.",
-      );
-    }
+      await teamRepository.update(teamId, {
+        repo: repoName,
+        startedRepoCreationAt: new Date(),
+      });
+    });
+  }
 
-    return team;
+  async createTeam(name: string, userId: string, eventId: string) {
+    return await this.dataSource.transaction(async (transaction) => {
+      const teamRepository = transaction.getRepository(TeamEntity);
+
+      const newTeam = await teamRepository.save({
+        name,
+        event: { id: eventId },
+        users: [{ id: userId }],
+      });
+
+      if (await this.eventService.hasEventStarted(eventId)) {
+        await this.createTeamRepository(newTeam.id);
+      }
+
+      return newTeam;
+    });
   }
 
   async deleteTeam(teamId: string) {

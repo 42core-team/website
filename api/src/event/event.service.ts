@@ -16,6 +16,7 @@ import { TeamService } from "../team/team.service";
 import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { EventVersionDto } from "./dtos/eventVersionDto";
+import { LockKeys } from "../constants";
 
 @Injectable()
 export class EventService {
@@ -32,7 +33,7 @@ export class EventService {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async autoLockEvents() {
-    const lockKey = 12345;
+    const lockKey = LockKeys.AUTO_LOCK_EVENTS;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
 
@@ -290,6 +291,13 @@ export class EventService {
       .limit(1);
 
     return qb.getOne();
+  }
+
+  hasEventStarted(eventId: string): Promise<boolean> {
+    return this.eventRepository.existsBy({
+      id: eventId,
+      startDate: LessThanOrEqual(new Date()),
+    });
   }
 
   canCreateTeamInEvent(eventId: string): Promise<boolean> {
