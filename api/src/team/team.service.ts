@@ -28,7 +28,7 @@ export class TeamService {
   logger = new Logger("TeamService");
 
   @Cron(CronExpression.EVERY_MINUTE)
-  async autoLockEvents() {
+  async autoCreateRepos() {
     const lockKey = LockKeys.CREATE_TEAM_REPOS;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -182,9 +182,8 @@ export class TeamService {
         users: [{ id: userId }],
       });
 
-      if (await this.eventService.hasEventStarted(eventId)) {
+      if (await this.eventService.hasEventStarted(eventId))
         await this.createTeamRepository(newTeam.id);
-      }
 
       return newTeam;
     });
