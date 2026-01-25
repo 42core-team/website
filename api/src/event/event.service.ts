@@ -84,11 +84,20 @@ export class EventService {
 
   async getEventsForUser(userId: string): Promise<EventEntity[]> {
     return this.eventRepository.find({
-      where: {
-        users: {
-          id: userId,
+      where: [
+        {
+          users: {
+            id: userId,
+          },
         },
-      },
+        {
+          teams: {
+            users: {
+              id: userId,
+            },
+          },
+        },
+      ],
       order: {
         startDate: "ASC",
       },
@@ -201,8 +210,7 @@ export class EventService {
     /**
      * for public events, all users are considered registered
      */
-    if(await this.isEventPublic(eventId))
-      return true;
+    if (await this.isEventPublic(eventId)) return true;
     return await this.eventRepository.existsBy({
       id: eventId,
       users: {
