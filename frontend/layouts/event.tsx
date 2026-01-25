@@ -5,19 +5,18 @@ import {
   getEventById,
   isEventAdmin,
   isUserRegisteredForEvent,
-  shouldShowJoinNotice,
 } from "@/app/actions/event";
 import { authOptions } from "@/app/utils/authOptions";
-import EventJoinNotice from "@/components/event-join-notice";
+import EventInfoNotice from "@/components/event-info-notice";
 import EventNavbar from "@/components/event-navbar";
 
 export default async function EventLayout({
   children,
   params,
-}: {
+}: Readonly<{
   children: React.ReactNode;
   params: { id: string };
-}) {
+}>) {
   const eventId = params.id;
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
@@ -41,7 +40,6 @@ export default async function EventLayout({
 
   const isEventAdminState = await isEventAdmin(eventId);
   const isUserRegistered = await isUserRegisteredForEvent(eventId);
-  const showJoinNotice = await shouldShowJoinNotice(eventId);
 
   if (isActionError(isEventAdminState) || isActionError(isUserRegistered)) {
     throw new Error("Error: Unable to fetch event details");
@@ -53,12 +51,8 @@ export default async function EventLayout({
 
   return (
     <div className="relative flex flex-col min-h-lvh">
-      {showJoinNotice && userId && (
-        <EventJoinNotice
-          eventId={eventId}
-          userId={userId}
-          startDate={event.startDate}
-        />
+      {userId && (
+        <EventInfoNotice userId={userId} startDate={event.startDate} />
       )}
       <EventNavbar
         event={event}

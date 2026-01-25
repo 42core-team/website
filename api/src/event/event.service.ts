@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { EventEntity, EventState } from "./entities/event.entity";
+import { EventEntity } from "./entities/event.entity";
 import {
   DataSource,
   IsNull,
@@ -25,7 +25,7 @@ export class EventService {
     private readonly configService: ConfigService,
     @Inject(forwardRef(() => TeamService))
     private readonly teamService: TeamService,
-    private dataSource: DataSource,
+    private readonly dataSource: DataSource,
   ) {}
 
   logger = new Logger("EventService");
@@ -190,8 +190,20 @@ export class EventService {
     return this.eventRepository.increment({ id: eventId }, "currentRound", 1);
   }
 
-  isUserRegisteredForEvent(eventId: string, userId: string) {
+  isEventPublic(eventId: string): Promise<boolean> {
     return this.eventRepository.existsBy({
+      id: eventId,
+      isPrivate: false,
+    });
+  }
+
+  async isUserRegisteredForEvent(eventId: string, userId: string) {
+    /**
+     * for public events, all users are considered registered
+     */
+    if(await this.isEventPublic(eventId))
+      return true;
+    return await this.eventRepository.existsBy({
       id: eventId,
       users: {
         id: userId,
@@ -234,17 +246,10 @@ export class EventService {
       }),
     );
 
-    await this.setEventState(event.id, EventState.SWISS_ROUND);
     return this.eventRepository.update(eventId, {
       canCreateTeam: false,
       lockedAt: new Date(),
       processQueue: false,
-    });
-  }
-
-  async setEventState(eventId: string, eventState: EventState) {
-    return this.eventRepository.update(eventId, {
-      state: eventState,
     });
   }
 

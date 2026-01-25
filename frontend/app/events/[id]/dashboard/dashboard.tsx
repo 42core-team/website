@@ -12,7 +12,6 @@ import {
   setEventTeamsLockDate,
 } from "@/app/actions/event";
 
-import { EventState } from "@/app/actions/event-model";
 import { lockEvent } from "@/app/actions/team";
 import {
   startSwissMatches,
@@ -40,8 +39,8 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   const [participantsCount, setParticipantsCount] = useState<number>(0);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
-  const [lockingTeamsLoading, setLockingTeamsLoading]
-    = useState<boolean>(false);
+  const [lockingTeamsLoading, setLockingTeamsLoading] =
+    useState<boolean>(false);
   const [startingGroupPhase, setStartingGroupPhase] = useState<boolean>(false);
   const [startingTournament, setStartingTournament] = useState<boolean>(false);
   const [teamAutoLockTime, setTeamAutoLockTime] = useState<string>("");
@@ -69,8 +68,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
         }
         setIsAdmin(true);
         setLoading(false);
-      }
-      catch (error) {
+      } catch (error) {
         console.error("Error loading dashboard data:", error);
         setLoading(false);
       }
@@ -114,12 +112,6 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 <div className="rounded-lg border p-4">
                   <h3 className="text-sm font-medium mb-2">Current Round</h3>
                   <p className="text-2xl font-bold">{event.currentRound}</p>
-                </div>
-                <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">Event State</h3>
-                  <p className="text-2xl font-bold">
-                    {event.state.toLowerCase()}
-                  </p>
                 </div>
               </div>
             </CardContent>
@@ -189,13 +181,13 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 </div>
               )}
 
-              {!event.monorepoUrl
-                && !event.gameServerDockerImage
-                && !event.myCoreBotDockerImage && (
-                <p className="text-muted-foreground italic">
-                  No Docker configuration set for this event.
-                </p>
-              )}
+              {!event.monorepoUrl &&
+                !event.gameServerDockerImage &&
+                !event.myCoreBotDockerImage && (
+                  <p className="text-muted-foreground italic">
+                    No Docker configuration set for this event.
+                  </p>
+                )}
             </CardContent>
           </Card>
           <Card>
@@ -228,9 +220,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 </Button>
 
                 <Button
-                  disabled={
-                    event.state !== EventState.SWISS_ROUND || startingGroupPhase
-                  }
+                  disabled={event.currentRound !== 0 || startingGroupPhase}
                   onClick={() => {
                     setStartingGroupPhase(true);
                     startSwissMatches(eventId)
@@ -252,8 +242,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
                 <Button
                   disabled={
-                    event.state !== EventState.ELIMINATION_ROUND
-                    || startingTournament
+                    startingTournament
                   }
                   onClick={() => {
                     setStartingTournament(true);
@@ -281,7 +270,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 <Input
                   type="datetime-local"
                   value={teamAutoLockTime}
-                  onChange={e => setTeamAutoLockTime(e.target.value)}
+                  onChange={(e) => setTeamAutoLockTime(e.target.value)}
                   className="max-w-[300px]"
                   placeholder="lock repo"
                 />
@@ -294,7 +283,8 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     ).then(() => {
                       // eslint-disable-next-line no-alert
                       alert("set team auto lock date");
-                    })}
+                    })
+                  }
                 >
                   Save
                 </Button>

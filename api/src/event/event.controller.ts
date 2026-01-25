@@ -97,7 +97,7 @@ export class EventController {
 
   @UseGuards(JwtAuthGuard)
   @Get(":id/isUserRegistered")
-  getEventByUserId(
+  isUserRegistered(
     @Param("id", new ParseUUIDPipe()) eventId: string,
     @UserId() userId: string,
   ) {

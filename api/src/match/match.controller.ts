@@ -12,7 +12,6 @@ import {
 } from "@nestjs/common";
 import { MatchService } from "./match.service";
 import { EventService } from "../event/event.service";
-import { EventState } from "../event/entities/event.entity";
 import { UserId } from "../guards/UserGuard";
 import { MatchEntity } from "./entites/match.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -51,7 +50,7 @@ export class MatchController {
         "You are not authorized to lock this event.",
       );
     const event = await this.eventService.getEventById(eventId);
-    if (event.currentRound != 0 || event.state != EventState.SWISS_ROUND) {
+    if (event.currentRound != 0) {
       throw new BadRequestException("swiss matches have already started");
     }
 
