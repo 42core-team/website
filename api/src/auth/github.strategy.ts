@@ -17,7 +17,7 @@ export class GithubOAuthStrategy extends PassportStrategy(
       clientID: config.getOrThrow<string>("GITHUB_CLIENT_ID"),
       clientSecret: config.getOrThrow<string>("GITHUB_CLIENT_SECRET"),
       callbackURL: config.getOrThrow<string>("GITHUB_CALLBACK_URL"),
-      scope: ["user:email"],
+      scope: ["user:email", "repo:invite"],
     });
   }
 
