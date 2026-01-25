@@ -3,10 +3,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePlausible } from "next-plausible";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { isActionError } from "@/app/actions/errors";
-import { createTeam } from "@/app/actions/team";
 import { TeamCreationSection } from "@/components/team";
 import { validateTeamName } from "@/lib/utils/validation";
+import axiosInstance from "@/app/actions/axios";
 
 export default function TeamCreationForm() {
   const plausible = usePlausible();
@@ -30,11 +29,9 @@ export default function TeamCreationForm() {
         throw new Error(validation.error!);
       }
 
-      const result = await createTeam(newTeamName, eventId);
-
-      if (isActionError(result)) {
-        throw new Error(result.error);
-      }
+      await axiosInstance.post(`team/event/${eventId}/create`, {
+        name: newTeamName,
+      });
     },
     onMutate: () => {
       plausible("create_team");
@@ -52,10 +49,10 @@ export default function TeamCreationForm() {
       ]);
     },
     onError: (error: Error) => {
+      console.log(error);
       if (error.message && !error.message.startsWith("An unexpected")) {
         setErrorMessage(error.message);
-      }
-      else {
+      } else {
         setErrorMessage(
           "An unexpected error occurred while creating the team.",
         );
