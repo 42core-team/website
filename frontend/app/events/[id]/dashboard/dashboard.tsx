@@ -2,7 +2,7 @@
 
 import type { Event } from "@/app/actions/event";
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { isActionError } from "@/app/actions/errors";
 import {
   getEventById,
@@ -26,6 +26,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
 
 interface DashboardPageProps {
   eventId: string;
@@ -49,6 +58,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     const fetchData = async () => {
       try {
         const eventData = await getEventById(eventId);
+
         const teams = await getTeamsCountForEvent(eventId);
         const participants = await getParticipantsCountForEvent(eventId);
         const adminCheck = await isEventAdmin(eventId);
@@ -62,9 +72,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
         setTeamsCount(teams);
         setParticipantsCount(participants);
         if (eventData?.repoLockDate) {
-          setTeamAutoLockTime(
-            new Date(eventData.repoLockDate).toISOString().slice(0, 16),
-          );
+          setTeamAutoLockTime(new Date(eventData.repoLockDate).toISOString());
         }
         setIsAdmin(true);
         setLoading(false);
@@ -241,9 +249,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 </Button>
 
                 <Button
-                  disabled={
-                    startingTournament
-                  }
+                  disabled={startingTournament}
                   onClick={() => {
                     setStartingTournament(true);
                     startTournamentMatches(eventId)
@@ -267,13 +273,60 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
               <h3 className="mt-4 text-sm font-medium">Team auto lock</h3>
 
               <div className="mt-2 flex gap-3">
-                <Input
-                  type="datetime-local"
-                  value={teamAutoLockTime}
-                  onChange={(e) => setTeamAutoLockTime(e.target.value)}
-                  className="max-w-[300px]"
-                  placeholder="lock repo"
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full pl-3 text-left font-normal",
+                        !teamAutoLockTime && "text-muted-foreground",
+                      )}
+                    >
+                      {teamAutoLockTime ? (
+                        format(teamAutoLockTime, "PPP p")
+                      ) : (
+                        <span>Pick a date and time</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={new Date(teamAutoLockTime)}
+                      onSelect={(value) => {
+                        if (!value) return;
+
+                        setTeamAutoLockTime(value.toISOString());
+                      }}
+                      disabled={(date) =>
+                        date < new Date(new Date().setHours(0, 0, 0, 0))
+                      }
+                      initialFocus
+                    />
+                    <div className="p-3 border-t">
+                      <Input
+                        type="time"
+                        value={
+                          teamAutoLockTime
+                            ? format(teamAutoLockTime, "HH:mm")
+                            : ""
+                        }
+                        onChange={(e) => {
+                          const [hours, minutes] = e.target.value.split(":");
+                          const newDate = teamAutoLockTime
+                            ? new Date(teamAutoLockTime)
+                            : new Date();
+                          newDate.setHours(
+                            Number.parseInt(hours),
+                            Number.parseInt(minutes),
+                          );
+                          setTeamAutoLockTime(newDate.toISOString());
+                        }}
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
 
                 <Button
                   onClick={() =>
