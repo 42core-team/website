@@ -1,9 +1,4 @@
-import {
-  forwardRef,
-  Inject,
-  Injectable,
-  Logger,
-} from "@nestjs/common";
+import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { TeamEntity } from "./entities/team.entity";
 import { DataSource, IsNull, LessThanOrEqual, Repository } from "typeorm";
@@ -217,7 +212,7 @@ export class TeamService {
     });
     const user = await this.userService.getUserById(userId);
 
-    if (team.users.length > 1) {
+    if (team.users.length > 1 && team.repo) {
       await this.githubApiService.removeUserFromRepository(
         team.repo,
         user.username,
@@ -288,13 +283,14 @@ export class TeamService {
     });
     const user = await this.userService.getUserById(userId);
 
-    await this.githubApiService.addUserToRepository(
-      team.repo,
-      user.username,
-      team.event.githubOrg,
-      team.event.githubOrgSecret,
-      user.githubAccessToken,
-    );
+    if (team.repo)
+      await this.githubApiService.addUserToRepository(
+        team.repo,
+        user.username,
+        team.event.githubOrg,
+        team.event.githubOrgSecret,
+        user.githubAccessToken,
+      );
 
     await this.teamRepository
       .createQueryBuilder()

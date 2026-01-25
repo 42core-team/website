@@ -293,8 +293,10 @@ export class EventService {
     return qb.getOne();
   }
 
-  hasEventStarted(eventId: string): Promise<boolean> {
-    return this.eventRepository.existsBy({
+  async hasEventStarted(eventId: string): Promise<boolean> {
+    if (!eventId) return false;
+
+    return await this.eventRepository.existsBy({
       id: eventId,
       startDate: LessThanOrEqual(new Date()),
     });
