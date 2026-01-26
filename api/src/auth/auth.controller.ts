@@ -97,7 +97,7 @@ export class AuthController {
       });
 
       const redirectUrl = this.configService.getOrThrow<string>(
-        "42_OAUTH_SUCCESS_REDIRECT_URL",
+        "OAUTH_42_SUCCESS_REDIRECT_URL",
       );
 
       return res.redirect(redirectUrl);

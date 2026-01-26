@@ -188,11 +188,20 @@ jobs:
             --set env.DB_NAME="${{ vars.DB_NAME }}" \
             --set env.K8S_SERVICE_URL="${{ vars.K8S_SERVICE_URL }}" \
             --set env.DB_SCHEMA="${{ vars.DB_SCHEMA }}" \
+            --set env.CLIENT_GITHUB_ID="${{ vars.CLIENT_GITHUB_ID }}" \
+            --set env.CALLBACK_GITHUB_URL="${{ vars.CALLBACK_GITHUB_URL }}" \
+            --set env.OAUTH_SUCCESS_REDIRECT_URL="${{ vars.OAUTH_SUCCESS_REDIRECT_URL }}" \
+            --set env.OAUTH_42_SUCCESS_REDIRECT_URL="${{ vars.OAUTH_42_SUCCESS_REDIRECT_URL }}" \
+            --set env.CORS_ORIGIN="${{ vars.CORS_ORIGIN }}" \
+            --set env.FORTYTWO_CLIENT_ID="${{ vars.FORTYTWO_CLIENT_ID }}" \
+            --set env.FORTYTWO_CLIENT_ID="${{ vars.FORTYTWO_CLIENT_ID }}" \
             --set secrets.DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
             --set secrets.DB_URL="${{ secrets.DB_URL }}" \
             --set secrets.API_SECRET_ENCRYPTION_KEY="${{ secrets.API_SECRET_ENCRYPTION_KEY }}" \
-            --set secrets.FRONTEND_SECRET="${{ secrets.FRONTEND_SECRET }}" \
             --set secrets.RABBITMQ_URL="${{ secrets.RABBITMQ_URL }}" \
+            --set secrets.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            --set secrets.CLIENT_GITHUB_SECRET="${{ secrets.CLIENT_GITHUB_SECRET }}" \
+            --set secrets.FORTYTWO_CLIENT_SECRET="${{ secrets.FORTYTWO_CLIENT_SECRET }}" \
             --wait \
             --timeout=5m \
             --atomic \

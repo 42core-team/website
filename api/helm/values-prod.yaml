@@ -53,11 +53,3 @@ ingress:
 nodeSelector: {}
 tolerations: []
 affinity: {}
-
-# Secrets - these should be provided via GitHub secrets during deployment
-secrets:
-  DB_PASSWORD: ""
-  DB_URL: ""
-  API_SECRET_ENCRYPTION_KEY: ""
-  FRONTEND_SECRET: ""
-  RABBITMQ_URL: ""
