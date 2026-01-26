@@ -1,4 +1,6 @@
-export interface ActionError { error: string }
+export interface ActionError {
+  error: string;
+}
 export type ServerActionResponse<T = unknown> = ActionError | T;
 
 export function isActionError(response: any): response is ActionError {

@@ -1,7 +1,7 @@
 <CORSConfiguration>
   <CORSRule>
-    <AllowedOrigin>https://coregame.de</AllowedOrigin>
-    <AllowedOrigin>https://dev.coregame.de</AllowedOrigin>
+    <AllowedOrigin>https://coregame.sh</AllowedOrigin>
+    <AllowedOrigin>https://dev.coregame.sh</AllowedOrigin>
     <AllowedMethod>GET</AllowedMethod>
     <AllowedMethod>HEAD</AllowedMethod>
     <AllowedHeader>*</AllowedHeader>

@@ -8,11 +8,11 @@ export default function EventsTabs({
   myEvents,
   allEvents,
   isLoggedIn,
-}: {
+}: Readonly<{
   myEvents: Event[];
   allEvents: Event[];
   isLoggedIn: boolean;
-}) {
+}>) {
   if (!isLoggedIn) {
     return <EventsTable events={allEvents} />;
   }

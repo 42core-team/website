@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { EventEntity, EventState } from "./entities/event.entity";
+import { EventEntity } from "./entities/event.entity";
 import {
   DataSource,
   IsNull,
@@ -16,6 +16,7 @@ import { TeamService } from "../team/team.service";
 import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { EventVersionDto } from "./dtos/eventVersionDto";
+import { LockKeys } from "../constants";
 
 @Injectable()
 export class EventService {
@@ -25,14 +26,14 @@ export class EventService {
     private readonly configService: ConfigService,
     @Inject(forwardRef(() => TeamService))
     private readonly teamService: TeamService,
-    private dataSource: DataSource,
+    private readonly dataSource: DataSource,
   ) {}
 
   logger = new Logger("EventService");
 
   @Cron(CronExpression.EVERY_MINUTE)
   async autoLockEvents() {
-    const lockKey = 12345;
+    const lockKey = LockKeys.AUTO_LOCK_EVENTS;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
 
@@ -84,11 +85,20 @@ export class EventService {
 
   async getEventsForUser(userId: string): Promise<EventEntity[]> {
     return this.eventRepository.find({
-      where: {
-        users: {
-          id: userId,
+      where: [
+        {
+          users: {
+            id: userId,
+          },
         },
-      },
+        {
+          teams: {
+            users: {
+              id: userId,
+            },
+          },
+        },
+      ],
       order: {
         startDate: "ASC",
       },
@@ -190,8 +200,19 @@ export class EventService {
     return this.eventRepository.increment({ id: eventId }, "currentRound", 1);
   }
 
-  isUserRegisteredForEvent(eventId: string, userId: string) {
+  isEventPublic(eventId: string): Promise<boolean> {
     return this.eventRepository.existsBy({
+      id: eventId,
+      isPrivate: false,
+    });
+  }
+
+  async isUserRegisteredForEvent(eventId: string, userId: string) {
+    /**
+     * for public events, all users are considered registered
+     */
+    if (await this.isEventPublic(eventId)) return true;
+    return await this.eventRepository.existsBy({
       id: eventId,
       users: {
         id: userId,
@@ -234,17 +255,10 @@ export class EventService {
       }),
     );
 
-    await this.setEventState(event.id, EventState.SWISS_ROUND);
     return this.eventRepository.update(eventId, {
       canCreateTeam: false,
       lockedAt: new Date(),
       processQueue: false,
-    });
-  }
-
-  async setEventState(eventId: string, eventState: EventState) {
-    return this.eventRepository.update(eventId, {
-      state: eventState,
     });
   }
 
@@ -277,6 +291,15 @@ export class EventService {
       .limit(1);
 
     return qb.getOne();
+  }
+
+  async hasEventStarted(eventId: string): Promise<boolean> {
+    if (!eventId) return false;
+
+    return await this.eventRepository.existsBy({
+      id: eventId,
+      startDate: LessThanOrEqual(new Date()),
+    });
   }
 
   canCreateTeamInEvent(eventId: string): Promise<boolean> {

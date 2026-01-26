@@ -102,8 +102,10 @@ export class AppController {
   async handleCreateTeamRepository(data: {
     name: string;
     teamName: string;
-    username: string;
-    userGithubAccessToken: string;
+    githubUsers: {
+      username: string;
+      githubAccessToken: string;
+    }[];
     githubOrg: string;
     encryptedSecret: string;
     teamId: string;
@@ -116,7 +118,9 @@ export class AppController {
     const safeData = {
       name: data.name,
       teamName: data.teamName,
-      username: data.username,
+      githubUsers: data.githubUsers.map((user) => ({
+        username: user.username,
+      })),
       githubOrg: data.githubOrg,
       monoRepoVersion: data.monoRepoVersion,
       teamId: data.teamId,
@@ -128,8 +132,7 @@ export class AppController {
     await this.appService.createTeamRepository(
       data.name,
       data.teamName,
-      data.username,
-      data.userGithubAccessToken,
+      data.githubUsers,
       data.githubOrg,
       data.encryptedSecret,
       data.teamId,

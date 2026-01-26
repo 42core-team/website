@@ -1,7 +1,5 @@
 "use client";
-import type {
-  SortingState,
-} from "@tanstack/react-table";
+import type { SortingState } from "@tanstack/react-table";
 import type { Team } from "@/app/actions/team";
 import {
   flexRender,

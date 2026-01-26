@@ -2,15 +2,22 @@
 import type { Team } from "@/app/actions/team";
 import type { QueueState as QueueStateType } from "@/app/actions/team.model";
 import type { Match } from "@/app/actions/tournament-model";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePlausible } from "next-plausible";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { getQueueState, joinQueue } from "@/app/actions/team";
+import { useEffect } from "react";
 import { MatchState } from "@/app/actions/tournament-model";
 import QueueMatchesList from "@/components/QueueMatchesList";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import {
+  joinQueue,
+  queueMatchesQueryFn,
+  queueMatchesQueryKey,
+  queueStateQueryFn,
+  queueStateQueryKey,
+} from "./queries";
 
 export default function QueueState(props: {
   queueState: QueueStateType;
@@ -19,31 +26,65 @@ export default function QueueState(props: {
   queueMatches: Match[];
 }) {
   const plausible = usePlausible();
-
-  const [queueState, setQueueState] = useState<QueueStateType>(props.queueState);
-  const [joiningQueue, setJoiningQueue] = useState(false);
-
   const router = useRouter();
   const { id } = useParams();
   const eventId = id as string;
 
+  const queryClient = useQueryClient();
+
+  const {
+    data: queueState,
+    isLoading: isQueueStateLoading,
+  } = useQuery<QueueStateType>({
+    queryKey: queueStateQueryKey(eventId),
+    queryFn: () => queueStateQueryFn(eventId),
+    initialData: props.queueState,
+    refetchInterval: 600,
+  });
+
+  const { data: queueMatches = [] } = useQuery<Match[]>({
+    queryKey: queueMatchesQueryKey(eventId),
+    queryFn: () => queueMatchesQueryFn(eventId),
+    initialData: props.queueMatches,
+  });
+
+  const joinQueueMutation = useMutation({
+    mutationFn: async () => {
+      plausible("join_queue");
+      await joinQueue(props.eventId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queueStateQueryKey(eventId),
+      });
+    },
+  });
+
   useEffect(() => {
-    async function fetchQueueState() {
-      const newQueueState = await getQueueState(props.eventId);
-      if (
-        queueState.match?.state === MatchState.IN_PROGRESS
-        && newQueueState.match?.state !== MatchState.IN_PROGRESS
-      ) {
-        if (newQueueState.match) {
-          router.push(`/events/${eventId}/match/${newQueueState?.match?.id}`);
-        }
-      }
-      setQueueState(newQueueState);
+    if (!queueState) {
+      return;
     }
 
-    const interval = setInterval(fetchQueueState, 600);
-    return () => clearInterval(interval);
-  });
+    if (queueState.match?.state === MatchState.IN_PROGRESS) {
+      return;
+    }
+
+    const previousMatchState = props.queueState.match?.state;
+    if (
+    previousMatchState === MatchState.IN_PROGRESS
+      && queueState.match
+    ) {
+      router.push(`/events/${eventId}/match/${queueState.match.id}`);
+    }
+  }, [queueState, router, eventId, props.queueState.match?.state]);
+
+  if (isQueueStateLoading || !queueState) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
@@ -51,65 +92,48 @@ export default function QueueState(props: {
       <div className="mt-4 flex flex-col items-center justify-center gap-2">
         {queueState?.match?.state === MatchState.IN_PROGRESS
           ? (
-              <Spinner color="success" />
-            )
+            <Spinner color="success" />
+          )
           : (
-              <>
-                <p className="text-lg">
-                  Team:
-                  {props.team.name}
-                </p>
-                <p
-                  className={cn(
-                    "text-sm text-muted-foreground",
-                    queueState.inQueue ? "text-green-500" : "",
-                  )}
-                >
-                  Status:
-                  {" "}
-                  {queueState.inQueue ? "In Queue" : "Not in Queue"}
-                </p>
-                {!queueState.inQueue
-                  ? (
-                      <Button
-                        disabled={joiningQueue}
-                        onClick={() => {
-                          setJoiningQueue(true);
-                          plausible("join_queue");
-                          joinQueue(props.eventId)
-                            .then(() => {
-                              setQueueState({
-                                ...queueState,
-                                inQueue: true,
-                                queueCount: queueState.queueCount + 1,
-                              });
-                            })
-                            .finally(() => {
-                              setJoiningQueue(false);
-                            });
-                        }}
-                      >
-                        play
-                      </Button>
-                    )
-                  : (
-                      <>
-                        <p className="text-sm">
-                          Queue Count:
-                          {queueState.queueCount}
-                        </p>
-                      </>
-                    )}
-              </>
-            )}
+            <>
+              <p className="text-lg">
+                Team:
+                {props.team.name}
+              </p>
+              <p
+                className={cn(
+                  "text-sm text-muted-foreground",
+                  queueState.inQueue ? "text-green-500" : "",
+                )}
+              >
+                Status:
+                {" "}
+                {queueState.inQueue ? "In Queue" : "Not in Queue"}
+              </p>
+              {!queueState.inQueue
+                ? (
+                  <Button
+                    disabled={joinQueueMutation.isPending}
+                    onClick={() => {
+                      joinQueueMutation.mutate();
+                    }}
+                  >
+                    {joinQueueMutation.isPending ? "Joining..." : "play"}
+                  </Button>
+                )
+                : (
+                  <p className="text-sm">
+                    Queue Count:
+                    {queueState.queueCount}
+                  </p>
+                )}
+            </>
+          )}
       </div>
 
       <div className="mt-8 w-full max-w-2xl">
         <h2 className="mb-4 text-xl font-semibold">Past Matches</h2>
-        <QueueMatchesList
-          eventId={props.eventId}
-          matches={props.queueMatches}
-        />
+        <QueueMatchesList eventId={props.eventId} matches={queueMatches} />
       </div>
     </div>
   );

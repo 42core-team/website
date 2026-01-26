@@ -27,7 +27,7 @@ env:
   DB_SCHEMA: ""
   K8S_SERVICE_URL: ""
   # CORS configuration for prod
-  CORS_ORIGIN: "https://coregame.de"
+  CORS_ORIGIN: "https://coregame.sh"
 
 ingress:
   enabled: true
@@ -35,19 +35,19 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/cors-allow-origin: "https://coregame.de"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://coregame.sh"
     nginx.ingress.kubernetes.io/enable-cors: "true"
 #    nginx.ingress.kubernetes.io/limit-rps: "10"
 #    nginx.ingress.kubernetes.io/limit-burst: "20"
 #    nginx.ingress.kubernetes.io/limit-connections: "50"
   hosts:
-    - host: api.coregame.de
+    - host: api.coregame.sh
       paths:
         - path: /
           pathType: Prefix
   tls:
     - hosts:
-        - api.coregame.de
+        - api.coregame.sh
       secretName: api-coregame-de-tls
 
 nodeSelector: {}

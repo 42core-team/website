@@ -104,17 +104,6 @@ export async function lockEvent(eventId: string) {
   return (await axiosInstance.put(`event/${eventId}/lock`)).data;
 }
 
-export async function createTeam(
-  name: string,
-  eventId: string,
-): Promise<ServerActionResponse<Team>> {
-  return await handleError(
-    axiosInstance.post(`team/event/${eventId}/create`, {
-      name,
-    }),
-  );
-}
-
 /**
  * Leave a team and delete it if this was the last member
  * @param eventId ID of the event to leave the team for

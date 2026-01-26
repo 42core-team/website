@@ -84,8 +84,8 @@ ingressRedirect:
   className: nginx
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-  fromHost: www.coregame.de
-  toHost: coregame.de
+  fromHost: www.coregame.sh
+  toHost: coregame.sh
   code: "308"
   tls:
     enabled: true
@@ -94,8 +94,8 @@ ingressRedirect:
 
 This configuration will:
 
-- Create a separate ingress for `www.coregame.de`
-- Issue HTTP 308 (permanent) redirects to `https://coregame.de`
+- Create a separate ingress for `www.coregame.sh`
+- Issue HTTP 308 (permanent) redirects to `https://coregame.sh`
 - Include TLS certificate management for the www subdomain
 - Preserve the original request path and query parameters
 

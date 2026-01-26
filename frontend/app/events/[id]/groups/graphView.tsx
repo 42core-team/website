@@ -1,14 +1,9 @@
 "use client";
-import type {
-  Node,
-} from "reactflow";
+import type { Node } from "reactflow";
 import type { Match } from "@/app/actions/tournament-model";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import ReactFlow, {
-  Background,
-  useNodesState,
-} from "reactflow";
+import ReactFlow, { Background, useNodesState } from "reactflow";
 import { MatchState } from "@/app/actions/tournament-model";
 import { MatchNode } from "@/components/match";
 import { Switch } from "@/components/ui/switch";

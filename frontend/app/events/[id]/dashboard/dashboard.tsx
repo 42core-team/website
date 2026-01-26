@@ -1,10 +1,8 @@
 "use client";
 
-import type {
-  Event,
-} from "@/app/actions/event";
+import type { Event } from "@/app/actions/event";
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { isActionError } from "@/app/actions/errors";
 import {
   getEventById,
@@ -14,7 +12,6 @@ import {
   setEventTeamsLockDate,
 } from "@/app/actions/event";
 
-import { EventState } from "@/app/actions/event-model";
 import { lockEvent } from "@/app/actions/team";
 import {
   startSwissMatches,
@@ -29,6 +26,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
 
 interface DashboardPageProps {
   eventId: string;
@@ -42,8 +48,8 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   const [participantsCount, setParticipantsCount] = useState<number>(0);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
-  const [lockingTeamsLoading, setLockingTeamsLoading]
-    = useState<boolean>(false);
+  const [lockingTeamsLoading, setLockingTeamsLoading] =
+    useState<boolean>(false);
   const [startingGroupPhase, setStartingGroupPhase] = useState<boolean>(false);
   const [startingTournament, setStartingTournament] = useState<boolean>(false);
   const [teamAutoLockTime, setTeamAutoLockTime] = useState<string>("");
@@ -52,6 +58,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     const fetchData = async () => {
       try {
         const eventData = await getEventById(eventId);
+
         const teams = await getTeamsCountForEvent(eventId);
         const participants = await getParticipantsCountForEvent(eventId);
         const adminCheck = await isEventAdmin(eventId);
@@ -65,14 +72,11 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
         setTeamsCount(teams);
         setParticipantsCount(participants);
         if (eventData?.repoLockDate) {
-          setTeamAutoLockTime(
-            new Date(eventData.repoLockDate).toISOString().slice(0, 16),
-          );
+          setTeamAutoLockTime(new Date(eventData.repoLockDate).toISOString());
         }
         setIsAdmin(true);
         setLoading(false);
-      }
-      catch (error) {
+      } catch (error) {
         console.error("Error loading dashboard data:", error);
         setLoading(false);
       }
@@ -99,7 +103,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Event Overview</CardTitle>
-              <CardDescription>Key live metrics for this event.</CardDescription>
+              <CardDescription>
+                Key live metrics for this event.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -115,17 +121,15 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   <h3 className="text-sm font-medium mb-2">Current Round</h3>
                   <p className="text-2xl font-bold">{event.currentRound}</p>
                 </div>
-                <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">Event State</h3>
-                  <p className="text-2xl font-bold">{event.state.toLowerCase()}</p>
-                </div>
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
               <CardTitle>Docker Configuration</CardTitle>
-              <CardDescription>Images & repository info configured for this event.</CardDescription>
+              <CardDescription>
+                Images & repository info configured for this event.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {event.monorepoUrl && (
@@ -142,7 +146,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     </a>
                   </div>
                   <div className="rounded-lg border p-4">
-                    <h3 className="text-sm font-medium mb-2">Monorepo Version</h3>
+                    <h3 className="text-sm font-medium mb-2">
+                      Monorepo Version
+                    </h3>
                     <p className="font-mono break-all">
                       {event.monorepoVersion}
                     </p>
@@ -152,7 +158,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
               {event.gameServerDockerImage && (
                 <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">Game Server Docker Image</h3>
+                  <h3 className="text-sm font-medium mb-2">
+                    Game Server Docker Image
+                  </h3>
                   <p className="font-mono break-all">
                     {event.gameServerDockerImage}
                   </p>
@@ -161,7 +169,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
               {event.myCoreBotDockerImage && (
                 <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">My Core Bot Docker Image</h3>
+                  <h3 className="text-sm font-medium mb-2">
+                    My Core Bot Docker Image
+                  </h3>
                   <p className="font-mono break-all">
                     {event.myCoreBotDockerImage}
                   </p>
@@ -170,26 +180,30 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
               {event.visualizerDockerImage && (
                 <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">Visualizer Docker Image</h3>
+                  <h3 className="text-sm font-medium mb-2">
+                    Visualizer Docker Image
+                  </h3>
                   <p className="font-mono break-all">
                     {event.visualizerDockerImage}
                   </p>
                 </div>
               )}
 
-              {!event.monorepoUrl
-                && !event.gameServerDockerImage
-                && !event.myCoreBotDockerImage && (
-                <p className="text-muted-foreground italic">
-                  No Docker configuration set for this event.
-                </p>
-              )}
+              {!event.monorepoUrl &&
+                !event.gameServerDockerImage &&
+                !event.myCoreBotDockerImage && (
+                  <p className="text-muted-foreground italic">
+                    No Docker configuration set for this event.
+                  </p>
+                )}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
               <CardTitle>Admin Actions</CardTitle>
-              <CardDescription>Operational controls for advancing the event.</CardDescription>
+              <CardDescription>
+                Operational controls for advancing the event.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-3">
@@ -214,9 +228,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 </Button>
 
                 <Button
-                  disabled={
-                    event.state !== EventState.SWISS_ROUND || startingGroupPhase
-                  }
+                  disabled={event.currentRound !== 0 || startingGroupPhase}
                   onClick={() => {
                     setStartingGroupPhase(true);
                     startSwissMatches(eventId)
@@ -237,10 +249,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 </Button>
 
                 <Button
-                  disabled={
-                    event.state !== EventState.ELIMINATION_ROUND
-                    || startingTournament
-                  }
+                  disabled={startingTournament}
                   onClick={() => {
                     setStartingTournament(true);
                     startTournamentMatches(eventId)
@@ -264,13 +273,60 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
               <h3 className="mt-4 text-sm font-medium">Team auto lock</h3>
 
               <div className="mt-2 flex gap-3">
-                <Input
-                  type="datetime-local"
-                  value={teamAutoLockTime}
-                  onChange={e => setTeamAutoLockTime(e.target.value)}
-                  className="max-w-[300px]"
-                  placeholder="lock repo"
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full pl-3 text-left font-normal",
+                        !teamAutoLockTime && "text-muted-foreground",
+                      )}
+                    >
+                      {teamAutoLockTime ? (
+                        format(teamAutoLockTime, "PPP p")
+                      ) : (
+                        <span>Pick a date and time</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={new Date(teamAutoLockTime)}
+                      onSelect={(value) => {
+                        if (!value) return;
+
+                        setTeamAutoLockTime(value.toISOString());
+                      }}
+                      disabled={(date) =>
+                        date < new Date(new Date().setHours(0, 0, 0, 0))
+                      }
+                      initialFocus
+                    />
+                    <div className="p-3 border-t">
+                      <Input
+                        type="time"
+                        value={
+                          teamAutoLockTime
+                            ? format(teamAutoLockTime, "HH:mm")
+                            : ""
+                        }
+                        onChange={(e) => {
+                          const [hours, minutes] = e.target.value.split(":");
+                          const newDate = teamAutoLockTime
+                            ? new Date(teamAutoLockTime)
+                            : new Date();
+                          newDate.setHours(
+                            Number.parseInt(hours),
+                            Number.parseInt(minutes),
+                          );
+                          setTeamAutoLockTime(newDate.toISOString());
+                        }}
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
 
                 <Button
                   onClick={() =>
@@ -280,7 +336,8 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     ).then(() => {
                       // eslint-disable-next-line no-alert
                       alert("set team auto lock date");
-                    })}
+                    })
+                  }
                 >
                   Save
                 </Button>

@@ -1,9 +1,7 @@
 import {
   BadRequestException,
-  Body,
   Controller,
   Get,
-  Post,
   Query,
   Req,
   Res,
@@ -23,10 +21,10 @@ import { SocialPlatform } from "../user/entities/social-account.entity";
 @Controller("auth")
 export class AuthController {
   constructor(
-    private auth: AuthService,
-    private configService: ConfigService,
-    private userService: UserService,
-    private socialAccountService: SocialAccountService,
+    private readonly auth: AuthService,
+    private readonly configService: ConfigService,
+    private readonly userService: UserService,
+    private readonly socialAccountService: SocialAccountService,
   ) {}
 
   @Get("/github/callback")
@@ -112,7 +110,7 @@ export class AuthController {
       throw new BadRequestException(
         e && typeof e.message === "string"
           ? `Invalid state parameter: ${e.message}`
-          : "Invalid state parameter."
+          : "Invalid state parameter.",
       );
     }
   }

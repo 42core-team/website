@@ -8,7 +8,7 @@ import { Swiss } from "tournament-pairings";
 import { EventService } from "../event/event.service";
 // @ts-ignore
 import { Player } from "tournament-pairings/interfaces";
-import { EventEntity, EventState } from "../event/entities/event.entity";
+import { EventEntity } from "../event/entities/event.entity";
 import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
 import { getRabbitmqConfig } from "../main";
 import { ConfigService } from "@nestjs/config";
@@ -17,6 +17,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { GithubApiService } from "../github-api/github-api.service";
 import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations";
 import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
+import { LockKeys } from "../constants";
 
 @Injectable()
 export class MatchService {
@@ -49,7 +50,7 @@ export class MatchService {
 
   @Cron(CronExpression.EVERY_5_SECONDS)
   async processQueueMatches() {
-    const lockKey = 12346;
+    const lockKey = LockKeys.PROCESS_QUEUE_MATCHES;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
 
@@ -246,10 +247,6 @@ export class MatchService {
       );
       await this.eventService.setCurrentRound(event.id, 0);
       await this.calculateBuchholzPoints(event.id);
-      await this.eventService.setEventState(
-        event.id,
-        EventState.ELIMINATION_ROUND,
-      );
       return;
     }
 
@@ -276,7 +273,6 @@ export class MatchService {
 
     if (finishedMatches == 1) {
       this.logger.log(`Event ${event.name} has finished the final match.`);
-      await this.eventService.setEventState(event.id, EventState.FINISHED);
       return;
     }
 
@@ -414,9 +410,6 @@ export class MatchService {
       teams: true,
     });
 
-    if (event.state != EventState.SWISS_ROUND)
-      throw new Error("Event is not in swiss round state.");
-
     if (
       event.currentRound != 0 &&
       (await this.matchRepository.findOneBy({
@@ -546,9 +539,6 @@ export class MatchService {
     const event = await this.eventService.getEventById(eventId, {
       teams: true,
     });
-
-    if (event.state != EventState.ELIMINATION_ROUND)
-      throw new Error("Event is not in elimination round state.");
 
     if (event.currentRound == 0)
       return this.createFirstTournamentMatches(event);

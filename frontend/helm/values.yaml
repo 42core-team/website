@@ -56,8 +56,8 @@ env:
   NEXT_PUBLIC_VISUALIZER_URL: ""
   NEXT_PUBLIC_BACKEND_PUBLIC_URL: ""
   # Plausible analytics domain defaults
-  PLAUSIBLE_DOMAIN: coregame.de
-  PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.de"
+  PLAUSIBLE_DOMAIN: coregame.sh
+  PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.sh"
 
 # Secrets - these should be provided via GitHub secrets during deployment
 secrets:

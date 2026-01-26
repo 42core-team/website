@@ -15,14 +15,6 @@ import {
 import { TeamEntity } from "../../team/entities/team.entity";
 import { Exclude } from "class-transformer";
 
-export enum EventState {
-  TEAM_FINDING = "TEAM_FINDING",
-  CODING_PHASE = "CODING_PHASE",
-  SWISS_ROUND = "SWISS_ROUND",
-  ELIMINATION_ROUND = "ELIMINATION_ROUND",
-  FINISHED = "FINISHED",
-}
-
 @Entity("events")
 export class EventEntity {
   @PrimaryGeneratedColumn("uuid")
@@ -67,9 +59,6 @@ export class EventEntity {
 
   @Column({ type: "timestamp", nullable: true })
   lockedAt: Date | null;
-
-  @Column({ type: "enum", enum: EventState, default: EventState.CODING_PHASE })
-  state: EventState;
 
   @Column({ default: 0 })
   currentRound: number;

@@ -5,20 +5,11 @@ import axios from "axios";
 const axiosInstance = axios.create({
   baseURL:
     process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL || process.env.BACKEND_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
-
-function getTokenFromCookieString(cookieString: string): string | null {
-  const parts = cookieString.split(";");
-  for (const part of parts) {
-    const [k, ...rest] = part.trim().split("=");
-    if (k === "token")
-      return decodeURIComponent(rest.join("="));
-  }
-  return null;
-}
 
 axiosInstance.interceptors.request.use(
   async (config) => {
@@ -27,17 +18,14 @@ axiosInstance.interceptors.request.use(
       const cookieData = await require("next/headers").cookies();
       const token = cookieData.get("token");
       if (token)
-        config.headers.Authorization = `Bearer ${token.value}`;
+        config.headers.Cookie = `token=${token.value}`;
 
       config.baseURL = process.env.BACKEND_URL;
       return config;
     }
 
     config.baseURL = process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
-    const token = getTokenFromCookieString(document.cookie || "");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+
     return config;
   },
   (error) => {

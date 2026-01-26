@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { UserEntity } from "./entities/user.entity";
 import { Repository, UpdateResult } from "typeorm";
+import { EventEntity } from "../event/entities/event.entity";
 import { UserInviteSearchResult } from "./dtos/user-search-invite.dto";
 import * as CryptoJS from "crypto-js";
 import { ConfigService } from "@nestjs/config";
@@ -114,12 +115,19 @@ export class UserService {
       .add(teamId);
   }
 
-  searchUsersForInvite(
+  async searchUsersForInvite(
     eventId: string,
     searchQuery: string,
     teamId: string,
   ): Promise<UserInviteSearchResult[]> {
-    return this.userRepository
+    const isEventPublic = await this.userRepository.manager
+      .getRepository(EventEntity)
+      .existsBy({
+        id: eventId,
+        isPrivate: false,
+      });
+
+    const queryBuilder = this.userRepository
       .createQueryBuilder("user")
       .select("user.id", "id")
       .addSelect("user.name", "name")
@@ -129,7 +137,7 @@ export class UserService {
         `(MAX(CASE WHEN inviteTeam.id = :teamId THEN 1 ELSE 0 END) = 1)`,
         "isInvited",
       )
-      .innerJoin("user.events", "event", "event.id = :eventId", { eventId })
+      .leftJoin("user.events", "event", "event.id = :eventId", { eventId })
       .leftJoin("user.teams", "team", "team.eventId = :eventId", { eventId })
       .leftJoin("user.teamInvites", "inviteTeam")
       .leftJoin("inviteTeam.event", "inviteEvent")
@@ -147,7 +155,12 @@ export class UserService {
         "(inviteEvent.id IS NULL OR inviteEvent.id != :eventId OR inviteTeam.id = :teamId)",
         { eventId, teamId },
       )
-      .groupBy("user.id")
-      .getRawMany<UserInviteSearchResult>();
+      .groupBy("user.id");
+
+    if (!isEventPublic) {
+      queryBuilder.andWhere("event.id IS NOT NULL");
+    }
+
+    return queryBuilder.getRawMany<UserInviteSearchResult>();
   }
 }

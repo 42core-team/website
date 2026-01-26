@@ -1,7 +1,6 @@
 "use server";
 
 import type { ServerActionResponse } from "@/app/actions/errors";
-import type { EventState } from "@/app/actions/event-model";
 import axiosInstance, { handleError } from "@/app/actions/axios";
 import { isActionError } from "@/app/actions/errors";
 
@@ -22,7 +21,6 @@ export interface Event {
   canCreateTeam: boolean;
   lockedAt: string | null;
   processQueue: boolean;
-  state: EventState;
   monorepoUrl?: string;
   monorepoVersion?: string;
   gameServerDockerImage?: string;
@@ -51,19 +49,6 @@ export async function isUserRegisteredForEvent(
   return await handleError(
     axiosInstance.get<boolean>(`event/${eventId}/isUserRegistered`),
   );
-}
-
-export async function shouldShowJoinNotice(eventId: string): Promise<boolean> {
-  const isRegistered = await isUserRegisteredForEvent(eventId);
-  if (isRegistered)
-    return false;
-
-  const event = await getEventById(eventId);
-  if (isActionError(event) || !event)
-    return false;
-
-  const endDate = new Date(event.endDate);
-  return endDate > new Date();
 }
 
 export async function isEventAdmin(

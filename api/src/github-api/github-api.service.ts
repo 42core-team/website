@@ -80,8 +80,10 @@ export class GithubApiService {
   async createTeamRepository(
     name: string,
     teamName: string,
-    username: string,
-    userGithubAccessToken: string,
+    githubUsers: {
+      username: string,
+      githubAccessToken: string,
+    }[],
     githubOrg: string,
     encryptedSecret: string,
     teamId: string,
@@ -94,8 +96,7 @@ export class GithubApiService {
     this.githubClient.emit("create_team_repository", {
       name,
       teamName,
-      username,
-      userGithubAccessToken,
+      githubUsers,
       githubOrg,
       encryptedSecret,
       teamId,
