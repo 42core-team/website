@@ -61,6 +61,7 @@ env:
 
 # Secrets - these should be provided via GitHub secrets during deployment
 secrets:
+  NEXTAUTH_SECRET: ""
   CLIENT_SECRET_GITHUB: ""
   BACKEND_SECRET: ""
   # 42 OAuth Client Secret - sensitive data
