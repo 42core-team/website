@@ -39,7 +39,7 @@ export class AuthController {
       res.cookie("token", token, {
         httpOnly: true,
         secure: true,
-        sameSite: "lax",
+        sameSite: "none",
         domain: ".coregame.sh",
         maxAge: 30 * 24 * 60 * 60 * 1000,
       });
