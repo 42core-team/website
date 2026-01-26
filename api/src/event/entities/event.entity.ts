@@ -95,6 +95,12 @@ export class EventEntity {
   @Column({ nullable: true, default: "dev" })
   monorepoVersion: string;
 
+  @Column({ nullable: false, default: "my-core-bot" })
+  basePath: string;
+
+  @Column({ nullable: true })
+  gameConfig: string;
+
   @Column({ default: false })
   isPrivate: boolean;
 

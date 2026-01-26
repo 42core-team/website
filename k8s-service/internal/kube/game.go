@@ -58,6 +58,23 @@ func (c *Client) CreateGameJob(game *Game) error {
 
 	volumeSizeLimit := resource.MustParse("250Mi")
 
+	// Define and create ConfigMap for game config
+	configMapName := "game-config-" + game.ID.String()
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      configMapName,
+			Namespace: c.namespace,
+		},
+		Data: map[string]string{
+			"server.game.config": game.GameConfig,
+		},
+	}
+
+	_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Create(context.TODO(), configMap, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create configmap: %w", err)
+	}
+
 	for _, bot := range game.Bots {
 		volumeName := "shared-data-" + bot.ID.String()
 		initContainerName := "clone-repo-" + bot.ID.String()
@@ -151,12 +168,12 @@ func (c *Client) CreateGameJob(game *Game) error {
 	}
 
 	gameEnv := []corev1.EnvVar{
-		{ Name: "GAME_ID",          Value: game.ID.String() },
-		{ Name: "SEND_RESULTS",     Value: "true" },
-		{ Name: "RABBITMQ_URL",     Value: c.cfg.RabbitMQHTTP + "/api/exchanges/%2f/amq.direct/publish" },
-		{ Name: "S3_PRESIGNED_URL", Value: presignedURL },
-		{ Name: "UPLOAD_REPLAY",    Value: "true" },
-		{ Name: "BOT_ID_MAPPING",   Value: string(botMappingJSON) },
+		{Name: "GAME_ID", Value: game.ID.String()},
+		{Name: "SEND_RESULTS", Value: "true"},
+		{Name: "RABBITMQ_URL", Value: c.cfg.RabbitMQHTTP + "/api/exchanges/%2f/amq.direct/publish"},
+		{Name: "S3_PRESIGNED_URL", Value: presignedURL},
+		{Name: "UPLOAD_REPLAY", Value: "true"},
+		{Name: "BOT_ID_MAPPING", Value: string(botMappingJSON)},
 	}
 	gameEnv = append(gameEnv, playerNameEnvs...)
 
@@ -173,6 +190,13 @@ func (c *Client) CreateGameJob(game *Game) error {
 				Type: corev1.SeccompProfileTypeRuntimeDefault,
 			},
 			Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "game-config",
+				MountPath: "/core/configs/server.game.config",
+				SubPath:   "server.game.config",
+			},
 		},
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
@@ -249,12 +273,26 @@ func (c *Client) CreateGameJob(game *Game) error {
 		},
 	}
 
-	_, err = c.clientset.BatchV1().Jobs(c.namespace).Create(context.TODO(), job, metav1.CreateOptions{})
+	createdJob, err := c.clientset.BatchV1().Jobs(c.namespace).Create(context.TODO(), job, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create job: %v", err)
 	}
 
-	c.logger.Infoln("Job to run a game successfully created", "jobName", job.Name)
+	// Set OwnerReference for ConfigMap to the Job for automatic cleanup
+	configMap.ObjectMeta.OwnerReferences = []metav1.OwnerReference{
+		{
+			APIVersion: "batch/v1",
+			Kind:       "Job",
+			Name:       createdJob.Name,
+			UID:        createdJob.UID,
+		},
+	}
+	_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Update(context.TODO(), configMap, metav1.UpdateOptions{})
+	if err != nil {
+		c.logger.Errorf("failed to set owner reference on configmap %s: %v", configMapName, err)
+	}
+
+	c.logger.Infoln("Job to run a game successfully created", "jobName", createdJob.Name)
 	return nil
 }
 

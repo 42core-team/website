@@ -50,6 +50,8 @@ const formSchema = z.object({
   gameServerImageTag: z.string().optional(),
   myCoreBotImageTag: z.string().optional(),
   visualizerImageTag: z.string().optional(),
+  basePath: z.string().min(1, "Base path is required"),
+  gameConfig: z.string().min(1, "Game config is required"),
   isPrivate: z.boolean(),
 });
 
@@ -161,11 +163,16 @@ export default function CreateEventForm() {
       gameServerImageTag: "",
       myCoreBotImageTag: "",
       visualizerImageTag: "",
+      basePath: "bots/softcore",
+      gameConfig: "",
       isPrivate: false,
     },
   });
 
   const monorepoUrl = form.watch("monorepoUrl");
+  const monorepoVersion = form.watch("monorepoVersion");
+  const basePath = form.watch("basePath");
+  const [isFetchingConfig, setIsFetchingConfig] = useState(false);
 
   // Extract owner/repo from a GitHub URL like https://github.com/owner/repo
   const parseGitHubRepo = (
@@ -237,6 +244,42 @@ export default function CreateEventForm() {
     };
   }, [monorepoUrl]);
 
+  // Fetch game config when version or base path changes
+  useEffect(() => {
+    const parsed = parseGitHubRepo(monorepoUrl);
+    if (!parsed || !monorepoVersion || !basePath) {
+      return;
+    }
+
+    let cancelled = false;
+    const fetchConfig = async () => {
+      setIsFetchingConfig(true);
+      try {
+        const rawUrl = `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/${monorepoVersion}/${basePath}/configs/game.config.json`;
+        const res = await fetch(rawUrl);
+        if (res.ok) {
+          const configText = await res.text();
+          if (!cancelled) {
+            form.setValue("gameConfig", configText);
+          }
+        }
+      }
+      catch (e) {
+        console.error("Failed to fetch game config:", e);
+      }
+      finally {
+        if (!cancelled)
+          setIsFetchingConfig(false);
+      }
+    };
+
+    const timer = setTimeout(fetchConfig, 500); // Debounce
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [monorepoUrl, monorepoVersion, basePath, form]);
+
   function combineImageAndTag(
     image: string | undefined,
     tag: string | undefined,
@@ -300,6 +343,8 @@ export default function CreateEventForm() {
       gameServerDockerImage: gameServerDockerImageString,
       myCoreBotDockerImage: myCoreBotDockerImageString,
       visualizerDockerImage: visualizerDockerImageString,
+      basePath: values.basePath.trim(),
+      gameConfig: values.gameConfig,
       isPrivate: values.isPrivate,
     });
 
@@ -471,7 +516,7 @@ export default function CreateEventForm() {
                             onSelect={field.onChange}
                             disabled={date =>
                               date < new Date(new Date().setHours(0, 0, 0, 0))}
-                            initialFocus
+                            autoFocus
                           />
                           <div className="p-3 border-t">
                             <Input
@@ -662,6 +707,56 @@ export default function CreateEventForm() {
                           {...field}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <FormField
+                  control={form.control}
+                  name="basePath"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Base Path *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="bots/softcore"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Path in the monorepo where the game logic is located (e.g., bots/softcore)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="gameConfig"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Game Configuration (JSON) *</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Textarea
+                            placeholder='{ "rounds": 100, ... }'
+                            className="min-h-[200px] font-mono text-sm"
+                            {...field}
+                          />
+                          {isFetchingConfig && (
+                            <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
+                              <span className="text-xs font-medium">Fetching default config...</span>
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Configuration for the game server. Will be auto-filled if found in the monorepo.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
