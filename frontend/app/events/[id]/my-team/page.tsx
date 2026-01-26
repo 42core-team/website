@@ -1,14 +1,22 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/utils/authOptions";
-import { redirect } from "next/navigation";
+import type { Team } from "@/app/actions/team";
 import {
-  getMyEventTeam,
-  Team,
-  getTeamMembers,
-  getUserPendingInvites,
-  TeamMember,
-} from "@/app/actions/team";
-import { isUserRegisteredForEvent } from "@/app/actions/event";
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+} from "@tanstack/react-query";
+import { getServerSession } from "next-auth/next";
+import { redirect } from "next/navigation";
+import { isActionError } from "@/app/actions/errors";
+import { getEventById, isUserRegisteredForEvent } from "@/app/actions/event";
+import { authOptions } from "@/app/utils/authOptions";
+import {
+  myTeamQueryFn,
+  myTeamQueryKey,
+  pendingInvitesQueryFn,
+  pendingInvitesQueryKey,
+  teamMembersQueryFn,
+  teamMembersQueryKey,
+} from "./queries";
 import TeamView from "./teamView";
 
 export const metadata = {
@@ -23,7 +31,7 @@ export default async function Page({
 }) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user || !session.user.id) {
-    redirect("/login");
+    redirect("/");
   }
 
   const eventId = (await params).id;
@@ -33,22 +41,35 @@ export default async function Page({
     redirect(`/events/${eventId}`);
   }
 
-  const team = await getMyEventTeam(eventId);
-
-  // Fetch team members if user has a team
-  let teamMembers: TeamMember[] = [];
-  if (team) {
-    teamMembers = await getTeamMembers(team.id);
+  const event = await getEventById(eventId);
+  if (isActionError(event)) {
+    redirect(`/events/${eventId}`);
   }
 
-  // Fetch pending invites
-  const pendingInvites = await getUserPendingInvites(eventId);
+  const queryClient = new QueryClient();
+
+  const team = await queryClient.fetchQuery({
+    queryKey: myTeamQueryKey(eventId),
+    queryFn: () => myTeamQueryFn(eventId),
+  });
+
+  const teamId = (team as Team | null)?.id;
+
+  if (teamId) {
+    await queryClient.prefetchQuery({
+      queryKey: teamMembersQueryKey(teamId),
+      queryFn: () => teamMembersQueryFn(teamId),
+    });
+  }
+
+  await queryClient.prefetchQuery({
+    queryKey: pendingInvitesQueryKey(eventId),
+    queryFn: () => pendingInvitesQueryFn(eventId),
+  });
 
   return (
-    <TeamView
-      initialTeam={team}
-      teamMembers={teamMembers}
-      pendingInvites={pendingInvites}
-    />
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <TeamView eventId={eventId} canCreateTeam={event.canCreateTeam} />
+    </HydrationBoundary>
   );
 }

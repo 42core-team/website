@@ -1,9 +1,9 @@
 "use server";
 
+import type { ServerActionResponse } from "@/app/actions/errors";
+import type { QueueState } from "@/app/actions/team.model";
+import type { Match } from "@/app/actions/tournament-model";
 import axiosInstance, { handleError } from "@/app/actions/axios";
-import { ServerActionResponse } from "@/app/actions/errors";
-import { Match } from "@/app/actions/tournament-model";
-import { QueueState } from "@/app/actions/team.model";
 
 export interface Team {
   id: string;
@@ -83,7 +83,8 @@ export async function getTeamById(teamId: string): Promise<Team | null> {
 export async function getMyEventTeam(eventId: string): Promise<Team | null> {
   const team = (await axiosInstance.get(`team/event/${eventId}/my`)).data;
 
-  if (!team) return null;
+  if (!team)
+    return null;
 
   // TODO: directly return team object if API response is already in the correct format
   return {
@@ -101,17 +102,6 @@ export async function getMyEventTeam(eventId: string): Promise<Team | null> {
 
 export async function lockEvent(eventId: string) {
   return (await axiosInstance.put(`event/${eventId}/lock`)).data;
-}
-
-export async function createTeam(
-  name: string,
-  eventId: string,
-): Promise<ServerActionResponse<Team>> {
-  return await handleError(
-    axiosInstance.post(`team/event/${eventId}/create`, {
-      name,
-    }),
-  );
 }
 
 /**

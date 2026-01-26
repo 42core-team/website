@@ -15,36 +15,36 @@ resources:
 env:
   NODE_ENV: production
   # NextAuth Configuration
-  NEXTAUTH_URL: "https://dev.coregame.de"
+  NEXTAUTH_URL: "https://dev.coregame.sh"
   # GitHub OAuth Configuration
-  CLIENT_ID_GITHUB: "dev-github-client-id"
+  CLIENT_ID_GITHUB: dev-github-client-id
   # 42 OAuth Configuration - public variable
-  NEXT_PUBLIC_FORTY_TWO_CLIENT_ID: "dev-42-client-id"
+  NEXT_PUBLIC_FORTY_TWO_CLIENT_ID: dev-42-client-id
   # Backend API Configuration
   BACKEND_URL: "http://api-dev" # internal API route
-  NEXT_PUBLIC_VISUALIZER_URL: "https://dev.visualizer.coregame.de"
-  NEXT_PUBLIC_BACKEND_PUBLIC_URL: "https://dev.api.coregame.de" # public API route accessible from outside the cluster
+  NEXT_PUBLIC_VISUALIZER_URL: "https://dev.visualizer.coregame.sh"
+  NEXT_PUBLIC_BACKEND_PUBLIC_URL: "https://dev.api.coregame.sh" # public API route accessible from outside the cluster
   # Plausible analytics domain defaults for dev
-  PLAUSIBLE_DOMAIN: "dev.coregame.de"
-  PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.de"
+  PLAUSIBLE_DOMAIN: dev.coregame.sh
+  PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.sh"
 
 ingress:
   enabled: true
-  className: "nginx"
+  className: nginx
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-#    nginx.ingress.kubernetes.io/limit-rps: "5"
-#    nginx.ingress.kubernetes.io/limit-burst: "10"
-#    nginx.ingress.kubernetes.io/limit-connections: "20"
+  #    nginx.ingress.kubernetes.io/limit-rps: "5"
+  #    nginx.ingress.kubernetes.io/limit-burst: "10"
+  #    nginx.ingress.kubernetes.io/limit-connections: "20"
   hosts:
-    - host: dev.coregame.de
+    - host: dev.coregame.sh
       paths:
         - path: /
           pathType: Prefix
   tls:
     - hosts:
-        - dev.coregame.de
+        - dev.coregame.sh
       secretName: dev-coregame-de-tls
 
 nodeSelector: {}

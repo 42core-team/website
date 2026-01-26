@@ -1,26 +1,25 @@
-import HomePageClient from "@/components/HomePageClient";
-import { getGlobalStats } from "@/app/actions/stats";
-import { getCurrentLiveEvent } from "@/app/actions/event";
 import { isActionError } from "@/app/actions/errors";
+import { getCurrentLiveEvent } from "@/app/actions/event";
+import { getGlobalStats } from "@/app/actions/stats";
+import HomePageClient from "@/components/HomePageClient";
 
 export default async function HomePage() {
   const globalStats = await getGlobalStats();
   const currentLiveEvent = await getCurrentLiveEvent();
   if (isActionError(currentLiveEvent)) {
-    console.log(currentLiveEvent);
     throw new Error("Failed to load current live event");
   }
 
-  const baseUrl = process.env.NEXTAUTH_URL ?? "https://coregame.de";
+  const baseUrl = process.env.NEXTAUTH_URL ?? "https://coregame.sh";
 
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "CORE Game",
-    url: baseUrl,
-    potentialAction: {
+    "name": "CORE Game",
+    "url": baseUrl,
+    "potentialAction": {
       "@type": "SearchAction",
-      target: `${baseUrl}/wiki?query={search_term_string}`,
+      "target": `${baseUrl}/wiki?query={search_term_string}`,
       "query-input": "required name=search_term_string",
     },
   };
@@ -28,26 +27,26 @@ export default async function HomePage() {
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "CORE Game",
-    url: baseUrl,
-    logo: `${baseUrl}/CORE-LOGO.svg`,
-    sameAs: ["https://github.com/42core-team"],
+    "name": "CORE Game",
+    "url": baseUrl,
+    "logo": `${baseUrl}/CORE-LOGO.svg`,
+    "sameAs": ["https://github.com/42core-team"],
   };
 
   const eventJsonLd = currentLiveEvent
     ? {
         "@context": "https://schema.org",
         "@type": "Event",
-        name: currentLiveEvent.name,
-        startDate: currentLiveEvent.startDate,
-        endDate: currentLiveEvent.endDate,
-        eventStatus: "https://schema.org/EventScheduled",
-        eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
-        url: `${baseUrl}/events/${currentLiveEvent.id}`,
-        organizer: {
+        "name": currentLiveEvent.name,
+        "startDate": currentLiveEvent.startDate,
+        "endDate": currentLiveEvent.endDate,
+        "eventStatus": "https://schema.org/EventScheduled",
+        "eventAttendanceMode": "https://schema.org/OnlineEventAttendanceMode",
+        "url": `${baseUrl}/events/${currentLiveEvent.id}`,
+        "organizer": {
           "@type": "Organization",
-          name: "CORE Game",
-          url: baseUrl,
+          "name": "CORE Game",
+          "url": baseUrl,
         },
       }
     : null;

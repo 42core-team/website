@@ -1,5 +1,6 @@
-const fs = require("fs");
-const path = require("path");
+/* eslint-disable no-console */
+const fs = require("node:fs");
+const path = require("node:path");
 const axios = require("axios");
 
 const PER_PAGE = 100;
@@ -17,23 +18,25 @@ async function fetchAllReleases() {
     const { data } = await axios.get(url, {
       headers: {
         "User-Agent": "coregame-build",
-        Accept: "application/vnd.github+json",
+        "Accept": "application/vnd.github+json",
       },
-      validateStatus: (s) => s >= 200 && s < 500,
+      validateStatus: s => s >= 200 && s < 500,
     });
 
     if (!Array.isArray(data)) {
-      throw new Error(
+      throw new TypeError(
         `GitHub API error (status likely 4xx/5xx). Response: ${JSON.stringify(
           data,
         ).slice(0, 200)}...`,
       );
     }
 
-    if (data.length === 0) break;
+    if (data.length === 0)
+      break;
 
     for (const r of data) {
-      if (r.draft || r.prerelease) continue;
+      if (r.draft || r.prerelease)
+        continue;
       all.push({
         id: r.id,
         tag_name: r.tag_name,
@@ -45,12 +48,14 @@ async function fetchAllReleases() {
       });
     }
 
-    if (data.length < PER_PAGE) break;
+    if (data.length < PER_PAGE)
+      break;
     page += 1;
   }
 
   all.sort(
-    (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
+    (a, b) =>
+      new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
   );
 
   return all;
@@ -67,7 +72,8 @@ async function fetchAllReleases() {
         OUT_FILE,
       )}`,
     );
-  } catch (err) {
+  }
+  catch (err) {
     console.error("Failed to fetch releases:", err?.message || err);
     process.exit(1);
   }

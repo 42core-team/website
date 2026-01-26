@@ -1,66 +1,70 @@
 import {
-    Column,
-    CreateDateColumn, DeleteDateColumn,
-    Entity,
-    JoinTable,
-    ManyToMany,
-    ManyToOne,
-    PrimaryGeneratedColumn,
-    UpdateDateColumn,
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from "typeorm";
-import {EventEntity} from "../../event/entities/event.entity";
-import {UserEntity} from "../../user/entities/user.entity";
-import {MatchEntity} from "../../match/entites/match.entity";
+import { EventEntity } from "../../event/entities/event.entity";
+import { UserEntity } from "../../user/entities/user.entity";
+import { MatchEntity } from "../../match/entites/match.entity";
 
 @Entity("teams")
 export class TeamEntity {
-    @PrimaryGeneratedColumn("uuid")
-    id: string;
+  @PrimaryGeneratedColumn("uuid")
+  id: string;
 
-    @Column()
-    name: string;
+  @Column()
+  name: string;
 
-    @Column({default: false})
-    locked: boolean;
+  @Column({ default: false })
+  locked: boolean;
 
-    @Column({nullable: true})
-    repo: string;
+  @Column({ nullable: true })
+  repo: string;
 
-    @Column({default: 0})
-    score: number;
+  @Column({nullable: true, type: "timestamp" })
+  startedRepoCreationAt: Date | null;
 
-    @Column({default: 0})
-    buchholzPoints: number;
+  @Column({ default: 0 })
+  score: number;
 
-    @Column({default: 1000})
-    queueScore: number;
+  @Column({ default: 0 })
+  buchholzPoints: number;
 
-    @Column({default: false})
-    inQueue: boolean;
+  @Column({ default: 1000 })
+  queueScore: number;
 
-    @ManyToOne(() => EventEntity, (event) => event.teams)
-    event: EventEntity;
+  @Column({ default: false })
+  inQueue: boolean;
 
-    @JoinTable({name: "teams_users"})
-    @ManyToMany(() => UserEntity, (user) => user.teams)
-    users: UserEntity[];
+  @ManyToOne(() => EventEntity, (event) => event.teams)
+  event: EventEntity;
 
-    @ManyToMany(() => MatchEntity, (match) => match.teams)
-    matches: MatchEntity[];
+  @JoinTable({ name: "teams_users" })
+  @ManyToMany(() => UserEntity, (user) => user.teams)
+  users: UserEntity[];
 
-    @Column({default: false})
-    hadBye: boolean;
+  @ManyToMany(() => MatchEntity, (match) => match.teams)
+  matches: MatchEntity[];
 
-    @JoinTable({name: "teams_invites_users"})
-    @ManyToMany(() => UserEntity, (user) => user.teamInvites)
-    teamInvites: UserEntity[];
+  @Column({ default: false })
+  hadBye: boolean;
 
-    @CreateDateColumn()
-    createdAt: Date;
+  @JoinTable({ name: "teams_invites_users" })
+  @ManyToMany(() => UserEntity, (user) => user.teamInvites)
+  teamInvites: UserEntity[];
 
-    @UpdateDateColumn()
-    updatedAt: Date;
+  @CreateDateColumn()
+  createdAt: Date;
 
-    @DeleteDateColumn()
-    deletedAt: Date | null;
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @DeleteDateColumn()
+  deletedAt: Date | null;
 }

@@ -39,7 +39,7 @@ brew install pnpm
 2. Set up environment variables:
 
    ```bash
-   cp .env.example .env.local
+   cp .env.example .env
    ```
 
    Edit `.env.local` with your configuration (see [Environment Variables](#environment-variables) below).
@@ -106,3 +106,21 @@ This service runs as both:
 * **Microservice** - RabbitMQ message consumer for:
   * `game_results` - Match result processing
   * `github-service-results` - GitHub operation results
+
+## Environment Variables
+
+### GitHub OAuth (Required)
+
+1. Go to GitHub → Settings → Developer settings → OAuth Apps
+2. Register a new OAuth app
+3. Set Authorization callback URL: `http://localhost:4000/auth/github/callback`
+4. Add Client ID and Secret to `.env.local`
+
+### 42 School OAuth (Optional)
+
+For testing account linking functionality:
+
+1. Go to 42 School → Settings → API → Applications
+2. Create a new application
+3. Set Redirect URI: `http://localhost:4000/auth/42/callback`
+4. Add Client ID and Client Secret to `.env.local`

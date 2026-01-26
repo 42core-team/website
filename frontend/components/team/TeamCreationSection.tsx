@@ -1,5 +1,7 @@
-import { Button } from "@heroui/react";
-import { Input } from "@heroui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 interface TeamCreationSectionProps {
   newTeamName: string;
@@ -10,42 +12,45 @@ interface TeamCreationSectionProps {
   validationError?: string | null;
 }
 
-export const TeamCreationSection = ({
+export function TeamCreationSection({
   newTeamName,
   setNewTeamName,
   handleCreateTeam,
   isLoading,
   errorMessage,
   validationError,
-}: TeamCreationSectionProps) => (
-  <div className="bg-default-50 p-5 rounded-lg border border-default-200">
-    <h2 className="text-xl font-semibold mb-4">Create Your Team</h2>
-    <div className="flex flex-col gap-2">
-      <div className="flex gap-2 items-center">
-        <Input
-          label="Team Name"
-          placeholder="Enter team name"
-          value={newTeamName}
-          onChange={(e) => setNewTeamName(e.target.value)}
-          className="flex-1"
-        />
-        <Button
-          color="primary"
-          onPress={handleCreateTeam}
-          isLoading={isLoading}
-          isDisabled={!newTeamName || !!validationError}
-        >
-          Create Team
-        </Button>
-      </div>
-      {validationError && (
-        <div className="text-danger text-sm mt-1">{validationError}</div>
-      )}
-      {errorMessage && (
-        <div className="text-danger text-sm mt-1">{errorMessage}</div>
-      )}
-    </div>
-  </div>
-);
+}: TeamCreationSectionProps) {
+  return (
+    <Card className="rounded-lg border">
+      <CardHeader>
+        <CardTitle className="text-xl font-semibold">Create Your Team</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-row gap-2">
+          <Input
+            id="team-name"
+            placeholder="Enter team name"
+            value={newTeamName}
+            onChange={e => setNewTeamName(e.target.value)}
+          />
+          <Button
+            onClick={handleCreateTeam}
+            disabled={!newTeamName || !!validationError || isLoading}
+          >
+            {isLoading ? <Spinner /> : "Create Team"}
+          </Button>
+        </div>
+        <div className="mt-2">
+          {validationError && (
+            <div className="text-destructive text-sm">{validationError}</div>
+          )}
+          {errorMessage && (
+            <div className="text-destructive text-sm">{errorMessage}</div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default TeamCreationSection;

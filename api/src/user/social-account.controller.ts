@@ -15,8 +15,8 @@ import {
   SocialAccountEntity,
   SocialPlatform,
 } from "./entities/social-account.entity";
-import { FrontendGuard, UserId } from "src/guards/FrontendGuard";
-import {UserGuard} from "../guards/UserGuard";
+import { UserId } from "../guards/UserGuard";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 class LinkSocialAccountDto {
   platform: SocialPlatform;
@@ -24,37 +24,17 @@ class LinkSocialAccountDto {
   platformUserId: string;
 }
 
-@UseGuards(FrontendGuard, UserGuard)
+@UseGuards(JwtAuthGuard)
 @ApiTags("social-accounts")
 @Controller("social-accounts")
 export class SocialAccountController {
   constructor(private readonly socialAccountService: SocialAccountService) {}
 
-  @Post("link")
-  @ApiOperation({ summary: "Link a social account to the authenticated user" })
-  @ApiResponse({
-    status: 200,
-    description: "Social account linked successfully",
-  })
-  @ApiResponse({
-    status: 409,
-    description: "Social account already linked to another user",
-  })
-  async linkSocialAccount(
-    @UserId() userId: string,
-    @Body() linkDto: LinkSocialAccountDto,
-  ): Promise<SocialAccountEntity> {
-    return await this.socialAccountService.linkSocialAccount(
-      userId,
-      linkDto.platform,
-      linkDto.username,
-      linkDto.platformUserId,
-    );
-  }
-
   @Delete(":platform")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: "Unlink a social account from the authenticated user" })
+  @ApiOperation({
+    summary: "Unlink a social account from the authenticated user",
+  })
   @ApiResponse({
     status: 204,
     description: "Social account unlinked successfully",
@@ -68,7 +48,9 @@ export class SocialAccountController {
   }
 
   @Get()
-  @ApiOperation({ summary: "Get all social accounts for the authenticated user" })
+  @ApiOperation({
+    summary: "Get all social accounts for the authenticated user",
+  })
   @ApiResponse({
     status: 200,
     description: "Social accounts retrieved successfully",
@@ -80,7 +62,9 @@ export class SocialAccountController {
   }
 
   @Get(":platform")
-  @ApiOperation({ summary: "Get a specific social account for the authenticated user" })
+  @ApiOperation({
+    summary: "Get a specific social account for the authenticated user",
+  })
   @ApiResponse({
     status: 200,
     description: "Social account retrieved successfully",

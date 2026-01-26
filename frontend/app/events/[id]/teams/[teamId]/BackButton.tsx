@@ -1,15 +1,14 @@
 "use client";
 
 import { ArrowLeftIcon } from "@/components/icons";
-import { Button } from "@heroui/react";
+import { Button } from "@/components/ui/button";
 
 export default function BackButton() {
   return (
     <Button
-      type="button"
       variant="ghost"
       aria-label="Back to teams list"
-      onPress={() => {
+      onClick={() => {
         window.history.back();
       }}
     >

@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { OAUTH_PROVIDERS, OAUTH_CONFIG } from "@/lib/constants/oauth";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { OAUTH_CONFIG, OAUTH_PROVIDERS } from "@/lib/constants/oauth";
 
 /**
  * OAuth callback component that handles the complete OAuth flow
@@ -17,7 +17,8 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
   const processingRef = useRef<string | null>(null);
 
   const handleOAuthCallback = async (code: string, state: string) => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id)
+      return;
 
     setIsProcessing(true);
     setError(null);
@@ -30,8 +31,8 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          code: code,
-          state: state,
+          code,
+          state,
         }),
       });
 
@@ -43,7 +44,8 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
 
       // Success! Redirect to profile with success message
       router.push(`/profile?success=linked-${provider}`);
-    } catch (err: any) {
+    }
+    catch (err: any) {
       console.error(`Error linking ${provider} account:`, err);
       setError(err.message || `Failed to link ${provider} account`);
 
@@ -52,14 +54,16 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
         OAUTH_CONFIG.SESSION_STORAGE_KEYS.PROCESSED_CODE,
       );
       processingRef.current = null;
-    } finally {
+    }
+    finally {
       setIsProcessing(false);
     }
   };
 
   useEffect(() => {
     // Wait for session to load
-    if (status === "loading") return;
+    if (status === "loading")
+      return;
 
     // If not authenticated, redirect to login
     if (!session?.user?.id) {
@@ -108,11 +112,13 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
           code,
         );
         handleOAuthCallback(code, state);
-      } else {
+      }
+      else {
         setError("Invalid OAuth state. Please try again.");
         processingRef.current = null;
       }
-    } else if (!code && !state) {
+    }
+    else if (!code && !state) {
       // No OAuth parameters, redirect to profile
       router.push("/profile");
     }
@@ -124,18 +130,18 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
         <div className="max-w-md mx-auto text-center">
           <div className="p-6 bg-danger-50 border border-danger-200 rounded-lg dark:bg-danger-100/10">
             <div className="flex items-start gap-3">
-              <span className="text-danger text-2xl flex-shrink-0">⚠️</span>
+              <span className="text-destructive text-2xl shrink-0">⚠️</span>
               <div className="flex-1 min-w-0">
-                <p className="text-lg font-medium text-danger mb-2">
+                <p className="text-lg font-medium text-destructive mb-2">
                   OAuth Error
                 </p>
-                <p className="text-sm text-danger-600 mb-4 break-words">
+                <p className="text-sm text-destructive-600 mb-4 wrap-break-word">
                   {error}
                 </p>
                 <div className="flex gap-2 justify-center">
                   <button
                     onClick={() => router.push("/profile")}
-                    className="px-4 py-2 bg-danger-100 text-danger-700 rounded-md hover:bg-danger-200 transition-colors"
+                    className="px-4 py-2 bg-danger-100 text-destructive-700 rounded-md hover:bg-danger-200 transition-colors"
                   >
                     Go to Profile
                   </button>
@@ -158,12 +164,12 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
     <div className="flex justify-center items-center min-h-lvh">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-        <p className="mt-4 text-lg text-default-600">
+        <p className="mt-4 text-lg ">
           {isProcessing
             ? `Linking ${provider} account...`
             : `Processing ${provider} OAuth callback...`}
         </p>
-        <p className="mt-2 text-sm text-default-500">
+        <p className="mt-2 text-sm text-muted-foreground">
           Please wait while we complete the authentication process.
         </p>
       </div>

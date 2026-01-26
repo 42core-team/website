@@ -1,11 +1,11 @@
-import React from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Card } from "@/components/clientHeroui";
-import { getTeamById, getTeamMembers } from "@/app/actions/team";
-import TeamUserTable from "./TeamUserTable";
-import BackButton from "./BackButton";
-import { Metadata } from "next";
+import React from "react";
 import { isActionError } from "@/app/actions/errors";
+import { getTeamById, getTeamMembers } from "@/app/actions/team";
+import { Card } from "@/components/ui/card";
+import BackButton from "./BackButton";
+import TeamUserTable from "./TeamUserTable";
 
 export async function generateMetadata({
   params,
@@ -36,7 +36,7 @@ interface TeamDetailPageProps {
 }
 
 export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
-  const { teamId, id } = await params;
+  const { teamId } = await params;
 
   const members = await getTeamMembers(teamId);
   const teamInfo = await getTeamById(teamId);
@@ -50,7 +50,10 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
         <div className="flex flex-col gap-2 mb-4">
           <div className="flex items-center gap-4">
             <BackButton />
-            <h1 className="text-2xl font-bold">Team {teamInfo.name}</h1>
+            <h1 className="text-2xl font-bold">
+              Team
+              {teamInfo.name}
+            </h1>
           </div>
         </div>
         <TeamUserTable members={members} />

@@ -1,89 +1,95 @@
 "use client";
 
+import type { Event } from "@/app/actions/event";
+import { useRouter } from "next/navigation";
+
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
-  TableHeader,
   TableBody,
-  TableColumn,
-  TableRow,
   TableCell,
-  Chip,
-} from "@heroui/react";
-import { useRouter } from "next/navigation";
-import { Event } from "@/app/actions/event";
-import { EventState } from "@/app/actions/event-model";
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-export default function EventsTable({ events }: { events: Event[] }) {
+export default function EventsTable({ events }: Readonly<{ events: Event[] }>) {
   const router = useRouter();
-  const formatState = (state: EventState) => {
-    switch (state) {
-      case EventState.TEAM_FINDING:
-        return "Team Finding";
-      case EventState.CODING_PHASE:
-        return "Coding Phase";
-      case EventState.SWISS_ROUND:
-        return "Swiss Round";
-      case EventState.ELIMINATION_ROUND:
-        return "Elimination Round";
-      case EventState.FINISHED:
-        return "Finished";
-      default:
-        return state;
-    }
-  };
 
-  const stateColor = (
-    state: EventState,
-  ): "default" | "primary" | "secondary" | "success" | "warning" | "danger" => {
-    switch (state) {
-      case EventState.TEAM_FINDING:
-        return "primary";
-      case EventState.CODING_PHASE:
-        return "secondary";
-      case EventState.SWISS_ROUND:
-        return "warning";
-      case EventState.ELIMINATION_ROUND:
-        return "warning";
-      case EventState.FINISHED:
-        return "success";
-      default:
-        return "default";
+  const formatState = (
+    event: Event,
+  ): {
+    text: string;
+    variant: "default" | "secondary" | "destructive";
+  } => {
+    console.log("try to format state for event", event);
+    const hasStarted = Date.now() >= new Date(event.startDate).getTime();
+
+    if (!hasStarted) {
+      return {
+        text: "Team finding",
+        variant: "default",
+      };
     }
+
+    if (event.currentRound === 0) {
+      return {
+        text: "In Progress",
+        variant: "secondary",
+      };
+    }
+
+    return {
+      text: "Completed",
+      variant: "destructive",
+    };
   };
 
   return (
-    <Table
-      aria-label="Events table"
-      className="mb-8"
-      onRowAction={(key) => router.push(`/events/${String(key)}`)}
-    >
-      <TableHeader>
-        <TableColumn>Name</TableColumn>
-        <TableColumn>Start Date</TableColumn>
-        <TableColumn>Team Size</TableColumn>
-        <TableColumn>State</TableColumn>
-      </TableHeader>
-      <TableBody items={events} emptyContent="No events found">
-        {(event) => (
-          <TableRow
-            key={event.id}
-            className="cursor-pointer transition-colors hover:bg-default-100"
-          >
-            <TableCell>{event.name}</TableCell>
-            <TableCell>
-              {new Date(event.startDate).toLocaleDateString()}
-            </TableCell>
-            <TableCell>
-              {event.minTeamSize} - {event.maxTeamSize} members
-            </TableCell>
-            <TableCell>
-              <Chip size="sm" variant="flat" color={stateColor(event.state)}>
-                {formatState(event.state)}
-              </Chip>
-            </TableCell>
+    <div className="mb-8">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Start Date</TableHead>
+            <TableHead>Team Size</TableHead>
+            <TableHead>State</TableHead>
           </TableRow>
-        )}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {events.length === 0 ? (
+            <TableRow>
+              <TableCell
+                colSpan={4}
+                className="text-center text-muted-foreground"
+              >
+                No events found
+              </TableCell>
+            </TableRow>
+          ) : (
+            events.map((event) => (
+              <TableRow
+                key={event.id}
+                className="cursor-pointer transition-colors hover:bg-muted/50"
+                onClick={() => router.push(`/events/${event.id}`)}
+              >
+                <TableCell className="font-medium">{event.name}</TableCell>
+                <TableCell>
+                  {new Date(event.startDate).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  {event.minTeamSize} -{event.maxTeamSize} members
+                </TableCell>
+                <TableCell>
+                  <Badge variant={formatState(event).variant}>
+                    {formatState(event).text}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

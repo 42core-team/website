@@ -60,15 +60,17 @@ env:
   DB_SCHEMA: ""
   K8S_SERVICE_URL: ""
   DB_SSL_REQUIRED: "true"
-  # Add other environment variables as needed
 
-# Secrets - these should be provided via GitHub secrets during deployment
+# These are placeholders.
+# Values are injected at runtime via --set flags in the CI/CD pipeline.
 secrets:
   DB_PASSWORD: ""
   DB_URL: ""
   API_SECRET_ENCRYPTION_KEY: ""
-  FRONTEND_SECRET: ""
   RABBITMQ_URL: ""
+  JWT_SECRET: ""
+  CLIENT_GITHUB_SECRET: ""
+  FORTYTWO_CLIENT_SECRET: ""
 
 ingress:
   enabled: false

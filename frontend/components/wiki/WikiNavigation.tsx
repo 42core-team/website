@@ -1,7 +1,12 @@
-import React, { useEffect, useState, useRef } from "react";
-import { WikiNavItem } from "@/lib/markdown";
-import { Accordion, AccordionItem } from "@heroui/react";
+import type { WikiNavItem } from "@/lib/markdown";
 import Link from "next/link";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const INDENT_BASE = 8; // px
 const INDENT_STEP = 10; // px per depth level
@@ -44,25 +49,28 @@ export function WikiNavigation({
     const headings = doc.querySelectorAll("h1, h2, h3, h4, h5, h6");
 
     const tocItems: TocItem[] = Array.from(headings)
-      .map((heading) => ({
+      .map(heading => ({
         id: heading.id,
         text: heading.textContent || "",
-        level: parseInt(heading.tagName.charAt(1)),
+        level: Number.parseInt(heading.tagName.charAt(1)),
       }))
-      .filter((item) => item.id && item.text);
+      .filter(item => item.id && item.text);
 
     setToc(tocItems);
   }, [pageContent]);
 
   // Track which heading is currently visible
   useEffect(() => {
-    if (toc.length === 0) return;
+    if (toc.length === 0)
+      return;
 
     const handleIntersect = (entries: IntersectionObserverEntry[]) => {
-      if (isScrollingRef.current) return;
+      if (isScrollingRef.current)
+        return;
 
-      const intersectingEntries = entries.filter((e) => e.isIntersecting);
-      if (intersectingEntries.length === 0) return;
+      const intersectingEntries = entries.filter(e => e.isIntersecting);
+      if (intersectingEntries.length === 0)
+        return;
 
       // The ideal position is 100px from the top, matching the scroll-margin-top
       const idealPosition = 100;
@@ -90,10 +98,10 @@ export function WikiNavigation({
             );
 
             if (contentContainer instanceof HTMLElement) {
-              const offset =
-                activeLink.offsetTop -
-                contentContainer.clientHeight / 2 +
-                activeLink.clientHeight / 2;
+              const offset
+                = activeLink.offsetTop
+                  - contentContainer.clientHeight / 2
+                  + activeLink.clientHeight / 2;
               contentContainer.scrollTo({
                 top: offset,
                 behavior: "smooth",
@@ -110,7 +118,8 @@ export function WikiNavigation({
 
     toc.forEach(({ id }) => {
       const element = document.getElementById(id);
-      if (element) observer.observe(element);
+      if (element)
+        observer.observe(element);
     });
 
     return () => {
@@ -178,7 +187,9 @@ export function WikiNavigation({
             href={getVersionAwareUrl(itemPath)}
             onClick={onItemClick}
             className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors hover:bg-default-100 ${
-              isActive ? "bg-primary-50 text-primary-600" : "text-default-600"
+              isActive
+                ? "bg-primary-50 text-primary-600"
+                : "text-muted-foreground"
             }`}
             style={{
               paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
@@ -189,14 +200,14 @@ export function WikiNavigation({
 
           {/* Show table of contents under the active page */}
           {isActive && toc.length > 0 && (
-            <div className="ml-1 sm:ml-2 mt-1 mb-2 bg-default-50 border border-default-200 rounded-md p-2">
-              <div className="text-xs font-semibold text-default-600 mb-2 px-2 py-1 bg-default-100 rounded">
+            <div className="ml-1 sm:ml-2 mt-1 mb-2  border rounded-md p-2">
+              <div className="text-xs font-semibold text-muted-foreground mb-2 px-2 py-1 bg-default-100 rounded">
                 On this page
               </div>
               <div className="space-y-0.5">
                 {toc.map((tocItem, index) => (
                   <a
-                    key={`toc-${index}-${tocItem.id.replace(/[^a-zA-Z0-9-_]/g, "_")}`}
+                    key={`toc-${index}-${tocItem.id.replace(/[^\w-]/g, "_")}`}
                     href={`#${tocItem.id}`}
                     onClick={(e) => {
                       handleTocClick(tocItem.id, e);
@@ -205,7 +216,7 @@ export function WikiNavigation({
                     className={`block text-xs px-2 py-1 rounded-xs transition-colors hover:bg-default-100 hover:text-primary cursor-pointer ${
                       activeId === tocItem.id
                         ? "text-primary font-medium bg-primary-50 border-l-2 border-primary"
-                        : "text-default-500"
+                        : "text-muted-foreground"
                     }`}
                     style={{
                       paddingLeft: `${Math.min((tocItem.level - 1) * 8 + 8, 32)}px`,
@@ -221,53 +232,35 @@ export function WikiNavigation({
       );
     }
 
-    const collectAllPaths = (items: WikiNavItem[]): string[] => {
-      return items.flatMap((item) => {
-        const path = item.slug.join("/");
-        if (item.children && item.children.length > 0) {
-          return [path, ...collectAllPaths(item.children)];
-        }
-        return [];
-      });
-    };
-    const allPaths = collectAllPaths(items);
-
     if (item.children && item.children.length > 0) {
+      // Shadcn Accordion usage: single root per directory item with one item inside.
+      // We keep each directory expanded by default (can be collapsed by user).
       return (
         <Accordion
           key={uniqueKey}
-          variant="light"
-          defaultExpandedKeys={allPaths}
+          type="single"
+          collapsible
+          defaultValue={itemPath} // open by default
+          className="px-0"
         >
-          <AccordionItem
-            key={itemPath}
-            aria-label={item.title}
-            title={
-              <div
-                className="flex items-center gap-2 text-default-700 text-[13px] font-semibold"
-                style={{
-                  paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
-                }}
-              >
-                {item.title}
+          <AccordionItem value={itemPath} className="border-none">
+            <AccordionTrigger
+              className="py-2 px-2.5 text-[13px] font-semibold hover:no-underline"
+              style={{
+                paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
+              }}
+            >
+              {item.title}
+            </AccordionTrigger>
+            <AccordionContent className="pt-0 pb-0">
+              <div>
+                {item.children.map((child, index) => (
+                  <React.Fragment key={`${item.slug.join("/")}-child-${index}`}>
+                    {renderNavItem(child, depth + 1, index)}
+                  </React.Fragment>
+                ))}
               </div>
-            }
-            indicator={<span className="text-default-400">▼</span>}
-            className="border-none"
-            classNames={{
-              trigger: "pt-5 pb-0 pl-0",
-              content: "pt-0 pb-0 pl-0",
-              title: "pl-0",
-              indicator: "ml-auto",
-            }}
-          >
-            <div>
-              {item.children.map((child, index) => (
-                <React.Fragment key={`${item.slug.join("/")}-child-${index}`}>
-                  {renderNavItem(child, depth + 1, index)}
-                </React.Fragment>
-              ))}
-            </div>
+            </AccordionContent>
           </AccordionItem>
         </Accordion>
       );
@@ -279,7 +272,7 @@ export function WikiNavigation({
         href={getVersionAwareUrl(itemPath)}
         onClick={onItemClick}
         className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors hover:bg-default-100 ${
-          isActive ? "bg-primary-50 text-primary-600" : "text-default-600"
+          isActive ? "bg-primary-50 text-primary-600" : "text-muted-foreground"
         }`}
         style={{
           paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
@@ -292,12 +285,12 @@ export function WikiNavigation({
 
   return (
     <nav
-      className="wiki-sidebar-navigation w-66 h-full overflow-y-auto border-r border-divider bg-content1"
+      className="wiki-sidebar-navigation w-66 h-full overflow-y-auto border-r bg-content1"
       aria-label="Wiki sidebar navigation"
       role="navigation"
     >
       <div className="p-4">
-        <h2 className="text-lg font-semibold mb-4 text-default-700">Wiki</h2>
+        <h2 className="text-lg font-semibold mb-4">Wiki</h2>
         <div className="space-y-1">
           {items.map((item, index) => (
             <React.Fragment key={`root-${index}-${item.slug.join("/")}`}>

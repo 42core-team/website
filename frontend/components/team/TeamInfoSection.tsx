@@ -1,22 +1,30 @@
-import { useParams } from "next/navigation";
-import {
-  Avatar,
-  Button,
-  Chip,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  useDisclosure,
-  Skeleton,
-} from "@heroui/react";
-import { Team, TeamMember } from "@/app/actions/team";
-import TeamInviteModal from "./TeamInviteModal";
-import { useEffect, useState } from "react";
-import { getEventById } from "@/app/actions/event";
-import { isActionError } from "@/app/actions/errors";
+import type { Team, TeamMember } from "@/app/actions/team";
+
+import { DialogTrigger } from "@radix-ui/react-dialog";
+import { Plus } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { isActionError } from "@/app/actions/errors";
+
+import { getEventById } from "@/app/actions/event";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
+import TeamInviteModal from "./TeamInviteModal";
 
 interface TeamInfoSectionProps {
   myTeam: Team;
@@ -26,27 +34,23 @@ interface TeamInfoSectionProps {
   isRepoPending?: boolean;
 }
 
-export const TeamInfoSection = ({
+export function TeamInfoSection({
   myTeam,
   onLeaveTeam,
   isLeaving,
   teamMembers,
-  isRepoPending = false,
-}: TeamInfoSectionProps) => {
+}: Readonly<TeamInfoSectionProps>) {
   const eventId = useParams().id as string;
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const {
-    isOpen: isConfirmOpen,
-    onOpen: onConfirmOpen,
-    onClose: onConfirmClose,
-  } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
   const [githubOrg, setGithubOrg] = useState<string | null>(null);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
 
   useEffect(() => {
     const loadGithubOrg = async () => {
       const event = await getEventById(eventId);
-      if (isActionError(event)) return;
+      if (isActionError(event))
+        return;
 
       setGithubOrg(event.githubOrg);
     };
@@ -59,183 +63,184 @@ export const TeamInfoSection = ({
 
   const handleConfirmLeave = async () => {
     setLeaveError(null);
-    onConfirmClose();
     const success = await onLeaveTeam();
     if (!success) {
       setLeaveError(
         "Failed to leave team. Try refreshing the page or trying again later.",
       );
+      return;
     }
+
+    setIsLeaveDialogOpen(false);
   };
 
   return (
-    <div className="bg-default-50 p-6 rounded-lg border border-default-200">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Team: {myTeam.name}</h2>
-        {myTeam.locked && (
-          <Chip color="warning" variant="flat">
-            Locked
-          </Chip>
-        )}
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <Card className="rounded-lg border">
+      <CardHeader>
+        <CardTitle className="text-2xl font-bold">
+          Team:
+          {" "}
+          {myTeam.name}
+        </CardTitle>
+        {myTeam.locked && <Badge variant="destructive">Locked</Badge>}
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div>
+            <p className="text-sm text-muted-foreground">Repository</p>
+            <div className="font-medium">
+              {myTeam.repo
+                ? (
+                    <a
+                      href={getRepoUrl()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {myTeam.repo}
+                    </a>
+                  )
+                : (
+                    <Skeleton className="h-5 w-75 rounded-md m-2" />
+                  )}
+            </div>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Created</p>
+            <p className="font-medium">
+              {new Date(myTeam.createdAt || "").toLocaleDateString()}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Queue score</p>
+            <p className="font-medium">{myTeam.queueScore}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Updated</p>
+            <p className="font-medium">
+              {new Date(myTeam.updatedAt || "").toLocaleDateString()}
+            </p>
+          </div>
+        </div>
+
+        {/* Team Members Section */}
+        <div className="p-4 border rounded-lg">
+          <div className="flex justify-between items-center mb-1.5">
+            <h3 className="text-lg font-semibold">Team Members</h3>
+            {!myTeam.locked && (
+              <Button size="sm" onClick={() => setIsOpen(true)}>
+                <Plus className="size-4" />
+                Invite Others
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-3 items-start flex-wrap">
+            {teamMembers.length > 0
+              ? (
+                  teamMembers.map(member => (
+                    <Link
+                      key={member.id}
+                      href={`https://github.com/${member.username}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group w-full max-w-32 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-xl"
+                      aria-label={`Open ${member.username}'s GitHub profile`}
+                    >
+                      <div className="flex flex-col items-center rounded-xl bg-content1/50 p-4 ring-1 ring-default-200 shadow-sm transition hover:shadow-md hover:ring-primary/60">
+                        <Avatar
+                          className={cn(
+                            "mb-2",
+                            member.isEventAdmin
+                              ? "outline-orange-500 outline-2"
+                              : "",
+                          )}
+                        >
+                          <AvatarImage
+                            src={member.profilePicture}
+                            alt={member.name}
+                          />
+                          <AvatarFallback>
+                            {member.name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium text-center truncate w-full group-hover:text-primary">
+                          {member.username}
+                        </span>
+                      </div>
+                    </Link>
+                  ))
+                )
+              : (
+                  <p className="text-muted-foreground col-span-full text-center">
+                    No team members found
+                  </p>
+                )}
+          </div>
+        </div>
+
+        {/* Team Management Compartment */}
         <div>
-          <p className="text-sm text-default-500">Repository</p>
-          <div className="font-medium">
-            {myTeam.repo ? (
-              <a
-                href={getRepoUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
+          {leaveError && (
+            <div className="mb-4 px-4 py-3 rounded-md bg-danger-50 text-destructive-700 border border-danger-200">
+              {leaveError}
+            </div>
+          )}
+          <div className="flex justify-end items-center">
+            {!myTeam.locked && (
+              <Dialog
+                open={isLeaveDialogOpen}
+                onOpenChange={setIsLeaveDialogOpen}
               >
-                {myTeam.repo}
-              </a>
-            ) : isRepoPending ? (
-              <Skeleton className="h-5 w-75 rounded-md m-2" />
-            ) : (
-              "Not yet configured"
+                <DialogTrigger asChild>
+                  <Button variant="destructive">Leave Team</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle className="text-xl font-semibold">
+                      Leave Team
+                    </DialogTitle>
+                  </DialogHeader>
+                  <DialogDescription>
+                    <p>
+                      Are you sure you want to leave this team? This action
+                      cannot be undone.
+                    </p>
+                    {teamMembers.length === 1 && (
+                      <p className="mt-2 text-destructive-500">
+                        Warning: You are the last member of this team. Leaving
+                        will delete the team.
+                      </p>
+                    )}
+                  </DialogDescription>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button className="mr-2">Cancel</Button>
+                    </DialogClose>
+                    <Button
+                      type="submit"
+                      variant="destructive"
+                      onClick={handleConfirmLeave}
+                      disabled={isLeaving}
+                    >
+                      {isLeaving ? <Spinner /> : "Leave Team"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             )}
           </div>
         </div>
-        <div>
-          <p className="text-sm text-default-500">Created</p>
-          <p className="font-medium">
-            {new Date(myTeam.createdAt || "").toLocaleDateString()}
-          </p>
-        </div>
-        <div>
-          <p className="text-sm text-default-500">Queue score</p>
-          <p className="font-medium">{myTeam.queueScore}</p>
-        </div>
-        <div>
-          <p className="text-sm text-default-500">Updated</p>
-          <p className="font-medium">
-            {new Date(myTeam.updatedAt || "").toLocaleDateString()}
-          </p>
-        </div>
-      </div>
 
-      {/* Team Members Section */}
-      <div className="mt-6 mb-6 p-4 bg-default-100 rounded-lg">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="text-lg font-semibold">Team Members</h3>
-          {!myTeam.locked && (
-            <Button
-              color="primary"
-              size="sm"
-              variant="flat"
-              onPress={onOpen}
-              startContent={<span className="text-lg">+</span>}
-            >
-              Invite Others
-            </Button>
-          )}
-        </div>
-        <div className="flex gap-3 items-start flex-wrap">
-          {teamMembers.length > 0 ? (
-            teamMembers.map((member) => (
-              <Link
-                key={member.id}
-                href={`https://github.com/${member.username}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group w-full max-w-[8rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-xl"
-                aria-label={`Open ${member.username}'s GitHub profile`}
-              >
-                <div className="flex flex-col items-center rounded-xl bg-content1/50 p-4 ring-1 ring-default-200 shadow-sm transition hover:shadow-md hover:ring-primary/60">
-                  <Avatar
-                    style={
-                      member.isEventAdmin ? { outline: "orange 2px solid" } : {}
-                    }
-                    size="lg"
-                    src={member.profilePicture}
-                    name={(member.name || "User").substring(0, 2).toUpperCase()}
-                    isBordered
-                    className="mb-2"
-                  />
-                  <span className="text-sm font-medium text-default-700 text-center truncate w-full group-hover:text-primary">
-                    {member.username}
-                  </span>
-                </div>
-              </Link>
-            ))
-          ) : (
-            <p className="text-default-500 col-span-full text-center">
-              No team members found
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Team Management Compartment */}
-      <div>
-        {leaveError && (
-          <div className="mb-4 px-4 py-3 rounded-md bg-danger-50 text-danger-700 border border-danger-200">
-            {leaveError}
-          </div>
-        )}
-        <div className="flex justify-end items-center">
-          {!myTeam.locked && (
-            <Button
-              color="danger"
-              variant="light"
-              onPress={onConfirmOpen}
-              size="md"
-            >
-              Leave Team
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Invite Modal */}
-      <TeamInviteModal
-        isOpen={isOpen}
-        onClose={onClose}
-        teamId={myTeam.id}
-        eventId={eventId}
-      />
-
-      {/* Leave Team Confirmation Modal */}
-      <Modal isOpen={isConfirmOpen} onClose={onConfirmClose} size="sm">
-        <ModalContent>
-          <ModalHeader>
-            <h3 className="text-xl font-semibold">Leave Team</h3>
-          </ModalHeader>
-          <ModalBody>
-            <p>
-              Are you sure you want to leave this team? This action cannot be
-              undone.
-            </p>
-            {teamMembers.length === 1 && (
-              <p className="mt-2 text-danger-500">
-                Warning: You are the last member of this team. Leaving will
-                delete the team.
-              </p>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              color="default"
-              variant="light"
-              onPress={onConfirmClose}
-              className="mr-2"
-            >
-              Cancel
-            </Button>
-            <Button
-              color="danger"
-              onPress={handleConfirmLeave}
-              isLoading={isLeaving}
-            >
-              Leave Team
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </div>
+        {/* Invite Modal */}
+        <TeamInviteModal
+          isOpen={isOpen}
+          onClose={() => setIsOpen(false)}
+          teamId={myTeam.id}
+          eventId={eventId}
+        />
+      </CardContent>
+    </Card>
   );
-};
+}
 
 export default TeamInfoSection;

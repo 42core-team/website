@@ -1,13 +1,14 @@
-import React from "react";
 import type { Metadata } from "next";
-
-import "@/styles/globals.css";
-import DefaultLayout from "@/layouts/default";
-import ClientProviders from "@/components/ClientProviders";
 import PlausibleProvider from "next-plausible";
 
+import React from "react";
+import Providers from "@/app/providers";
+import ClientProviders from "@/components/ClientProviders";
+import DefaultLayout from "@/layouts/default";
+import "@/styles/globals.css";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXTAUTH_URL ?? "https://coregame.de"),
+  metadataBase: new URL(process.env.NEXTAUTH_URL ?? "https://coregame.sh"),
   title: {
     default: "CORE Game",
     template: "%s | CORE Game",
@@ -56,18 +57,20 @@ export default function App({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <PlausibleProvider
-          domain={process.env.PLAUSIBLE_DOMAIN ?? "coregame.de"}
-          customDomain={process.env.PLAUSIBLE_CUSTOM_DOMAIN}
-          selfHosted={true}
-          trackOutboundLinks={true}
-          trackFileDownloads={true}
-          taggedEvents={true}
-        >
-          <ClientProviders>
-            <DefaultLayout>{children}</DefaultLayout>
-          </ClientProviders>
-        </PlausibleProvider>
+        <Providers>
+          <PlausibleProvider
+            domain={process.env.PLAUSIBLE_DOMAIN ?? "coregame.sh"}
+            customDomain={process.env.PLAUSIBLE_CUSTOM_DOMAIN}
+            selfHosted={true}
+            trackOutboundLinks={true}
+            trackFileDownloads={true}
+            taggedEvents={true}
+          >
+            <ClientProviders>
+              <DefaultLayout>{children}</DefaultLayout>
+            </ClientProviders>
+          </PlausibleProvider>
+        </Providers>
       </body>
     </html>
   );

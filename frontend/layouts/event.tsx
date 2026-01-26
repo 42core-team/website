@@ -1,23 +1,22 @@
-import EventNavbar from "@/components/event-navbar";
-import EventJoinNotice from "@/components/event-join-notice";
+import { getServerSession } from "next-auth";
 import React from "react";
+import { isActionError } from "@/app/actions/errors";
 import {
   getEventById,
   isEventAdmin,
   isUserRegisteredForEvent,
-  shouldShowJoinNotice,
 } from "@/app/actions/event";
-import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/utils/authOptions";
-import { isActionError } from "@/app/actions/errors";
+import EventInfoNotice from "@/components/event-info-notice";
+import EventNavbar from "@/components/event-navbar";
 
 export default async function EventLayout({
   children,
   params,
-}: {
+}: Readonly<{
   children: React.ReactNode;
   params: { id: string };
-}) {
+}>) {
   const eventId = params.id;
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
@@ -37,11 +36,10 @@ export default async function EventLayout({
 
   const event = await getEventById(eventId);
   if (isActionError(event))
-    throw new Error("Could not get Event: " + event.error);
+    throw new Error(`Could not get Event: ${event.error}`);
 
   const isEventAdminState = await isEventAdmin(eventId);
   const isUserRegistered = await isUserRegisteredForEvent(eventId);
-  const showJoinNotice = await shouldShowJoinNotice(eventId);
 
   if (isActionError(isEventAdminState) || isActionError(isUserRegistered)) {
     throw new Error("Error: Unable to fetch event details");
@@ -53,12 +51,8 @@ export default async function EventLayout({
 
   return (
     <div className="relative flex flex-col min-h-lvh">
-      {showJoinNotice && userId && (
-        <EventJoinNotice
-          eventId={eventId}
-          userId={userId}
-          startDate={event.startDate}
-        />
+      {userId && (
+        <EventInfoNotice userId={userId} startDate={event.startDate} />
       )}
       <EventNavbar
         event={event}
@@ -66,9 +60,7 @@ export default async function EventLayout({
         isUserRegistered={isUserRegistered}
         isEventAdmin={isEventAdminState}
       />
-      <main className="container mx-auto max-w-7xl px-6 flex-grow">
-        {children}
-      </main>
+      <main className="container mx-auto max-w-7xl px-6 grow">{children}</main>
     </div>
   );
 }

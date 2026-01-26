@@ -1,10 +1,10 @@
+import type { Metadata } from "next";
 import React from "react";
-import EventLayout from "@/layouts/event";
-import { getEventById } from "@/app/actions/event";
-import { isActionError } from "@/app/actions/errors";
-import { Metadata } from "next";
 import { remark } from "remark";
 import strip from "strip-markdown";
+import { isActionError } from "@/app/actions/errors";
+import { getEventById } from "@/app/actions/event";
+import EventLayout from "@/layouts/event";
 
 export async function generateMetadata({
   params,

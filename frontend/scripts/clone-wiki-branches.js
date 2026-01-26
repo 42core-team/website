@@ -1,6 +1,7 @@
-const { execSync } = require("child_process");
-const fs = require("fs");
-const path = require("path");
+/* eslint-disable no-console */
+const { execSync } = require("node:child_process");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const BASE_DIR = path.join(__dirname, "../content/wiki");
 const MONOREPO_URL = "https://github.com/42core-team/monorepo.git";
@@ -10,7 +11,8 @@ if (!fs.existsSync(BASE_DIR)) {
 }
 
 // Determine current branch from environment
-const currentBranch = process.env.CURRENT_BRANCH || process.env.GITHUB_REF_NAME || "";
+const currentBranch
+  = process.env.CURRENT_BRANCH || process.env.GITHUB_REF_NAME || "";
 
 // If running on dev, pull wiki from monorepo's dev branch (sparse checkout of /wiki)
 if (currentBranch === "dev" || currentBranch === "") {
@@ -34,10 +36,11 @@ if (currentBranch === "dev" || currentBranch === "") {
       cwd: tempDir,
       stdio: "inherit",
     });
-  } catch (_) {
+  }
+  catch {
     // ignore if already initialized
   }
-  execSync('git sparse-checkout set "wiki"', {
+  execSync("git sparse-checkout set \"wiki\"", {
     cwd: tempDir,
     stdio: "inherit",
   });
@@ -61,22 +64,24 @@ function getStableTags() {
   return (
     output
       .split("\n")
-      .map((line) => line.split("\t")[1])
+      .map(line => line.split("\t")[1])
       .filter(Boolean)
-      .map((ref) => ref.replace("refs/tags/", ""))
+      .map(ref => ref.replace("refs/tags/", ""))
       // Treat tags containing '-' as pre-releases and exclude them
-      .filter((tag) => !tag.includes("-"))
+      .filter(tag => !tag.includes("-"))
   );
 }
 
 function copyDirContentsSync(srcDir, destDir) {
-  if (!fs.existsSync(srcDir)) return false;
+  if (!fs.existsSync(srcDir))
+    return false;
   if (!fs.existsSync(destDir)) {
     fs.mkdirSync(destDir, { recursive: true });
   }
   if (fs.cpSync) {
-    fs.cpSync(srcDir + "/", destDir, { recursive: true });
-  } else {
+    fs.cpSync(`${srcDir}/`, destDir, { recursive: true });
+  }
+  else {
     execSync(`cp -R "${srcDir}/." "${destDir}"`);
   }
   return true;
@@ -90,7 +95,7 @@ function isNumericTag(tag) {
 
 function parseTagNumbers(tag) {
   const norm = tag.startsWith("v") ? tag.slice(1) : tag;
-  return norm.split(".").map((n) => parseInt(n, 10) || 0);
+  return norm.split(".").map(n => Number.parseInt(n, 10) || 0);
 }
 
 function compareTagDesc(a, b) {
@@ -100,7 +105,8 @@ function compareTagDesc(a, b) {
   for (let i = 0; i < maxLen; i++) {
     const av = aNums[i] ?? 0;
     const bv = bNums[i] ?? 0;
-    if (av !== bv) return bv - av; // descending
+    if (av !== bv)
+      return bv - av; // descending
   }
   return 0;
 }
@@ -108,11 +114,11 @@ function compareTagDesc(a, b) {
 function baseKey(tag) {
   const nums = parseTagNumbers(tag);
   const base = [nums[0] ?? 0, nums[1] ?? 0, nums[2] ?? 0].join(".");
-  return "v" + base;
+  return `v${base}`;
 }
 
 function pickLatestPerBase(tags) {
-  const filtered = tags.filter((t) => isNumericTag(t));
+  const filtered = tags.filter(t => isNumericTag(t));
   const map = new Map(); // base -> bestTag
   for (const t of filtered) {
     const base = baseKey(t);
@@ -153,10 +159,11 @@ latestPerBase.forEach(([base, tag]) => {
       cwd: tempDir,
       stdio: "inherit",
     });
-  } catch (_) {
+  }
+  catch {
     // ignore if already initialized
   }
-  execSync('git sparse-checkout set "wiki"', {
+  execSync("git sparse-checkout set \"wiki\"", {
     cwd: tempDir,
     stdio: "inherit",
   });

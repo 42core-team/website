@@ -1,10 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import {
-  OAUTH_URLS,
-  OAUTH_CONFIG,
-  OAUTH_PROVIDERS,
-} from "@/lib/constants/oauth";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getFortyTwoAuthUrl } from "@/app/actions/social-accounts";
+import { OAUTH_CONFIG } from "@/lib/constants/oauth";
 
 /**
  * Simplified hook for handling 42 School OAuth integration
@@ -43,49 +40,32 @@ export function use42Linking(onSuccess?: () => void): Use42LinkingReturn {
   }, []);
 
   const initiate42OAuth = useCallback(() => {
-    // Clear any previous messages and show immediate loading feedback
     setMessage(null);
     setIsInitiating(true);
     processedRef.current = null;
 
-    // Check if environment variable is available
-    const clientId = process.env.NEXT_PUBLIC_FORTY_TWO_CLIENT_ID;
-    if (!clientId) {
-      console.error("NEXT_PUBLIC_FORTY_TWO_CLIENT_ID is not set");
-      setMessage({
-        type: "error",
-        text: "OAuth configuration is missing. Please contact support.",
-      });
-      setIsInitiating(false);
-      return;
-    }
-
     // Small delay to show the loading state before redirect
-    setTimeout(() => {
-      // Generate a cryptographically secure random state string
-      const array = new Uint8Array(OAUTH_CONFIG.STATE_LENGTH);
-      window.crypto.getRandomValues(array);
-      const state = Array.from(array, (b) =>
-        b.toString(16).padStart(2, "0"),
-      ).join("");
-      const authUrl = new URL(OAUTH_URLS.FORTY_TWO_AUTHORIZE);
+    setTimeout(async () => {
+      try {
+        // Ask backend for the 42 auth URL (which includes the encrypted user id in state)
+        const authUrl = await getFortyTwoAuthUrl();
 
-      authUrl.searchParams.set("client_id", clientId);
-      authUrl.searchParams.set(
-        "redirect_uri",
-        `${window.location.origin}/auth/callback/${OAUTH_PROVIDERS.FORTY_TWO}`,
-      );
-      authUrl.searchParams.set("response_type", "code");
-      authUrl.searchParams.set("scope", "public");
-      authUrl.searchParams.set("state", state);
+        if (!authUrl) {
+          throw new Error("No auth URL returned from backend");
+        }
 
-      // Store state in sessionStorage for verification
-      sessionStorage.setItem(
-        OAUTH_CONFIG.SESSION_STORAGE_KEYS.OAUTH_STATE,
-        state,
-      );
-
-      window.location.href = authUrl.toString();
+        window.location.href = authUrl;
+      }
+      catch (err: any) {
+        console.error("Failed to initiate 42 OAuth via backend:", err);
+        setMessage({
+          type: "error",
+          text:
+            err?.message
+            || "Failed to start 42 authentication. Please try again later.",
+        });
+        setIsInitiating(false);
+      }
     }, OAUTH_CONFIG.LOADING_DELAY);
   }, []);
 
@@ -106,11 +86,13 @@ export function use42Linking(onSuccess?: () => void): Use42LinkingReturn {
         const url = new URL(window.location.href);
         url.searchParams.delete("success");
         window.history.replaceState({}, "", url.toString());
-      } else if (error) {
+      }
+      else if (error) {
         // Only show messages for errors
         if (error === "invalid-provider") {
           setMessage({ type: "error", text: "Invalid OAuth provider" });
-        } else {
+        }
+        else {
           setMessage({ type: "error", text: error.replace(/-/g, " ") });
         }
       }

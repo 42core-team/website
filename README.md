@@ -1,5 +1,5 @@
-<a href="https://coregame.de">
-<img src="https://status.coregame.de/badge/web/status?labelColor=&color=&style=for-the-badge&label=coregame.de"/>
+<a href="https://coregame.sh">
+<img src="https://status.coregame.sh/badge/web/status?labelColor=&color=&style=for-the-badge&label=coregame.sh"/>
 </a>
 
 The CORE Game website built with Next.js, NestJS, and Go microservices for managing tournaments, teams, and game execution.
@@ -44,7 +44,7 @@ If you prefer to install everything locally:
 For PostgreSQL and RabbitMQ, you can use the provided Docker Compose:
 
 ```bash
-cd .devcontainer && docker-compose up -d postgres rabbitmq
+cd .devcontainer && docker compose up -d postgres rabbitmq
 ```
 
 This starts:

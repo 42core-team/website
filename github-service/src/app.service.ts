@@ -25,7 +25,7 @@ export class AppService {
       })
       .catch((error) => {
         if (error.code !== "EXIST") {
-          this.logger.error(
+          this.logger.warn(
             `Failed to create temp folder at ${this.TMP_FOLDER} because it already exists`,
           );
         }
@@ -197,8 +197,10 @@ export class AppService {
   async createTeamRepository(
     name: string,
     teamName: string,
-    username: string,
-    encryptedUserGithubAccessToken: string,
+    githubUsers: {
+      username: string;
+      githubAccessToken: string;
+    }[],
     githubOrg: string,
     encryptedSecret: string,
     teamId: string,
@@ -212,15 +214,11 @@ export class AppService {
       `Creating team repository ${JSON.stringify({
         name,
         teamName,
-        username,
         githubOrg,
         teamId,
       })}`,
     );
     try {
-      const githubAccessToken = this.decryptSecret(
-        encryptedUserGithubAccessToken,
-      );
       const secret = this.decryptSecret(encryptedSecret);
       const githubApi = new GitHubApiClient({
         token: secret,
@@ -280,22 +278,33 @@ export class AppService {
         teamId: teamId,
       });
 
-      await repositoryApi.addCollaborator(
-        githubOrg,
-        name,
-        username,
-        "push",
-      );
-      await userApi.acceptRepositoryInvitationByRepo(
-        githubOrg,
-        name,
-        githubAccessToken,
+      await Promise.all(
+        githubUsers.map(async (user) => {
+          const { username, githubAccessToken } = user;
+          this.logger.log(
+            `Adding user ${username} to repository ${name} in org ${githubOrg}`,
+          );
+          await repositoryApi.addCollaborator(
+            githubOrg,
+            name,
+            username,
+            "push",
+          );
+
+          const decryptedGithubAccessToken =
+            this.decryptSecret(githubAccessToken);
+
+          await userApi.acceptRepositoryInvitationByRepo(
+            githubOrg,
+            name,
+            decryptedGithubAccessToken,
+          );
+        }),
       );
 
       this.logger.log(
         `Created team repository ${JSON.stringify({
           name,
-          username,
           githubOrg,
           teamId,
           repoName: name,
@@ -305,7 +314,6 @@ export class AppService {
       this.logger.error(
         `Failed to create team repository ${JSON.stringify({
           name,
-          username,
           githubOrg,
           teamId,
         })}`,

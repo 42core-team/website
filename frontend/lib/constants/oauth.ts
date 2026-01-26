@@ -25,5 +25,5 @@ export const OAUTH_CONFIG = {
   },
 } as const;
 
-export type OAuthProvider =
-  (typeof OAUTH_PROVIDERS)[keyof typeof OAUTH_PROVIDERS];
+export type OAuthProvider
+  = (typeof OAUTH_PROVIDERS)[keyof typeof OAUTH_PROVIDERS];

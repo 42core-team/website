@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@heroui/button";
 import { useState } from "react";
 import { revealMatch } from "@/app/actions/tournament";
+import { Button } from "@/components/ui/button";
 
 export default function MatchActions(props: {
   matchId: string;
@@ -14,15 +14,14 @@ export default function MatchActions(props: {
   return (
     <div className="flex">
       <Button
-        onPress={() => {
+        onClick={() => {
           setLoading(true);
           revealMatch(props.matchId).finally(() => {
             setLoading(false);
             setRevealed(true);
           });
         }}
-        isDisabled={loading || revealed}
-        color={revealed ? "success" : "secondary"}
+        disabled={loading || revealed}
       >
         Reveal
       </Button>

@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import path from "path";
-import fs from "fs/promises";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { NextResponse } from "next/server";
 
 const contentDirectory = path.join(process.cwd(), "content", "wiki");
 
@@ -24,7 +24,8 @@ export async function GET(
     // Check if file exists
     try {
       await fs.access(fullPath);
-    } catch {
+    }
+    catch {
       return new NextResponse("Image not found", { status: 404 });
     }
 
@@ -60,7 +61,8 @@ export async function GET(
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error serving wiki image:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }

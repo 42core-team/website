@@ -1,79 +1,110 @@
 "use client";
+import type { SortingState } from "@tanstack/react-table";
+import type { Team } from "@/app/actions/team";
+import {
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   Table,
-  TableHeader,
-  TableColumn,
   TableBody,
-  TableRow,
   TableCell,
-  SortDescriptor,
-} from "@heroui/react";
-import { Team } from "@/app/actions/team";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-export default function TeamsTable({
-  teams,
-  eventId,
-}: {
+// ...existing code...
+interface TeamsTableProps {
   teams: Team[];
   eventId: string;
-}) {
-  const searchParams = useSearchParams();
+}
+
+export default function TeamsTable({ teams, eventId }: TeamsTableProps) {
   const router = useRouter();
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: "name",
-    direction: "ascending",
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "name", desc: false },
+  ]);
+
+  const columns = [
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: (info: any) => info.getValue(),
+    },
+    {
+      accessorKey: "membersCount",
+      header: "Members",
+      cell: (info: any) => info.getValue(),
+    },
+    {
+      accessorKey: "queueScore",
+      header: "Queue Score",
+      cell: (info: any) => info.getValue() || 0,
+    },
+    {
+      accessorKey: "createdAt",
+      header: "Created",
+      cell: (info: any) =>
+        info.getValue()
+          ? new Date(info.getValue()).toLocaleDateString()
+          : "N/A",
+    },
+  ];
+
+  const table = useReactTable({
+    data: teams,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   });
 
-  const handleSortChange = (descriptor: SortDescriptor) => {
-    setSortDescriptor(descriptor);
-    const newSortColumn = String(descriptor.column);
-    const newSortDirection = String(descriptor.direction);
-
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("sort", newSortColumn);
-    params.set("dir", newSortDirection);
-    router.replace(`?${params.toString()}`);
-  };
-
   return (
-    <Table
-      aria-label="Teams table"
-      onSortChange={handleSortChange}
-      sortDescriptor={sortDescriptor}
-    >
+    <Table>
       <TableHeader>
-        <TableColumn key="name" allowsSorting>
-          Name
-        </TableColumn>
-        <TableColumn key="membersCount" allowsSorting>
-          Members
-        </TableColumn>
-        <TableColumn key="queueScore" allowsSorting>
-          Queue Score
-        </TableColumn>
-        <TableColumn key="createdAt" allowsSorting>
-          Created
-        </TableColumn>
+        <TableRow>
+          {table.getHeaderGroups()[0].headers.map(header => (
+            <TableHead
+              key={header.id}
+              onClick={header.column.getToggleSortingHandler()}
+              className="cursor-pointer select-none"
+            >
+              {flexRender(header.column.columnDef.header, header.getContext())}
+              {header.column.getIsSorted() === "asc" && " ▲"}
+              {header.column.getIsSorted() === "desc" && " ▼"}
+            </TableHead>
+          ))}
+        </TableRow>
       </TableHeader>
-      <TableBody emptyContent="No teams found">
-        {teams.map((team) => (
-          <TableRow
-            key={team.id}
-            className="cursor-pointer hover:bg-default-100 transition-colors"
-            onClick={() => router.push(`/events/${eventId}/teams/${team.id}`)}
-          >
-            <TableCell>{team.name}</TableCell>
-            <TableCell>{team.membersCount}</TableCell>
-            <TableCell>{team.queueScore || 0}</TableCell>
-            <TableCell>
-              {team.createdAt
-                ? new Date(team.createdAt).toLocaleDateString()
-                : "N/A"}
-            </TableCell>
-          </TableRow>
-        ))}
+      <TableBody>
+        {table.getRowModel().rows.length === 0
+          ? (
+              <TableRow>
+                <TableCell colSpan={columns.length}>No teams found</TableCell>
+              </TableRow>
+            )
+          : (
+              table.getRowModel().rows.map(row => (
+                <TableRow
+                  key={row.id}
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() =>
+                    router.push(`/events/${eventId}/teams/${row.original.id}`)}
+                >
+                  {row.getVisibleCells().map(cell => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
       </TableBody>
     </Table>
   );

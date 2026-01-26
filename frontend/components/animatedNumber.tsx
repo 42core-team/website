@@ -9,7 +9,8 @@ export default function AnimatedNumber({ value }: { value: number }) {
 
   useEffect(() => {
     const node = nodeRef.current;
-    if (!node) return;
+    if (!node)
+      return;
 
     const startValue = prevValueRef.current === null ? 0 : prevValueRef.current;
 
