@@ -1,7 +1,13 @@
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { TeamEntity } from "./entities/team.entity";
-import { DataSource, IsNull, LessThanOrEqual, Repository } from "typeorm";
+import {
+  DataSource,
+  EntityManager,
+  IsNull,
+  LessThanOrEqual,
+  Repository,
+} from "typeorm";
 import { GithubApiService } from "../github-api/github-api.service";
 import { EventService } from "../event/event.service";
 import { UserService } from "../user/user.service";
@@ -52,7 +58,9 @@ export class TeamService {
               `Starting repo creation for team ${team.name} as its event has started.`,
             );
 
-            await this.createTeamRepository(team.id);
+            await this.dataSource.transaction(async (entityManager) => {
+              await this.createTeamRepository(team.id, entityManager);
+            });
           }
         } finally {
           await queryRunner.query("SELECT pg_advisory_unlock($1)", [lockKey]);
@@ -125,56 +133,54 @@ export class TeamService {
     });
   }
 
-  async createTeamRepository(teamId: string) {
-    return await this.dataSource.transaction(async (transaction) => {
-      const teamRepository = transaction.getRepository(TeamEntity);
-      const team = await teamRepository.findOneOrFail({
-        where: {
-          startedRepoCreationAt: IsNull(),
-          id: teamId,
-        },
-        relations: {
-          users: true,
-          event: true,
-        },
-      });
+  async createTeamRepository(teamId: string, entityManager: EntityManager) {
+    const teamRepository = entityManager.getRepository(TeamEntity);
+    const team = await teamRepository.findOneOrFail({
+      where: {
+        startedRepoCreationAt: IsNull(),
+        id: teamId,
+      },
+      relations: {
+        users: true,
+        event: true,
+      },
+    });
 
-      if (!team.event) {
-        this.logger.error(
-          `While creating repo for team ${teamId}, event was not found.`,
-        );
-        return;
-      }
-
-      const repoName = team.event.name + "-" + team.name + "-" + team.id;
-
-      await this.githubApiService.createTeamRepository(
-        repoName,
-        team.name,
-        team.users.map((user) => ({
-          username: user.username,
-          githubAccessToken: user.githubAccessToken,
-        })),
-        team.event.githubOrg,
-        team.event.githubOrgSecret,
-        team.id,
-        team.event.monorepoUrl,
-        team.event.monorepoVersion,
-        team.event.myCoreBotDockerImage,
-        team.event.visualizerDockerImage,
-        team.event.id,
+    if (!team.event) {
+      this.logger.error(
+        `While creating repo for team ${teamId}, event was not found.`,
       );
+      return;
+    }
 
-      await teamRepository.update(teamId, {
-        repo: repoName,
-        startedRepoCreationAt: new Date(),
-      });
+    const repoName = team.event.name + "-" + team.name + "-" + team.id;
+
+    await this.githubApiService.createTeamRepository(
+      repoName,
+      team.name,
+      team.users.map((user) => ({
+        username: user.username,
+        githubAccessToken: user.githubAccessToken,
+      })),
+      team.event.githubOrg,
+      team.event.githubOrgSecret,
+      team.id,
+      team.event.monorepoUrl,
+      team.event.monorepoVersion,
+      team.event.myCoreBotDockerImage,
+      team.event.visualizerDockerImage,
+      team.event.id,
+    );
+
+    await teamRepository.update(teamId, {
+      repo: repoName,
+      startedRepoCreationAt: new Date(),
     });
   }
 
   async createTeam(name: string, userId: string, eventId: string) {
-    return await this.dataSource.transaction(async (transaction) => {
-      const teamRepository = transaction.getRepository(TeamEntity);
+    return await this.dataSource.transaction(async (entityManager) => {
+      const teamRepository = entityManager.getRepository(TeamEntity);
 
       const newTeam = await teamRepository.save({
         name,
@@ -183,7 +189,7 @@ export class TeamService {
       });
 
       if (await this.eventService.hasEventStarted(eventId))
-        await this.createTeamRepository(newTeam.id);
+        await this.createTeamRepository(newTeam.id, entityManager);
 
       return newTeam;
     });
