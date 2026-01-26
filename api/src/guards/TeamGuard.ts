@@ -9,7 +9,7 @@ import {
   ParseUUIDPipe,
 } from "@nestjs/common";
 import { TeamService } from "../team/team.service";
-import { EVENT_ID_PARAM, TEAM_ID_PARAM, USER_ID_KEY } from "./GuardConstants";
+import { EVENT_ID_PARAM, TEAM_ID_PARAM } from "./GuardConstants";
 import { TeamEntity } from "../team/entities/team.entity";
 
 export const TeamId = Param(TEAM_ID_PARAM, new ParseUUIDPipe());
@@ -40,7 +40,7 @@ export class MyTeamGuards implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const eventId: string | undefined = request.params[EVENT_ID_PARAM];
-    const userId: string | undefined = request.headers[USER_ID_KEY];
+    const userId: string | undefined = request.user?.id;
 
     if (!eventId || !userId) return false;
 

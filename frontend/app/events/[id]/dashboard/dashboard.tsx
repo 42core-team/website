@@ -221,9 +221,11 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     setStartingGroupPhase(true);
                     startSwissMatches(eventId)
                       .then(() => {
+                        // eslint-disable-next-line no-alert
                         alert("started group phase");
                       })
                       .catch(() => {
+                        // eslint-disable-next-line no-alert
                         alert("error occurred");
                         setStartingGroupPhase(false);
                       })
@@ -243,9 +245,11 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     setStartingTournament(true);
                     startTournamentMatches(eventId)
                       .then(() => {
+                        // eslint-disable-next-line no-alert
                         alert("started tournament phase");
                       })
                       .catch(() => {
+                        // eslint-disable-next-line no-alert
                         alert("error occurred");
                         setStartingTournament(false);
                       })
@@ -274,6 +278,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                       eventId,
                       new Date(teamAutoLockTime).getTime(),
                     ).then(() => {
+                      // eslint-disable-next-line no-alert
                       alert("set team auto lock date");
                     })}
                 >
@@ -283,6 +288,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   variant="secondary"
                   onClick={() => {
                     setEventTeamsLockDate(eventId, null).then(() => {
+                      // eslint-disable-next-line no-alert
                       alert("reset team auto lock date");
                       setTeamAutoLockTime("");
                     });

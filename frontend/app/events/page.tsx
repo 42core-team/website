@@ -9,7 +9,6 @@ import {
 import EventsTabs from "@/app/events/EventsTabs";
 import { authOptions } from "@/app/utils/authOptions";
 import { title } from "@/components/primitives";
-import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Events",
@@ -50,8 +49,8 @@ export default async function EventsPage() {
           Discover and join upcoming coding competitions
         </p>
         {canCreate && (
-          <Link href="/events/create">
-            <Button>Create Event</Button>
+          <Link color="primary" href="/events/create">
+            Create Event
           </Link>
         )}
       </div>

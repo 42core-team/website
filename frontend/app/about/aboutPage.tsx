@@ -34,9 +34,9 @@ const team: TeamMember[] = [
   },
   {
     name: "Emil Ebert",
-    role: "Website",
+    role: "Website System",
     imgSrc: "/team/eebert.png",
-    linkUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    linkUrl: "https://www.linkedin.com/in/emil-ebert/",
     linkType: "linkedin",
   },
   {

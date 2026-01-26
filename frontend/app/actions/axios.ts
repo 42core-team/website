@@ -1,33 +1,46 @@
 import type { AxiosResponse } from "axios";
 import type { ServerActionResponse } from "@/app/actions/errors";
 import axios from "axios";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/utils/authOptions";
 
 const axiosInstance = axios.create({
-  baseURL: process.env.BACKEND_URL,
+  baseURL:
+    process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL || process.env.BACKEND_URL,
   headers: {
     "Content-Type": "application/json",
-    "Authorization": `${process.env.BACKEND_SECRET}`,
   },
 });
 
+function getTokenFromCookieString(cookieString: string): string | null {
+  const parts = cookieString.split(";");
+  for (const part of parts) {
+    const [k, ...rest] = part.trim().split("=");
+    if (k === "token")
+      return decodeURIComponent(rest.join("="));
+  }
+  return null;
+}
+
 axiosInstance.interceptors.request.use(
   async (config) => {
-    if (!process.env.BACKEND_SECRET) {
-      config.baseURL = process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
+    if (process.env.BACKEND_URL) {
+      // eslint-disable-next-line ts/no-require-imports
+      const cookieData = await require("next/headers").cookies();
+      const token = cookieData.get("token");
+      if (token)
+        config.headers.Authorization = `Bearer ${token.value}`;
+
+      config.baseURL = process.env.BACKEND_URL;
       return config;
     }
 
-    if (config.url && config.url.startsWith("user/email/")) {
-      return config;
+    config.baseURL = process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
+    const token = getTokenFromCookieString(document.cookie || "");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    const session = await getServerSession(authOptions);
-    config.headers.userId = session?.user?.id || "";
     return config;
   },
   (error) => {
-    // Handle request errors
     return Promise.reject(error);
   },
 );

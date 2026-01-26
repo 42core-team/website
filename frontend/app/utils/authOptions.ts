@@ -1,73 +1,76 @@
 import type { NextAuthOptions } from "next-auth";
-import GithubProvider from "next-auth/providers/github";
+import CredentialsProvider from "next-auth/providers/credentials";
 import axiosInstance from "@/app/actions/axios";
 
+const BACKEND_BASE_URL
+  = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
+
 export const authOptions: NextAuthOptions = {
+  session: {
+    strategy: "jwt",
+  },
   providers: [
-    GithubProvider({
-      clientId: process.env.CLIENT_ID_GITHUB!,
-      clientSecret: process.env.CLIENT_SECRET_GITHUB!,
-      authorization: {
-        params: {
-          scope: "read:user user:email repo:invite",
-        },
+    CredentialsProvider({
+      id: "backend",
+      name: "Backend",
+      credentials: {},
+      async authorize(_credentials, _) {
+        try {
+          if (!BACKEND_BASE_URL) {
+            console.error("Missing BACKEND URL env");
+            return null;
+          }
+
+          const res = await axiosInstance.get<{
+            id: string;
+            username: string;
+            email: string;
+            profilePicture: string;
+          }>(`/auth/me`);
+
+          return {
+            id: res.data.id,
+            name: res.data.username,
+            email: res.data.email,
+            profilePicture: res.data.profilePicture,
+          };
+        }
+        catch (e) {
+          console.error("Authorize failed:", e);
+          return null;
+        }
       },
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
-      if (account?.provider === "github") {
-        const githubProfile = profile as any;
-
-        try {
-          const existingUser = (
-            await axiosInstance.get(`user/github/${account.providerAccountId}`)
-          ).data;
-          if (!existingUser) {
-            if (!account?.access_token) {
-              throw new Error("No access token found");
-            }
-
-            await axiosInstance.post(`user/`, {
-              email: user.email!,
-              username: githubProfile?.login || user.name!,
-              name: user.name! || githubProfile?.name,
-              profilePicture: user.image! || githubProfile?.avatar_url,
-              githubId: account.providerAccountId,
-              githubAccessToken: account.access_token,
-            });
-          }
-          else {
-            await axiosInstance.put(`user/${existingUser.id}`, {
-              email: user.email!,
-              username: githubProfile?.login || existingUser.username,
-              name: githubProfile?.name || existingUser.name,
-              profilePicture:
-                githubProfile?.avatar_url || existingUser.profilePicture,
-              githubId: account.providerAccountId,
-              githubAccessToken: account.access_token,
-            });
-          }
-        }
-        catch (e: any) {
-          console.error("Error during sign in:", e);
-          console.error("response:", e?.response);
-          return false;
-        }
-      }
-
+    async signIn() {
       return true;
     },
-    async session({ session }) {
-      if (!session.user?.email) {
-        throw new Error("User email is not available in session");
+    async jwt({ token, user }) {
+      if (user) {
+        token.sub = (user as any).id || token.sub;
+        token.name = user.name || token.name;
+        token.email = user.email || token.email;
       }
-      const dbUser = (
-        await axiosInstance.get(`user/email/${session.user?.email}`)
-      ).data;
+      return token;
+    },
+    async session({ session }) {
+      try {
+        const res = await axiosInstance.get<{
+          id: string;
+          username: string;
+          email: string;
+          profilePicture: string;
+        }>(`/auth/me`);
 
-      if (dbUser)
-        session.user.id = dbUser.id;
+        session.user.id = res.data.id;
+        session.user.email = res.data.email;
+        session.user.name = res.data.username;
+        session.user.profilePicture = res.data.profilePicture;
+      }
+      catch {
+        session.user.id = "";
+      }
 
       return session;
     },
