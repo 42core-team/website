@@ -13,12 +13,16 @@ export class GithubOAuthStrategy extends PassportStrategy(
     config: ConfigService,
     private readonly users: UserService,
   ) {
-    super({
+    const githubConfig = {
       clientID: config.getOrThrow<string>("CLIENT_GITHUB_ID"),
       clientSecret: config.getOrThrow<string>("CLIENT_GITHUB_SECRET"),
       callbackURL: config.getOrThrow<string>("CALLBACK_GITHUB_URL"),
       scope: ["user:email", "repo:invite"],
-    });
+    };
+
+    console.log("GitHub OAuth Config:", githubConfig);
+
+    super(githubConfig);
   }
 
   async validate(
