@@ -10,7 +10,6 @@ export default function SsoPage() {
     let cancelled = false;
     (async () => {
       try {
-        console.log("trying to finalize SSO sign-in");
         await signIn("backend", { redirect: false });
         if (!cancelled) {
           router.replace("/");
