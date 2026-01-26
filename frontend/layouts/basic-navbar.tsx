@@ -132,7 +132,7 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
                 </PopoverTrigger>
                 <PopoverContent align="start" className="w-64 p-3">
                   <nav className="mt-1 flex flex-col gap-1">
-                    {navLinks.map((link) => (
+                    {navLinks.map(link => (
                       <Link
                         key={link.href}
                         className={cn(
@@ -161,15 +161,15 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
           {/* Desktop nav (centered) */}
           <NavigationMenu className="hidden md:flex flex-1 justify-center">
             <NavigationMenuList className="gap-2">
-              {navLinks.map((link) => (
+              {navLinks.map(link => (
                 <NavigationMenuItem key={link.href}>
                   <Link
                     href={link.href}
                     className={cn(
-                      "inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent ",
+                      "inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
                       isActive(link.href)
                         ? "bg-accent text-accent-foreground"
-                        : "text-foreground/80 hover:text-accent-foreground",
+                        : "text-foreground/80 hover:text-foreground",
                     )}
                   >
                     {link.label}
@@ -179,42 +179,45 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
             </NavigationMenuList>
           </NavigationMenu>
 
-          {/* Right side */}
+          {/* Right side */
+          }
           <div className="flex items-center gap-2">
             <ThemeSwitch />
-            {session?.user?.id ? (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="outline-none rounded-full">
-                    <Image
-                      className="transition-transform rounded-full"
-                      src={session?.user?.profilePicture}
-                      alt="Profile"
-                      width={40}
-                      height={40}
-                    />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-48 p-2">
-                  <button
-                    className="w-full rounded-md px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
-                    onClick={() => router.push("/profile")}
-                  >
-                    Profile
-                  </button>
-                  <button
-                    className="w-full rounded-md px-3 py-2 text-sm text-destructive hover:bg-accent hover:text-accent-foreground text-left"
-                    onClick={() => {
-                      signOut().then(() => router.push("/"));
-                    }}
-                  >
-                    Log Out
-                  </button>
-                </PopoverContent>
-              </Popover>
-            ) : (
-              <GithubLoginButton />
-            )}
+            {session?.user?.id
+              ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="outline-none rounded-full">
+                        <Image
+                          className="transition-transform rounded-full"
+                          src={session?.user?.profilePicture}
+                          alt="Profile"
+                          width={40}
+                          height={40}
+                        />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-48 p-2">
+                      <button
+                        className="w-full rounded-md px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
+                        onClick={() => router.push("/profile")}
+                      >
+                        Profile
+                      </button>
+                      <button
+                        className="w-full rounded-md px-3 py-2 text-sm text-destructive hover:bg-accent hover:text-accent-foreground text-left"
+                        onClick={() => {
+                          signOut().then(() => router.push("/"));
+                        }}
+                      >
+                        Log Out
+                      </button>
+                    </PopoverContent>
+                  </Popover>
+                )
+              : (
+                  <GithubLoginButton />
+                )}
           </div>
         </div>
       </header>
