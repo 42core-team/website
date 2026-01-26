@@ -48,11 +48,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "frontend.fullname" . }}-secrets
                   key: NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
-            - name: NEXTAUTH_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "frontend.fullname" . }}-secrets
-                  key: NEXTAUTH_SECRET
             - name: CLIENT_SECRET_GITHUB
               valueFrom:
                 secretKeyRef:

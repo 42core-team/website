@@ -20,7 +20,6 @@ The following environment variables can be configured in the values files:
 #### NextAuth Configuration
 
 - `NEXTAUTH_URL`: The public URL for NextAuth.js
-- `NEXTAUTH_SECRET`: Secret for NextAuth.js session encryption
 
 #### GitHub OAuth Configuration
 
@@ -40,7 +39,6 @@ The following environment variables can be configured in the values files:
 #### NextAuth Configuration
 
 - `NEXTAUTH_URL`: The public URL for NextAuth.js
-- `NEXTAUTH_SECRET`: Secret for NextAuth.js session encryption (stored as Kubernetes secret)
 
 ### Ingress rate limiting
 
@@ -106,7 +104,6 @@ Set up the following secrets in GitHub Environments:
 #### Development Environment (`dev`)
 
 - `KUBECONFIG_DATA`: Base64 encoded kubeconfig for dev cluster
-- `NEXTAUTH_SECRET`: Development NextAuth secret (GitHub Secret)
 - `CLIENT_ID_GITHUB`: Development GitHub OAuth client ID (Environment Variable)
 - `CLIENT_SECRET_GITHUB`: Development GitHub OAuth client secret (GitHub Secret)
 - `BACKEND_URL`: Development backend API URL (Environment Variable)
@@ -115,7 +112,6 @@ Set up the following secrets in GitHub Environments:
 #### Production Environment (`prod`)
 
 - `KUBECONFIG_DATA`: Base64 encoded kubeconfig for prod cluster
-- `NEXTAUTH_SECRET`: Production NextAuth secret (GitHub Secret)
 - `CLIENT_ID_GITHUB`: Production GitHub OAuth client ID (Environment Variable)
 - `CLIENT_SECRET_GITHUB`: Production GitHub OAuth client secret (GitHub Secret)
 - `BACKEND_URL`: Production backend API URL (Environment Variable)
