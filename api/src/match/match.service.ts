@@ -17,6 +17,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { GithubApiService } from "../github-api/github-api.service";
 import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations";
 import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
+import { LockKeys } from "../constants";
 
 @Injectable()
 export class MatchService {
@@ -49,7 +50,7 @@ export class MatchService {
 
   @Cron(CronExpression.EVERY_5_SECONDS)
   async processQueueMatches() {
-    const lockKey = 12346;
+    const lockKey = LockKeys.PROCESS_QUEUE_MATCHES;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
 
