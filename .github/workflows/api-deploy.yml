@@ -195,6 +195,7 @@ jobs:
             --set env.CORS_ORIGIN="${{ vars.CORS_ORIGIN }}" \
             --set env.FORTYTWO_CLIENT_ID="${{ vars.FORTYTWO_CLIENT_ID }}" \
             --set env.FORTYTWO_CLIENT_ID="${{ vars.FORTYTWO_CLIENT_ID }}" \
+            --set env.FORTYTWO_CALLBACK_URL="${{ vars.FORTYTWO_CALLBACK_URL }}" \
             --set secrets.DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
             --set secrets.DB_URL="${{ secrets.DB_URL }}" \
             --set secrets.API_SECRET_ENCRYPTION_KEY="${{ secrets.API_SECRET_ENCRYPTION_KEY }}" \
