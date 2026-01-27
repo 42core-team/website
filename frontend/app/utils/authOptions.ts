@@ -39,7 +39,7 @@ export const authOptions: NextAuthOptions = {
             profilePicture: res.data.profilePicture,
           };
         } catch (e) {
-          console.error("Authorize failed:", e);
+          console.error("Authorize failed in authOptions authorize:", e);
           return null;
         }
       },

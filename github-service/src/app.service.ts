@@ -82,6 +82,44 @@ export class AppService {
     }
   }
 
+  async addWritePermissionsForUser(
+    username: string,
+    repoOwner: string,
+    repoName: string,
+    encryptedSecret: string,
+  ) {
+    this.logger.log(
+      `Adding write permissions for user ${JSON.stringify({ username, repoOwner, repoName })}`,
+    );
+    try {
+      const secret = this.decryptSecret(encryptedSecret);
+      const githubApi = new GitHubApiClient({
+        token: secret,
+      });
+      const repositoryApi = new RepositoryApi(githubApi);
+      const result = await repositoryApi.updateCollaboratorPermission(
+        repoOwner,
+        repoName,
+        username,
+        "push",
+      );
+      this.logger.log(
+        `Added write permissions for user ${JSON.stringify({ username, repoOwner, repoName })}`,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to add write permissions for user ${JSON.stringify({
+          username,
+          repoOwner,
+          repoName,
+        })}`,
+        error as Error,
+      );
+      throw error;
+    }
+  }
+
   async addUserToRepository(
     repositoryName: string,
     username: string,

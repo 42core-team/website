@@ -6,6 +6,7 @@ import { useState } from "react";
 import { TeamCreationSection } from "@/components/team";
 import { validateTeamName } from "@/lib/utils/validation";
 import axiosInstance from "@/app/actions/axios";
+import { AxiosError } from "axios";
 
 export default function TeamCreationForm() {
   const plausible = usePlausible();
@@ -48,8 +49,14 @@ export default function TeamCreationForm() {
         }),
       ]);
     },
-    onError: (error: Error) => {
-      console.log(error);
+    onError: (error: AxiosError) => {
+      if (error.response?.status === 400) {
+        setErrorMessage(
+          "A team with this name already exists. Please choose a different name.",
+        );
+        return;
+      }
+
       if (error.message && !error.message.startsWith("An unexpected")) {
         setErrorMessage(error.message);
       } else {

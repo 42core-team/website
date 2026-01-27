@@ -483,4 +483,47 @@ export class TeamService {
   async leaveQueue(teamId: string) {
     return this.teamRepository.update(teamId, { inQueue: false });
   }
+
+  async unlockTeamsForEvent(eventId: string) {
+    const teams = await this.dataSource.transaction(async (entityManager) => {
+      const teamRepository = entityManager.getRepository(TeamEntity);
+      await teamRepository
+        .createQueryBuilder()
+        .update()
+        .set({ locked: false })
+        .where("eventId = :eventId", { eventId })
+        .execute();
+
+      return teamRepository.find({
+        where: {
+          event: {
+            id: eventId,
+          },
+        },
+        relations: {
+          users: true,
+          event: true,
+        },
+      });
+    });
+
+    for (const team of teams) {
+      if (!team.repo || !team.event)
+        continue;
+
+      for (const user of team.users) {
+        if (!user.username)
+          continue;
+
+        await this.githubApiService.addWritePermissions(
+          user.username,
+          team.event.githubOrg,
+          team.repo,
+          team.event.githubOrgSecret,
+        );
+      }
+    }
+
+    return teams;
+  }
 }

@@ -35,6 +35,20 @@ export class GithubApiService {
     });
   }
 
+  async addWritePermissions(
+    username: string,
+    repoOwner: string,
+    repoName: string,
+    encryptedSecret: string,
+  ) {
+    this.githubClient.emit("add_write_permissions", {
+      username,
+      repoOwner,
+      repoName,
+      encryptedSecret,
+    });
+  }
+
   async addUserToRepository(
     repositoryName: string,
     username: string,

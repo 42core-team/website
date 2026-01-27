@@ -30,6 +30,29 @@ export class AppController {
     );
   }
 
+  @EventPattern("add_write_permissions")
+  async handleAddWritePermissions(data: {
+    username: string;
+    repoOwner: string;
+    repoName: string;
+    encryptedSecret: string;
+  }) {
+    const safeData = {
+      username: data.username,
+      repoOwner: data.repoOwner,
+      repoName: data.repoName,
+    };
+    this.logger.log(
+      `add_write_permissions event received ${JSON.stringify(safeData)}`,
+    );
+    return await this.appService.addWritePermissionsForUser(
+      data.username,
+      data.repoOwner,
+      data.repoName,
+      data.encryptedSecret,
+    );
+  }
+
   @EventPattern("add_user_to_repository")
   async handleAddUserToRepository(data: {
     repositoryName: string;
