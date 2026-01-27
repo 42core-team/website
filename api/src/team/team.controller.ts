@@ -202,7 +202,7 @@ export class TeamController {
     return this.teamService.declineTeamInvite(userId, teamId);
   }
 
-  @UseGuards(JwtAuthGuard, MyTeamGuards, TeamNotLockedGuard)
+  @UseGuards(JwtAuthGuard, MyTeamGuards)
   @Put(`event/:${EVENT_ID_PARAM}/queue/join`)
   async joinQueue(@Team() team: TeamEntity) {
     if (team.inQueue)
@@ -214,7 +214,7 @@ export class TeamController {
     return this.teamService.joinQueue(team.id);
   }
 
-  @UseGuards(JwtAuthGuard, MyTeamGuards, TeamNotLockedGuard)
+  @UseGuards(JwtAuthGuard, MyTeamGuards)
   @Put(`event/:${EVENT_ID_PARAM}/queue/leave`)
   async leaveQueue(@Team() team: TeamEntity) {
     if (!team.inQueue)
