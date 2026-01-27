@@ -4,7 +4,7 @@ import { UserEntity } from "../user/entities/user.entity";
 
 @Injectable()
 export class AuthService {
-  constructor(private jwt: JwtService) {}
+  constructor(private readonly jwt: JwtService) {}
 
   signToken(user: UserEntity) {
     const payload = {
