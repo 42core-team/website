@@ -152,6 +152,20 @@ export class EventController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Put(":id/unlockTeams")
+  async unlockEvent(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to unlock teams for this event.",
+      );
+
+    return this.eventService.unlockTeamsForEvent(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Put(":id/lockTeamsDate")
   async lockTeamsDate(
     @Param("id", new ParseUUIDPipe()) eventId: string,
