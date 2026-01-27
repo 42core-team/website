@@ -40,7 +40,10 @@ export class AuthController {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        domain: ".coregame.sh",
+        domain:
+          this.configService.get("NODE_ENV") === "development"
+            ? "localhost"
+            : ".coregame.sh",
         maxAge: 30 * 24 * 60 * 60 * 1000,
       });
       return res.redirect(redirectUrl);
