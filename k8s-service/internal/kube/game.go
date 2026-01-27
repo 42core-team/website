@@ -286,6 +286,8 @@ func (c *Client) CreateGameJob(game *Game) error {
 
 	createdJob, err := c.clientset.BatchV1().Jobs(c.namespace).Create(context.TODO(), job, metav1.CreateOptions{})
 	if err != nil {
+		// Try to clean up the configmap if job creation fails
+		_ = c.clientset.CoreV1().ConfigMaps(c.namespace).Delete(context.TODO(), configMapName, metav1.DeleteOptions{})
 		return fmt.Errorf("failed to create job: %v", err)
 	}
 
