@@ -15,6 +15,7 @@ import { TeamService } from "../team/team.service";
 import { UserService } from "../user/user.service";
 import { CreateEventDto } from "./dtos/createEventDto";
 import { SetLockTeamsDateDto } from "./dtos/setLockTeamsDateDto";
+import { UpdateEventSettingsDto } from "./dtos/updateEventSettingsDto";
 import { UserId } from "../guards/UserGuard";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
@@ -183,5 +184,20 @@ export class EventController {
       eventId,
       new Date(body.repoLockDate),
     );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(":id/settings")
+  async updateEventSettings(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+    @Body() body: UpdateEventSettingsDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to update settings for this event.",
+      );
+
+    return this.eventService.updateEventSettings(eventId, body);
   }
 }

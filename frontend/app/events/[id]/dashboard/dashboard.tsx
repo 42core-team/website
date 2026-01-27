@@ -10,6 +10,7 @@ import {
   getTeamsCountForEvent,
   isEventAdmin,
   setEventTeamsLockDate,
+  updateEventSettings,
 } from "@/app/actions/event";
 
 import { lockEvent, unlockEvent } from "@/app/actions/team";
@@ -36,6 +37,8 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 
 interface DashboardPageProps {
   eventId: string;
@@ -85,58 +88,82 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   const lockEventMutation = useMutation({
     mutationFn: async () => await lockEvent(eventId),
     onSuccess: async () => {
+      toast.success("Team repositories locked.");
       await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
     },
     onError: () => {
-      console.error("error occurred");
+      toast.error("Failed to lock team repositories.");
     },
   });
 
   const unlockEventMutation = useMutation({
     mutationFn: async () => await unlockEvent(eventId),
     onSuccess: async () => {
+      toast.success("Team repositories unlocked.");
       await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
     },
     onError: () => {
-      console.error("error occurred");
+      toast.error("Failed to unlock team repositories.");
     },
   });
 
   const startSwissMatchesMutation = useMutation({
     mutationFn: async () => await startSwissMatches(eventId),
     onSuccess: async () => {
-      // eslint-disable-next-line no-alert
-      alert("started group phase");
+      toast.success("Started group phase.");
       await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
     },
     onError: () => {
-      // eslint-disable-next-line no-alert
-      alert("error occurred");
+      toast.error("Failed to start group phase.");
     },
   });
 
   const startTournamentMatchesMutation = useMutation({
     mutationFn: async () => await startTournamentMatches(eventId),
     onSuccess: async () => {
-      // eslint-disable-next-line no-alert
-      alert("started tournament phase");
+      toast.success("Started tournament phase.");
       await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
     },
     onError: () => {
-      // eslint-disable-next-line no-alert
-      alert("error occurred");
+      toast.error("Failed to start tournament phase.");
     },
   });
 
   const setTeamsLockDateMutation = useMutation({
-    mutationFn: async (lockDate: number | null) =>
-      await setEventTeamsLockDate(eventId, lockDate),
+    mutationFn: async (lockDate: number | null) => {
+      const result = await setEventTeamsLockDate(eventId, lockDate);
+      if (isActionError(result)) {
+        throw new Error(result.error);
+      }
+      return result;
+    },
     onSuccess: async () => {
+      toast.success("Team auto lock date updated.");
       await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
     },
     onError: () => {
-      // eslint-disable-next-line no-alert
-      alert("error occurred");
+      toast.error("Failed to update team auto lock date.");
+    },
+  });
+
+  const updateEventSettingsMutation = useMutation({
+    mutationFn: async (settings: {
+      canCreateTeam?: boolean;
+      processQueue?: boolean;
+      isPrivate?: boolean;
+    }) => {
+      const result = await updateEventSettings(eventId, settings);
+      if (isActionError(result)) {
+        throw new Error(result.error);
+      }
+      return result;
+    },
+    onSuccess: async () => {
+      toast.success("Event settings updated.");
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+    onError: () => {
+      toast.error("Failed to update event settings.");
     },
   });
 
@@ -374,8 +401,6 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     setTeamsLockDateMutation
                       .mutateAsync(new Date(teamAutoLockTime).getTime())
                       .then(() => {
-                        // eslint-disable-next-line no-alert
-                        alert("set team auto lock date");
                       })
                       .catch(() => {});
                   }}
@@ -389,8 +414,6 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     setTeamsLockDateMutation
                       .mutateAsync(null)
                       .then(() => {
-                        // eslint-disable-next-line no-alert
-                        alert("reset team auto lock date");
                         setTeamAutoLockTime("");
                       })
                       .catch(() => {});
@@ -398,6 +421,59 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 >
                   Reset
                 </Button>
+              </div>
+
+              <h3 className="mt-6 text-sm font-medium">Event settings</h3>
+              <div className="mt-3 grid gap-4 md:grid-cols-2">
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div>
+                    <p className="text-sm font-medium">Allow team creation</p>
+                    <p className="text-xs text-muted-foreground">
+                      Enables participants to create teams.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={event.canCreateTeam}
+                    disabled={updateEventSettingsMutation.isPending}
+                    onCheckedChange={(value) =>
+                      updateEventSettingsMutation.mutate({
+                        canCreateTeam: value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div>
+                    <p className="text-sm font-medium">Process queue</p>
+                    <p className="text-xs text-muted-foreground">
+                      Allows match queue processing.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={event.processQueue}
+                    disabled={updateEventSettingsMutation.isPending}
+                    onCheckedChange={(value) =>
+                      updateEventSettingsMutation.mutate({
+                        processQueue: value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div>
+                    <p className="text-sm font-medium">Private event</p>
+                    <p className="text-xs text-muted-foreground">
+                      Restricts access to invited users.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={event.isPrivate}
+                    disabled={updateEventSettingsMutation.isPending}
+                    onCheckedChange={(value) =>
+                      updateEventSettingsMutation.mutate({ isPrivate: value })
+                    }
+                  />
+                </div>
               </div>
 
               <p className="text-sm text-muted-foreground mt-4">

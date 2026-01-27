@@ -287,6 +287,38 @@ export class EventService {
     });
   }
 
+  async updateEventSettings(
+    eventId: string,
+    settings: {
+      canCreateTeam?: boolean;
+      processQueue?: boolean;
+      isPrivate?: boolean;
+    },
+  ): Promise<UpdateResult> {
+    await this.getEventById(eventId);
+
+    const update: Partial<EventEntity> = {};
+    if (typeof settings.canCreateTeam === "boolean") {
+      update.canCreateTeam = settings.canCreateTeam;
+    }
+    if (typeof settings.processQueue === "boolean") {
+      update.processQueue = settings.processQueue;
+    }
+    if (typeof settings.isPrivate === "boolean") {
+      update.isPrivate = settings.isPrivate;
+    }
+
+    if (Object.keys(update).length === 0) {
+      return {
+        generatedMaps: [],
+        raw: [],
+        affected: 0,
+      };
+    }
+
+    return this.eventRepository.update(eventId, update);
+  }
+
   async getCurrentLiveEvent() {
     const qb = this.eventRepository
       .createQueryBuilder("event")
