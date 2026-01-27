@@ -479,4 +479,8 @@ export class TeamService {
       },
     });
   }
+
+  async leaveQueue(teamId: string) {
+    return this.teamRepository.update(teamId, { inQueue: false });
+  }
 }

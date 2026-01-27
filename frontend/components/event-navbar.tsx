@@ -37,30 +37,34 @@ export default function EventNavbar({
   const hasStarted = Date.now() >= new Date(event.startDate).getTime();
 
   const navItems = useMemo(() => {
-    const baseItems = [
+    const items = [
       { name: "Info", path: `/events/${eventId}` },
-      ...(isUserRegistered
-        ? [
-            { name: "My Team", path: `/events/${eventId}/my-team` },
-            { name: "Queue", path: `/events/${eventId}/queue` },
-          ]
-        : []),
       { name: "Teams", path: `/events/${eventId}/teams` },
-      ...(hasStarted
-        ? [
-            { name: "Group Phase", path: `/events/${eventId}/groups` },
-            { name: "Tournament Tree", path: `/events/${eventId}/bracket` },
-          ]
-        : []),
     ];
 
-    return isEventAdmin
-      ? [
-          ...baseItems,
-          { name: "Queue Matches", path: `/events/${eventId}/queue-matches` },
-          { name: "Dashboard", path: `/events/${eventId}/dashboard` },
-        ]
-      : baseItems;
+    if (isUserRegistered) {
+      items.push({ name: "My Team", path: `/events/${eventId}/my-team` });
+    }
+
+    if (hasStarted) {
+      items.push({ name: "Queue", path: `/events/${eventId}/queue` });
+    }
+
+    if (event.currentRound > 0) {
+      items.push(
+        { name: "Group Phase", path: `/events/${eventId}/groups` },
+        { name: "Tournament Tree", path: `/events/${eventId}/bracket` },
+      );
+    }
+
+    if (isEventAdmin) {
+      items.push(
+        { name: "Queue Matches", path: `/events/${eventId}/queue-matches` },
+        { name: "Dashboard", path: `/events/${eventId}/dashboard` },
+      );
+    }
+
+    return items;
   }, [eventId, isUserRegistered, isEventAdmin, hasStarted]);
 
   return (

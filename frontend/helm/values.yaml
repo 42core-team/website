@@ -62,10 +62,6 @@ env:
 # Secrets - these should be provided via GitHub secrets during deployment
 secrets:
   NEXTAUTH_SECRET: ""
-  CLIENT_SECRET_GITHUB: ""
-  BACKEND_SECRET: ""
-  # 42 OAuth Client Secret - sensitive data
-  FORTY_TWO_CLIENT_SECRET: ""
   # Next.js Server Actions encryption key for AES-GCM.
   # Must be a random 32-byte value, encoded as base64 or hex.
   # Example (base64): openssl rand -base64 32

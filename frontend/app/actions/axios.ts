@@ -14,24 +14,15 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   async (config) => {
     if (process.env.BACKEND_URL) {
-      console.log("Using BACKEND_URL for axios requests");
-      console.log("Backend URL:", process.env.BACKEND_URL);
       // eslint-disable-next-line ts/no-require-imports
       const cookieData = await require("next/headers").cookies();
       const token = cookieData.get("token");
-      if (token){
-        console.log("Attaching token to request headers", token.value);
+      if (token)
         config.headers.Cookie = `token=${token.value}`;
-      }else{
-        console.log("No token found in cookies");
-      }
 
       config.baseURL = process.env.BACKEND_URL;
       return config;
     }
-
-    console.log("Using NEXT_PUBLIC_BACKEND_PUBLIC_URL for axios requests");
-    console.log("Backend URL:", process.env.BACKEND_URL);
 
     config.baseURL = process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
 
