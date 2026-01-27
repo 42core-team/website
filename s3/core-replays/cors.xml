@@ -1,7 +1,7 @@
 <CORSConfiguration>
   <CORSRule>
-    <AllowedOrigin>https://visualizer.coregame.de</AllowedOrigin>
-    <AllowedOrigin>https://dev.visualizer.coregame.de</AllowedOrigin>
+    <AllowedOrigin>https://visualizer.coregame.sh</AllowedOrigin>
+    <AllowedOrigin>https://dev.visualizer.coregame.sh</AllowedOrigin>
     <AllowedMethod>GET</AllowedMethod>
     <AllowedMethod>HEAD</AllowedMethod>
     <AllowedHeader>*</AllowedHeader>

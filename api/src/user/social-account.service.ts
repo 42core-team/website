@@ -1,6 +1,5 @@
 import {
   Injectable,
-  ConflictException,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -19,52 +18,6 @@ export class SocialAccountService {
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
   ) {}
-
-  async linkSocialAccount(
-    userId: string,
-    platform: SocialPlatform,
-    username: string,
-    platformUserId: string,
-  ): Promise<SocialAccountEntity> {
-    // Check if user exists
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException("User not found");
-    }
-
-    // Check if this platform account is already linked to another user
-    const existingAccount = await this.socialAccountRepository.findOne({
-      where: { platform, platformUserId },
-    });
-
-    if (existingAccount && existingAccount.userId !== userId) {
-      throw new ConflictException(
-        "This social account is already linked to another user",
-      );
-    }
-
-    // Check if user already has an account for this platform
-    const existingUserAccount = await this.socialAccountRepository.findOne({
-      where: { userId, platform },
-    });
-
-    if (existingUserAccount) {
-      // Update existing account
-      existingUserAccount.username = username;
-      existingUserAccount.platformUserId = platformUserId;
-      return await this.socialAccountRepository.save(existingUserAccount);
-    }
-
-    // Create new social account link
-    const socialAccount = this.socialAccountRepository.create({
-      userId,
-      platform,
-      username,
-      platformUserId,
-    });
-
-    return await this.socialAccountRepository.save(socialAccount);
-  }
 
   async unlinkSocialAccount(
     userId: string,
@@ -94,5 +47,30 @@ export class SocialAccountService {
     return await this.socialAccountRepository.findOne({
       where: { userId, platform },
     });
+  }
+
+  async upsertSocialAccountForUser(params: {
+    userId: string;
+    platform: SocialPlatform;
+    username: string;
+    platformUserId: string;
+  }): Promise<SocialAccountEntity> {
+    const existing = await this.socialAccountRepository.findOne({
+      where: { userId: params.userId, platform: params.platform },
+    });
+
+    if (existing) {
+      existing.username = params.username;
+      existing.platformUserId = params.platformUserId;
+      return this.socialAccountRepository.save(existing);
+    }
+
+    const entity = this.socialAccountRepository.create({
+      userId: params.userId,
+      platform: params.platform,
+      username: params.username,
+      platformUserId: params.platformUserId,
+    });
+    return this.socialAccountRepository.save(entity);
   }
 }

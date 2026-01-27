@@ -104,15 +104,8 @@ export async function lockEvent(eventId: string) {
   return (await axiosInstance.put(`event/${eventId}/lock`)).data;
 }
 
-export async function createTeam(
-  name: string,
-  eventId: string,
-): Promise<ServerActionResponse<Team>> {
-  return await handleError(
-    axiosInstance.post(`team/event/${eventId}/create`, {
-      name,
-    }),
-  );
+export async function unlockEvent(eventId: string) {
+  return (await axiosInstance.put(`event/${eventId}/unlock`)).data;
 }
 
 /**

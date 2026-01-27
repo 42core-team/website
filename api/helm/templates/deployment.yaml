@@ -42,32 +42,9 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
-            # Secrets from Kubernetes secrets
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "api.fullname" . }}-secrets
-                  key: DB_PASSWORD
-            - name: DB_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "api.fullname" . }}-secrets
-                  key: DB_URL
-            - name: RABBITMQ_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "api.fullname" . }}-secrets
-                  key: RABBITMQ_URL
-            - name: API_SECRET_ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "api.fullname" . }}-secrets
-                  key: API_SECRET_ENCRYPTION_KEY
-            - name: FRONTEND_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "api.fullname" . }}-secrets
-                  key: FRONTEND_SECRET
+          envFrom:
+            - secretRef:
+                name: {{ include "api.fullname" . }}-secrets
           {{- if .Values.resources }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

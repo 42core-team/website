@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { EventEntity, EventState } from "./entities/event.entity";
+import { EventEntity } from "./entities/event.entity";
 import {
   DataSource,
   IsNull,
@@ -16,6 +16,7 @@ import { TeamService } from "../team/team.service";
 import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { EventVersionDto } from "./dtos/eventVersionDto";
+import { LockKeys } from "../constants";
 
 @Injectable()
 export class EventService {
@@ -25,14 +26,14 @@ export class EventService {
     private readonly configService: ConfigService,
     @Inject(forwardRef(() => TeamService))
     private readonly teamService: TeamService,
-    private dataSource: DataSource,
-  ) { }
+    private readonly dataSource: DataSource,
+  ) {}
 
   logger = new Logger("EventService");
 
   @Cron(CronExpression.EVERY_MINUTE)
   async autoLockEvents() {
-    const lockKey = 12345;
+    const lockKey = LockKeys.AUTO_LOCK_EVENTS;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
 
@@ -84,11 +85,20 @@ export class EventService {
 
   async getEventsForUser(userId: string): Promise<EventEntity[]> {
     return this.eventRepository.find({
-      where: {
-        users: {
-          id: userId,
+      where: [
+        {
+          users: {
+            id: userId,
+          },
         },
-      },
+        {
+          teams: {
+            users: {
+              id: userId,
+            },
+          },
+        },
+      ],
       order: {
         startDate: "ASC",
       },
@@ -194,8 +204,19 @@ export class EventService {
     return this.eventRepository.increment({ id: eventId }, "currentRound", 1);
   }
 
-  isUserRegisteredForEvent(eventId: string, userId: string) {
+  isEventPublic(eventId: string): Promise<boolean> {
     return this.eventRepository.existsBy({
+      id: eventId,
+      isPrivate: false,
+    });
+  }
+
+  async isUserRegisteredForEvent(eventId: string, userId: string) {
+    /**
+     * for public events, all users are considered registered
+     */
+    if (await this.isEventPublic(eventId)) return true;
+    return await this.eventRepository.existsBy({
       id: eventId,
       users: {
         id: userId,
@@ -238,7 +259,6 @@ export class EventService {
       }),
     );
 
-    await this.setEventState(event.id, EventState.SWISS_ROUND);
     return this.eventRepository.update(eventId, {
       canCreateTeam: false,
       lockedAt: new Date(),
@@ -246,9 +266,13 @@ export class EventService {
     });
   }
 
-  async setEventState(eventId: string, eventState: EventState) {
+  async unlockEvent(eventId: string) {
+    await this.getEventById(eventId);
+    await this.teamService.unlockTeamsForEvent(eventId);
     return this.eventRepository.update(eventId, {
-      state: eventState,
+      canCreateTeam: true,
+      lockedAt: null,
+      processQueue: true,
     });
   }
 
@@ -267,6 +291,38 @@ export class EventService {
     });
   }
 
+  async updateEventSettings(
+    eventId: string,
+    settings: {
+      canCreateTeam?: boolean;
+      processQueue?: boolean;
+      isPrivate?: boolean;
+    },
+  ): Promise<UpdateResult> {
+    await this.getEventById(eventId);
+
+    const update: Partial<EventEntity> = {};
+    if (typeof settings.canCreateTeam === "boolean") {
+      update.canCreateTeam = settings.canCreateTeam;
+    }
+    if (typeof settings.processQueue === "boolean") {
+      update.processQueue = settings.processQueue;
+    }
+    if (typeof settings.isPrivate === "boolean") {
+      update.isPrivate = settings.isPrivate;
+    }
+
+    if (Object.keys(update).length === 0) {
+      return {
+        generatedMaps: [],
+        raw: [],
+        affected: 0,
+      };
+    }
+
+    return this.eventRepository.update(eventId, update);
+  }
+
   async getCurrentLiveEvent() {
     const qb = this.eventRepository
       .createQueryBuilder("event")
@@ -281,6 +337,26 @@ export class EventService {
       .limit(1);
 
     return qb.getOne();
+  }
+
+  async hasEventStarted(eventId: string): Promise<boolean> {
+    if (!eventId) return false;
+
+    return await this.eventRepository.existsBy({
+      id: eventId,
+      startDate: LessThanOrEqual(new Date()),
+    });
+  }
+
+  async hasEventStartedForTeam(teamId: string): Promise<boolean> {
+    if (!teamId) return false;
+
+    return await this.eventRepository.existsBy({
+      teams: {
+        id: teamId,
+      },
+      startDate: LessThanOrEqual(new Date()),
+    });
   }
 
   canCreateTeamInEvent(eventId: string): Promise<boolean> {

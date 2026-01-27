@@ -6,7 +6,8 @@ import { Logger } from "@nestjs/common";
 import { GitHubRepository } from "./githubApi";
 
 export class RepoUtils {
-  private readonly MY_CORE_BOT_FOLDER = "my-core-bot";
+  // TODO: this needs to be dynamic in the future
+  private readonly MY_CORE_BOT_FOLDER = "bots/softcore";
   private readonly COREIGNORE_FILE = ".coreignore";
 
   private readonly logger = new Logger("RepoUtils");

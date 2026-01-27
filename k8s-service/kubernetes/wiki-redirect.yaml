@@ -5,15 +5,15 @@ metadata:
   namespace: production
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/permanent-redirect: "https://coregame.de/wiki"
+    nginx.ingress.kubernetes.io/permanent-redirect: "https://coregame.sh/wiki"
 spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - wiki.coregame.de
+        - wiki.coregame.sh
       secretName: wiki-coregame-tls
   rules:
-    - host: wiki.coregame.de
+    - host: wiki.coregame.sh
       http:
         paths:
           - path: /

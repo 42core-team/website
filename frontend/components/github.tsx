@@ -1,14 +1,22 @@
-import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { GithubIcon } from "./icons";
 
 export default function GithubLoginButton() {
   async function githubLogin() {
     try {
-      await signIn("github");
+      if (typeof window !== "undefined") {
+        const { pathname, search, hash } = window.location;
+        sessionStorage.setItem(
+          "post_oauth_redirect",
+          `${pathname}${search}${hash}`,
+        );
+      }
+      const base
+        = process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
+      window.location.href = `${base?.replace(/\/$/, "")}/auth/github/callback`;
     }
     catch (error) {
-      console.error("error while logging in:", error);
+      console.error("error while redirecting to login:", error);
     }
   }
 

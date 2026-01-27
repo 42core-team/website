@@ -82,6 +82,44 @@ export class AppService {
     }
   }
 
+  async addWritePermissionsForUser(
+    username: string,
+    repoOwner: string,
+    repoName: string,
+    encryptedSecret: string,
+  ) {
+    this.logger.log(
+      `Adding write permissions for user ${JSON.stringify({ username, repoOwner, repoName })}`,
+    );
+    try {
+      const secret = this.decryptSecret(encryptedSecret);
+      const githubApi = new GitHubApiClient({
+        token: secret,
+      });
+      const repositoryApi = new RepositoryApi(githubApi);
+      const result = await repositoryApi.updateCollaboratorPermission(
+        repoOwner,
+        repoName,
+        username,
+        "push",
+      );
+      this.logger.log(
+        `Added write permissions for user ${JSON.stringify({ username, repoOwner, repoName })}`,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to add write permissions for user ${JSON.stringify({
+          username,
+          repoOwner,
+          repoName,
+        })}`,
+        error as Error,
+      );
+      throw error;
+    }
+  }
+
   async addUserToRepository(
     repositoryName: string,
     username: string,
@@ -197,8 +235,10 @@ export class AppService {
   async createTeamRepository(
     name: string,
     teamName: string,
-    username: string,
-    encryptedUserGithubAccessToken: string,
+    githubUsers: {
+      username: string;
+      githubAccessToken: string;
+    }[],
     githubOrg: string,
     encryptedSecret: string,
     teamId: string,
@@ -212,15 +252,11 @@ export class AppService {
       `Creating team repository ${JSON.stringify({
         name,
         teamName,
-        username,
         githubOrg,
         teamId,
       })}`,
     );
     try {
-      const githubAccessToken = this.decryptSecret(
-        encryptedUserGithubAccessToken,
-      );
       const secret = this.decryptSecret(encryptedSecret);
       const githubApi = new GitHubApiClient({
         token: secret,
@@ -280,17 +316,33 @@ export class AppService {
         teamId: teamId,
       });
 
-      await repositoryApi.addCollaborator(githubOrg, name, username, "push");
-      await userApi.acceptRepositoryInvitationByRepo(
-        githubOrg,
-        name,
-        githubAccessToken,
+      await Promise.all(
+        githubUsers.map(async (user) => {
+          const { username, githubAccessToken } = user;
+          this.logger.log(
+            `Adding user ${username} to repository ${name} in org ${githubOrg}`,
+          );
+          await repositoryApi.addCollaborator(
+            githubOrg,
+            name,
+            username,
+            "push",
+          );
+
+          const decryptedGithubAccessToken =
+            this.decryptSecret(githubAccessToken);
+
+          await userApi.acceptRepositoryInvitationByRepo(
+            githubOrg,
+            name,
+            decryptedGithubAccessToken,
+          );
+        }),
       );
 
       this.logger.log(
         `Created team repository ${JSON.stringify({
           name,
-          username,
           githubOrg,
           teamId,
           repoName: name,
@@ -300,7 +352,6 @@ export class AppService {
       this.logger.error(
         `Failed to create team repository ${JSON.stringify({
           name,
-          username,
           githubOrg,
           teamId,
         })}`,

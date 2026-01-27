@@ -84,7 +84,7 @@ export default function Footer() {
             <h3 className="font-bold mb-4">Connect</h3>
             <div className="flex flex-col gap-2">
               <Link
-                href="https://status.coregame.de"
+                href="https://status.coregame.sh"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-primary"

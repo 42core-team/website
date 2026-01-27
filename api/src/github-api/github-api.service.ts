@@ -35,6 +35,20 @@ export class GithubApiService {
     });
   }
 
+  async addWritePermissions(
+    username: string,
+    repoOwner: string,
+    repoName: string,
+    encryptedSecret: string,
+  ) {
+    this.githubClient.emit("add_write_permissions", {
+      username,
+      repoOwner,
+      repoName,
+      encryptedSecret,
+    });
+  }
+
   async addUserToRepository(
     repositoryName: string,
     username: string,
@@ -80,8 +94,10 @@ export class GithubApiService {
   async createTeamRepository(
     name: string,
     teamName: string,
-    username: string,
-    userGithubAccessToken: string,
+    githubUsers: {
+      username: string,
+      githubAccessToken: string,
+    }[],
     githubOrg: string,
     encryptedSecret: string,
     teamId: string,
@@ -94,8 +110,7 @@ export class GithubApiService {
     this.githubClient.emit("create_team_repository", {
       name,
       teamName,
-      username,
-      userGithubAccessToken,
+      githubUsers,
       githubOrg,
       encryptedSecret,
       teamId,

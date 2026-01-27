@@ -29,12 +29,12 @@ export default function NotFoundClient() {
             You can check
             {" "}
             <Link
-              href="https://status.coregame.de"
+              href="https://status.coregame.sh"
               className="text-primary hover:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
-              status.coregame.de
+              status.coregame.sh
             </Link>
             {" "}
             for any known issues.

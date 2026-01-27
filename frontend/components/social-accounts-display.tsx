@@ -71,6 +71,7 @@ export default function SocialAccountsDisplay() {
     });
     if (
       !session?.user?.id
+      // eslint-disable-next-line no-alert
       || !confirm("Are you sure you want to unlink this account?")
     ) {
       return;
@@ -85,6 +86,7 @@ export default function SocialAccountsDisplay() {
     }
     catch (error) {
       console.error("Error unlinking account:", error);
+      // eslint-disable-next-line no-alert
       alert("Failed to unlink account. Please try again.");
     }
     finally {

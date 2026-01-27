@@ -4,7 +4,6 @@ import { Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
-import { EventState } from "@/app/actions/event-model";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -33,37 +32,38 @@ export default function EventNavbar({
   isUserRegistered = false,
   isEventAdmin = false,
   event,
-}: EventNavbarProps) {
+}: Readonly<EventNavbarProps>) {
   const pathname = usePathname();
+  const hasStarted = Date.now() >= new Date(event.startDate).getTime();
 
   const navItems = useMemo(() => {
-    const baseItems = [
+    const items = [
       { name: "Info", path: `/events/${eventId}` },
-      ...(isUserRegistered
-        ? [
-            { name: "My Team", path: `/events/${eventId}/my-team` },
-            { name: "Queue", path: `/events/${eventId}/queue` },
-          ]
-        : []),
       { name: "Teams", path: `/events/${eventId}/teams` },
-      ...(event.state === EventState.ELIMINATION_ROUND
-        || event.state === EventState.SWISS_ROUND
-        || event.state === EventState.FINISHED
-        ? [
-            { name: "Group Phase", path: `/events/${eventId}/groups` },
-            { name: "Tournament Tree", path: `/events/${eventId}/bracket` },
-          ]
-        : []),
     ];
 
-    return isEventAdmin
-      ? [
-          ...baseItems,
-          { name: "Queue Matches", path: `/events/${eventId}/queue-matches` },
-          { name: "Dashboard", path: `/events/${eventId}/dashboard` },
-        ]
-      : baseItems;
-  }, [eventId, isUserRegistered, isEventAdmin, event.state]);
+    if (isUserRegistered) {
+      items.push({ name: "My Team", path: `/events/${eventId}/my-team` });
+
+      if (hasStarted) {
+        items.push({ name: "Queue", path: `/events/${eventId}/queue` });
+      }
+    }
+
+    items.push(
+      { name: "Group Phase", path: `/events/${eventId}/groups` },
+      { name: "Tournament Tree", path: `/events/${eventId}/bracket` },
+    );
+
+    if (isEventAdmin) {
+      items.push(
+        { name: "Queue Matches", path: `/events/${eventId}/queue-matches` },
+        { name: "Dashboard", path: `/events/${eventId}/dashboard` },
+      );
+    }
+
+    return items;
+  }, [eventId, isUserRegistered, isEventAdmin, hasStarted]);
 
   return (
     <div className="py-4 flex items-center pl-12 md:pl-0 justify-start md:justify-center">
@@ -93,9 +93,13 @@ export default function EventNavbar({
       <div className="px-3 flex md:hidden">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-fit" size="icon" aria-label="Open navigation menu">
+            <Button
+              variant="ghost"
+              className="w-fit"
+              size="icon"
+              aria-label="Open navigation menu"
+            >
               <Menu className="size-5" />
-              {" "}
               Event Menu
             </Button>
           </DropdownMenuTrigger>
@@ -103,7 +107,11 @@ export default function EventNavbar({
             {navItems.map((item) => {
               const isActive = pathname === item.path;
               return (
-                <DropdownMenuItem key={item.path} asChild className={cn(isActive && "bg-accent text-accent-foreground")}>
+                <DropdownMenuItem
+                  key={item.path}
+                  asChild
+                  className={cn(isActive && "bg-accent text-accent-foreground")}
+                >
                   <Link href={item.path}>{item.name}</Link>
                 </DropdownMenuItem>
               );

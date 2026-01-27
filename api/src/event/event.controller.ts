@@ -15,7 +15,9 @@ import { TeamService } from "../team/team.service";
 import { UserService } from "../user/user.service";
 import { CreateEventDto } from "./dtos/createEventDto";
 import { SetLockTeamsDateDto } from "./dtos/setLockTeamsDateDto";
-import { UserGuard, UserId } from "../guards/UserGuard";
+import { UpdateEventSettingsDto } from "./dtos/updateEventSettingsDto";
+import { UserId } from "../guards/UserGuard";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 @Controller("event")
 export class EventController {
@@ -25,7 +27,7 @@ export class EventController {
     private readonly userService: UserService,
   ) { }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Get("my")
   async getMyEvents(@UserId() userId: string) {
     return this.eventService.getEventsForUser(userId);
@@ -51,7 +53,7 @@ export class EventController {
     return await this.eventService.getCurrentLiveEvent();
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Post()
   createEvent(
     @UserId() userId: string,
@@ -96,16 +98,16 @@ export class EventController {
     return this.userService.getUserCountOfEvent(eventId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Get(":id/isUserRegistered")
-  getEventByUserId(
+  isUserRegistered(
     @Param("id", new ParseUUIDPipe()) eventId: string,
     @UserId() userId: string,
   ) {
     return this.eventService.isUserRegisteredForEvent(eventId, userId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Get(":id/isEventAdmin")
   isEventAdmin(
     @Param("id", new ParseUUIDPipe()) eventId: string,
@@ -114,7 +116,7 @@ export class EventController {
     return this.eventService.isEventAdmin(eventId, userId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Put(":id/join")
   async joinEvent(
     @Param("id", new ParseUUIDPipe()) eventId: string,
@@ -138,7 +140,7 @@ export class EventController {
     return this.userService.joinEvent(userId, eventId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
   @Put(":id/lock")
   async lockEvent(
     @Param("id", new ParseUUIDPipe()) eventId: string,
@@ -152,7 +154,21 @@ export class EventController {
     return this.eventService.lockEvent(eventId);
   }
 
-  @UseGuards(UserGuard)
+  @UseGuards(JwtAuthGuard)
+  @Put(":id/unlock")
+  async unlockEvent(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to unlock teams for this event.",
+      );
+
+    return this.eventService.unlockEvent(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Put(":id/lockTeamsDate")
   async lockTeamsDate(
     @Param("id", new ParseUUIDPipe()) eventId: string,
@@ -170,5 +186,20 @@ export class EventController {
       eventId,
       new Date(body.repoLockDate),
     );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(":id/settings")
+  async updateEventSettings(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+    @Body() body: UpdateEventSettingsDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to update settings for this event.",
+      );
+
+    return this.eventService.updateEventSettings(eventId, body);
   }
 }

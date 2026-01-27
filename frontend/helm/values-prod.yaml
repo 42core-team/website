@@ -19,18 +19,18 @@ resources:
 env:
   NODE_ENV: production
   # NextAuth Configuration
-  NEXTAUTH_URL: "https://coregame.de"
+  NEXTAUTH_URL: "https://coregame.sh"
   # GitHub OAuth Configuration
   CLIENT_ID_GITHUB: prod-github-client-id
   # 42 OAuth Configuration - public variable
   NEXT_PUBLIC_FORTY_TWO_CLIENT_ID: prod-42-client-id
   # Backend API Configuration
   BACKEND_URL: "http://api-main"
-  NEXT_PUBLIC_VISUALIZER_URL: "https://visualizer.coregame.de"
-  NEXT_PUBLIC_BACKEND_PUBLIC_URL: "https://api.coregame.de"
+  NEXT_PUBLIC_VISUALIZER_URL: "https://visualizer.coregame.sh"
+  NEXT_PUBLIC_BACKEND_PUBLIC_URL: "https://api.coregame.sh"
   # Plausible analytics domain defaults for prod
-  PLAUSIBLE_DOMAIN: coregame.de
-  PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.de"
+  PLAUSIBLE_DOMAIN: coregame.sh
+  PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.sh"
 
 ingress:
   enabled: true
@@ -42,13 +42,13 @@ ingress:
   #    nginx.ingress.kubernetes.io/limit-burst: "20"
   #    nginx.ingress.kubernetes.io/limit-connections: "50"
   hosts:
-    - host: coregame.de
+    - host: coregame.sh
       paths:
         - path: /
           pathType: Prefix
   tls:
     - hosts:
-        - coregame.de
+        - coregame.sh
       secretName: coregame-de-tls
 
 ingressRedirect:
@@ -56,8 +56,8 @@ ingressRedirect:
   className: nginx
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-  fromHost: www.coregame.de
-  toHost: coregame.de
+  fromHost: www.coregame.sh
+  toHost: coregame.sh
   code: "308"
   tls:
     enabled: true
@@ -66,13 +66,3 @@ ingressRedirect:
 nodeSelector: {}
 tolerations: []
 affinity: {}
-
-# Secrets - these should be provided via GitHub secrets during deployment
-secrets:
-  NEXTAUTH_SECRET: ""
-  CLIENT_SECRET_GITHUB: ""
-  BACKEND_SECRET: ""
-  # 42 OAuth Client Secret - sensitive data
-  FORTY_TWO_CLIENT_SECRET: ""
-  # Provide a prod encryption key (AES-GCM) via CI/CD secret injection
-  NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ""

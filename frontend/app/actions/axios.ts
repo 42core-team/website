@@ -1,33 +1,34 @@
 import type { AxiosResponse } from "axios";
 import type { ServerActionResponse } from "@/app/actions/errors";
 import axios from "axios";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/utils/authOptions";
 
 const axiosInstance = axios.create({
-  baseURL: process.env.BACKEND_URL,
+  baseURL:
+    process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL || process.env.BACKEND_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
-    "Authorization": `${process.env.BACKEND_SECRET}`,
   },
 });
 
 axiosInstance.interceptors.request.use(
   async (config) => {
-    if (!process.env.BACKEND_SECRET) {
-      config.baseURL = process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
+    if (process.env.BACKEND_URL) {
+      // eslint-disable-next-line ts/no-require-imports
+      const cookieData = await require("next/headers").cookies();
+      const token = cookieData.get("token");
+      if (token)
+        config.headers.Cookie = `token=${token.value}`;
+
+      config.baseURL = process.env.BACKEND_URL;
       return config;
     }
 
-    if (config.url && config.url.startsWith("user/email/")) {
-      return config;
-    }
-    const session = await getServerSession(authOptions);
-    config.headers.userId = session?.user?.id || "";
+    config.baseURL = process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
+
     return config;
   },
   (error) => {
-    // Handle request errors
     return Promise.reject(error);
   },
 );

@@ -1,15 +1,9 @@
 "use client";
-import type {
-  Node,
-} from "reactflow";
+import type { Node } from "reactflow";
 import type { Match } from "@/app/actions/tournament-model";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import ReactFlow, {
-  Background,
-  useEdgesState,
-  useNodesState,
-} from "reactflow";
+import ReactFlow, { Background, useEdgesState, useNodesState } from "reactflow";
 import { MatchState } from "@/app/actions/tournament-model";
 import { MatchNode } from "@/components/match";
 import { Switch } from "@/components/ui/switch";
@@ -41,6 +35,11 @@ function createTreeCoordinate(matchCount: number): { x: number; y: number }[] {
   }
 
   return coordinates;
+}
+
+function getTotalRounds(teamCount: number) {
+  if (teamCount <= 1) return 1;
+  return Math.ceil(Math.log2(teamCount));
 }
 
 export default function GraphView({
@@ -94,47 +93,101 @@ export default function GraphView({
     }
 
     // Create nodes from actual match data
-    const newNodes: Node[] = matches.map((match, index) => {
-      const coordinates = createTreeCoordinate(matches.length);
-      const coord = coordinates[index] || {
-        x: 0,
-        y: index * (MATCH_HEIGHT + 20),
-      };
+    const sortedMatches = [...matches].sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+    const matchesByRound = new Map<number, Match[]>();
+    for (const match of sortedMatches) {
+      if (!matchesByRound.has(match.round)) {
+        matchesByRound.set(match.round, []);
+      }
+      matchesByRound.get(match.round)!.push(match);
+    }
 
-      return {
-        id: match.id,
-        type: "matchNode",
-        position: { x: coord.x, y: coord.y },
-        data: {
-          match,
-          width: MATCH_WIDTH,
-          height: MATCH_HEIGHT,
-          onClick: (clickedMatch: Match) => {
-            if (match.state === MatchState.FINISHED || isEventAdmin)
-              router.push(`/events/${eventId}/match/${clickedMatch.id}`);
+    const totalRounds = getTotalRounds(teamCount);
+    const lastRound = totalRounds - 1;
+    const newNodes: Node[] = [];
+
+    const roundKeys = Array.from(matchesByRound.keys()).sort((a, b) => a - b);
+    for (const round of roundKeys) {
+      const roundMatches = matchesByRound.get(round) || [];
+      const placementMatch =
+        round === lastRound
+          ? roundMatches.find((match) => match.isPlacementMatch)
+          : undefined;
+      const bracketMatches =
+        round === lastRound
+          ? roundMatches.filter((match) => !match.isPlacementMatch)
+          : roundMatches;
+      const spacing = 2 ** round * VERTICAL_SPACING;
+
+      bracketMatches.forEach((match, index) => {
+        const coord = {
+          x: round * ROUND_SPACING,
+          y: index * spacing + spacing / 2,
+        };
+
+        newNodes.push({
+          id: match.id,
+          type: "matchNode",
+          position: { x: coord.x, y: coord.y },
+          data: {
+            match,
+            width: MATCH_WIDTH,
+            height: MATCH_HEIGHT,
+            onClick: (clickedMatch: Match) => {
+              if (match.state === MatchState.FINISHED || isEventAdmin)
+                router.push(`/events/${eventId}/match/${clickedMatch.id}`);
+            },
           },
-        },
-      };
-    });
+        });
+      });
+
+      if (placementMatch) {
+        const placementCoord = {
+          x: round * ROUND_SPACING,
+          y: spacing / 2 + VERTICAL_SPACING * 2,
+        };
+
+        newNodes.push({
+          id: placementMatch.id,
+          type: "matchNode",
+          position: { x: placementCoord.x, y: placementCoord.y },
+          data: {
+            match: placementMatch,
+            width: MATCH_WIDTH,
+            height: MATCH_HEIGHT,
+            onClick: (clickedMatch: Match) => {
+              if (
+                placementMatch.state === MatchState.FINISHED ||
+                isEventAdmin
+              )
+                router.push(`/events/${eventId}/match/${clickedMatch.id}`);
+            },
+          },
+        });
+      }
+    }
 
     setNodes(newNodes);
-  }, [matches, setNodes]);
+  }, [matches, teamCount, isEventAdmin, router, eventId, setNodes]);
 
   return (
     <div className="w-full">
       <div style={{ width: "100%", height: "80vh" }}>
         <style jsx global>
           {`
-          .react-flow__handle {
-            display: none;
-          }
+            .react-flow__handle {
+              display: none;
+            }
 
-          .react-flow__node {
-            font-family:
-              -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-              "Helvetica Neue", Arial, sans-serif;
-          }
-        `}
+            .react-flow__node {
+              font-family:
+                -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                "Helvetica Neue", Arial, sans-serif;
+            }
+          `}
         </style>
         {isEventAdmin && (
           <div className="flex items-center mb-2 mt-2 gap-4">

@@ -53,21 +53,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "frontend.fullname" . }}-secrets
                   key: NEXTAUTH_SECRET
-            - name: CLIENT_SECRET_GITHUB
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "frontend.fullname" . }}-secrets
-                  key: CLIENT_SECRET_GITHUB
-            - name: BACKEND_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "frontend.fullname" . }}-secrets
-                  key: BACKEND_SECRET
-            - name: FORTY_TWO_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "frontend.fullname" . }}-secrets
-                  key: FORTY_TWO_CLIENT_SECRET
           {{- if .Values.resources }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

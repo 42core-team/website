@@ -30,6 +30,29 @@ export class AppController {
     );
   }
 
+  @EventPattern("add_write_permissions")
+  async handleAddWritePermissions(data: {
+    username: string;
+    repoOwner: string;
+    repoName: string;
+    encryptedSecret: string;
+  }) {
+    const safeData = {
+      username: data.username,
+      repoOwner: data.repoOwner,
+      repoName: data.repoName,
+    };
+    this.logger.log(
+      `add_write_permissions event received ${JSON.stringify(safeData)}`,
+    );
+    return await this.appService.addWritePermissionsForUser(
+      data.username,
+      data.repoOwner,
+      data.repoName,
+      data.encryptedSecret,
+    );
+  }
+
   @EventPattern("add_user_to_repository")
   async handleAddUserToRepository(data: {
     repositoryName: string;
@@ -102,8 +125,10 @@ export class AppController {
   async handleCreateTeamRepository(data: {
     name: string;
     teamName: string;
-    username: string;
-    userGithubAccessToken: string;
+    githubUsers: {
+      username: string;
+      githubAccessToken: string;
+    }[];
     githubOrg: string;
     encryptedSecret: string;
     teamId: string;
@@ -116,7 +141,9 @@ export class AppController {
     const safeData = {
       name: data.name,
       teamName: data.teamName,
-      username: data.username,
+      githubUsers: data.githubUsers.map((user) => ({
+        username: user.username,
+      })),
       githubOrg: data.githubOrg,
       monoRepoVersion: data.monoRepoVersion,
       teamId: data.teamId,
@@ -128,8 +155,7 @@ export class AppController {
     await this.appService.createTeamRepository(
       data.name,
       data.teamName,
-      data.username,
-      data.userGithubAccessToken,
+      data.githubUsers,
       data.githubOrg,
       data.encryptedSecret,
       data.teamId,

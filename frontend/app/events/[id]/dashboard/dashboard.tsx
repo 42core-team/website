@@ -1,10 +1,8 @@
 "use client";
 
-import type {
-  Event,
-} from "@/app/actions/event";
+import type { Event } from "@/app/actions/event";
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { isActionError } from "@/app/actions/errors";
 import {
   getEventById,
@@ -12,10 +10,10 @@ import {
   getTeamsCountForEvent,
   isEventAdmin,
   setEventTeamsLockDate,
+  updateEventSettings,
 } from "@/app/actions/event";
 
-import { EventState } from "@/app/actions/event-model";
-import { lockEvent } from "@/app/actions/team";
+import { lockEvent, unlockEvent } from "@/app/actions/team";
 import {
   startSwissMatches,
   startTournamentMatches,
@@ -29,6 +27,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 
 interface DashboardPageProps {
   eventId: string;
@@ -36,52 +46,139 @@ interface DashboardPageProps {
 
 export function DashboardPage({ eventId }: DashboardPageProps) {
   const session = useSession();
+  const queryClient = useQueryClient();
 
-  const [event, setEvent] = useState<Event | null>(null);
-  const [teamsCount, setTeamsCount] = useState<number>(0);
-  const [participantsCount, setParticipantsCount] = useState<number>(0);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [lockingTeamsLoading, setLockingTeamsLoading]
-    = useState<boolean>(false);
-  const [startingGroupPhase, setStartingGroupPhase] = useState<boolean>(false);
-  const [startingTournament, setStartingTournament] = useState<boolean>(false);
   const [teamAutoLockTime, setTeamAutoLockTime] = useState<string>("");
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const eventData = await getEventById(eventId);
-        const teams = await getTeamsCountForEvent(eventId);
-        const participants = await getParticipantsCountForEvent(eventId);
+  const { data: event, isLoading: isEventLoading } = useQuery<Event>({
+    queryKey: ["event", eventId],
+    queryFn: async () => {
+      const eventData = await getEventById(eventId);
+      if (isActionError(eventData)) {
+        throw new Error(eventData.error);
+      }
+      return eventData;
+    },
+  });
+
+  const { data: teamsCount = 0, isLoading: isTeamsLoading } = useQuery<number>({
+    queryKey: ["event", eventId, "teams-count"],
+    queryFn: async () => await getTeamsCountForEvent(eventId),
+  });
+
+  const { data: participantsCount = 0, isLoading: isParticipantsLoading } =
+    useQuery<number>({
+      queryKey: ["event", eventId, "participants-count"],
+      queryFn: async () => await getParticipantsCountForEvent(eventId),
+    });
+
+  const { data: isAdmin = false, isLoading: isAdminLoading } =
+    useQuery<boolean>({
+      queryKey: ["event", eventId, "is-admin"],
+      queryFn: async () => {
         const adminCheck = await isEventAdmin(eventId);
-
-        if (isActionError(adminCheck) || isActionError(eventData)) {
-          setIsAdmin(false);
-          return;
+        if (isActionError(adminCheck)) {
+          return false;
         }
+        return adminCheck;
+      },
+      enabled: session.status !== "loading",
+    });
 
-        setEvent(eventData);
-        setTeamsCount(teams);
-        setParticipantsCount(participants);
-        if (eventData?.repoLockDate) {
-          setTeamAutoLockTime(
-            new Date(eventData.repoLockDate).toISOString().slice(0, 16),
-          );
-        }
-        setIsAdmin(true);
-        setLoading(false);
+  const lockEventMutation = useMutation({
+    mutationFn: async () => await lockEvent(eventId),
+    onSuccess: async () => {
+      toast.success("Team repositories locked.");
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+    onError: () => {
+      toast.error("Failed to lock team repositories.");
+    },
+  });
+
+  const unlockEventMutation = useMutation({
+    mutationFn: async () => await unlockEvent(eventId),
+    onSuccess: async () => {
+      toast.success("Team repositories unlocked.");
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+    onError: () => {
+      toast.error("Failed to unlock team repositories.");
+    },
+  });
+
+  const startSwissMatchesMutation = useMutation({
+    mutationFn: async () => await startSwissMatches(eventId),
+    onSuccess: async () => {
+      toast.success("Started group phase.");
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+    onError: () => {
+      toast.error("Failed to start group phase.");
+    },
+  });
+
+  const startTournamentMatchesMutation = useMutation({
+    mutationFn: async () => await startTournamentMatches(eventId),
+    onSuccess: async () => {
+      toast.success("Started tournament phase.");
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+    onError: () => {
+      toast.error("Failed to start tournament phase.");
+    },
+  });
+
+  const setTeamsLockDateMutation = useMutation({
+    mutationFn: async (lockDate: number | null) => {
+      const result = await setEventTeamsLockDate(eventId, lockDate);
+      if (isActionError(result)) {
+        throw new Error(result.error);
       }
-      catch (error) {
-        console.error("Error loading dashboard data:", error);
-        setLoading(false);
+      return result;
+    },
+    onSuccess: async () => {
+      toast.success("Team auto lock date updated.");
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+    onError: () => {
+      toast.error("Failed to update team auto lock date.");
+    },
+  });
+
+  const updateEventSettingsMutation = useMutation({
+    mutationFn: async (settings: {
+      canCreateTeam?: boolean;
+      processQueue?: boolean;
+      isPrivate?: boolean;
+    }) => {
+      const result = await updateEventSettings(eventId, settings);
+      if (isActionError(result)) {
+        throw new Error(result.error);
       }
-    };
+      return result;
+    },
+    onSuccess: async () => {
+      toast.success("Event settings updated.");
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+    onError: () => {
+      toast.error("Failed to update event settings.");
+    },
+  });
 
-    fetchData();
-  }, [eventId, session.status]);
+  useEffect(() => {
+    if (event?.repoLockDate) {
+      setTeamAutoLockTime(new Date(event.repoLockDate).toISOString());
+      return;
+    }
+    setTeamAutoLockTime("");
+  }, [event?.repoLockDate]);
 
-  if (loading || !event) {
+  const isLoading =
+    isEventLoading || isTeamsLoading || isParticipantsLoading || isAdminLoading;
+
+  if (isLoading || !event) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
         Loading dashboard...
@@ -99,7 +196,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Event Overview</CardTitle>
-              <CardDescription>Key live metrics for this event.</CardDescription>
+              <CardDescription>
+                Key live metrics for this event.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -115,17 +214,15 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   <h3 className="text-sm font-medium mb-2">Current Round</h3>
                   <p className="text-2xl font-bold">{event.currentRound}</p>
                 </div>
-                <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">Event State</h3>
-                  <p className="text-2xl font-bold">{event.state.toLowerCase()}</p>
-                </div>
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
               <CardTitle>Docker Configuration</CardTitle>
-              <CardDescription>Images & repository info configured for this event.</CardDescription>
+              <CardDescription>
+                Images & repository info configured for this event.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {event.monorepoUrl && (
@@ -142,7 +239,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     </a>
                   </div>
                   <div className="rounded-lg border p-4">
-                    <h3 className="text-sm font-medium mb-2">Monorepo Version</h3>
+                    <h3 className="text-sm font-medium mb-2">
+                      Monorepo Version
+                    </h3>
                     <p className="font-mono break-all">
                       {event.monorepoVersion}
                     </p>
@@ -152,7 +251,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
               {event.gameServerDockerImage && (
                 <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">Game Server Docker Image</h3>
+                  <h3 className="text-sm font-medium mb-2">
+                    Game Server Docker Image
+                  </h3>
                   <p className="font-mono break-all">
                     {event.gameServerDockerImage}
                   </p>
@@ -161,7 +262,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
               {event.myCoreBotDockerImage && (
                 <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">My Core Bot Docker Image</h3>
+                  <h3 className="text-sm font-medium mb-2">
+                    My Core Bot Docker Image
+                  </h3>
                   <p className="font-mono break-all">
                     {event.myCoreBotDockerImage}
                   </p>
@@ -170,87 +273,64 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
               {event.visualizerDockerImage && (
                 <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">Visualizer Docker Image</h3>
+                  <h3 className="text-sm font-medium mb-2">
+                    Visualizer Docker Image
+                  </h3>
                   <p className="font-mono break-all">
                     {event.visualizerDockerImage}
                   </p>
                 </div>
               )}
 
-              {!event.monorepoUrl
-                && !event.gameServerDockerImage
-                && !event.myCoreBotDockerImage && (
-                <p className="text-muted-foreground italic">
-                  No Docker configuration set for this event.
-                </p>
-              )}
+              {!event.monorepoUrl &&
+                !event.gameServerDockerImage &&
+                !event.myCoreBotDockerImage && (
+                  <p className="text-muted-foreground italic">
+                    No Docker configuration set for this event.
+                  </p>
+                )}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
               <CardTitle>Admin Actions</CardTitle>
-              <CardDescription>Operational controls for advancing the event.</CardDescription>
+              <CardDescription>
+                Operational controls for advancing the event.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-3">
                 <Button
-                  disabled={event.lockedAt != null || lockingTeamsLoading}
-                  onClick={() => {
-                    setLockingTeamsLoading(true);
-                    lockEvent(eventId)
-                      .then(() => {
-                        console.warn("locked team repositories");
-                      })
-                      .catch(() => {
-                        console.error("error occurred");
-                      })
-                      .finally(() => {
-                        setLockingTeamsLoading(false);
-                      });
-                  }}
+                  disabled={event.lockedAt != null || lockEventMutation.isPending}
+                  onClick={() => lockEventMutation.mutate()}
                   variant="secondary"
                 >
                   Lock Team Repositories
                 </Button>
+                <Button
+                  disabled={
+                    event.lockedAt == null || unlockEventMutation.isPending
+                  }
+                  onClick={() => unlockEventMutation.mutate()}
+                  variant="secondary"
+                >
+                  Unlock Team Repositories
+                </Button>
 
                 <Button
                   disabled={
-                    event.state !== EventState.SWISS_ROUND || startingGroupPhase
+                    event.currentRound !== 0 ||
+                    startSwissMatchesMutation.isPending
                   }
-                  onClick={() => {
-                    setStartingGroupPhase(true);
-                    startSwissMatches(eventId)
-                      .then(() => {
-                        alert("started group phase");
-                      })
-                      .catch(() => {
-                        alert("error occurred");
-                        setStartingGroupPhase(false);
-                      })
-                      .finally(() => {});
-                  }}
+                  onClick={() => startSwissMatchesMutation.mutate()}
                   variant="secondary"
                 >
                   Start Group Phase
                 </Button>
 
                 <Button
-                  disabled={
-                    event.state !== EventState.ELIMINATION_ROUND
-                    || startingTournament
-                  }
-                  onClick={() => {
-                    setStartingTournament(true);
-                    startTournamentMatches(eventId)
-                      .then(() => {
-                        alert("started tournament phase");
-                      })
-                      .catch(() => {
-                        alert("error occurred");
-                        setStartingTournament(false);
-                      })
-                      .finally(() => {});
-                  }}
+                  disabled={startTournamentMatchesMutation.isPending}
+                  onClick={() => startTournamentMatchesMutation.mutate()}
                   variant="secondary"
                 >
                   Start Tournament Phase
@@ -260,36 +340,140 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
               <h3 className="mt-4 text-sm font-medium">Team auto lock</h3>
 
               <div className="mt-2 flex gap-3">
-                <Input
-                  type="datetime-local"
-                  value={teamAutoLockTime}
-                  onChange={e => setTeamAutoLockTime(e.target.value)}
-                  className="max-w-[300px]"
-                  placeholder="lock repo"
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full pl-3 text-left font-normal",
+                        !teamAutoLockTime && "text-muted-foreground",
+                      )}
+                    >
+                      {teamAutoLockTime ? (
+                        format(teamAutoLockTime, "PPP p")
+                      ) : (
+                        <span>Pick a date and time</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={new Date(teamAutoLockTime)}
+                      onSelect={(value) => {
+                        if (!value) return;
+
+                        setTeamAutoLockTime(value.toISOString());
+                      }}
+                      disabled={(date) =>
+                        date < new Date(new Date().setHours(0, 0, 0, 0))
+                      }
+                      initialFocus
+                    />
+                    <div className="p-3 border-t">
+                      <Input
+                        type="time"
+                        value={
+                          teamAutoLockTime
+                            ? format(teamAutoLockTime, "HH:mm")
+                            : ""
+                        }
+                        onChange={(e) => {
+                          const [hours, minutes] = e.target.value.split(":");
+                          const newDate = teamAutoLockTime
+                            ? new Date(teamAutoLockTime)
+                            : new Date();
+                          newDate.setHours(
+                            Number.parseInt(hours),
+                            Number.parseInt(minutes),
+                          );
+                          setTeamAutoLockTime(newDate.toISOString());
+                        }}
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
 
                 <Button
-                  onClick={() =>
-                    setEventTeamsLockDate(
-                      eventId,
-                      new Date(teamAutoLockTime).getTime(),
-                    ).then(() => {
-                      alert("set team auto lock date");
-                    })}
+                  disabled={setTeamsLockDateMutation.isPending}
+                  onClick={() => {
+                    setTeamsLockDateMutation
+                      .mutateAsync(new Date(teamAutoLockTime).getTime())
+                      .then(() => {
+                      })
+                      .catch(() => {});
+                  }}
                 >
                   Save
                 </Button>
                 <Button
                   variant="secondary"
+                  disabled={setTeamsLockDateMutation.isPending}
                   onClick={() => {
-                    setEventTeamsLockDate(eventId, null).then(() => {
-                      alert("reset team auto lock date");
-                      setTeamAutoLockTime("");
-                    });
+                    setTeamsLockDateMutation
+                      .mutateAsync(null)
+                      .then(() => {
+                        setTeamAutoLockTime("");
+                      })
+                      .catch(() => {});
                   }}
                 >
                   Reset
                 </Button>
+              </div>
+
+              <h3 className="mt-6 text-sm font-medium">Event settings</h3>
+              <div className="mt-3 grid gap-4 md:grid-cols-2">
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div>
+                    <p className="text-sm font-medium">Allow team creation</p>
+                    <p className="text-xs text-muted-foreground">
+                      Enables participants to create teams.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={event.canCreateTeam}
+                    disabled={updateEventSettingsMutation.isPending}
+                    onCheckedChange={(value) =>
+                      updateEventSettingsMutation.mutate({
+                        canCreateTeam: value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div>
+                    <p className="text-sm font-medium">Process queue</p>
+                    <p className="text-xs text-muted-foreground">
+                      Allows match queue processing.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={event.processQueue}
+                    disabled={updateEventSettingsMutation.isPending}
+                    onCheckedChange={(value) =>
+                      updateEventSettingsMutation.mutate({
+                        processQueue: value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div>
+                    <p className="text-sm font-medium">Private event</p>
+                    <p className="text-xs text-muted-foreground">
+                      Restricts access to invited users.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={event.isPrivate}
+                    disabled={updateEventSettingsMutation.isPending}
+                    onCheckedChange={(value) =>
+                      updateEventSettingsMutation.mutate({ isPrivate: value })
+                    }
+                  />
+                </div>
               </div>
 
               <p className="text-sm text-muted-foreground mt-4">

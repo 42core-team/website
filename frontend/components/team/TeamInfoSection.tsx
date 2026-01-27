@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import TeamInviteModal from "./TeamInviteModal";
 
@@ -36,13 +37,14 @@ interface TeamInfoSectionProps {
 export function TeamInfoSection({
   myTeam,
   onLeaveTeam,
+  isLeaving,
   teamMembers,
-  isRepoPending = false,
-}: TeamInfoSectionProps) {
+}: Readonly<TeamInfoSectionProps>) {
   const eventId = useParams().id as string;
   const [isOpen, setIsOpen] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
   const [githubOrg, setGithubOrg] = useState<string | null>(null);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
 
   useEffect(() => {
     const loadGithubOrg = async () => {
@@ -66,7 +68,10 @@ export function TeamInfoSection({
       setLeaveError(
         "Failed to leave team. Try refreshing the page or trying again later.",
       );
+      return;
     }
+
+    setIsLeaveDialogOpen(false);
   };
 
   return (
@@ -95,13 +100,9 @@ export function TeamInfoSection({
                       {myTeam.repo}
                     </a>
                   )
-                : isRepoPending
-                  ? (
-                      <Skeleton className="h-5 w-75 rounded-md m-2" />
-                    )
-                  : (
-                      "Not yet configured"
-                    )}
+                : (
+                    <Skeleton className="h-5 w-75 rounded-md m-2" />
+                  )}
             </div>
           </div>
           <div>
@@ -149,7 +150,9 @@ export function TeamInfoSection({
                         <Avatar
                           className={cn(
                             "mb-2",
-                            member.isEventAdmin ? "outline-orange-500 outline-2" : "",
+                            member.isEventAdmin
+                              ? "outline-orange-500 outline-2"
+                              : "",
                           )}
                         >
                           <AvatarImage
@@ -184,46 +187,42 @@ export function TeamInfoSection({
           )}
           <div className="flex justify-end items-center">
             {!myTeam.locked && (
-              <Dialog>
+              <Dialog
+                open={isLeaveDialogOpen}
+                onOpenChange={setIsLeaveDialogOpen}
+              >
                 <DialogTrigger asChild>
-                  <Button
-                    variant="destructive"
-                  >
-                    Leave Team
-                  </Button>
+                  <Button variant="destructive">Leave Team</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle className="text-xl font-semibold">
                       Leave Team
                     </DialogTitle>
-
                   </DialogHeader>
                   <DialogDescription>
                     <p>
-                      Are you sure you want to leave this team? This action cannot be
-                      undone.
+                      Are you sure you want to leave this team? This action
+                      cannot be undone.
                     </p>
                     {teamMembers.length === 1 && (
                       <p className="mt-2 text-destructive-500">
-                        Warning: You are the last member of this team. Leaving will
-                        delete the team.
+                        Warning: You are the last member of this team. Leaving
+                        will delete the team.
                       </p>
                     )}
                   </DialogDescription>
                   <DialogFooter>
                     <DialogClose asChild>
-                      <Button className="mr-2">
-                        Cancel
-                      </Button>
+                      <Button className="mr-2">Cancel</Button>
                     </DialogClose>
                     <Button
                       type="submit"
                       variant="destructive"
                       onClick={handleConfirmLeave}
-                    // TODO: isLoading={isLeaving}
+                      disabled={isLeaving}
                     >
-                      Leave Team
+                      {isLeaving ? <Spinner /> : "Leave Team"}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -239,7 +238,6 @@ export function TeamInfoSection({
           teamId={myTeam.id}
           eventId={eventId}
         />
-
       </CardContent>
     </Card>
   );

@@ -109,7 +109,7 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
         )}
         {...props}
       >
-        <div className="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-4">
+        <div className="container mx-auto flex h-16 max-w-(--breakpoint-2xl) items-center justify-between gap-4">
           {/* Left side */}
           <div className="flex items-center gap-2">
             {/* Mobile menu trigger */}
@@ -190,7 +190,7 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
                       <button className="outline-none rounded-full">
                         <Image
                           className="transition-transform rounded-full"
-                          src={session?.user?.image}
+                          src={session?.user?.profilePicture}
                           alt="Profile"
                           width={40}
                           height={40}
