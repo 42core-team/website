@@ -104,6 +104,10 @@ export async function lockEvent(eventId: string) {
   return (await axiosInstance.put(`event/${eventId}/lock`)).data;
 }
 
+export async function unlockEvent(eventId: string) {
+  return (await axiosInstance.put(`event/${eventId}/unlock`)).data;
+}
+
 /**
  * Leave a team and delete it if this was the last member
  * @param eventId ID of the event to leave the team for

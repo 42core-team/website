@@ -12,7 +12,7 @@ import {
   setEventTeamsLockDate,
 } from "@/app/actions/event";
 
-import { lockEvent } from "@/app/actions/team";
+import { lockEvent, unlockEvent } from "@/app/actions/team";
 import {
   startSwissMatches,
   startTournamentMatches,
@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface DashboardPageProps {
   eventId: string;
@@ -42,50 +43,115 @@ interface DashboardPageProps {
 
 export function DashboardPage({ eventId }: DashboardPageProps) {
   const session = useSession();
+  const queryClient = useQueryClient();
 
-  const [event, setEvent] = useState<Event | null>(null);
-  const [teamsCount, setTeamsCount] = useState<number>(0);
-  const [participantsCount, setParticipantsCount] = useState<number>(0);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [lockingTeamsLoading, setLockingTeamsLoading] =
-    useState<boolean>(false);
-  const [startingGroupPhase, setStartingGroupPhase] = useState<boolean>(false);
-  const [startingTournament, setStartingTournament] = useState<boolean>(false);
   const [teamAutoLockTime, setTeamAutoLockTime] = useState<string>("");
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const eventData = await getEventById(eventId);
-
-        const teams = await getTeamsCountForEvent(eventId);
-        const participants = await getParticipantsCountForEvent(eventId);
-        const adminCheck = await isEventAdmin(eventId);
-
-        if (isActionError(adminCheck) || isActionError(eventData)) {
-          setIsAdmin(false);
-          return;
-        }
-
-        setEvent(eventData);
-        setTeamsCount(teams);
-        setParticipantsCount(participants);
-        if (eventData?.repoLockDate) {
-          setTeamAutoLockTime(new Date(eventData.repoLockDate).toISOString());
-        }
-        setIsAdmin(true);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error loading dashboard data:", error);
-        setLoading(false);
+  const { data: event, isLoading: isEventLoading } = useQuery<Event>({
+    queryKey: ["event", eventId],
+    queryFn: async () => {
+      const eventData = await getEventById(eventId);
+      if (isActionError(eventData)) {
+        throw new Error(eventData.error);
       }
-    };
+      return eventData;
+    },
+  });
 
-    fetchData();
-  }, [eventId, session.status]);
+  const { data: teamsCount = 0, isLoading: isTeamsLoading } = useQuery<number>({
+    queryKey: ["event", eventId, "teams-count"],
+    queryFn: async () => await getTeamsCountForEvent(eventId),
+  });
 
-  if (loading || !event) {
+  const { data: participantsCount = 0, isLoading: isParticipantsLoading } =
+    useQuery<number>({
+      queryKey: ["event", eventId, "participants-count"],
+      queryFn: async () => await getParticipantsCountForEvent(eventId),
+    });
+
+  const { data: isAdmin = false, isLoading: isAdminLoading } =
+    useQuery<boolean>({
+      queryKey: ["event", eventId, "is-admin"],
+      queryFn: async () => {
+        const adminCheck = await isEventAdmin(eventId);
+        if (isActionError(adminCheck)) {
+          return false;
+        }
+        return adminCheck;
+      },
+      enabled: session.status !== "loading",
+    });
+
+  const lockEventMutation = useMutation({
+    mutationFn: async () => await lockEvent(eventId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+    onError: () => {
+      console.error("error occurred");
+    },
+  });
+
+  const unlockEventMutation = useMutation({
+    mutationFn: async () => await unlockEvent(eventId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+    onError: () => {
+      console.error("error occurred");
+    },
+  });
+
+  const startSwissMatchesMutation = useMutation({
+    mutationFn: async () => await startSwissMatches(eventId),
+    onSuccess: async () => {
+      // eslint-disable-next-line no-alert
+      alert("started group phase");
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+    onError: () => {
+      // eslint-disable-next-line no-alert
+      alert("error occurred");
+    },
+  });
+
+  const startTournamentMatchesMutation = useMutation({
+    mutationFn: async () => await startTournamentMatches(eventId),
+    onSuccess: async () => {
+      // eslint-disable-next-line no-alert
+      alert("started tournament phase");
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+    onError: () => {
+      // eslint-disable-next-line no-alert
+      alert("error occurred");
+    },
+  });
+
+  const setTeamsLockDateMutation = useMutation({
+    mutationFn: async (lockDate: number | null) =>
+      await setEventTeamsLockDate(eventId, lockDate),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+    onError: () => {
+      // eslint-disable-next-line no-alert
+      alert("error occurred");
+    },
+  });
+
+  useEffect(() => {
+    if (event?.repoLockDate) {
+      setTeamAutoLockTime(new Date(event.repoLockDate).toISOString());
+      return;
+    }
+    setTeamAutoLockTime("");
+  }, [event?.repoLockDate]);
+
+  const isLoading =
+    isEventLoading || isTeamsLoading || isParticipantsLoading || isAdminLoading;
+
+  if (isLoading || !event) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
         Loading dashboard...
@@ -208,62 +274,36 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
             <CardContent>
               <div className="flex flex-wrap gap-3">
                 <Button
-                  disabled={event.lockedAt != null || lockingTeamsLoading}
-                  onClick={() => {
-                    setLockingTeamsLoading(true);
-                    lockEvent(eventId)
-                      .then(() => {
-                        console.warn("locked team repositories");
-                      })
-                      .catch(() => {
-                        console.error("error occurred");
-                      })
-                      .finally(() => {
-                        setLockingTeamsLoading(false);
-                      });
-                  }}
+                  disabled={event.lockedAt != null || lockEventMutation.isPending}
+                  onClick={() => lockEventMutation.mutate()}
                   variant="secondary"
                 >
                   Lock Team Repositories
                 </Button>
+                <Button
+                  disabled={
+                    event.lockedAt == null || unlockEventMutation.isPending
+                  }
+                  onClick={() => unlockEventMutation.mutate()}
+                  variant="secondary"
+                >
+                  Unlock Team Repositories
+                </Button>
 
                 <Button
-                  disabled={event.currentRound !== 0 || startingGroupPhase}
-                  onClick={() => {
-                    setStartingGroupPhase(true);
-                    startSwissMatches(eventId)
-                      .then(() => {
-                        // eslint-disable-next-line no-alert
-                        alert("started group phase");
-                      })
-                      .catch(() => {
-                        // eslint-disable-next-line no-alert
-                        alert("error occurred");
-                        setStartingGroupPhase(false);
-                      })
-                      .finally(() => {});
-                  }}
+                  disabled={
+                    event.currentRound !== 0 ||
+                    startSwissMatchesMutation.isPending
+                  }
+                  onClick={() => startSwissMatchesMutation.mutate()}
                   variant="secondary"
                 >
                   Start Group Phase
                 </Button>
 
                 <Button
-                  disabled={startingTournament}
-                  onClick={() => {
-                    setStartingTournament(true);
-                    startTournamentMatches(eventId)
-                      .then(() => {
-                        // eslint-disable-next-line no-alert
-                        alert("started tournament phase");
-                      })
-                      .catch(() => {
-                        // eslint-disable-next-line no-alert
-                        alert("error occurred");
-                        setStartingTournament(false);
-                      })
-                      .finally(() => {});
-                  }}
+                  disabled={startTournamentMatchesMutation.isPending}
+                  onClick={() => startTournamentMatchesMutation.mutate()}
                   variant="secondary"
                 >
                   Start Tournament Phase
@@ -329,26 +369,31 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 </Popover>
 
                 <Button
-                  onClick={() =>
-                    setEventTeamsLockDate(
-                      eventId,
-                      new Date(teamAutoLockTime).getTime(),
-                    ).then(() => {
-                      // eslint-disable-next-line no-alert
-                      alert("set team auto lock date");
-                    })
-                  }
+                  disabled={setTeamsLockDateMutation.isPending}
+                  onClick={() => {
+                    setTeamsLockDateMutation
+                      .mutateAsync(new Date(teamAutoLockTime).getTime())
+                      .then(() => {
+                        // eslint-disable-next-line no-alert
+                        alert("set team auto lock date");
+                      })
+                      .catch(() => {});
+                  }}
                 >
                   Save
                 </Button>
                 <Button
                   variant="secondary"
+                  disabled={setTeamsLockDateMutation.isPending}
                   onClick={() => {
-                    setEventTeamsLockDate(eventId, null).then(() => {
-                      // eslint-disable-next-line no-alert
-                      alert("reset team auto lock date");
-                      setTeamAutoLockTime("");
-                    });
+                    setTeamsLockDateMutation
+                      .mutateAsync(null)
+                      .then(() => {
+                        // eslint-disable-next-line no-alert
+                        alert("reset team auto lock date");
+                        setTeamAutoLockTime("");
+                      })
+                      .catch(() => {});
                   }}
                 >
                   Reset
