@@ -75,6 +75,17 @@ func (c *Client) CreateGameJob(game *Game) error {
 		return fmt.Errorf("failed to create configmap: %w", err)
 	}
 
+	volumes = append(volumes, corev1.Volume{
+		Name: "game-config",
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: configMapName,
+				},
+			},
+		},
+	})
+
 	for _, bot := range game.Bots {
 		volumeName := "shared-data-" + bot.ID.String()
 		initContainerName := "clone-repo-" + bot.ID.String()
