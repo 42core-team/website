@@ -25,7 +25,7 @@ export class EventController {
     private readonly eventService: EventService,
     private readonly teamService: TeamService,
     private readonly userService: UserService,
-  ) {}
+  ) { }
 
   @UseGuards(JwtAuthGuard)
   @Get("my")
@@ -80,6 +80,8 @@ export class EventController {
       createEventDto.visualizerDockerImage,
       createEventDto.monorepoUrl,
       createEventDto.monorepoVersion,
+      createEventDto.basePath,
+      createEventDto.gameConfig,
       createEventDto.isPrivate,
     );
   }

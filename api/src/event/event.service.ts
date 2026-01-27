@@ -157,6 +157,8 @@ export class EventService {
     visualizerDockerImage: string,
     monorepoUrl: string,
     monorepoVersion: string,
+    basePath: string,
+    gameConfig: string,
     isPrivate: boolean = false,
   ) {
     githubOrgSecret = CryptoJS.AES.encrypt(
@@ -192,6 +194,8 @@ export class EventService {
       visualizerDockerImage,
       monorepoUrl,
       monorepoVersion,
+      basePath,
+      gameConfig,
       isPrivate,
     });
   }

@@ -8,9 +8,10 @@ type GameMessage struct {
 }
 
 type Game struct {
-	ID    uuid.UUID `json:"id"`
-	Bots  []Bot     `json:"bots"`
-	Image string    `json:"image"`
+	ID         uuid.UUID `json:"id"`
+	Bots       []Bot     `json:"bots"`
+	Image      string    `json:"image"`
+	GameConfig string    `json:"gameConfig"`
 }
 
 type Bot struct {

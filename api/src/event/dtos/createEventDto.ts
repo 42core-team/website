@@ -74,6 +74,14 @@ export class CreateEventDto {
   monorepoVersion: string;
 
   @ApiProperty()
+  @IsString()
+  basePath: string;
+
+  @ApiProperty()
+  @IsString()
+  gameConfig: string;
+
+  @ApiProperty()
   @IsBoolean()
   isPrivate: boolean;
 }
