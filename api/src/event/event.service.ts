@@ -262,9 +262,14 @@ export class EventService {
     });
   }
 
-  async unlockTeamsForEvent(eventId: string) {
+  async unlockEvent(eventId: string) {
     await this.getEventById(eventId);
-    return this.teamService.unlockTeamsForEvent(eventId);
+    await this.teamService.unlockTeamsForEvent(eventId);
+    return this.eventRepository.update(eventId, {
+      canCreateTeam: true,
+      lockedAt: null,
+      processQueue: true,
+    });
   }
 
   async setCurrentRound(eventId: string, round: number): Promise<UpdateResult> {

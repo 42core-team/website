@@ -152,7 +152,7 @@ export class EventController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Put(":id/unlockTeams")
+  @Put(":id/unlock")
   async unlockEvent(
     @Param("id", new ParseUUIDPipe()) eventId: string,
     @UserId() userId: string,
@@ -162,7 +162,7 @@ export class EventController {
         "You are not authorized to unlock teams for this event.",
       );
 
-    return this.eventService.unlockTeamsForEvent(eventId);
+    return this.eventService.unlockEvent(eventId);
   }
 
   @UseGuards(JwtAuthGuard)
