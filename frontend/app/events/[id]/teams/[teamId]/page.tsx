@@ -50,10 +50,9 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
         <div className="flex flex-col gap-2 mb-4">
           <div className="flex items-center gap-4">
             <BackButton />
-            <h1 className="text-2xl font-bold">
-              Team
-              {teamInfo.name}
-            </h1>
+            <h2 className="text-2xl">
+              Team {teamInfo.name}
+            </h2>
           </div>
         </div>
         <TeamUserTable members={members} />
