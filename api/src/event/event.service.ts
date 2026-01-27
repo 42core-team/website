@@ -302,6 +302,17 @@ export class EventService {
     });
   }
 
+  async hasEventStartedForTeam(teamId: string): Promise<boolean> {
+    if (!teamId) return false;
+
+    return await this.eventRepository.existsBy({
+      teams: {
+        id: teamId,
+      },
+      startDate: LessThanOrEqual(new Date()),
+    });
+  }
+
   canCreateTeamInEvent(eventId: string): Promise<boolean> {
     return this.eventRepository.existsBy({
       id: eventId,

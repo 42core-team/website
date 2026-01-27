@@ -208,6 +208,9 @@ export class TeamController {
     if (team.inQueue)
       throw new BadRequestException("You are already in the queue.");
 
+    if (!(await this.eventService.hasEventStartedForTeam(team.id)))
+      throw new BadRequestException("The event has not started yet.");
+
     return this.teamService.joinQueue(team.id);
   }
 
