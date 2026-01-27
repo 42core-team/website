@@ -13,6 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import {
   joinQueue,
+  leaveQueue,
   queueMatchesQueryFn,
   queueMatchesQueryKey,
   queueStateQueryFn,
@@ -32,15 +33,13 @@ export default function QueueState(props: {
 
   const queryClient = useQueryClient();
 
-  const {
-    data: queueState,
-    isLoading: isQueueStateLoading,
-  } = useQuery<QueueStateType>({
-    queryKey: queueStateQueryKey(eventId),
-    queryFn: () => queueStateQueryFn(eventId),
-    initialData: props.queueState,
-    refetchInterval: 600,
-  });
+  const { data: queueState, isLoading: isQueueStateLoading } =
+    useQuery<QueueStateType>({
+      queryKey: queueStateQueryKey(eventId),
+      queryFn: () => queueStateQueryFn(eventId),
+      initialData: props.queueState,
+      refetchInterval: 600,
+    });
 
   const { data: queueMatches = [] } = useQuery<Match[]>({
     queryKey: queueMatchesQueryKey(eventId),
@@ -60,6 +59,23 @@ export default function QueueState(props: {
     },
   });
 
+  const leaveQueueMutation = useMutation({
+    mutationFn: async () => {
+      plausible("leave_queue");
+      await leaveQueue(props.eventId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queueStateQueryKey(eventId),
+      });
+    },
+    onError: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queueStateQueryKey(eventId),
+      });
+    },
+  });
+
   useEffect(() => {
     if (!queueState) {
       return;
@@ -70,10 +86,7 @@ export default function QueueState(props: {
     }
 
     const previousMatchState = props.queueState.match?.state;
-    if (
-    previousMatchState === MatchState.IN_PROGRESS
-      && queueState.match
-    ) {
+    if (previousMatchState === MatchState.IN_PROGRESS && queueState.match) {
       router.push(`/events/${eventId}/match/${queueState.match.id}`);
     }
   }, [queueState, router, eventId, props.queueState.match?.state]);
@@ -90,45 +103,50 @@ export default function QueueState(props: {
     <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
       <h1 className="text-2xl font-bold">Queue State</h1>
       <div className="mt-4 flex flex-col items-center justify-center gap-2">
-        {queueState?.match?.state === MatchState.IN_PROGRESS
-          ? (
-            <Spinner color="success" />
-          )
-          : (
-            <>
-              <p className="text-lg">
-                Team:
-                {props.team.name}
-              </p>
-              <p
-                className={cn(
-                  "text-sm text-muted-foreground",
-                  queueState.inQueue ? "text-green-500" : "",
-                )}
+        {queueState?.match?.state === MatchState.IN_PROGRESS ? (
+          <Spinner color="success" />
+        ) : (
+          <>
+            <p className="text-lg">
+              Team:
+              {props.team.name}
+            </p>
+            <p
+              className={cn(
+                "text-sm text-muted-foreground",
+                queueState.inQueue ? "text-green-500" : "",
+              )}
+            >
+              Status: {queueState.inQueue ? "In Queue" : "Not in Queue"}
+            </p>
+            {queueState.inQueue ? (
+              <div className="flex flex-col items-center justify-center gap-2">
+                <p className="text-sm">
+                  Queue Count:
+                  {queueState.queueCount}
+                </p>
+                <Button
+                  disabled={leaveQueueMutation.isPending}
+                  variant="destructive"
+                  onClick={() => {
+                    leaveQueueMutation.mutate();
+                  }}
+                >
+                  {leaveQueueMutation.isPending ? "Leaving..." : "Leave Queue"}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                disabled={joinQueueMutation.isPending}
+                onClick={() => {
+                  joinQueueMutation.mutate();
+                }}
               >
-                Status:
-                {" "}
-                {queueState.inQueue ? "In Queue" : "Not in Queue"}
-              </p>
-              {!queueState.inQueue
-                ? (
-                  <Button
-                    disabled={joinQueueMutation.isPending}
-                    onClick={() => {
-                      joinQueueMutation.mutate();
-                    }}
-                  >
-                    {joinQueueMutation.isPending ? "Joining..." : "play"}
-                  </Button>
-                )
-                : (
-                  <p className="text-sm">
-                    Queue Count:
-                    {queueState.queueCount}
-                  </p>
-                )}
-            </>
-          )}
+                {joinQueueMutation.isPending ? "Joining..." : "play"}
+              </Button>
+            )}
+          </>
+        )}
       </div>
 
       <div className="mt-8 w-full max-w-2xl">

@@ -17,6 +17,10 @@ export async function joinQueue(eventId: string){
   return axiosInstance.put(`team/event/${eventId}/queue/join`);
 }
 
+export async function leaveQueue(eventId: string){
+  return axiosInstance.put(`team/event/${eventId}/queue/leave`);
+}
+
 export function queueMatchesQueryKey(eventId: string) {
   return ["event", eventId, "queue-matches"] as const;
 }

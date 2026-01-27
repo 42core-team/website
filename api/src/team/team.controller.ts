@@ -211,6 +211,15 @@ export class TeamController {
     return this.teamService.joinQueue(team.id);
   }
 
+  @UseGuards(JwtAuthGuard, MyTeamGuards, TeamNotLockedGuard)
+  @Put(`event/:${EVENT_ID_PARAM}/queue/leave`)
+  async leaveQueue(@Team() team: TeamEntity) {
+    if (!team.inQueue)
+      throw new BadRequestException("You are not in the queue.");
+
+    return this.teamService.leaveQueue(team.id);
+  }
+
   @UseGuards(JwtAuthGuard, MyTeamGuards)
   @Get(`event/:${EVENT_ID_PARAM}/queue/state`)
   async getQueueState(@Team() team: TeamEntity) {
