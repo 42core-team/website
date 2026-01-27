@@ -49,9 +49,9 @@ export default function EventInfoNotice({
   }
 
   return (
-    <div className="w-full bg-primary-50 border-b border-primary-200">
+    <div className="w-full bg-primary-50 border-b border-primary-200 sm:mt-0 sm:pb-0 pb-7 mt-5">
       <div className="container mx-auto max-w-7xl px-6 h-14 flex items-center justify-between">
-        <div className="w-full flex items-center justify-between">
+        <div className="w-full flex items-center justify-between flex-wrap">
           <p className="text-warning-400">
             This event has not started yet. You can start coding when the
             countdown ends.

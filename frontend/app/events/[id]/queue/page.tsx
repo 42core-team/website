@@ -36,12 +36,11 @@ export default async function EventQueuePage({
         <AlertCircleIcon />
         <AlertTitle>You are not part of any team</AlertTitle>
         <AlertDescription>
-          Join or create a team to access the event queue. You can do this in the
-          {" "}
+          Join or create a team to access the event queue. You can do this in
+          the{" "}
           <a href={`/events/${id}/my-team`} className="underline">
             My Team
-          </a>
-          {" "}
+          </a>{" "}
           section.
         </AlertDescription>
       </Alert>
@@ -60,7 +59,7 @@ export default async function EventQueuePage({
     queryFn: () => queueMatchesQueryFn(id),
   });
 
-  const sortedQueueMatches = queueMatches.map(match => ({
+  const sortedQueueMatches = queueMatches.map((match) => ({
     ...match,
     teams: match.teams.sort((a, _b) => (a.id === myTeam.id ? -1 : 1)),
   }));
@@ -76,22 +75,14 @@ export default async function EventQueuePage({
           If you have any questions, please contact the event organizers.
         </p>
 
-        {myTeam.locked ? (
-          <div className="flex items-center justify-center min-h-[200px]">
-            <p className="text-lg text-muted-foreground">
-              Your team is locked and cannot join the queue.
-            </p>
-          </div>
-        ) : (
-          <div className="mt-8">
-            <QueueState
-              queueState={queueState}
-              eventId={id}
-              team={myTeam}
-              queueMatches={sortedQueueMatches}
-            />
-          </div>
-        )}
+        <div className="mt-8">
+          <QueueState
+            queueState={queueState}
+            eventId={id}
+            team={myTeam}
+            queueMatches={sortedQueueMatches}
+          />
+        </div>
       </div>
     </HydrationBoundary>
   );

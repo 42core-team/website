@@ -202,16 +202,19 @@ export class TeamController {
     return this.teamService.declineTeamInvite(userId, teamId);
   }
 
-  @UseGuards(JwtAuthGuard, MyTeamGuards, TeamNotLockedGuard)
+  @UseGuards(JwtAuthGuard, MyTeamGuards)
   @Put(`event/:${EVENT_ID_PARAM}/queue/join`)
   async joinQueue(@Team() team: TeamEntity) {
     if (team.inQueue)
       throw new BadRequestException("You are already in the queue.");
 
+    if (!(await this.eventService.hasEventStartedForTeam(team.id)))
+      throw new BadRequestException("The event has not started yet.");
+
     return this.teamService.joinQueue(team.id);
   }
 
-  @UseGuards(JwtAuthGuard, MyTeamGuards, TeamNotLockedGuard)
+  @UseGuards(JwtAuthGuard, MyTeamGuards)
   @Put(`event/:${EVENT_ID_PARAM}/queue/leave`)
   async leaveQueue(@Team() team: TeamEntity) {
     if (!team.inQueue)
