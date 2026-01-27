@@ -18,6 +18,7 @@ export interface Match {
   createdAt: string;
   updatedAt: string;
   isRevealed: boolean;
+  isPlacementMatch?: boolean;
   teams: {
     id: string;
     name: string;

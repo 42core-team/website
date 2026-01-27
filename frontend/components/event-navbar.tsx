@@ -50,12 +50,10 @@ export default function EventNavbar({
       }
     }
 
-    if (event.currentRound > 0) {
-      items.push(
-        { name: "Group Phase", path: `/events/${eventId}/groups` },
-        { name: "Tournament Tree", path: `/events/${eventId}/bracket` },
-      );
-    }
+    items.push(
+      { name: "Group Phase", path: `/events/${eventId}/groups` },
+      { name: "Tournament Tree", path: `/events/${eventId}/bracket` },
+    );
 
     if (isEventAdmin) {
       items.push(

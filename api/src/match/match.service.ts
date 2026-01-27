@@ -21,10 +21,10 @@ import { LockKeys } from "../constants";
 
 @Injectable()
 export class MatchService {
-  private gameResultsQueue: ClientProxy;
-  private gameQueue: ClientProxy;
-  private logger = new Logger("MatchService");
-  private k8sServiceUrl: string;
+  private readonly gameResultsQueue: ClientProxy;
+  private readonly gameQueue: ClientProxy;
+  private readonly logger = new Logger("MatchService");
+  private readonly k8sServiceUrl: string;
 
   constructor(
     @Inject(forwardRef(() => TeamService))
@@ -37,7 +37,7 @@ export class MatchService {
     private readonly matchStatsRepository: Repository<MatchStatsEntity>,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
-    private githubApiService: GithubApiService,
+    private readonly githubApiService: GithubApiService,
   ) {
     this.k8sServiceUrl = configService.getOrThrow<string>("K8S_SERVICE_URL");
     this.gameResultsQueue = ClientProxyFactory.create(
@@ -265,16 +265,34 @@ export class MatchService {
       round: event.currentRound,
     });
 
-    if (finishedMatches == 0) {
+    const totalMatches = await this.matchRepository.countBy({
+      teams: {
+        event: {
+          id: event.id,
+        },
+      },
+      phase: MatchPhase.ELIMINATION,
+      round: event.currentRound,
+    });
+
+    if (totalMatches == 0) {
       throw new Error(
         `No finished matches found for event ${event.name} in round ${event.currentRound}.`,
       );
     }
 
-    if (finishedMatches == 1) {
-      this.logger.log(`Event ${event.name} has finished the final match.`);
+    const tournamentTeamCount = await this.getTournamentTeamCount(event.id);
+    const finalRoundIndex = Math.max(
+      0,
+      Math.log2(tournamentTeamCount) - 1,
+    );
+
+    if (event.currentRound >= finalRoundIndex) {
+      this.logger.log(`Event ${event.name} has finished the final round.`);
       return;
     }
+
+    if (finishedMatches < totalMatches) return;
 
     await this.eventService.increaseEventRound(event.id);
     this.logger.log(
@@ -556,6 +574,7 @@ export class MatchService {
       },
       relations: {
         winner: true,
+        teams: true,
       },
       order: {
         createdAt: "ASC",
@@ -590,6 +609,23 @@ export class MatchService {
         MatchPhase.ELIMINATION,
       );
       await this.startMatch(newMatch.id);
+    }
+
+    if (lastMatches.length == 2) {
+      const losers = lastMatches
+        .map((match) =>
+          match.teams.find((team) => team.id !== match.winner?.id),
+        )
+        .filter((team): team is TeamEntity => Boolean(team));
+
+      if (losers.length === 2) {
+        const placementMatch = await this.createMatch(
+          [losers[0].id, losers[1].id],
+          event.currentRound,
+          MatchPhase.ELIMINATION,
+        );
+        await this.startMatch(placementMatch.id);
+      }
     }
 
     this.logger.log(
@@ -715,21 +751,60 @@ export class MatchService {
       },
     });
 
+    const matchesWithPlacement = this.addPlacementMatchFlags(tournamentMatches);
+
     if (
       userId &&
       (await this.eventService.isEventAdmin(eventId, userId)) &&
       adminReveal
     )
-      return tournamentMatches;
+      return matchesWithPlacement;
 
-    return tournamentMatches.map((match) => {
+    return matchesWithPlacement.map((match) => {
       if (match.isRevealed) return match;
       return {
         ...match,
         state: MatchState.PLANNED,
         winner: null,
         results: [],
+        isPlacementMatch: match.isPlacementMatch,
       };
+    });
+  }
+
+  private addPlacementMatchFlags(
+    matches: MatchEntity[],
+  ): Array<MatchEntity & { isPlacementMatch?: boolean }> {
+    if (matches.length === 0) return matches;
+
+    const maxRound = Math.max(...matches.map((match) => match.round));
+    if (!Number.isFinite(maxRound)) return matches;
+
+    const previousRoundMatches = matches.filter(
+      (match) => match.round === maxRound - 1,
+    );
+    if (previousRoundMatches.length === 0) return matches;
+
+    const loserIds = new Set<string>();
+    for (const match of previousRoundMatches) {
+      const loser = match.teams?.find((team) => team.id !== match.winner?.id);
+      if (loser) loserIds.add(loser.id);
+    }
+
+    if (loserIds.size < 2) return matches;
+
+    return matches.map((match) => {
+      if (match.round !== maxRound) return match;
+      if (
+        match.teams?.length === 2 &&
+        match.teams.every((team) => loserIds.has(team.id))
+      ) {
+        return {
+          ...match,
+          isPlacementMatch: true,
+        };
+      }
+      return match;
     });
   }
 
