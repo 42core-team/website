@@ -8,11 +8,18 @@ export default function SsoPage() {
   const router = useRouter();
   useEffect(() => {
     let cancelled = false;
+    const getRedirectPath = () => {
+      if (typeof window === "undefined")
+        return "/";
+      const stored = sessionStorage.getItem("post_oauth_redirect") || "/";
+      sessionStorage.removeItem("post_oauth_redirect");
+      return stored.startsWith("/") ? stored : "/";
+    };
     (async () => {
       try {
         await signIn("backend", { redirect: false });
         if (!cancelled) {
-          router.replace("/");
+          router.replace(getRedirectPath());
           router.refresh();
         }
       }
