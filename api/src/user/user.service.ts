@@ -67,8 +67,10 @@ export class UserService {
   getUserCountOfEvent(eventId: string): Promise<number> {
     return this.userRepository.count({
       where: {
-        events: {
-          id: eventId,
+        teams: {
+          event: {
+            id: eventId,
+          },
         },
       },
     });
