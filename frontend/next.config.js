@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    viewTransition: true,
+  },
   output: "standalone",
   logging: {
     level: "info",

@@ -133,13 +133,8 @@ export function WikiNavigation({
     setActiveId(id); // Immediate feedback
 
     const element = document.getElementById(id);
-    const contentContainer = document.querySelector(".main-wiki-content");
-    if (element && contentContainer instanceof HTMLElement) {
-      const targetOffset = element.offsetTop - contentContainer.offsetTop;
-      contentContainer.scrollTo({
-        top: targetOffset,
-        behavior: "smooth",
-      });
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     if (scrollTimeoutRef.current) {
@@ -285,7 +280,7 @@ export function WikiNavigation({
 
   return (
     <nav
-      className="wiki-sidebar-navigation w-66 h-full overflow-y-auto border-r bg-content1"
+      className="wiki-sidebar-navigation w-66 h-full border-r bg-content1"
       aria-label="Wiki sidebar navigation"
       role="navigation"
     >

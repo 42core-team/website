@@ -3,7 +3,7 @@
 import type { WikiNavItem, WikiVersion } from "@/lib/markdown";
 import { Menu } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavbar } from "@/contexts/NavbarContext";
 import { VersionSelector } from "./VersionSelector";
@@ -30,8 +30,28 @@ export function WikiLayout({
   const router = useRouter();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const { isBasicNavbarMenuOpen } = useNavbar();
+  const sidebarRef = useRef<HTMLElement>(null);
+  const [showTopShadow, setShowTopShadow] = useState(false);
+  const [showBottomShadow, setShowBottomShadow] = useState(false);
 
-  // Ensure clicks on in-content heading anchors scroll inside wiki-content only
+  const updateSidebarShadows = useCallback(() => {
+    const el = sidebarRef.current;
+    if (!el)
+      return;
+    setShowTopShadow(el.scrollTop > 0);
+    setShowBottomShadow(el.scrollTop + el.clientHeight < el.scrollHeight - 1);
+  }, []);
+
+  useEffect(() => {
+    const el = sidebarRef.current;
+    if (!el)
+      return;
+    updateSidebarShadows();
+    el.addEventListener("scroll", updateSidebarShadows, { passive: true });
+    return () => el.removeEventListener("scroll", updateSidebarShadows);
+  }, [updateSidebarShadows]);
+
+  // Ensure clicks on in-content heading anchors smooth-scroll to the target
   useEffect(() => {
     const container = document.querySelector(".main-wiki-content");
     if (!container)
@@ -45,12 +65,7 @@ export function WikiLayout({
       if (targetId) {
         const target = document.getElementById(targetId);
         if (target) {
-          const offset
-            = target.offsetTop - (container as HTMLElement).offsetTop;
-          (container as HTMLElement).scrollTo({
-            top: offset,
-            behavior: "smooth",
-          });
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       }
     };
@@ -105,7 +120,7 @@ export function WikiLayout({
   }, [router]);
 
   return (
-    <div className="flex h-[calc(100vh-60px)] bg-background">
+    <div className="flex min-h-[calc(100vh-60px)] bg-background">
       {/* Mobile Navigation Overlay */}
       {isMobileNavOpen && (
         <div
@@ -116,15 +131,24 @@ export function WikiLayout({
 
       {/* Sidebar Navigation */}
       <aside
+        ref={sidebarRef}
         className={`
           fixed lg:sticky top-[60px] left-0 z-50 lg:z-0
           w-64 h-[calc(100vh-60px)]
-          bg-background border-r 
+          bg-background border-r
           transform lg:transform-none transition-transform duration-300 ease-in-out
           ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           overflow-y-auto overflow-x-hidden
         `}
       >
+        {/* Scroll shadow top */}
+        <div
+          className={`sticky top-0 z-10 h-4 -mb-4 pointer-events-none transition-opacity duration-300 ${
+            showTopShadow ? "opacity-100" : "opacity-0"
+          }`}
+          style={{ background: "linear-gradient(to bottom, var(--color-background), transparent)" }}
+        />
+
         <WikiNavigation
           items={navigation}
           currentSlug={currentSlug}
@@ -132,13 +156,21 @@ export function WikiLayout({
           pageContent={pageContent}
           onItemClick={() => setIsMobileNavOpen(false)}
         />
+
+        {/* Scroll shadow bottom */}
+        <div
+          className={`sticky bottom-0 z-10 h-4 -mt-4 pointer-events-none transition-opacity duration-300 ${
+            showBottomShadow ? "opacity-100" : "opacity-0"
+          }`}
+          style={{ background: "linear-gradient(to top, var(--color-background), transparent)" }}
+        />
       </aside>
 
       {/* Main Content */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Header with Search and Version Selector */}
         <header
-          className={`sticky top-[60px] z-40 border-b bg-content1 p-4 transition-opacity duration-300 ${
+          className={`sticky top-[60px] z-40 border-b shadow-sm bg-content1 p-4 transition-opacity duration-300 ${
             isBasicNavbarMenuOpen
               ? "opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto"
               : "opacity-100"
@@ -172,8 +204,8 @@ export function WikiLayout({
         </header>
 
         {/* Content Area */}
-        <main className="main-wiki-content flex-1 overflow-y-auto p-4 sm:p-6">
-          <div className="max-w-4xl mx-auto">{children}</div>
+        <main className="main-wiki-content flex-1 p-4 sm:p-6">
+          <div className="max-w-4xl mx-auto" style={{ viewTransitionName: "wiki-content" }}>{children}</div>
         </main>
       </div>
     </div>
