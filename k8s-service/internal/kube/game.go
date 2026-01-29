@@ -12,7 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (c *Client) CreateGameJob(game *Game) error {
+func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 	presignedURL, err := c.s3Client.GeneratePresignedUploadURL(game.ID)
 	if err != nil {
 		return fmt.Errorf("failed to generate presigned URL: %w", err)
@@ -70,7 +70,7 @@ func (c *Client) CreateGameJob(game *Game) error {
 		},
 	}
 
-	_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Create(context.TODO(), configMap, metav1.CreateOptions{})
+	_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Create(ctx, configMap, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create configmap: %w", err)
 	}
@@ -284,10 +284,10 @@ func (c *Client) CreateGameJob(game *Game) error {
 		},
 	}
 
-	createdJob, err := c.clientset.BatchV1().Jobs(c.namespace).Create(context.TODO(), job, metav1.CreateOptions{})
+	createdJob, err := c.clientset.BatchV1().Jobs(c.namespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		// Try to clean up the configmap if job creation fails
-		_ = c.clientset.CoreV1().ConfigMaps(c.namespace).Delete(context.TODO(), configMapName, metav1.DeleteOptions{})
+		_ = c.clientset.CoreV1().ConfigMaps(c.namespace).Delete(ctx, configMapName, metav1.DeleteOptions{})
 		return fmt.Errorf("failed to create job: %v", err)
 	}
 
@@ -300,7 +300,7 @@ func (c *Client) CreateGameJob(game *Game) error {
 			UID:        createdJob.UID,
 		},
 	}
-	_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Update(context.TODO(), configMap, metav1.UpdateOptions{})
+	_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Update(ctx, configMap, metav1.UpdateOptions{})
 	if err != nil {
 		c.logger.Errorf("failed to set owner reference on configmap %s: %v", configMapName, err)
 	}
