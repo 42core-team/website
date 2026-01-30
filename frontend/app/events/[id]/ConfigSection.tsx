@@ -14,11 +14,15 @@ import { useState } from "react";
 interface ConfigSectionProps {
     gameConfig: string;
     serverConfig: string;
+    gameConfigHtml: string;
+    serverConfigHtml: string;
 }
 
 export default function ConfigSection({
     gameConfig,
     serverConfig,
+    gameConfigHtml,
+    serverConfigHtml,
 }: ConfigSectionProps) {
     const [copiedGame, setCopiedGame] = useState(false);
     const [copiedServer, setCopiedServer] = useState(false);
@@ -60,26 +64,27 @@ export default function ConfigSection({
                             </span>
                         </div>
                     </DialogTrigger>
-                    <DialogContent className="w-fit max-w-[80vw] max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden border-none shadow-2xl [&>button]:text-black">
-                        <DialogHeader className="p-6 bg-primary text-primary-foreground flex flex-row items-center justify-between space-y-0">
-                            <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-                                <Code2 className="size-6" />
+                    <DialogContent className="w-fit max-w-[80vw] max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden border border-border shadow-2xl [&>button]:text-foreground">
+                        <DialogHeader className="p-4 bg-card border-b border-border flex flex-row items-center justify-between space-y-0">
+                            <DialogTitle className="text-xl font-bold flex items-center gap-3 text-card-foreground">
+                                <Code2 className="size-5 text-primary" />
                                 Game Configuration
                             </DialogTitle>
                             <Button
-                                variant="default"
+                                variant="ghost"
                                 size="icon"
-                                className="mr-8 bg-black hover:bg-black/80 text-white border-none shrink-0"
+                                className="mr-8 hover:bg-muted shrink-0"
                                 onClick={() => copyToClipboard(formattedGameConfig, 'game')}
                                 title={copiedGame ? "Copied!" : "Copy Config"}
                             >
-                                {copiedGame ? <Check className="size-4" /> : <Copy className="size-4" />}
+                                {copiedGame ? <Check className="size-4 text-green-500" /> : <Copy className="size-4" />}
                             </Button>
                         </DialogHeader>
-                        <div className="flex-1 overflow-auto bg-[#0d1117]">
-                            <pre className="font-mono text-sm text-white p-6">
-                                {formattedGameConfig}
-                            </pre>
+                        <div className="overflow-auto bg-background dark:bg-[#0d1117] px-4 border-t border-border">
+                            <div
+                                className="prose prose-slate dark:prose-invert prose-base max-w-none [&_pre]:p-0 [&_pre]:m-0 [&_pre]:bg-transparent [&_*:last-child]:mb-0"
+                                dangerouslySetInnerHTML={{ __html: gameConfigHtml }}
+                            />
                         </div>
                     </DialogContent>
                 </Dialog>
@@ -93,26 +98,27 @@ export default function ConfigSection({
                             </span>
                         </div>
                     </DialogTrigger>
-                    <DialogContent className="w-fit max-w-[80vw] max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden border-none shadow-2xl [&>button]:text-black">
-                        <DialogHeader className="p-6 bg-primary text-primary-foreground flex flex-row items-center justify-between space-y-0">
-                            <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-                                <Server className="size-6" />
+                    <DialogContent className="w-fit max-w-[80vw] max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden border border-border shadow-2xl [&>button]:text-foreground">
+                        <DialogHeader className="p-4 bg-card border-b border-border flex flex-row items-center justify-between space-y-0">
+                            <DialogTitle className="text-xl font-bold flex items-center gap-3 text-card-foreground">
+                                <Server className="size-5 text-primary" />
                                 Server Configuration
                             </DialogTitle>
                             <Button
-                                variant="default"
+                                variant="ghost"
                                 size="icon"
-                                className="mr-8 bg-black hover:bg-black/80 text-white border-none shrink-0"
+                                className="mr-8 hover:bg-muted shrink-0"
                                 onClick={() => copyToClipboard(formattedServerConfig, 'server')}
                                 title={copiedServer ? "Copied!" : "Copy Config"}
                             >
-                                {copiedServer ? <Check className="size-4" /> : <Copy className="size-4" />}
+                                {copiedServer ? <Check className="size-4 text-green-500" /> : <Copy className="size-4" />}
                             </Button>
                         </DialogHeader>
-                        <div className="flex-1 overflow-auto bg-[#0d1117]">
-                            <pre className="font-mono text-sm text-white p-6">
-                                {formattedServerConfig}
-                            </pre>
+                        <div className="overflow-auto bg-background dark:bg-[#0d1117] px-4 border-t border-border">
+                            <div
+                                className="prose prose-slate dark:prose-invert prose-base max-w-none [&_pre]:p-0 [&_pre]:m-0 [&_pre]:bg-transparent [&_*:last-child]:mb-0"
+                                dangerouslySetInnerHTML={{ __html: serverConfigHtml }}
+                            />
                         </div>
                     </DialogContent>
                 </Dialog>

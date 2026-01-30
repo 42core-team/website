@@ -1,6 +1,11 @@
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import remarkHtml from "remark-html";
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import rehypeHighlight from "rehype-highlight";
+import rehypeStringify from "rehype-stringify";
 import { isActionError } from "@/app/actions/errors";
 import {
   getEventById,
@@ -57,6 +62,19 @@ export default async function EventPage({
 
   const teamsCount = await getTeamsCountForEvent(id);
   const participantsCount = await getParticipantsCountForEvent(id);
+
+  const highlightJson = async (json: string) => {
+    const file = await unified()
+      .use(remarkParse)
+      .use(remarkRehype)
+      .use(rehypeHighlight)
+      .use(rehypeStringify)
+      .process(`\`\`\`json\n${json}\n\`\`\``);
+    return String(file);
+  };
+
+  const renderedGameConfig = await highlightJson(event.gameConfig || "{}");
+  const renderedServerConfig = await highlightJson(event.serverConfig || "{}");
 
   const renderedDescription = String(
     await remark()
@@ -124,6 +142,8 @@ export default async function EventPage({
             <ConfigSection
               gameConfig={event.gameConfig || "{}"}
               serverConfig={event.serverConfig || "{}"}
+              gameConfigHtml={renderedGameConfig}
+              serverConfigHtml={renderedServerConfig}
             />
           </div>
         </CardContent>

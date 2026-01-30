@@ -142,7 +142,7 @@ export class EventService {
     };
   }
 
-  async getEventGameConfig(id: string): Promise<string> {
+  async getEventGameConfig(id: string): Promise<string | null> {
     const event = await this.eventRepository.findOneOrFail({
       where: { id },
       select: ["gameConfig"],
@@ -150,7 +150,7 @@ export class EventService {
     return event.gameConfig;
   }
 
-  async getEventServerConfig(id: string): Promise<string> {
+  async getEventServerConfig(id: string): Promise<string | null> {
     const event = await this.eventRepository.findOneOrFail({
       where: { id },
       select: ["serverConfig"],

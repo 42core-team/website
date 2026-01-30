@@ -100,7 +100,7 @@ export function TeamInfoSection({
                   </a>
                 )
                 : (
-                  <Skeleton className="h-5 w-75 rounded-md m-2" />
+                  <Skeleton className="h-5 w-72 rounded-md m-2" />
                 )}
             </div>
           </div>
@@ -150,7 +150,7 @@ export function TeamInfoSection({
                         className={cn(
                           "mb-2",
                           member.isEventAdmin
-                            ? "outline-orange-500 outline-2"
+                            ? "ring-2 ring-orange-500"
                             : "",
                         )}
                       >

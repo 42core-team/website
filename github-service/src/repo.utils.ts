@@ -325,7 +325,7 @@ export class RepoUtils {
     repoRoot: string,
     gameConfig: string,
   ): Promise<void> {
-    if (gameConfig.length == 0) return;
+    if (!gameConfig || gameConfig.length === 0) return;
 
     try {
       const configsDir = path.join(repoRoot, "configs");
@@ -348,7 +348,7 @@ export class RepoUtils {
     repoRoot: string,
     serverConfig: string,
   ): Promise<void> {
-    if (serverConfig.length == 0) return;
+    if (!serverConfig || serverConfig.length === 0) return;
 
     try {
       const configsDir = path.join(repoRoot, "configs");
