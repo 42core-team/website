@@ -71,7 +71,6 @@ export class TeamService {
                 await entityManager.getRepository(EventEntity).update(team.event.id, {
                   showConfigs: true,
                 });
-                team.event.showConfigs = true;
               }
             });
           }
