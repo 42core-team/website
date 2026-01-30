@@ -28,6 +28,7 @@ export interface Event {
   visualizerDockerImage?: string;
   basePath?: string;
   gameConfig?: string;
+  serverConfig?: string;
   isPrivate: boolean;
 }
 
@@ -99,6 +100,7 @@ interface EventCreateParams {
   monorepoUrl: string;
   basePath: string;
   gameConfig: string;
+  serverConfig: string;
   isPrivate: boolean;
 }
 

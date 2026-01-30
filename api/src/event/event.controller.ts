@@ -53,10 +53,10 @@ export class EventController {
     return await this.eventService.getEventGameConfig(id);
   }
 
-  // @Get(":id/server-config")
-  // async getEventServerConfig(@Param("id", new ParseUUIDPipe()) id: string) {
-  //   return await this.eventService.getEventGameConfig(id);
-  // }
+  @Get(":id/server-config")
+  async getEventServerConfig(@Param("id", new ParseUUIDPipe()) id: string) {
+    return await this.eventService.getEventServerConfig(id);
+  }
 
   @Get("event/currentLiveEvent")
   async getCurrentLiveEvent() {
@@ -92,6 +92,7 @@ export class EventController {
       createEventDto.monorepoVersion,
       createEventDto.basePath,
       createEventDto.gameConfig,
+      createEventDto.serverConfig,
       createEventDto.isPrivate,
     );
   }

@@ -249,6 +249,7 @@ export class AppService {
     eventId: string,
     basePath: string,
     gameConfig: string,
+    serverConfig: string,
   ) {
     this.logger.log(
       `Creating team repository ${JSON.stringify({
@@ -293,6 +294,7 @@ export class AppService {
               teamName,
               basePath,
               gameConfig,
+              serverConfig,
             );
           })(),
         ]);

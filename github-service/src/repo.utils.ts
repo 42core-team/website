@@ -21,6 +21,7 @@ export class RepoUtils {
     teamName: string,
     basePath: string,
     gameConfig: string,
+    serverConfig: string,
   ): Promise<SimpleGit> {
     this.logger.log(
       `Cloning mono repo ${monoRepoUrl} to temp folder ${tempFolderPath}`,
@@ -52,6 +53,10 @@ export class RepoUtils {
       this.updateGameConfig(
         path.join(tempFolderPath, basePath),
         gameConfig,
+      ),
+      this.updateServerConfig(
+        path.join(tempFolderPath, basePath),
+        serverConfig,
       ),
     ]);
     return gitRepo;
@@ -320,6 +325,8 @@ export class RepoUtils {
     repoRoot: string,
     gameConfig: string,
   ): Promise<void> {
+    if (gameConfig.length == 0) return;
+
     try {
       const configsDir = path.join(repoRoot, "configs");
       const gameConfigPath = path.join(configsDir, "game.config.json");
@@ -332,6 +339,29 @@ export class RepoUtils {
     } catch (error) {
       this.logger.error(
         `Failed to update game config in configs/game.config.json`,
+        error as Error,
+      );
+    }
+  }
+
+  private async updateServerConfig(
+    repoRoot: string,
+    serverConfig: string,
+  ): Promise<void> {
+    if (serverConfig.length == 0) return;
+
+    try {
+      const configsDir = path.join(repoRoot, "configs");
+      const serverConfigPath = path.join(configsDir, "server.config.json");
+
+      // Ensure configs directory exists
+      await fs.mkdir(configsDir, { recursive: true });
+
+      await fs.writeFile(serverConfigPath, serverConfig);
+      this.logger.log(`Updated server config at ${serverConfigPath}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to update server config in configs/server.config.json`,
         error as Error,
       );
     }

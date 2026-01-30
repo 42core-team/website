@@ -150,13 +150,13 @@ export class EventService {
     return event.gameConfig;
   }
 
-  // async getServerConfig(id: string): Promise<string> {
-  //   const event = await this.eventRepository.findOneOrFail({
-  //     where: { id },
-  //     select: ["serverConfig"],
-  //   });
-  //   return event.serverConfig;
-  // }
+  async getEventServerConfig(id: string): Promise<string> {
+    const event = await this.eventRepository.findOneOrFail({
+      where: { id },
+      select: ["serverConfig"],
+    });
+    return event.serverConfig;
+  }
 
   createEvent(
     userId: string,
@@ -176,6 +176,7 @@ export class EventService {
     monorepoVersion: string,
     basePath: string,
     gameConfig: string,
+    serverConfig: string,
     isPrivate: boolean = false,
   ) {
     githubOrgSecret = CryptoJS.AES.encrypt(
@@ -213,6 +214,7 @@ export class EventService {
       monorepoVersion,
       basePath,
       gameConfig,
+      serverConfig,
       isPrivate,
     });
   }

@@ -108,6 +108,7 @@ export class GithubApiService {
     eventId: string,
     basePath: string,
     gameConfig: string,
+    serverConfig: string,
   ) {
     this.githubClient.emit("create_team_repository", {
       name,
@@ -123,6 +124,7 @@ export class GithubApiService {
       eventId,
       basePath,
       gameConfig,
+      serverConfig,
     });
   }
 }

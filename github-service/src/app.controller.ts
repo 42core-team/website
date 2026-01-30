@@ -139,6 +139,7 @@ export class AppController {
     eventId: string;
     basePath: string;
     gameConfig: string;
+    serverConfig: string;
   }) {
     const safeData = {
       name: data.name,
@@ -151,7 +152,8 @@ export class AppController {
       teamId: data.teamId,
       eventId: data.eventId,
       basePath: data.basePath,
-      gameConfig: data.gameConfig.slice(0, 20),
+      gameConfig: data.gameConfig.slice(0, 50),
+      serverConfig: data.serverConfig.slice(0, 50),
     };
     this.logger.log(
       `create_team_repository event received ${JSON.stringify(safeData)}`,
@@ -170,6 +172,7 @@ export class AppController {
       data.eventId,
       data.basePath,
       data.gameConfig,
+      data.serverConfig,
     );
   }
 }

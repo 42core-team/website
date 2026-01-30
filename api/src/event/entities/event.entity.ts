@@ -90,6 +90,9 @@ export class EventEntity {
   @Column({ nullable: true })
   gameConfig: string;
 
+  @Column({ nullable: true })
+  serverConfig: string;
+
   @Column({ default: false })
   isPrivate: boolean;
 

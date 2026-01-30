@@ -82,6 +82,10 @@ export class CreateEventDto {
   gameConfig: string;
 
   @ApiProperty()
+  @IsString()
+  serverConfig: string;
+
+  @ApiProperty()
   @IsBoolean()
   isPrivate: boolean;
 }

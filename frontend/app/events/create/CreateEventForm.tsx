@@ -53,6 +53,7 @@ const formSchema = z.object({
   visualizerImageTag: z.string().optional(),
   basePath: z.string().min(1, "Base path is required"),
   gameConfig: z.string().min(1, "Game config is required"),
+  serverConfig: z.string().min(1, "Server config is required"),
   isPrivate: z.boolean(),
 });
 
@@ -163,6 +164,7 @@ export default function CreateEventForm() {
       visualizerImageTag: "",
       basePath: "bots/softcore",
       gameConfig: "",
+      serverConfig: "",
       isPrivate: false,
     },
   });
@@ -231,14 +233,21 @@ export default function CreateEventForm() {
     queryFn: async () => {
       if (!parsedRepo || !monorepoVersion || !basePath)
         return null;
-      const rawUrl = `https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${monorepoVersion}/${basePath}/configs/game.config.json`;
-      const res = await fetch(rawUrl);
-      if (res.ok) {
-        const configText = await res.text();
-        form.setValue("gameConfig", configText);
-        return configText;
+
+      const [gameRes, serverRes] = await Promise.all([
+        fetch(`https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${monorepoVersion}/${basePath}/configs/game.config.json`),
+        fetch(`https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${monorepoVersion}/${basePath}/configs/server.config.json`),
+      ]);
+
+      if (gameRes.ok) {
+        const gameConfigText = await gameRes.text();
+        form.setValue("gameConfig", gameConfigText);
       }
-      return null;
+      if (serverRes.ok) {
+        const serverConfigText = await serverRes.text();
+        form.setValue("serverConfig", serverConfigText);
+      }
+      return true;
     },
     enabled: !!parsedRepo && !!monorepoVersion && !!basePath,
   });
@@ -303,6 +312,7 @@ export default function CreateEventForm() {
         visualizerDockerImage: visualizerDockerImageString,
         basePath: values.basePath.trim(),
         gameConfig: values.gameConfig,
+        serverConfig: values.serverConfig,
         isPrivate: values.isPrivate,
       });
 
@@ -718,13 +728,49 @@ export default function CreateEventForm() {
                           />
                           {isFetchingConfig && (
                             <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
-                              <span className="text-xs font-medium">Fetching default config...</span>
+                              <span className="text-xs font-medium">Fetching default configs...</span>
                             </div>
                           )}
                         </div>
                       </FormControl>
                       <FormDescription>
                         Configuration for the game server. Will be auto-filled if found in the monorepo.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="serverConfig"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Server Configuration (JSON) *</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Textarea
+                            placeholder='{
+	"replayFolderPaths": [
+		"/workspace/replays",
+		"/workspaces/monorepo",
+		"/workspaces/monorepo/visualizer/public/replays",
+		"./replays"
+	],
+	"timeoutTicks": 30000,
+  ...'
+                            className="min-h-[200px] font-mono text-sm"
+                            {...field}
+                          />
+                          {isFetchingConfig && (
+                            <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
+                              <span className="text-xs font-medium">Fetching default configs...</span>
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        ServerConfig. Will be auto-filled if found in the monorepo.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

@@ -88,10 +88,12 @@ brew install pnpm
 
 ### Migrations
 
-* **Generate:** `pnpm migration:generate --name=migration_name`
-* **Create:** `pnpm migration:create --name=migration_name`
+* **Generate:** `pnpm migration:generate migration_name`
+  Compares your current TypeScript entities with the database and automatically generates the necessary SQL (e.g., adding or removing columns). **Use this for most schema changes.**
+* **Create:** `pnpm migration:create migration_name`
+  Creates an empty migration template. **Use this only for manual SQL changes** (e.g., seeding data, creating complex views, or custom indexes) that TypeORM cannot detect automatically.
 * **Run:** `pnpm migration:run-local` (local) / `pnpm migration:run` (production)
-* **Revert:** `pnpm migration:revert`
+* **Revert:** `pnpm migration:revert-local` (local) / `pnpm migration:revert` (production)
 
 ## API Documentation
 
