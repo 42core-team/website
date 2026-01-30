@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
 
 interface TeamCreationSectionProps {
   newTeamName: string;
@@ -35,9 +34,10 @@ export function TeamCreationSection({
           />
           <Button
             onClick={handleCreateTeam}
-            disabled={!newTeamName || !!validationError || isLoading}
+            disabled={!newTeamName || !!validationError}
+            isLoading={isLoading}
           >
-            {isLoading ? <Spinner /> : "Create Team"}
+            Create Team
           </Button>
         </div>
         <div className="mt-2">

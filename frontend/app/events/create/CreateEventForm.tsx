@@ -1,10 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { isActionError } from "@/app/actions/errors";
@@ -50,6 +51,9 @@ const formSchema = z.object({
   gameServerImageTag: z.string().optional(),
   myCoreBotImageTag: z.string().optional(),
   visualizerImageTag: z.string().optional(),
+  basePath: z.string().min(1, "Base path is required"),
+  gameConfig: z.string().min(1, "Game config is required"),
+  serverConfig: z.string().min(1, "Server config is required"),
   isPrivate: z.boolean(),
 });
 
@@ -139,9 +143,6 @@ async function validateGithubToken(
 export default function CreateEventForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
-  const [isLoadingTags, setIsLoadingTags] = useState(false);
-  const [tagFetchError, setTagFetchError] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -161,11 +162,16 @@ export default function CreateEventForm() {
       gameServerImageTag: "",
       myCoreBotImageTag: "",
       visualizerImageTag: "",
+      basePath: "bots/softcore",
+      gameConfig: "",
+      serverConfig: "",
       isPrivate: false,
     },
   });
 
   const monorepoUrl = form.watch("monorepoUrl");
+  const monorepoVersion = form.watch("monorepoVersion");
+  const basePath = form.watch("basePath");
 
   // Extract owner/repo from a GitHub URL like https://github.com/owner/repo
   const parseGitHubRepo = (
@@ -185,57 +191,66 @@ export default function CreateEventForm() {
     }
   };
 
+  const parsedRepo = parseGitHubRepo(monorepoUrl);
+
   // Fetch tags when monorepo URL changes
-  useEffect(() => {
-    const parsed = parseGitHubRepo(monorepoUrl);
-    if (!parsed) {
-      setAvailableTags([]);
-      setTagFetchError(null);
-      return;
-    }
+  const {
+    data: availableTags = [],
+    isLoading: isLoadingTags,
+    error: tagFetchError,
+  } = useQuery({
+    queryKey: ["github", "tags", parsedRepo?.owner, parsedRepo?.repo],
+    queryFn: async () => {
+      if (!parsedRepo)
+        return [];
+      const headers: Record<string, string> = {
+        Accept: "application/vnd.github+json",
+      };
+      const url = `https://api.github.com/repos/${parsedRepo.owner}/${parsedRepo.repo}/tags?per_page=100`;
+      const res = await fetch(url, { headers });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(
+          body?.message || `Failed to fetch tags (${res.status})`,
+        );
+      }
+      const data: Array<{ name: string }> = await res.json();
+      return Array.from(new Set((data || []).map(t => t.name)));
+    },
+    enabled: !!parsedRepo,
+  });
 
-    let cancelled = false;
-    const controller = new AbortController();
-    const fetchTags = async () => {
-      setIsLoadingTags(true);
-      setTagFetchError(null);
-      try {
-        const headers: Record<string, string> = {
-          Accept: "application/vnd.github+json",
-        };
-        const url = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/tags?per_page=100`;
-        const res = await fetch(url, { headers, signal: controller.signal });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(
-            body?.message || `Failed to fetch tags (${res.status})`,
-          );
-        }
-        const data: Array<{ name: string }> = await res.json();
-        if (!cancelled) {
-          setAvailableTags(
-            Array.from(new Set((data || []).map(t => t.name))),
-          );
-        }
-      }
-      catch (e: any) {
-        if (!cancelled && e?.name !== "AbortError") {
-          setAvailableTags([]);
-          setTagFetchError(e?.message || "Failed to fetch tags");
-        }
-      }
-      finally {
-        if (!cancelled)
-          setIsLoadingTags(false);
-      }
-    };
+  // Fetch game config when version or base path changes
+  const { isLoading: isFetchingConfig } = useQuery({
+    queryKey: [
+      "github",
+      "config",
+      parsedRepo?.owner,
+      parsedRepo?.repo,
+      monorepoVersion,
+      basePath,
+    ],
+    queryFn: async () => {
+      if (!parsedRepo || !monorepoVersion || !basePath)
+        return null;
 
-    fetchTags();
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [monorepoUrl]);
+      const [gameRes, serverRes] = await Promise.all([
+        fetch(`https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${monorepoVersion}/${basePath}/configs/game.config.json`),
+        fetch(`https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${monorepoVersion}/${basePath}/configs/server.config.json`),
+      ]);
+
+      if (gameRes.ok) {
+        const gameConfigText = await gameRes.text();
+        form.setValue("gameConfig", gameConfigText);
+      }
+      if (serverRes.ok) {
+        const serverConfigText = await serverRes.text();
+        form.setValue("serverConfig", serverConfigText);
+      }
+      return true;
+    },
+    enabled: !!parsedRepo && !!monorepoVersion && !!basePath,
+  });
 
   function combineImageAndTag(
     image: string | undefined,
@@ -247,68 +262,77 @@ export default function CreateEventForm() {
     return `${image.trim()}:${tag.trim()}`;
   }
 
-  const onSubmit = async (values: FormValues) => {
+  const createMutation = useMutation({
+    mutationFn: async (values: FormValues) => {
+      const gameServerDockerImageString = combineImageAndTag(
+        values.gameServerDockerImage,
+        values.gameServerImageTag,
+      );
+      const myCoreBotDockerImageString = combineImageAndTag(
+        values.myCoreBotDockerImage,
+        values.myCoreBotImageTag,
+      );
+      const visualizerDockerImageString = combineImageAndTag(
+        values.visualizerDockerImage,
+        values.visualizerImageTag,
+      );
+
+      if (!gameServerDockerImageString) {
+        throw new Error("Game Server image is required");
+      }
+      if (!myCoreBotDockerImageString) {
+        throw new Error("My Core Bot image is required");
+      }
+      if (!visualizerDockerImageString) {
+        throw new Error("Visualizer image is required");
+      }
+
+      const validationError = await validateGithubToken(
+        values.githubOrg,
+        values.githubOrgSecret,
+      );
+      if (validationError) {
+        throw new Error(validationError);
+      }
+
+      const result = await createEvent({
+        name: values.name.trim(),
+        description: values.description?.trim() || "",
+        githubOrg: values.githubOrg,
+        githubOrgSecret: values.githubOrgSecret,
+        location: values.location?.trim() || "",
+        startDate: values.startDate.getTime(),
+        endDate: values.endDate.getTime(),
+        minTeamSize: values.minTeamSize,
+        maxTeamSize: values.maxTeamSize,
+        monorepoUrl: values.monorepoUrl.trim(),
+        monorepoVersion: values.monorepoVersion.trim(),
+        gameServerDockerImage: gameServerDockerImageString,
+        myCoreBotDockerImage: myCoreBotDockerImageString,
+        visualizerDockerImage: visualizerDockerImageString,
+        basePath: values.basePath.trim(),
+        gameConfig: values.gameConfig,
+        serverConfig: values.serverConfig,
+        isPrivate: values.isPrivate,
+      });
+
+      if (isActionError(result)) {
+        throw new Error(result.error);
+      }
+
+      return result;
+    },
+    onSuccess: (result) => {
+      router.push(`/events/${result.id}`);
+    },
+    onError: (error: any) => {
+      setError(error.message);
+    },
+  });
+
+  const onSubmit = (values: FormValues) => {
     setError(null);
-
-    const gameServerDockerImageString = combineImageAndTag(
-      values.gameServerDockerImage,
-      values.gameServerImageTag,
-    );
-    const myCoreBotDockerImageString = combineImageAndTag(
-      values.myCoreBotDockerImage,
-      values.myCoreBotImageTag,
-    );
-    const visualizerDockerImageString = combineImageAndTag(
-      values.visualizerDockerImage,
-      values.visualizerImageTag,
-    );
-
-    if (!gameServerDockerImageString) {
-      setError("Game Server image is required");
-      return;
-    }
-    if (!myCoreBotDockerImageString) {
-      setError("My Core Bot image is required");
-      return;
-    }
-    if (!visualizerDockerImageString) {
-      setError("Visualizer image is required");
-      return;
-    }
-
-    const validationError = await validateGithubToken(
-      values.githubOrg,
-      values.githubOrgSecret,
-    );
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    const result = await createEvent({
-      name: values.name.trim(),
-      description: values.description?.trim() || "",
-      githubOrg: values.githubOrg,
-      githubOrgSecret: values.githubOrgSecret,
-      location: values.location?.trim() || "",
-      startDate: values.startDate.getTime(),
-      endDate: values.endDate.getTime(),
-      minTeamSize: values.minTeamSize,
-      maxTeamSize: values.maxTeamSize,
-      monorepoUrl: values.monorepoUrl.trim(),
-      monorepoVersion: values.monorepoVersion.trim(),
-      gameServerDockerImage: gameServerDockerImageString,
-      myCoreBotDockerImage: myCoreBotDockerImageString,
-      visualizerDockerImage: visualizerDockerImageString,
-      isPrivate: values.isPrivate,
-    });
-
-    if (isActionError(result)) {
-      setError(result.error);
-      return;
-    }
-
-    router.push(`/events/${result.id}`);
+    createMutation.mutate(values);
   };
 
   return (
@@ -392,11 +416,11 @@ export default function CreateEventForm() {
                             >
                               {field.value
                                 ? (
-                                    format(field.value, "PPP p")
-                                  )
+                                  format(field.value, "PPP p")
+                                )
                                 : (
-                                    <span>Pick a date and time</span>
-                                  )}
+                                  <span>Pick a date and time</span>
+                                )}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
@@ -455,11 +479,11 @@ export default function CreateEventForm() {
                             >
                               {field.value
                                 ? (
-                                    format(field.value, "PPP p")
-                                  )
+                                  format(field.value, "PPP p")
+                                )
                                 : (
-                                    <span>Pick a date and time</span>
-                                  )}
+                                  <span>Pick a date and time</span>
+                                )}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
@@ -471,7 +495,7 @@ export default function CreateEventForm() {
                             onSelect={field.onChange}
                             disabled={date =>
                               date < new Date(new Date().setHours(0, 0, 0, 0))}
-                            initialFocus
+                            autoFocus
                           />
                           <div className="p-3 border-t">
                             <Input
@@ -668,8 +692,94 @@ export default function CreateEventForm() {
                 />
               </div>
 
+              <div className="grid grid-cols-1 gap-4">
+                <FormField
+                  control={form.control}
+                  name="basePath"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Base Path *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="bots/softcore"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Path in the monorepo where the game logic is located (e.g., bots/softcore)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="gameConfig"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Game Configuration (JSON) *</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Textarea
+                            placeholder='{ "rounds": 100, ... }'
+                            className="min-h-[200px] font-mono text-sm"
+                            {...field}
+                          />
+                          {isFetchingConfig && (
+                            <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
+                              <span className="text-xs font-medium">Fetching default configs...</span>
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Configuration for the game server. Will be auto-filled if found in the monorepo.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="serverConfig"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Server Configuration (JSON) *</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Textarea
+                            placeholder='{
+	"replayFolderPaths": [
+		"/workspace/replays",
+		"/workspaces/monorepo",
+		"/workspaces/monorepo/visualizer/public/replays",
+		"./replays"
+	],
+	"timeoutTicks": 30000,
+  ...'
+                            className="min-h-[200px] font-mono text-sm"
+                            {...field}
+                          />
+                          {isFetchingConfig && (
+                            <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
+                              <span className="text-xs font-medium">Fetching default configs...</span>
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        ServerConfig. Will be auto-filled if found in the monorepo.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               {tagFetchError && (
-                <div className="text-sm text-red-600">{tagFetchError}</div>
+                <div className="text-sm text-red-600">{(tagFetchError as Error).message}</div>
               )}
               {isLoadingTags && (
                 <div className="text-xs text-muted-foreground">
@@ -811,8 +921,8 @@ export default function CreateEventForm() {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Creating..." : "Create Event"}
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Creating..." : "Create Event"}
             </Button>
           </div>
         </div>

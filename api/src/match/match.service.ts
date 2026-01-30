@@ -382,6 +382,7 @@ export class MatchService {
           name: match.teams[1].name,
         },
       ],
+      gameConfig: event.gameConfig,
     });
   }
 

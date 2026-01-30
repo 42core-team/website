@@ -27,7 +27,7 @@ export class EventService {
     @Inject(forwardRef(() => TeamService))
     private readonly teamService: TeamService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   logger = new Logger("EventService");
 
@@ -64,8 +64,8 @@ export class EventService {
     }
   }
 
-  getAllEvents(): Promise<EventEntity[]> {
-    return this.eventRepository.find({
+  async getAllEvents(): Promise<EventEntity[]> {
+    const events = await this.eventRepository.find({
       where: {
         isPrivate: false,
       },
@@ -73,6 +73,12 @@ export class EventService {
         startDate: "ASC",
       },
     });
+
+    for (const event of events) {
+      await this.sanitizeEventConfigs(event);
+    }
+
+    return events;
   }
 
   getAllEventsForQueue(): Promise<EventEntity[]> {
@@ -84,18 +90,14 @@ export class EventService {
   }
 
   async getEventsForUser(userId: string): Promise<EventEntity[]> {
-    return this.eventRepository.find({
+    const events = await this.eventRepository.find({
       where: [
         {
-          users: {
-            id: userId,
-          },
+          users: { id: userId },
         },
         {
           teams: {
-            users: {
-              id: userId,
-            },
+            users: { id: userId },
           },
         },
       ],
@@ -103,16 +105,32 @@ export class EventService {
         startDate: "ASC",
       },
     });
+
+    for (const event of events) {
+      await this.sanitizeEventConfigs(event);
+    }
+    return events;
   }
 
   async getEventById(
     id: string,
     relations: FindOptionsRelations<EventEntity> = {},
   ): Promise<EventEntity> {
-    return await this.eventRepository.findOneOrFail({
+    const event = await this.eventRepository.findOneOrFail({
       where: { id },
       relations,
     });
+
+    await this.sanitizeEventConfigs(event);
+
+    return event;
+  }
+
+  private async sanitizeEventConfigs(event: EventEntity) {
+    if (event.startDate > new Date()) {
+      event.gameConfig = "";
+      event.serverConfig = "";
+    }
   }
 
   async getEventByTeamId(
@@ -132,6 +150,11 @@ export class EventService {
   async getEventVersion(id: string): Promise<EventVersionDto> {
     const event = await this.eventRepository.findOneOrFail({
       where: { id },
+      select: {
+        gameServerDockerImage: true,
+        myCoreBotDockerImage: true,
+        visualizerDockerImage: true,
+      },
     });
 
     return {
@@ -139,6 +162,30 @@ export class EventService {
       myCoreBotVersion: event.myCoreBotDockerImage,
       visualizerVersion: event.visualizerDockerImage,
     };
+  }
+
+  async getEventGameConfig(id: string): Promise<string | null> {
+    const event = await this.eventRepository.findOneOrFail({
+      where: { id },
+      select: {
+        gameConfig: true,
+        startDate: true,
+      },
+    });
+    if (event.startDate > new Date()) return null;
+    return event.gameConfig;
+  }
+
+  async getEventServerConfig(id: string): Promise<string | null> {
+    const event = await this.eventRepository.findOneOrFail({
+      where: { id },
+      select: {
+        serverConfig: true,
+        startDate: true,
+      },
+    });
+    if (event.startDate > new Date()) return null;
+    return event.serverConfig;
   }
 
   createEvent(
@@ -157,6 +204,9 @@ export class EventService {
     visualizerDockerImage: string,
     monorepoUrl: string,
     monorepoVersion: string,
+    basePath: string,
+    gameConfig: string,
+    serverConfig: string,
     isPrivate: boolean = false,
   ) {
     githubOrgSecret = CryptoJS.AES.encrypt(
@@ -192,6 +242,9 @@ export class EventService {
       visualizerDockerImage,
       monorepoUrl,
       monorepoVersion,
+      basePath,
+      gameConfig,
+      serverConfig,
       isPrivate,
     });
   }
@@ -293,6 +346,7 @@ export class EventService {
       canCreateTeam?: boolean;
       processQueue?: boolean;
       isPrivate?: boolean;
+      showConfigs?: boolean;
     },
   ): Promise<UpdateResult> {
     await this.getEventById(eventId);
@@ -332,7 +386,11 @@ export class EventService {
       .orderBy("user_count", "DESC")
       .limit(1);
 
-    return qb.getOne();
+    const event = await qb.getOne();
+    if (event) {
+      await this.sanitizeEventConfigs(event);
+    }
+    return event;
   }
 
   async hasEventStarted(eventId: string): Promise<boolean> {

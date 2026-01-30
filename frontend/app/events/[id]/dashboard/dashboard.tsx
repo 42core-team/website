@@ -369,7 +369,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                       disabled={(date) =>
                         date < new Date(new Date().setHours(0, 0, 0, 0))
                       }
-                      initialFocus
+                      autoFocus={true}
                     />
                     <div className="p-3 border-t">
                       <Input
@@ -398,11 +398,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 <Button
                   disabled={setTeamsLockDateMutation.isPending}
                   onClick={() => {
-                    setTeamsLockDateMutation
-                      .mutateAsync(new Date(teamAutoLockTime).getTime())
-                      .then(() => {
-                      })
-                      .catch(() => {});
+                    setTeamsLockDateMutation.mutate(
+                      new Date(teamAutoLockTime).getTime(),
+                    );
                   }}
                 >
                   Save
@@ -411,12 +409,11 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   variant="secondary"
                   disabled={setTeamsLockDateMutation.isPending}
                   onClick={() => {
-                    setTeamsLockDateMutation
-                      .mutateAsync(null)
-                      .then(() => {
+                    setTeamsLockDateMutation.mutate(null, {
+                      onSuccess: () => {
                         setTeamAutoLockTime("");
-                      })
-                      .catch(() => {});
+                      },
+                    });
                   }}
                 >
                   Reset

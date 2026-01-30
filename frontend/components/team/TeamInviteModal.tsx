@@ -108,7 +108,7 @@ export function TeamInviteModal({
             Invite Team Members
           </DialogTitle>
         </DialogHeader>
-        <DialogContent>
+        <div className="grid gap-4">
           <div className="grid w-full max-w-sm items-center gap-3">
             <Label htmlFor="search">Search Users</Label>
             <Input
@@ -129,60 +129,60 @@ export function TeamInviteModal({
           <div className="max-h-[300px] overflow-y-auto">
             {isSearching
               ? (
-                  <div className="flex justify-center py-4">
-                    <div className="animate-spin h-6 w-6 border-2 border-primary rounded-full border-t-transparent"></div>
-                  </div>
-                )
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin h-6 w-6 border-2 border-primary rounded-full border-t-transparent"></div>
+                </div>
+              )
               : searchQuery.length < 2
                 ? (
-                    <p className="text-muted-foreground text-center py-2">
-                      Type at least 2 characters to search
-                    </p>
-                  )
+                  <p className="text-muted-foreground text-center py-2">
+                    Type at least 2 characters to search
+                  </p>
+                )
                 : searchResults.length === 0
                   ? (
-                      <p className="text-muted-foreground text-center py-2">
-                        No users found
-                      </p>
-                    )
+                    <p className="text-muted-foreground text-center py-2">
+                      No users found
+                    </p>
+                  )
                   : (
-                      searchResults.map(user => (
-                        <div
-                          key={user.id}
-                          className="flex justify-between items-center p-2 border-b last:border-0"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Avatar>
-                              <AvatarImage
-                                src={user.profilePicture}
-                                alt={user.name || "User"}
-                              />
-                              <AvatarFallback>
-                                {(user.name || "User").substring(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{user.name}</p>
-                              <p className="text-muted-foreground text-sm">
-                                {user.username}
-                              </p>
-                            </div>
+                    searchResults.map(user => (
+                      <div
+                        key={user.id}
+                        className="flex justify-between items-center p-2 border-b last:border-0"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Avatar>
+                            <AvatarImage
+                              src={user.profilePicture}
+                              alt={user.name || "User"}
+                            />
+                            <AvatarFallback>
+                              {(user.name || "User").substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{user.name}</p>
+                            <p className="text-muted-foreground text-sm">
+                              {user.username}
+                            </p>
                           </div>
-                          <Button
-                            size="sm"
-                            disabled={user.isInvited}
-                            // TODO: isLoading={isInviting[user.id]}
-                            onClick={() => handleInviteUser(user.id)}
-                          >
-                            {user.isInvited ? "Invited" : "Invite"}
-                          </Button>
                         </div>
-                      ))
-                    )}
+                        <Button
+                          size="sm"
+                          disabled={user.isInvited}
+                          isLoading={isInviting[user.id]}
+                          onClick={() => handleInviteUser(user.id)}
+                        >
+                          {user.isInvited ? "Invited" : "Invite"}
+                        </Button>
+                      </div>
+                    ))
+                  )}
           </div>
-        </DialogContent>
+        </div>
         <DialogFooter>
-          <Button variant="destructive" onClick={onClose}>
+          <Button variant="default" onClick={onClose}>
             Close
           </Button>
         </DialogFooter>
