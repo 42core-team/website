@@ -31,6 +31,7 @@ env:
   # Plausible analytics domain defaults for prod
   PLAUSIBLE_DOMAIN: coregame.sh
   PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.sh"
+  AUTH_COOKIE_NAME: "token"
 
 ingress:
   enabled: true

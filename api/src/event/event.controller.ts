@@ -16,8 +16,8 @@ import { UserService } from "../user/user.service";
 import { CreateEventDto } from "./dtos/createEventDto";
 import { SetLockTeamsDateDto } from "./dtos/setLockTeamsDateDto";
 import { UpdateEventSettingsDto } from "./dtos/updateEventSettingsDto";
-import { UserId } from "../guards/UserGuard";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { UserId } from "../guards/UserGuard";
 
 @Controller("event")
 export class EventController {
@@ -25,7 +25,7 @@ export class EventController {
     private readonly eventService: EventService,
     private readonly teamService: TeamService,
     private readonly userService: UserService,
-  ) {}
+  ) { }
 
   @UseGuards(JwtAuthGuard)
   @Get("my")
@@ -46,6 +46,16 @@ export class EventController {
   @Get(":id/version")
   async getEventVersion(@Param("id", new ParseUUIDPipe()) id: string) {
     return await this.eventService.getEventVersion(id);
+  }
+
+  @Get(":id/game-config")
+  async getEventGameConfig(@Param("id", new ParseUUIDPipe()) id: string) {
+    return await this.eventService.getEventGameConfig(id);
+  }
+
+  @Get(":id/server-config")
+  async getEventServerConfig(@Param("id", new ParseUUIDPipe()) id: string) {
+    return await this.eventService.getEventServerConfig(id);
   }
 
   @Get("event/currentLiveEvent")
@@ -80,6 +90,9 @@ export class EventController {
       createEventDto.visualizerDockerImage,
       createEventDto.monorepoUrl,
       createEventDto.monorepoVersion,
+      createEventDto.basePath,
+      createEventDto.gameConfig,
+      createEventDto.serverConfig,
       createEventDto.isPrivate,
     );
   }

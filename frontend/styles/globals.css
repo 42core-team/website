@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "./themes/highlightjs/github-dark.css";
+@import "./themes/highlightjs/github-light.css";
 @import "tw-animate-css";
 @import "./wiki.css";
 
@@ -20,10 +20,12 @@
 
 @utility prose {
   code {
+
     &::before,
     &::after {
       display: none;
     }
+
     text-wrap: nowrap;
   }
 }
@@ -193,6 +195,7 @@ mark {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -206,4 +209,96 @@ mark {
     -webkit-mask-image: url(/external.svg);
     background-color: currentColor;
   }
+}
+
+/* Code highlighting dark mode overrides - placed outside @layer to win specificity */
+.dark .hljs {
+  color: #c9d1d9 !important;
+  background: #0d1117 !important;
+}
+
+.dark .hljs-doctag,
+.dark .hljs-keyword,
+.dark .hljs-meta .hljs-keyword,
+.dark .hljs-template-tag,
+.dark .hljs-template-variable,
+.dark .hljs-type,
+.dark .hljs-variable.language_ {
+  color: #ff7b72 !important;
+}
+
+.dark .hljs-title,
+.dark .hljs-title.class_,
+.dark .hljs-title.class_.inherited__,
+.dark .hljs-title.function_ {
+  color: #d2a8ff !important;
+}
+
+.dark .hljs-attr,
+.dark .hljs-attribute,
+.dark .hljs-literal,
+.dark .hljs-meta,
+.dark .hljs-number,
+.dark .hljs-operator,
+.dark .hljs-selector-attr,
+.dark .hljs-selector-class,
+.dark .hljs-selector-id,
+.dark .hljs-variable {
+  color: #79c0ff !important;
+}
+
+.dark .hljs-meta .hljs-string,
+.dark .hljs-regexp,
+.dark .hljs-string {
+  color: #a5d6ff !important;
+}
+
+.dark .hljs-built_in,
+.dark .hljs-symbol {
+  color: #ffa657 !important;
+}
+
+.dark .hljs-code,
+.dark .hljs-comment,
+.dark .hljs-formula {
+  color: #8b949e !important;
+}
+
+.dark .hljs-name,
+.dark .hljs-quote,
+.dark .hljs-selector-pseudo,
+.dark .hljs-selector-tag {
+  color: #7ee787 !important;
+}
+
+.dark .hljs-subst {
+  color: #c9d1d9 !important;
+}
+
+.dark .hljs-section {
+  color: #1f6feb !important;
+}
+
+.dark .hljs-bullet {
+  color: #f2cc60 !important;
+}
+
+.dark .hljs-emphasis {
+  color: #c9d1d9 !important;
+  font-style: italic;
+}
+
+.dark .hljs-strong {
+  color: #c9d1d9 !important;
+  font-weight: 700;
+}
+
+.dark .hljs-addition {
+  color: #aff5b4 !important;
+  background-color: #033a16 !important;
+}
+
+.dark .hljs-deletion {
+  color: #ffdcd7 !important;
+  background-color: #67060c !important;
 }

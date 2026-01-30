@@ -16,9 +16,10 @@ axiosInstance.interceptors.request.use(
     if (process.env.BACKEND_URL) {
       // eslint-disable-next-line ts/no-require-imports
       const cookieData = await require("next/headers").cookies();
-      const token = cookieData.get("token");
+      const cookieName = process.env.AUTH_COOKIE_NAME || "token";
+      const token = cookieData.get(cookieName);
       if (token)
-        config.headers.Cookie = `token=${token.value}`;
+        config.headers.Cookie = `${cookieName}=${token.value}`;
 
       config.baseURL = process.env.BACKEND_URL;
       return config;

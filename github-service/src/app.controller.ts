@@ -5,7 +5,7 @@ import { EventPattern } from "@nestjs/microservices";
 @Controller()
 export class AppController {
   private readonly logger = new Logger(AppController.name);
-  constructor(private readonly appService: AppService) {}
+  constructor(private readonly appService: AppService) { }
 
   @EventPattern("remove_write_permissions")
   async handleRemoveWritePermissions(data: {
@@ -137,6 +137,9 @@ export class AppController {
     myCoreBotDockerImage: string;
     visualizerDockerImage: string;
     eventId: string;
+    basePath: string;
+    gameConfig: string;
+    serverConfig: string;
   }) {
     const safeData = {
       name: data.name,
@@ -148,6 +151,9 @@ export class AppController {
       monoRepoVersion: data.monoRepoVersion,
       teamId: data.teamId,
       eventId: data.eventId,
+      basePath: data.basePath,
+      gameConfig: data.gameConfig.slice(0, 50),
+      serverConfig: data.serverConfig.slice(0, 50),
     };
     this.logger.log(
       `create_team_repository event received ${JSON.stringify(safeData)}`,
@@ -164,6 +170,9 @@ export class AppController {
       data.myCoreBotDockerImage,
       data.visualizerDockerImage,
       data.eventId,
+      data.basePath,
+      data.gameConfig,
+      data.serverConfig,
     );
   }
 }

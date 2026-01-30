@@ -107,7 +107,7 @@ export default function TeamInvitesDisplay({
                   )}
                   <Button
                     size="sm"
-                    // TODO: isLoading={actionStates[invite.id]?.isAccepting}
+                    isLoading={actionStates[invite.id]?.isAccepting}
                     disabled={actionStates[invite.id]?.isDeclining}
                     onClick={() => handleAcceptInvite(invite.id)}
                   >
@@ -116,7 +116,7 @@ export default function TeamInvitesDisplay({
                   <Button
                     size="sm"
                     variant="secondary"
-                    // TODO: isLoading={actionStates[invite.id]?.isDeclining}
+                    isLoading={actionStates[invite.id]?.isDeclining}
                     disabled={actionStates[invite.id]?.isAccepting}
                     onClick={() => handleDeclineInvite(invite.id)}
                   >

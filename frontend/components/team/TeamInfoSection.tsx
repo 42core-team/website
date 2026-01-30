@@ -22,7 +22,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import TeamInviteModal from "./TeamInviteModal";
 
@@ -91,18 +90,18 @@ export function TeamInfoSection({
             <div className="font-medium">
               {myTeam.repo
                 ? (
-                    <a
-                      href={getRepoUrl()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {myTeam.repo}
-                    </a>
-                  )
+                  <a
+                    href={getRepoUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    {myTeam.repo}
+                  </a>
+                )
                 : (
-                    <Skeleton className="m-2 h-5 w-75 rounded-md" />
-                  )}
+                  <Skeleton className="h-5 w-72 rounded-md m-2" />
+                )}
             </div>
           </div>
           <div>
@@ -192,7 +191,7 @@ export function TeamInfoSection({
                 onOpenChange={setIsLeaveDialogOpen}
               >
                 <DialogTrigger asChild>
-                  <Button variant="destructive">Leave Team</Button>
+                  <Button variant="destructive" disabled={isLeaving}>Leave Team</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
@@ -200,17 +199,17 @@ export function TeamInfoSection({
                       Leave Team
                     </DialogTitle>
                   </DialogHeader>
-                  <DialogDescription>
-                    <p>
+                  <DialogDescription asChild>
+                    <div>
                       Are you sure you want to leave this team? This action
                       cannot be undone.
-                    </p>
-                    {teamMembers.length === 1 && (
-                      <p className="text-destructive-500 mt-2">
-                        Warning: You are the last member of this team. Leaving
-                        will delete the team.
-                      </p>
-                    )}
+                      {teamMembers.length === 1 && (
+                        <div className="mt-2 text-destructive">
+                          Warning: You are the last member of this team. Leaving
+                          will delete the team.
+                        </div>
+                      )}
+                    </div>
                   </DialogDescription>
                   <DialogFooter>
                     <DialogClose asChild>
@@ -220,9 +219,9 @@ export function TeamInfoSection({
                       type="submit"
                       variant="destructive"
                       onClick={handleConfirmLeave}
-                      disabled={isLeaving}
+                      isLoading={isLeaving}
                     >
-                      {isLeaving ? <Spinner /> : "Leave Team"}
+                      Leave Team
                     </Button>
                   </DialogFooter>
                 </DialogContent>
