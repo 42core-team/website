@@ -136,44 +136,44 @@ export function TeamInfoSection({
           <div className="flex flex-wrap items-start gap-3">
             {teamMembers.length > 0
               ? (
-                  teamMembers.map(member => (
-                    <Link
-                      key={member.id}
-                      href={`https://github.com/${member.username}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="no-icon group w-full max-w-32 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-                      aria-label={`Open ${member.username}'s GitHub profile`}
-                    >
-                      <div className="bg-content1/50 ring-default-200 flex flex-col items-center rounded-xl p-4 shadow-sm ring-1 transition hover:shadow-md hover:ring-primary/60">
-                        <Avatar
-                          className={cn(
-                            "mb-2",
-                            member.isEventAdmin
-                              ? "outline-orange-500 outline-2"
-                              : "",
-                          )}
-                        >
-                          <AvatarImage
-                            src={member.profilePicture}
-                            alt={member.name}
-                          />
-                          <AvatarFallback>
-                            {member.name.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="external-link w-full truncate text-center text-sm font-medium group-hover:text-primary">
-                          {member.username}
-                        </span>
-                      </div>
-                    </Link>
-                  ))
-                )
+                teamMembers.map(member => (
+                  <Link
+                    key={member.id}
+                    href={`https://github.com/${member.username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="no-icon group w-full max-w-32 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                    aria-label={`Open ${member.username}'s GitHub profile`}
+                  >
+                    <div className="bg-content1/50 ring-default-200 flex flex-col items-center rounded-xl p-4 shadow-sm ring-1 transition hover:shadow-md hover:ring-primary/60">
+                      <Avatar
+                        className={cn(
+                          "mb-2",
+                          member.isEventAdmin
+                            ? "outline-2 outline-solid outline-orange-500"
+                            : "",
+                        )}
+                      >
+                        <AvatarImage
+                          src={member.profilePicture}
+                          alt={member.name}
+                        />
+                        <AvatarFallback>
+                          {member.name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="external-link w-full truncate text-center text-sm font-medium group-hover:text-primary">
+                        {member.username}
+                      </span>
+                    </div>
+                  </Link>
+                ))
+              )
               : (
-                  <p className="col-span-full text-center text-muted-foreground">
-                    No team members found
-                  </p>
-                )}
+                <p className="col-span-full text-center text-muted-foreground">
+                  No team members found
+                </p>
+              )}
           </div>
         </div>
 

@@ -190,7 +190,7 @@ export function WikiNavigation({
             className={`hover:bg-default-100 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${isActive
               ? "bg-primary-50 text-primary-600"
               : "text-muted-foreground"
-            }`}
+              }`}
             style={{
               paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
             }}
@@ -200,7 +200,7 @@ export function WikiNavigation({
 
           {/* Show table of contents under the active page */}
           {isActive && toc.length > 0 && (
-            <div className="mt-1 mb-2 ml-1 rounded-md  border p-2 sm:ml-2">
+            <div className="mt-1 mb-2 ml-1 rounded-md border p-2 sm:ml-2">
               <div className="bg-default-100 mb-2 rounded px-2 py-1 text-xs font-semibold text-muted-foreground">
                 On this page
               </div>
@@ -216,7 +216,7 @@ export function WikiNavigation({
                     className={`hover:bg-default-100 block cursor-pointer rounded-xs px-2 py-1 text-xs transition-colors hover:text-primary ${activeId === tocItem.id
                       ? "bg-primary-50 border-l-2 border-primary font-medium text-primary"
                       : "text-muted-foreground"
-                    }`}
+                      }`}
                     style={{
                       paddingLeft: `${Math.min((tocItem.level - 1) * 8 + 8, 32)}px`,
                     }}
@@ -271,7 +271,7 @@ export function WikiNavigation({
         href={getVersionAwareUrl(itemPath)}
         onClick={onItemClick}
         className={`hover:bg-default-100 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${isActive ? "bg-primary-50 text-primary-600" : "text-muted-foreground"
-        }`}
+          }`}
         style={{
           paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
         }}
