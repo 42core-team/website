@@ -150,7 +150,11 @@ export class EventService {
   async getEventVersion(id: string): Promise<EventVersionDto> {
     const event = await this.eventRepository.findOneOrFail({
       where: { id },
-      select: ["gameServerDockerImage", "myCoreBotDockerImage", "visualizerDockerImage"],
+      select: {
+        gameServerDockerImage: true,
+        myCoreBotDockerImage: true,
+        visualizerDockerImage: true,
+      },
     });
 
     return {
@@ -163,7 +167,10 @@ export class EventService {
   async getEventGameConfig(id: string): Promise<string | null> {
     const event = await this.eventRepository.findOneOrFail({
       where: { id },
-      select: ["gameConfig", "showConfigs"],
+      select: {
+        gameConfig: true,
+        showConfigs: true
+      }
     });
 
     if (!event.showConfigs) return null;
@@ -174,7 +181,10 @@ export class EventService {
   async getEventServerConfig(id: string): Promise<string | null> {
     const event = await this.eventRepository.findOneOrFail({
       where: { id },
-      select: ["serverConfig", "showConfigs"],
+      select: {
+        serverConfig: true,
+        showConfigs: true
+      },
     });
 
     if (!event.showConfigs) return null;
