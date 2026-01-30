@@ -6,9 +6,10 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Code2, Server, Copy, Check } from "lucide-react";
+import { Code2, Server, Copy, Check, X } from "lucide-react";
 import { useState } from "react";
 
 interface ConfigDialogProps {
@@ -49,28 +50,40 @@ function ConfigDialog({ title, icon, configHtml, rawConfig, label }: ConfigDialo
                     </span>
                 </div>
             </DialogTrigger>
-            <DialogContent className="w-fit max-w-[80vw] max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden border border-border shadow-2xl [&>button]:text-foreground">
-                <DialogHeader className="p-4 bg-card border-b border-border flex flex-row items-center justify-between space-y-0">
-                    <DialogTitle className="text-xl font-bold flex items-center gap-3 text-card-foreground">
-                        {icon}
-                        {title}
-                    </DialogTitle>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="mr-8 hover:bg-muted shrink-0"
-                        onClick={copyToClipboard}
-                        title={copied ? "Copied!" : `Copy ${label}`}
-                    >
-                        {copied ? <Check className="size-4 text-green-500" /> : <Copy className="size-4" />}
-                    </Button>
-                </DialogHeader>
-                <div className="overflow-auto bg-background dark:bg-[#0d1117] px-4 border-t border-border">
-                    <div
-                        className="prose prose-slate dark:prose-invert prose-base max-w-none [&_pre]:p-0 [&_pre]:m-0 [&_pre]:bg-transparent [&_*:last-child]:mb-0"
-                        dangerouslySetInnerHTML={{ __html: configHtml }}
-                    />
+            <DialogContent className="w-fit max-w-[90vw] max-h-[90vh] bg-[#0d1117] p-0 border border-white/10 shadow-2xl flex flex-col gap-0 [&>button.absolute]:hidden overflow-hidden">
+                <div className="z-50 bg-[#0d1117] flex items-center justify-between p-6 pb-4 border-b border-white/5 shrink-0">
+                    <DialogHeader className="p-0 border-0 flex-1">
+                        <DialogTitle className="text-xl font-bold flex items-center gap-3 text-white">
+                            {icon}
+                            {title}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="hover:bg-white/10 text-white/70 hover:text-white shrink-0"
+                            onClick={copyToClipboard}
+                            title={copied ? "Copied!" : `Copy ${label}`}
+                        >
+                            {copied ? <Check className="size-4 text-green-500" /> : <Copy className="size-4" />}
+                        </Button>
+                        <DialogClose asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="hover:bg-white/10 text-white/70 hover:text-white shrink-0"
+                            >
+                                <X className="size-4" />
+                                <span className="sr-only">Close</span>
+                            </Button>
+                        </DialogClose>
+                    </div>
                 </div>
+                <div
+                    className="overflow-auto flex-1 px-6 pb-6 pt-4 [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:!m-0 prose dark:prose-invert max-w-none"
+                    dangerouslySetInnerHTML={{ __html: configHtml }}
+                />
             </DialogContent>
         </Dialog>
     );
