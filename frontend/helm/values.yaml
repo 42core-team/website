@@ -58,6 +58,7 @@ env:
   # Plausible analytics domain defaults
   PLAUSIBLE_DOMAIN: coregame.sh
   PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.sh"
+  AUTH_COOKIE_NAME: "token"
 
 # Secrets - these should be provided via GitHub secrets during deployment
 secrets:

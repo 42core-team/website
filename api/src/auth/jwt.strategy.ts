@@ -11,24 +11,21 @@ export interface JwtPayload {
   username?: string;
 }
 
-// Custom extractor to read JWT from an httpOnly cookie instead of the Authorization header
-const cookieJwtExtractor = (req: Request): string | null => {
-  if (!req) return null;
-  // If you later decide to sign cookies with cookie-parser, you can switch to req.signedCookies
-  const cookies: any = (req as any).cookies;
-  if (!cookies) return null;
-  const token = cookies["token"];
-  return token || null;
-};
-
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly config: ConfigService,
     private readonly users: UserService,
   ) {
+    const cookieName = config.get<string>("AUTH_COOKIE_NAME") || "token";
+
     super({
-      jwtFromRequest: cookieJwtExtractor,
+      jwtFromRequest: (req: Request) => {
+        if (!req) return null;
+        const cookies: any = (req as any).cookies;
+        if (!cookies) return null;
+        return cookies[cookieName] || null;
+      },
       ignoreExpiration: false,
       secretOrKey: config.getOrThrow<string>("JWT_SECRET"),
     });
