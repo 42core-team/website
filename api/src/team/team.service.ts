@@ -170,6 +170,8 @@ export class TeamService {
       team.event.myCoreBotDockerImage,
       team.event.visualizerDockerImage,
       team.event.id,
+      team.event.basePath,
+      team.event.gameConfig,
     );
 
     await teamRepository.update(teamId, {

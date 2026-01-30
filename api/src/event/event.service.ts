@@ -27,7 +27,7 @@ export class EventService {
     @Inject(forwardRef(() => TeamService))
     private readonly teamService: TeamService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   logger = new Logger("EventService");
 
@@ -132,6 +132,7 @@ export class EventService {
   async getEventVersion(id: string): Promise<EventVersionDto> {
     const event = await this.eventRepository.findOneOrFail({
       where: { id },
+      select: ["gameServerDockerImage", "myCoreBotDockerImage", "visualizerDockerImage"],
     });
 
     return {
@@ -140,6 +141,22 @@ export class EventService {
       visualizerVersion: event.visualizerDockerImage,
     };
   }
+
+  async getEventGameConfig(id: string): Promise<string> {
+    const event = await this.eventRepository.findOneOrFail({
+      where: { id },
+      select: ["gameConfig"],
+    });
+    return event.gameConfig;
+  }
+
+  // async getServerConfig(id: string): Promise<string> {
+  //   const event = await this.eventRepository.findOneOrFail({
+  //     where: { id },
+  //     select: ["serverConfig"],
+  //   });
+  //   return event.serverConfig;
+  // }
 
   createEvent(
     userId: string,

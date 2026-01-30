@@ -48,6 +48,16 @@ export class EventController {
     return await this.eventService.getEventVersion(id);
   }
 
+  @Get(":id/game-config")
+  async getEventGameConfig(@Param("id", new ParseUUIDPipe()) id: string) {
+    return await this.eventService.getEventGameConfig(id);
+  }
+
+  // @Get(":id/server-config")
+  // async getEventServerConfig(@Param("id", new ParseUUIDPipe()) id: string) {
+  //   return await this.eventService.getEventGameConfig(id);
+  // }
+
   @Get("event/currentLiveEvent")
   async getCurrentLiveEvent() {
     return await this.eventService.getCurrentLiveEvent();

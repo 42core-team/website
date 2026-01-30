@@ -7,7 +7,6 @@ import { GitHubRepository } from "./githubApi";
 
 export class RepoUtils {
   // TODO: this needs to be dynamic in the future
-  private readonly MY_CORE_BOT_FOLDER = "bots/softcore";
   private readonly COREIGNORE_FILE = ".coreignore";
 
   private readonly logger = new Logger("RepoUtils");
@@ -20,6 +19,8 @@ export class RepoUtils {
     tempFolderPath: string,
     eventId: string,
     teamName: string,
+    basePath: string,
+    gameConfig: string,
   ): Promise<SimpleGit> {
     this.logger.log(
       `Cloning mono repo ${monoRepoUrl} to temp folder ${tempFolderPath}`,
@@ -32,21 +33,25 @@ export class RepoUtils {
       monoRepoVersion,
       "--depth=1",
     ]);
-    await gitMono.raw(["sparse-checkout", "set", this.MY_CORE_BOT_FOLDER]);
+    await gitMono.raw(["sparse-checkout", "set", basePath]);
 
     const [gitRepo, _] = await Promise.all([
-      this.initRepo(tempFolderPath),
+      this.initRepo(tempFolderPath, basePath),
       this.updateGitignoreFromCoreignore(
-        path.join(tempFolderPath, this.MY_CORE_BOT_FOLDER),
+        path.join(tempFolderPath, basePath),
       ),
       this.updateDevcontainerDockerCompose(
-        path.join(tempFolderPath, this.MY_CORE_BOT_FOLDER),
+        path.join(tempFolderPath, basePath),
         myCoreBotDockerImage,
         visualizerDockerImage,
       ),
       this.updateTeamName(
-        path.join(tempFolderPath, this.MY_CORE_BOT_FOLDER),
+        path.join(tempFolderPath, basePath),
         teamName,
+      ),
+      this.updateGameConfig(
+        path.join(tempFolderPath, basePath),
+        gameConfig,
       ),
     ]);
     return gitRepo;
@@ -57,9 +62,10 @@ export class RepoUtils {
     decryptedGithubAccessToken: string,
     tempFolderPath: string,
     gitRepo: SimpleGit,
+    basePath: string,
   ) {
     await this.updateReadmeRepoUrl(
-      path.join(tempFolderPath, this.MY_CORE_BOT_FOLDER),
+      path.join(tempFolderPath, basePath),
       teamRepo.name,
       teamRepo.ssh_url,
     );
@@ -81,17 +87,17 @@ export class RepoUtils {
     );
   }
 
-  private async initRepo(tempFolderPath: string): Promise<SimpleGit> {
+  private async initRepo(tempFolderPath: string, basePath: string): Promise<SimpleGit> {
     await Promise.all([
       fs.rm(`${tempFolderPath}/.git`, { recursive: true, force: true }),
-      fs.rm(`${tempFolderPath}/${this.MY_CORE_BOT_FOLDER}/.git`, {
+      fs.rm(`${tempFolderPath}/${basePath}/.git`, {
         recursive: true,
         force: true,
       }),
     ]);
 
     const gitRepo = simpleGit(
-      path.join(tempFolderPath, this.MY_CORE_BOT_FOLDER),
+      path.join(tempFolderPath, basePath),
     );
     await gitRepo.init();
 
@@ -270,7 +276,7 @@ export class RepoUtils {
     try {
       const mainCPath = path.join(
         repoRoot,
-        this.MY_CORE_BOT_FOLDER,
+        "my-core-bot",
         "src",
         "main.c",
       );
@@ -305,6 +311,27 @@ export class RepoUtils {
     } catch (error) {
       this.logger.error(
         `Failed to update team name in src/main.c`,
+        error as Error,
+      );
+    }
+  }
+
+  private async updateGameConfig(
+    repoRoot: string,
+    gameConfig: string,
+  ): Promise<void> {
+    try {
+      const configsDir = path.join(repoRoot, "configs");
+      const gameConfigPath = path.join(configsDir, "game.config.json");
+
+      // Ensure configs directory exists
+      await fs.mkdir(configsDir, { recursive: true });
+
+      await fs.writeFile(gameConfigPath, gameConfig);
+      this.logger.log(`Updated game config at ${gameConfigPath}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to update game config in configs/game.config.json`,
         error as Error,
       );
     }

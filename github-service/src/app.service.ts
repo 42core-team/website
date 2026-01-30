@@ -247,6 +247,8 @@ export class AppService {
     myCoreBotDockerImage: string,
     visualizerDockerImage: string,
     eventId: string,
+    basePath: string,
+    gameConfig: string,
   ) {
     this.logger.log(
       `Creating team repository ${JSON.stringify({
@@ -289,6 +291,8 @@ export class AppService {
               tempFolderPath,
               eventId,
               teamName,
+              basePath,
+              gameConfig,
             );
           })(),
         ]);
@@ -298,6 +302,7 @@ export class AppService {
           secret,
           tempFolderPath,
           gitRepo,
+          basePath,
         );
       } catch (e) {
         this.logger.error(

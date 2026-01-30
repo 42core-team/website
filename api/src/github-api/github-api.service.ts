@@ -106,6 +106,8 @@ export class GithubApiService {
     myCoreBotDockerImage: string,
     visualizerDockerImage: string,
     eventId: string,
+    basePath: string,
+    gameConfig: string,
   ) {
     this.githubClient.emit("create_team_repository", {
       name,
@@ -119,6 +121,8 @@ export class GithubApiService {
       myCoreBotDockerImage,
       visualizerDockerImage,
       eventId,
+      basePath,
+      gameConfig,
     });
   }
 }
