@@ -151,6 +151,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
       canCreateTeam?: boolean;
       processQueue?: boolean;
       isPrivate?: boolean;
+      showConfigs?: boolean;
     }) => {
       const result = await updateEventSettings(eventId, settings);
       if (isActionError(result)) {
@@ -402,7 +403,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                       .mutateAsync(new Date(teamAutoLockTime).getTime())
                       .then(() => {
                       })
-                      .catch(() => {});
+                      .catch(() => { });
                   }}
                 >
                   Save
@@ -416,7 +417,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                       .then(() => {
                         setTeamAutoLockTime("");
                       })
-                      .catch(() => {});
+                      .catch(() => { });
                   }}
                 >
                   Reset
@@ -471,6 +472,21 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     disabled={updateEventSettingsMutation.isPending}
                     onCheckedChange={(value) =>
                       updateEventSettingsMutation.mutate({ isPrivate: value })
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div>
+                    <p className="text-sm font-medium">Show configurations</p>
+                    <p className="text-xs text-muted-foreground">
+                      Enable to show game and server configurations to all participants.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={event.showConfigs}
+                    disabled={updateEventSettingsMutation.isPending}
+                    onCheckedChange={(value) =>
+                      updateEventSettingsMutation.mutate({ showConfigs: value })
                     }
                   />
                 </div>

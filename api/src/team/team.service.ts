@@ -15,6 +15,7 @@ import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations"
 import { MatchService } from "../match/match.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { LockKeys } from "../constants";
+import { EventEntity } from "../event/entities/event.entity";
 
 @Injectable()
 export class TeamService {
@@ -47,10 +48,15 @@ export class TeamService {
 
       if (gotLock[0].pg_try_advisory_lock) {
         try {
-          const teams = await this.teamRepository.findBy({
-            startedRepoCreationAt: IsNull(),
-            event: {
-              startDate: LessThanOrEqual(new Date()),
+          const teams = await this.teamRepository.find({
+            where: {
+              startedRepoCreationAt: IsNull(),
+              event: {
+                startDate: LessThanOrEqual(new Date()),
+              },
+            },
+            relations: {
+              event: true,
             },
           });
           for (const team of teams) {
@@ -60,6 +66,13 @@ export class TeamService {
 
             await this.dataSource.transaction(async (entityManager) => {
               await this.createTeamRepository(team.id, entityManager);
+
+              if (team.event && !team.event.showConfigs) {
+                await entityManager.getRepository(EventEntity).update(team.event.id, {
+                  showConfigs: true,
+                });
+                team.event.showConfigs = true;
+              }
             });
           }
         } finally {
@@ -171,8 +184,8 @@ export class TeamService {
       team.event.visualizerDockerImage,
       team.event.id,
       team.event.basePath,
-      team.event.gameConfig,
-      team.event.serverConfig,
+      team.event.gameConfig ?? "",
+      team.event.serverConfig ?? "",
     );
 
     await teamRepository.update(teamId, {

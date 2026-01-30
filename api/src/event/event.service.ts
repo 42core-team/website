@@ -64,8 +64,8 @@ export class EventService {
     }
   }
 
-  getAllEvents(): Promise<EventEntity[]> {
-    return this.eventRepository.find({
+  async getAllEvents(): Promise<EventEntity[]> {
+    const events = await this.eventRepository.find({
       where: {
         isPrivate: false,
       },
@@ -73,6 +73,12 @@ export class EventService {
         startDate: "ASC",
       },
     });
+
+    for (const event of events) {
+      await this.sanitizeEventConfigs(event);
+    }
+
+    return events;
   }
 
   getAllEventsForQueue(): Promise<EventEntity[]> {
@@ -84,18 +90,14 @@ export class EventService {
   }
 
   async getEventsForUser(userId: string): Promise<EventEntity[]> {
-    return this.eventRepository.find({
+    const events = await this.eventRepository.find({
       where: [
         {
-          users: {
-            id: userId,
-          },
+          users: { id: userId },
         },
         {
           teams: {
-            users: {
-              id: userId,
-            },
+            users: { id: userId },
           },
         },
       ],
@@ -103,16 +105,32 @@ export class EventService {
         startDate: "ASC",
       },
     });
+
+    for (const event of events) {
+      await this.sanitizeEventConfigs(event);
+    }
+    return events;
   }
 
   async getEventById(
     id: string,
     relations: FindOptionsRelations<EventEntity> = {},
   ): Promise<EventEntity> {
-    return await this.eventRepository.findOneOrFail({
+    const event = await this.eventRepository.findOneOrFail({
       where: { id },
       relations,
     });
+
+    await this.sanitizeEventConfigs(event);
+
+    return event;
+  }
+
+  private async sanitizeEventConfigs(event: EventEntity) {
+    if (!event.showConfigs) {
+      event.gameConfig = "";
+      event.serverConfig = "";
+    }
   }
 
   async getEventByTeamId(
@@ -145,16 +163,22 @@ export class EventService {
   async getEventGameConfig(id: string): Promise<string | null> {
     const event = await this.eventRepository.findOneOrFail({
       where: { id },
-      select: ["gameConfig"],
+      select: ["gameConfig", "showConfigs"],
     });
+
+    if (!event.showConfigs) return null;
+
     return event.gameConfig;
   }
 
   async getEventServerConfig(id: string): Promise<string | null> {
     const event = await this.eventRepository.findOneOrFail({
       where: { id },
-      select: ["serverConfig"],
+      select: ["serverConfig", "showConfigs"],
     });
+
+    if (!event.showConfigs) return null;
+
     return event.serverConfig;
   }
 
@@ -178,6 +202,7 @@ export class EventService {
     gameConfig: string,
     serverConfig: string,
     isPrivate: boolean = false,
+    showConfigs: boolean = false,
   ) {
     githubOrgSecret = CryptoJS.AES.encrypt(
       githubOrgSecret,
@@ -216,6 +241,7 @@ export class EventService {
       gameConfig,
       serverConfig,
       isPrivate,
+      showConfigs,
     });
   }
 
@@ -316,6 +342,7 @@ export class EventService {
       canCreateTeam?: boolean;
       processQueue?: boolean;
       isPrivate?: boolean;
+      showConfigs?: boolean;
     },
   ): Promise<UpdateResult> {
     await this.getEventById(eventId);
@@ -329,6 +356,9 @@ export class EventService {
     }
     if (typeof settings.isPrivate === "boolean") {
       update.isPrivate = settings.isPrivate;
+    }
+    if (typeof settings.showConfigs === "boolean") {
+      update.showConfigs = settings.showConfigs;
     }
 
     if (Object.keys(update).length === 0) {
@@ -355,7 +385,11 @@ export class EventService {
       .orderBy("user_count", "DESC")
       .limit(1);
 
-    return qb.getOne();
+    const event = await qb.getOne();
+    if (event) {
+      await this.sanitizeEventConfigs(event);
+    }
+    return event;
   }
 
   async hasEventStarted(eventId: string): Promise<boolean> {

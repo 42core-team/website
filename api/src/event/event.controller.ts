@@ -16,8 +16,8 @@ import { UserService } from "../user/user.service";
 import { CreateEventDto } from "./dtos/createEventDto";
 import { SetLockTeamsDateDto } from "./dtos/setLockTeamsDateDto";
 import { UpdateEventSettingsDto } from "./dtos/updateEventSettingsDto";
-import { UserId } from "../guards/UserGuard";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { UserId } from "../guards/UserGuard";
 
 @Controller("event")
 export class EventController {
@@ -94,6 +94,7 @@ export class EventController {
       createEventDto.gameConfig,
       createEventDto.serverConfig,
       createEventDto.isPrivate,
+      createEventDto.showConfigs,
     );
   }
 

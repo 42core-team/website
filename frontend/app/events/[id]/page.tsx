@@ -1,6 +1,9 @@
-import { remark } from "remark";
+import { unified } from "unified";
+import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
-import remarkHtml from "remark-html";
+import remarkRehype from "remark-rehype";
+import rehypeSanitize from "rehype-sanitize";
+import rehypeStringify from "rehype-stringify";
 import { isActionError } from "@/app/actions/errors";
 import {
   getEventById,
@@ -59,9 +62,12 @@ export default async function EventPage({
   const participantsCount = await getParticipantsCountForEvent(id);
 
   const renderedDescription = String(
-    await remark()
+    await unified()
+      .use(remarkParse)
       .use(remarkGfm)
-      .use(remarkHtml)
+      .use(remarkRehype)
+      .use(rehypeSanitize)
+      .use(rehypeStringify)
       .process(event.description || ""),
   );
 
@@ -122,8 +128,8 @@ export default async function EventPage({
               <RepoLockCountdown repoLockDate={event.repoLockDate} />
             )}
             <ConfigSection
-              gameConfig={event.gameConfig || "{}"}
-              serverConfig={event.serverConfig || "{}"}
+              gameConfig={event.gameConfig}
+              serverConfig={event.serverConfig}
             />
           </div>
         </CardContent>
