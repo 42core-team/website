@@ -22,7 +22,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import TeamInviteModal from "./TeamInviteModal";
 
@@ -192,7 +191,7 @@ export function TeamInfoSection({
                 onOpenChange={setIsLeaveDialogOpen}
               >
                 <DialogTrigger asChild>
-                  <Button variant="destructive">Leave Team</Button>
+                  <Button variant="destructive" disabled={isLeaving}>Leave Team</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
@@ -220,9 +219,9 @@ export function TeamInfoSection({
                       type="submit"
                       variant="destructive"
                       onClick={handleConfirmLeave}
-                      disabled={isLeaving}
+                      isLoading={isLeaving}
                     >
-                      {isLeaving ? <Spinner /> : "Leave Team"}
+                      Leave Team
                     </Button>
                   </DialogFooter>
                 </DialogContent>

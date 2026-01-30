@@ -1,6 +1,6 @@
 "use client";
 import type { Team, TeamMember } from "@/app/actions/team";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePlausible } from "next-plausible";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -19,6 +19,7 @@ export default function TeamInfoDisplay({
   teamMembers: initialTeamMembers,
 }: TeamInfoDisplayProps) {
   const plausible = usePlausible();
+  const queryClient = useQueryClient();
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRepoPending] = useState<boolean>(false);
@@ -62,11 +63,32 @@ export default function TeamInfoDisplay({
     onError: (error: Error) => {
       setErrorMessage(error.message);
     },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["event", eventId, "my-team"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["team", team?.id, "members"],
+        }),
+      ]);
+    },
   });
 
   async function handleLeaveTeam(): Promise<boolean> {
     try {
       await leaveTeamMutation.mutateAsync();
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["event", eventId, "my-team"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["team", team?.id, "members"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["event", eventId, "pending-invites"],
+        }),
+      ]);
       return true;
     }
     catch {
