@@ -29,7 +29,7 @@ export class TeamService {
     private readonly matchService: MatchService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   logger = new Logger("TeamService");
 
@@ -173,7 +173,6 @@ export class TeamService {
     );
 
     await teamRepository.update(teamId, {
-      repo: repoName,
       startedRepoCreationAt: new Date(),
     });
   }
