@@ -264,12 +264,3 @@
   @apply opacity-100;
 }
 
-@layer components {
-  *[target="_blank"]:not(.no-icon)::after {
-    content: "";
-    @apply ml-[0.25em] inline-block h-[0.9em] w-[0.9em] bg-no-repeat align-baseline text-inherit;
-    mask-image: url(/external.svg);
-    -webkit-mask-image: url(/external.svg);
-    background-color: currentColor;
-  }
-}

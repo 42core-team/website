@@ -85,7 +85,7 @@ export function TeamInfoSection({
         {myTeam.locked && <Badge variant="destructive">Locked</Badge>}
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <p className="text-sm text-muted-foreground">Repository</p>
             <div className="font-medium">
@@ -101,7 +101,7 @@ export function TeamInfoSection({
                     </a>
                   )
                 : (
-                    <Skeleton className="h-5 w-75 rounded-md m-2" />
+                    <Skeleton className="m-2 h-5 w-75 rounded-md" />
                   )}
             </div>
           </div>
@@ -124,8 +124,8 @@ export function TeamInfoSection({
         </div>
 
         {/* Team Members Section */}
-        <div className="p-4 border rounded-lg">
-          <div className="flex justify-between items-center mb-1.5">
+        <div className="rounded-lg border p-4">
+          <div className="mb-1.5 flex items-center justify-between">
             <h3 className="text-lg font-semibold">Team Members</h3>
             {!myTeam.locked && (
               <Button size="sm" onClick={() => setIsOpen(true)}>
@@ -134,7 +134,7 @@ export function TeamInfoSection({
               </Button>
             )}
           </div>
-          <div className="flex gap-3 items-start flex-wrap">
+          <div className="flex flex-wrap items-start gap-3">
             {teamMembers.length > 0
               ? (
                   teamMembers.map(member => (
@@ -143,10 +143,10 @@ export function TeamInfoSection({
                       href={`https://github.com/${member.username}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group w-full max-w-32 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-xl"
+                      className="no-icon group w-full max-w-32 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                       aria-label={`Open ${member.username}'s GitHub profile`}
                     >
-                      <div className="flex flex-col items-center rounded-xl bg-content1/50 p-4 ring-1 ring-default-200 shadow-sm transition hover:shadow-md hover:ring-primary/60">
+                      <div className="bg-content1/50 ring-default-200 flex flex-col items-center rounded-xl p-4 shadow-sm ring-1 transition hover:shadow-md hover:ring-primary/60">
                         <Avatar
                           className={cn(
                             "mb-2",
@@ -163,7 +163,7 @@ export function TeamInfoSection({
                             {member.name.slice(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm font-medium text-center truncate w-full group-hover:text-primary">
+                        <span className="external-link w-full truncate text-center text-sm font-medium group-hover:text-primary">
                           {member.username}
                         </span>
                       </div>
@@ -171,7 +171,7 @@ export function TeamInfoSection({
                   ))
                 )
               : (
-                  <p className="text-muted-foreground col-span-full text-center">
+                  <p className="col-span-full text-center text-muted-foreground">
                     No team members found
                   </p>
                 )}
@@ -181,11 +181,11 @@ export function TeamInfoSection({
         {/* Team Management Compartment */}
         <div>
           {leaveError && (
-            <div className="mb-4 px-4 py-3 rounded-md bg-danger-50 text-destructive-700 border border-danger-200">
+            <div className="bg-danger-50 text-destructive-700 border-danger-200 mb-4 rounded-md border px-4 py-3">
               {leaveError}
             </div>
           )}
-          <div className="flex justify-end items-center">
+          <div className="flex items-center justify-end">
             {!myTeam.locked && (
               <Dialog
                 open={isLeaveDialogOpen}
@@ -206,7 +206,7 @@ export function TeamInfoSection({
                       cannot be undone.
                     </p>
                     {teamMembers.length === 1 && (
-                      <p className="mt-2 text-destructive-500">
+                      <p className="text-destructive-500 mt-2">
                         Warning: You are the last member of this team. Leaving
                         will delete the team.
                       </p>
