@@ -66,12 +66,6 @@ export class TeamService {
 
             await this.dataSource.transaction(async (entityManager) => {
               await this.createTeamRepository(team.id, entityManager);
-
-              if (team.event && !team.event.showConfigs) {
-                await entityManager.getRepository(EventEntity).update(team.event.id, {
-                  showConfigs: true,
-                });
-              }
             });
           }
         } finally {

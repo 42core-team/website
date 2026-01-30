@@ -30,7 +30,6 @@ export interface Event {
   gameConfig?: string;
   serverConfig?: string;
   isPrivate: boolean;
-  showConfigs: boolean;
 }
 
 export async function getEventById(
@@ -103,7 +102,6 @@ interface EventCreateParams {
   gameConfig: string;
   serverConfig: string;
   isPrivate: boolean;
-  showConfigs: boolean;
 }
 
 // Create a new event
@@ -139,7 +137,6 @@ export async function updateEventSettings(
     canCreateTeam?: boolean;
     processQueue?: boolean;
     isPrivate?: boolean;
-    showConfigs?: boolean;
   },
 ): Promise<ServerActionResponse<Event>> {
   return await handleError(

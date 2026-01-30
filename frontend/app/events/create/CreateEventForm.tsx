@@ -55,7 +55,6 @@ const formSchema = z.object({
   gameConfig: z.string().min(1, "Game config is required"),
   serverConfig: z.string().min(1, "Server config is required"),
   isPrivate: z.boolean(),
-  showConfigs: z.boolean(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -167,7 +166,6 @@ export default function CreateEventForm() {
       gameConfig: "",
       serverConfig: "",
       isPrivate: false,
-      showConfigs: false,
     },
   });
 
@@ -316,7 +314,6 @@ export default function CreateEventForm() {
         gameConfig: values.gameConfig,
         serverConfig: values.serverConfig,
         isPrivate: values.isPrivate,
-        showConfigs: values.showConfigs,
       });
 
       if (isActionError(result)) {
@@ -537,27 +534,6 @@ export default function CreateEventForm() {
                       <FormLabel className="text-base">Private event</FormLabel>
                       <FormDescription>
                         Private events are hidden from the All Events tab.
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="showConfigs"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Show configurations</FormLabel>
-                      <FormDescription>
-                        Enables participants to see the game and server configurations.
                       </FormDescription>
                     </div>
                     <FormControl>

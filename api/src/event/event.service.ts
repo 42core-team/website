@@ -127,7 +127,7 @@ export class EventService {
   }
 
   private async sanitizeEventConfigs(event: EventEntity) {
-    if (!event.showConfigs) {
+    if (event.startDate > new Date()) {
       event.gameConfig = "";
       event.serverConfig = "";
     }
@@ -169,12 +169,10 @@ export class EventService {
       where: { id },
       select: {
         gameConfig: true,
-        showConfigs: true
-      }
+        startDate: true,
+      },
     });
-
-    if (!event.showConfigs) return null;
-
+    if (event.startDate > new Date()) return null;
     return event.gameConfig;
   }
 
@@ -183,12 +181,10 @@ export class EventService {
       where: { id },
       select: {
         serverConfig: true,
-        showConfigs: true
+        startDate: true,
       },
     });
-
-    if (!event.showConfigs) return null;
-
+    if (event.startDate > new Date()) return null;
     return event.serverConfig;
   }
 
@@ -212,7 +208,6 @@ export class EventService {
     gameConfig: string,
     serverConfig: string,
     isPrivate: boolean = false,
-    showConfigs: boolean = false,
   ) {
     githubOrgSecret = CryptoJS.AES.encrypt(
       githubOrgSecret,
@@ -251,7 +246,6 @@ export class EventService {
       gameConfig,
       serverConfig,
       isPrivate,
-      showConfigs,
     });
   }
 
@@ -366,9 +360,6 @@ export class EventService {
     }
     if (typeof settings.isPrivate === "boolean") {
       update.isPrivate = settings.isPrivate;
-    }
-    if (typeof settings.showConfigs === "boolean") {
-      update.showConfigs = settings.showConfigs;
     }
 
     if (Object.keys(update).length === 0) {

@@ -96,9 +96,6 @@ export class EventEntity {
   @Column({ default: false })
   isPrivate: boolean;
 
-  @Column({ default: true })
-  showConfigs: boolean;
-
   @JoinTable({ name: "events_users" })
   @ManyToMany(() => UserEntity, (user) => user.events, {
     onUpdate: "CASCADE",

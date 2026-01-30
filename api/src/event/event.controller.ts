@@ -94,7 +94,6 @@ export class EventController {
       createEventDto.gameConfig,
       createEventDto.serverConfig,
       createEventDto.isPrivate,
-      createEventDto.showConfigs,
     );
   }
 

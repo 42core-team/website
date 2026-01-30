@@ -16,9 +16,4 @@ export class UpdateEventSettingsDto {
   @IsOptional()
   @IsBoolean()
   isPrivate?: boolean;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  showConfigs?: boolean;
 }
