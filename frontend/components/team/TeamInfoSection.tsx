@@ -91,18 +91,18 @@ export function TeamInfoSection({
             <div className="font-medium">
               {myTeam.repo
                 ? (
-                    <a
-                      href={getRepoUrl()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {myTeam.repo}
-                    </a>
-                  )
+                  <a
+                    href={getRepoUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    {myTeam.repo}
+                  </a>
+                )
                 : (
-                    <Skeleton className="h-5 w-75 rounded-md m-2" />
-                  )}
+                  <Skeleton className="h-5 w-75 rounded-md m-2" />
+                )}
             </div>
           </div>
           <div>
@@ -137,44 +137,44 @@ export function TeamInfoSection({
           <div className="flex gap-3 items-start flex-wrap">
             {teamMembers.length > 0
               ? (
-                  teamMembers.map(member => (
-                    <Link
-                      key={member.id}
-                      href={`https://github.com/${member.username}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group w-full max-w-32 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-xl"
-                      aria-label={`Open ${member.username}'s GitHub profile`}
-                    >
-                      <div className="flex flex-col items-center rounded-xl bg-content1/50 p-4 ring-1 ring-default-200 shadow-sm transition hover:shadow-md hover:ring-primary/60">
-                        <Avatar
-                          className={cn(
-                            "mb-2",
-                            member.isEventAdmin
-                              ? "outline-orange-500 outline-2"
-                              : "",
-                          )}
-                        >
-                          <AvatarImage
-                            src={member.profilePicture}
-                            alt={member.name}
-                          />
-                          <AvatarFallback>
-                            {member.name.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm font-medium text-center truncate w-full group-hover:text-primary">
-                          {member.username}
-                        </span>
-                      </div>
-                    </Link>
-                  ))
-                )
+                teamMembers.map(member => (
+                  <Link
+                    key={member.id}
+                    href={`https://github.com/${member.username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group w-full max-w-32 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-xl"
+                    aria-label={`Open ${member.username}'s GitHub profile`}
+                  >
+                    <div className="flex flex-col items-center rounded-xl bg-content1/50 p-4 ring-1 ring-default-200 shadow-sm transition hover:shadow-md hover:ring-primary/60">
+                      <Avatar
+                        className={cn(
+                          "mb-2",
+                          member.isEventAdmin
+                            ? "outline-orange-500 outline-2"
+                            : "",
+                        )}
+                      >
+                        <AvatarImage
+                          src={member.profilePicture}
+                          alt={member.name}
+                        />
+                        <AvatarFallback>
+                          {member.name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium text-center truncate w-full group-hover:text-primary">
+                        {member.username}
+                      </span>
+                    </div>
+                  </Link>
+                ))
+              )
               : (
-                  <p className="text-muted-foreground col-span-full text-center">
-                    No team members found
-                  </p>
-                )}
+                <p className="text-muted-foreground col-span-full text-center">
+                  No team members found
+                </p>
+              )}
           </div>
         </div>
 
@@ -200,17 +200,17 @@ export function TeamInfoSection({
                       Leave Team
                     </DialogTitle>
                   </DialogHeader>
-                  <DialogDescription>
-                    <p>
+                  <DialogDescription asChild>
+                    <div>
                       Are you sure you want to leave this team? This action
                       cannot be undone.
-                    </p>
-                    {teamMembers.length === 1 && (
-                      <p className="mt-2 text-destructive-500">
-                        Warning: You are the last member of this team. Leaving
-                        will delete the team.
-                      </p>
-                    )}
+                      {teamMembers.length === 1 && (
+                        <div className="mt-2 font-semibold text-destructive">
+                          Warning: You are the last member of this team. Leaving
+                          will delete the team.
+                        </div>
+                      )}
+                    </div>
                   </DialogDescription>
                   <DialogFooter>
                     <DialogClose asChild>
