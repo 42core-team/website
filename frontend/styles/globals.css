@@ -34,16 +34,14 @@
   image-rendering: crisp-edges;
 }
 
-/* Smooth scrolling for anchor links */
-html,
 body {
+  overflow-x: clip;
   scroll-behavior: smooth;
   scrollbar-gutter: stable;
-  overflow-x: hidden;
 }
 
-body {
-  min-width: 100vw;
+body[data-scroll-locked] {
+  margin: 0 !important;
 }
 
 /* Offset for sticky header when jumping to anchors */
@@ -80,6 +78,8 @@ mark {
 
 @theme {
   --font-display: "Original", sans-serif;
+  --navbar-height: 4rem;
+  --sidebar-width: 16rem; /* 256px – w-64 */
 }
 
 @theme inline {

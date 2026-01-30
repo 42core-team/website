@@ -1,7 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
-import rehypeHighlight from "rehype-highlight";
 import rehypePrettyCode from "rehype-pretty-code";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
@@ -144,7 +143,6 @@ export async function getWikiPageWithVersion(
       .use(remarkGfm)
       .use(remarkRehype)
       .use(rehypePrettyCode)
-      .use(rehypeHighlight)
       .use(rehypeStringify)
       .process(content);
 

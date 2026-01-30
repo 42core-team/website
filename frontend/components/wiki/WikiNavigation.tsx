@@ -1,6 +1,6 @@
 import type { WikiNavItem } from "@/lib/markdown";
 import Link from "next/link";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -59,10 +59,39 @@ export function WikiNavigation({
     setToc(tocItems);
   }, [pageContent]);
 
+  // Scroll the sidebar so the active TOC link is visible
+  const scrollActiveLinkIntoView = useCallback((id: string) => {
+    requestAnimationFrame(() => {
+      const activeLink = document.querySelector(`a[href="#${id}"]`);
+      if (activeLink instanceof HTMLElement) {
+        activeLink.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    });
+  }, []);
+
   // Track which heading is currently visible
   useEffect(() => {
     if (toc.length === 0)
       return;
+
+    // Set initial active heading on mount by finding the first one in/near the viewport
+    const idealPosition = 100;
+    let bestId = toc[0]?.id ?? "";
+    let bestDistance = Infinity;
+    for (const { id } of toc) {
+      const el = document.getElementById(id);
+      if (!el)
+        continue;
+      const dist = Math.abs(el.getBoundingClientRect().top - idealPosition);
+      if (dist < bestDistance) {
+        bestDistance = dist;
+        bestId = id;
+      }
+    }
+    if (bestId) {
+      setActiveId(bestId);
+      scrollActiveLinkIntoView(bestId);
+    }
 
     const handleIntersect = (entries: IntersectionObserverEntry[]) => {
       if (isScrollingRef.current)
@@ -72,10 +101,6 @@ export function WikiNavigation({
       if (intersectingEntries.length === 0)
         return;
 
-      // The ideal position is 100px from the top, matching the scroll-margin-top
-      const idealPosition = 100;
-
-      // Find the entry closest to the ideal position
       const closestEntry = intersectingEntries.reduce((prev, curr) => {
         const prevDistance = Math.abs(
           prev.boundingClientRect.top - idealPosition,
@@ -89,31 +114,12 @@ export function WikiNavigation({
       if (closestEntry) {
         const newId = closestEntry.target.id;
         setActiveId(newId);
-        // Ensure the active TOC link in the sidebar is visible
-        requestAnimationFrame(() => {
-          const activeLink = document.querySelector(`a[href="#${newId}"]`);
-          if (activeLink instanceof HTMLElement) {
-            const contentContainer = document.querySelector(
-              ".wiki-sidebar-navigation",
-            );
-
-            if (contentContainer instanceof HTMLElement) {
-              const offset
-                = activeLink.offsetTop
-                  - contentContainer.clientHeight / 2
-                  + activeLink.clientHeight / 2;
-              contentContainer.scrollTo({
-                top: offset,
-                behavior: "smooth",
-              });
-            }
-          }
-        });
+        scrollActiveLinkIntoView(newId);
       }
     };
 
     const observer = new IntersectionObserver(handleIntersect, {
-      rootMargin: "0px 0px -80% 0px", // Observe the top 20% of the viewport
+      rootMargin: "0px 0px -80% 0px",
     });
 
     toc.forEach(({ id }) => {
@@ -125,7 +131,7 @@ export function WikiNavigation({
     return () => {
       observer.disconnect();
     };
-  }, [toc]);
+  }, [toc, scrollActiveLinkIntoView]);
 
   const handleTocClick = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -181,10 +187,9 @@ export function WikiNavigation({
           <Link
             href={getVersionAwareUrl(itemPath)}
             onClick={onItemClick}
-            className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors hover:bg-default-100 ${
-              isActive
-                ? "bg-primary-50 text-primary-600"
-                : "text-muted-foreground"
+            className={`hover:bg-default-100 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${isActive
+              ? "bg-primary-50 text-primary-600"
+              : "text-muted-foreground"
             }`}
             style={{
               paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
@@ -195,8 +200,8 @@ export function WikiNavigation({
 
           {/* Show table of contents under the active page */}
           {isActive && toc.length > 0 && (
-            <div className="ml-1 sm:ml-2 mt-1 mb-2  border rounded-md p-2">
-              <div className="text-xs font-semibold text-muted-foreground mb-2 px-2 py-1 bg-default-100 rounded">
+            <div className="mt-1 mb-2 ml-1 rounded-md  border p-2 sm:ml-2">
+              <div className="bg-default-100 mb-2 rounded px-2 py-1 text-xs font-semibold text-muted-foreground">
                 On this page
               </div>
               <div className="space-y-0.5">
@@ -208,10 +213,9 @@ export function WikiNavigation({
                       handleTocClick(tocItem.id, e);
                       onItemClick?.();
                     }}
-                    className={`block text-xs px-2 py-1 rounded-xs transition-colors hover:bg-default-100 hover:text-primary cursor-pointer ${
-                      activeId === tocItem.id
-                        ? "text-primary font-medium bg-primary-50 border-l-2 border-primary"
-                        : "text-muted-foreground"
+                    className={`hover:bg-default-100 block cursor-pointer rounded-xs px-2 py-1 text-xs transition-colors hover:text-primary ${activeId === tocItem.id
+                      ? "bg-primary-50 border-l-2 border-primary font-medium text-primary"
+                      : "text-muted-foreground"
                     }`}
                     style={{
                       paddingLeft: `${Math.min((tocItem.level - 1) * 8 + 8, 32)}px`,
@@ -240,7 +244,7 @@ export function WikiNavigation({
         >
           <AccordionItem value={itemPath} className="border-none">
             <AccordionTrigger
-              className="py-2 px-2.5 text-[13px] font-semibold hover:no-underline"
+              className="px-2.5 py-2 text-[13px] font-semibold hover:no-underline"
               style={{
                 paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
               }}
@@ -266,8 +270,7 @@ export function WikiNavigation({
         key={uniqueKey}
         href={getVersionAwareUrl(itemPath)}
         onClick={onItemClick}
-        className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] transition-colors hover:bg-default-100 ${
-          isActive ? "bg-primary-50 text-primary-600" : "text-muted-foreground"
+        className={`hover:bg-default-100 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${isActive ? "bg-primary-50 text-primary-600" : "text-muted-foreground"
         }`}
         style={{
           paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px`,
@@ -280,12 +283,12 @@ export function WikiNavigation({
 
   return (
     <nav
-      className="wiki-sidebar-navigation w-66 h-full border-r bg-content1"
+      className="wiki-sidebar-navigation h-full w-66 border-r"
       aria-label="Wiki sidebar navigation"
       role="navigation"
     >
       <div className="p-4">
-        <h2 className="text-lg font-semibold mb-4">Wiki</h2>
+        <h2 className="mb-4 text-lg font-semibold">Wiki</h2>
         <div className="space-y-1">
           {items.map((item, index) => (
             <React.Fragment key={`root-${index}-${item.slug.join("/")}`}>
