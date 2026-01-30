@@ -8,6 +8,7 @@ import {
   getTeamsCountForEvent,
 } from "@/app/actions/event";
 import RepoLockCountdown from "@/app/events/[id]/repoLockCountdown";
+import ConfigSection from "@/app/events/[id]/ConfigSection";
 import TimeBadge from "@/components/timeBadge";
 import {
   Card,
@@ -120,6 +121,10 @@ export default async function EventPage({
             {event.repoLockDate && (
               <RepoLockCountdown repoLockDate={event.repoLockDate} />
             )}
+            <ConfigSection
+              gameConfig={event.gameConfig || "{}"}
+              serverConfig={event.serverConfig || "{}"}
+            />
           </div>
         </CardContent>
       </Card>
