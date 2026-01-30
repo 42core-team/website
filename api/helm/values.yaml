@@ -60,6 +60,8 @@ env:
   DB_SCHEMA: ""
   K8S_SERVICE_URL: ""
   DB_SSL_REQUIRED: "true"
+  AUTH_COOKIE_NAME: "token"
+  AUTH_COOKIE_DOMAIN: ".coregame.sh"
 
 # These are placeholders.
 # Values are injected at runtime via --set flags in the CI/CD pipeline.

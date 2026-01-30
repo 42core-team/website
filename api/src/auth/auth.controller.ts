@@ -25,7 +25,7 @@ export class AuthController {
     private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly socialAccountService: SocialAccountService,
-  ) {}
+  ) { }
 
   @Get("/github/callback")
   @UseGuards(AuthGuard("github"))
@@ -36,14 +36,13 @@ export class AuthController {
       "OAUTH_SUCCESS_REDIRECT_URL",
     );
     if (redirectUrl) {
-      res.cookie("token", token, {
+      const cookieName = this.configService.get<string>("AUTH_COOKIE_NAME") || "token";
+      const cookieDomain = this.configService.get<string>("AUTH_COOKIE_DOMAIN") || (this.configService.get("NODE_ENV") === "development" ? "localhost" : ".coregame.sh");
+      res.cookie(cookieName, token, {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        domain:
-          this.configService.get("NODE_ENV") === "development"
-            ? "localhost"
-            : ".coregame.sh",
+        domain: cookieDomain,
         maxAge: 30 * 24 * 60 * 60 * 1000,
       });
       return res.redirect(redirectUrl);
