@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -16,6 +16,7 @@ import {
 } from "chart.js";
 import { Bar, Radar } from "react-chartjs-2";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTheme } from "next-themes";
 
 ChartJS.register(
     CategoryScale,
@@ -79,6 +80,13 @@ const CHART_COLORS = [
 ];
 
 export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigRaw: string }) {
+    const { theme, resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     const config = useMemo(() => {
         try {
             // Remove comments from JSON if any
@@ -89,6 +97,12 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
             return null;
         }
     }, [gameConfigRaw]);
+
+    const isDark = mounted && (resolvedTheme === "dark" || theme === "dark");
+    const gridColor = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)";
+    const textColor = isDark ? "rgba(255, 255, 255, 0.7)" : "rgba(0, 0, 0, 0.7)";
+    const tooltipBg = isDark ? "rgba(0, 0, 0, 0.8)" : "rgba(255, 255, 255, 0.9)";
+    const tooltipTextColor = isDark ? "#fff" : "#000";
 
     if (!config) {
         return <div className="text-muted-foreground text-sm">Unable to parse game configuration for visualization.</div>;
@@ -215,17 +229,19 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
         maintainAspectRatio: false,
         scales: {
             y: { 
-                grid: { color: "rgba(255, 255, 255, 0.1)" }, 
-                ticks: { color: "rgba(255, 255, 255, 0.7)", font: { size: 12 } } 
+                grid: { color: gridColor }, 
+                ticks: { color: textColor, font: { size: 12 } } 
             },
             x: { 
-                ticks: { color: "rgba(255, 255, 255, 0.7)", font: { size: 12 } } 
+                ticks: { color: textColor, font: { size: 12 } } 
             }
         },
         plugins: {
             legend: { display: false },
             tooltip: {
-                backgroundColor: "rgba(0, 0, 0, 0.8)",
+                backgroundColor: tooltipBg,
+                titleColor: tooltipTextColor,
+                bodyColor: tooltipTextColor,
                 titleFont: { size: 14 },
                 bodyFont: { size: 13 },
                 padding: 10,
@@ -237,13 +253,13 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
     return (
         <div className="flex flex-col gap-6 mt-6">
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <Card className="bg-background/50 border-white/10">
+                <Card className="bg-background/50 border-border">
                     <CardHeader className="p-6">
                         <CardTitle className="text-lg font-semibold">Map Layout ({config.gridSize}x{config.gridSize})</CardTitle>
                     </CardHeader>
                     <CardContent className="p-6 flex flex-col items-center justify-center min-h-[400px] gap-6">
                         <div 
-                            className="relative border border-white/20 bg-black/20"
+                            className="relative border border-border bg-muted/20"
                             style={{ 
                                 width: "350px", 
                                 height: "350px",
@@ -265,9 +281,9 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
                                     title={`Core ${i + 1}: (${pos.x}, ${pos.y})`}
                                 />
                             ))}
-                            <div className="absolute inset-0 pointer-events-none opacity-10" 
+                            <div className="absolute inset-0 pointer-events-none opacity-20" 
                                  style={{ 
-                                     backgroundImage: `linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)`,
+                                     backgroundImage: `linear-gradient(to right, ${isDark ? "white" : "black"} 1px, transparent 1px), linear-gradient(to bottom, ${isDark ? "white" : "black"} 1px, transparent 1px)`,
                                      backgroundSize: `${350/config.gridSize}px ${350/config.gridSize}px`
                                  }} 
                             />
@@ -279,7 +295,7 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
                     </CardContent>
                 </Card>
 
-                <Card className="bg-background/50 border-white/10">
+                <Card className="bg-background/50 border-border">
                     <CardHeader className="p-6">
                         <CardTitle className="text-lg font-semibold">Unit Damage Comparison</CardTitle>
                     </CardHeader>
@@ -290,19 +306,21 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
                                 maintainAspectRatio: false,
                                 scales: {
                                     r: {
-                                        grid: { color: "rgba(255, 255, 255, 0.1)" },
-                                        angleLines: { color: "rgba(255, 255, 255, 0.1)" },
-                                        pointLabels: { color: "rgba(255, 255, 255, 0.8)", font: { size: 12, weight: "bold" } },
+                                        grid: { color: gridColor },
+                                        angleLines: { color: gridColor },
+                                        pointLabels: { color: textColor, font: { size: 12, weight: "bold" } },
                                         ticks: { display: false }
                                     }
                                 },
                                 plugins: {
                                     legend: {
                                         position: "bottom",
-                                        labels: { color: "rgba(255, 255, 255, 0.8)", boxWidth: 12, font: { size: 12 }, padding: 20 }
+                                        labels: { color: textColor, boxWidth: 12, font: { size: 12 }, padding: 20 }
                                     },
                                     tooltip: {
-                                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                                        backgroundColor: tooltipBg,
+                                        titleColor: tooltipTextColor,
+                                        bodyColor: tooltipTextColor,
                                         padding: 10,
                                     }
                                 }
