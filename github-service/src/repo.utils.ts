@@ -300,7 +300,7 @@ export class RepoUtils {
         return;
       }
 
-    const eventUrl: string = `https://${isDev ? 'dev.' : ''}coregame.sh/events/${eventId}`;
+    const eventUrl: string = `https://${isDev ? 'dev.' : ''}api.coregame.sh/event/${eventId}`;
 
       const originalContent = await fs.readFile(scriptPath, "utf-8");
 
