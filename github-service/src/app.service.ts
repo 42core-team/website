@@ -32,6 +32,31 @@ export class AppService {
       });
   }
 
+  private async resolveUsername(
+    githubId: string,
+    currentUsername: string,
+    userApi: UserApi,
+  ): Promise<string | null> {
+    try {
+      const user = await userApi.getUserById(githubId);
+      if (user.login !== currentUsername) {
+        this.logger.log(
+          `Username changed for githubId ${githubId}: ${currentUsername} -> ${user.login}`,
+        );
+        this.githubServiceResultsClient.emit("github_username_changed", {
+          oldUsername: currentUsername,
+          newUsername: user.login,
+          newName: user.name || user.login,
+          githubId: githubId,
+        });
+        return user.login;
+      }
+    } catch (e) {
+      this.logger.warn(`Failed to resolve user by ID ${githubId}`, e);
+    }
+    return null;
+  }
+
   decryptSecret(encryptedSecret: string): string {
     try {
       return CryptoJS.AES.decrypt(
@@ -44,161 +69,164 @@ export class AppService {
     }
   }
 
-  async removeWritePermissionsForUser(
+  private async executeGitHubAction<T>(
     username: string,
-    repoOwner: string,
-    repoName: string,
+    githubId: string,
     encryptedSecret: string,
-  ) {
-    this.logger.log(
-      `Removing write permissions for user ${JSON.stringify({ username, repoOwner, repoName })}`,
-    );
+    actionName: string,
+    context: Record<string, any>,
+    action: (
+      username: string,
+      repositoryApi: RepositoryApi,
+      userApi: UserApi,
+    ) => Promise<T>,
+  ): Promise<T> {
+    this.logger.log(`${actionName} ${JSON.stringify(context)}`);
     try {
       const secret = this.decryptSecret(encryptedSecret);
       const githubApi = new GitHubApiClient({
         token: secret,
+        logErrors: false,
       });
       const repositoryApi = new RepositoryApi(githubApi);
-      const result = await repositoryApi.updateCollaboratorPermission(
-        repoOwner,
-        repoName,
-        username,
-        "pull",
-      );
-      this.logger.log(
-        `Removed write permissions for user ${JSON.stringify({ username, repoOwner, repoName })}`,
-      );
+      const userApi = new UserApi(githubApi);
+
+      const result = await action(username, repositoryApi, userApi);
+
+      this.logger.log(`Completed ${actionName} ${JSON.stringify(context)}`);
       return result;
     } catch (error) {
+      if (githubId) {
+        try {
+          const secret = this.decryptSecret(encryptedSecret);
+          const githubApi = new GitHubApiClient({ token: secret });
+          const userApi = new UserApi(githubApi);
+
+          const newUsername = await this.resolveUsername(
+            githubId,
+            username,
+            userApi,
+          );
+
+          if (newUsername) {
+            const repositoryApi = new RepositoryApi(githubApi);
+            return await action(newUsername, repositoryApi, userApi);
+          }
+        } catch (innerError) {
+          this.logger.error(
+            "Failed to retry with resolved username",
+            innerError as Error,
+          );
+        }
+      }
       this.logger.error(
-        `Failed to remove write permissions for user ${JSON.stringify({
-          username,
-          repoOwner,
-          repoName,
-        })}`,
+        `Failed ${actionName} ${JSON.stringify(context)}`,
         error as Error,
       );
       throw error;
     }
   }
 
-  async addWritePermissionsForUser(
+  async removeWritePermissionsForUser(
     username: string,
+    githubId: string,
     repoOwner: string,
     repoName: string,
     encryptedSecret: string,
   ) {
-    this.logger.log(
-      `Adding write permissions for user ${JSON.stringify({ username, repoOwner, repoName })}`,
-    );
-    try {
-      const secret = this.decryptSecret(encryptedSecret);
-      const githubApi = new GitHubApiClient({
-        token: secret,
-      });
-      const repositoryApi = new RepositoryApi(githubApi);
-      const result = await repositoryApi.updateCollaboratorPermission(
-        repoOwner,
-        repoName,
-        username,
-        "push",
-      );
-      this.logger.log(
-        `Added write permissions for user ${JSON.stringify({ username, repoOwner, repoName })}`,
-      );
-      return result;
-    } catch (error) {
-      this.logger.error(
-        `Failed to add write permissions for user ${JSON.stringify({
-          username,
+    return this.executeGitHubAction(
+      username,
+      githubId,
+      encryptedSecret,
+      "Removing write permissions for user",
+      { username, repoOwner, repoName },
+      async (user, repositoryApi) => {
+        return repositoryApi.updateCollaboratorPermission(
           repoOwner,
           repoName,
-        })}`,
-        error as Error,
-      );
-      throw error;
-    }
+          user,
+          "pull",
+        );
+      },
+    );
+  }
+
+  async addWritePermissionsForUser(
+    username: string,
+    githubId: string,
+    repoOwner: string,
+    repoName: string,
+    encryptedSecret: string,
+  ) {
+    return this.executeGitHubAction(
+      username,
+      githubId,
+      encryptedSecret,
+      "Adding write permissions for user",
+      { username, repoOwner, repoName },
+      async (user, repositoryApi) => {
+        return repositoryApi.updateCollaboratorPermission(
+          repoOwner,
+          repoName,
+          user,
+          "push",
+        );
+      },
+    );
   }
 
   async addUserToRepository(
     repositoryName: string,
     username: string,
+    githubId: string,
     githubOrg: string,
     encryptedSecret: string,
     encryptedGithubAccessToken: string,
   ) {
-    this.logger.log(
-      `Adding user to repository ${JSON.stringify({ repositoryName, username, githubOrg })}`,
-    );
-    try {
-      const secret = this.decryptSecret(encryptedSecret);
-      const githubAccessToken = this.decryptSecret(encryptedGithubAccessToken);
-      const githubApi = new GitHubApiClient({
-        token: secret,
-      });
-      const repositoryApi = new RepositoryApi(githubApi);
-      const userApi = new UserApi(githubApi);
-      await repositoryApi.addCollaborator(
-        githubOrg,
-        repositoryName,
-        username,
-        "push",
-      );
-      await userApi.acceptRepositoryInvitationByRepo(
-        githubOrg,
-        repositoryName,
-        githubAccessToken,
-      );
-      this.logger.log(
-        `Added user to repository ${JSON.stringify({ repositoryName, username, githubOrg })}`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Failed to add user to repository ${JSON.stringify({
-          repositoryName,
-          username,
+    return this.executeGitHubAction(
+      username,
+      githubId,
+      encryptedSecret,
+      "Adding user to repository",
+      { repositoryName, username, githubOrg },
+      async (user, repositoryApi, userApi) => {
+        const githubAccessToken = this.decryptSecret(encryptedGithubAccessToken);
+        await repositoryApi.addCollaborator(
           githubOrg,
-        })}`,
-        error as Error,
-      );
-      throw error;
-    }
+          repositoryName,
+          user,
+          "push",
+        );
+        await userApi.acceptRepositoryInvitationByRepo(
+          githubOrg,
+          repositoryName,
+          githubAccessToken,
+        );
+      },
+    );
   }
 
   async removeUserFromRepository(
     repositoryName: string,
     username: string,
+    githubId: string,
     githubOrg: string,
     encryptedSecret: string,
   ) {
-    this.logger.log(
-      `Removing user from repository ${JSON.stringify({ repositoryName, username, githubOrg })}`,
-    );
-    try {
-      const secret = this.decryptSecret(encryptedSecret);
-      const githubApi = new GitHubApiClient({
-        token: secret,
-      });
-      const repositoryApi = new RepositoryApi(githubApi);
-      await repositoryApi.removeCollaborator(
-        githubOrg,
-        repositoryName,
-        username,
-      );
-      this.logger.log(
-        `Removed user from repository ${JSON.stringify({ repositoryName, username, githubOrg })}`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Failed to remove user from repository ${JSON.stringify({
-          repositoryName,
-          username,
+    return this.executeGitHubAction(
+      username,
+      githubId,
+      encryptedSecret,
+      "Removing user from repository",
+      { repositoryName, username, githubOrg },
+      async (user, repositoryApi) => {
+        await repositoryApi.removeCollaborator(
           githubOrg,
-        })}`,
-        error as Error,
-      );
-      throw error;
-    }
+          repositoryName,
+          user,
+        );
+      },
+    );
   }
 
   async deleteRepository(
@@ -237,6 +265,7 @@ export class AppService {
     teamName: string,
     githubUsers: {
       username: string;
+      githubId: string;
       githubAccessToken: string;
     }[],
     githubOrg: string,
@@ -323,17 +352,24 @@ export class AppService {
         teamId: teamId,
       });
 
+
       await Promise.all(
         githubUsers.map(async (user) => {
-          const { username, githubAccessToken } = user;
+          let { username } = user;
+          const { githubAccessToken, githubId } = user;
           this.logger.log(
             `Adding user ${username} to repository ${name} in org ${githubOrg}`,
           );
-          await repositoryApi.addCollaborator(
-            githubOrg,
-            name,
+
+          await this.executeGitHubAction(
             username,
-            "push",
+            githubId,
+            encryptedSecret,
+            "Adding user to team repository",
+            { username, name, githubOrg },
+            async (u, repoApi) => {
+              return repoApi.addCollaborator(githubOrg, name, u, "push");
+            },
           );
 
           const decryptedGithubAccessToken =

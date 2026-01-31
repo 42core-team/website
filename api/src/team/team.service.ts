@@ -121,6 +121,7 @@ export class TeamService {
         try {
           await this.githubApiService.removeWritePermissions(
             user.username,
+            user.githubId,
             team.event.githubOrg,
             team.repo,
             team.event.githubOrgSecret,
@@ -166,6 +167,7 @@ export class TeamService {
       team.name,
       team.users.map((user) => ({
         username: user.username,
+        githubId: user.githubId,
         githubAccessToken: user.githubAccessToken,
       })),
       team.event.githubOrg,
@@ -229,6 +231,7 @@ export class TeamService {
       await this.githubApiService.removeUserFromRepository(
         team.repo,
         user.username,
+        user.githubId,
         team.event.githubOrg,
         team.event.githubOrgSecret,
       );
@@ -300,6 +303,7 @@ export class TeamService {
       await this.githubApiService.addUserToRepository(
         team.repo,
         user.username,
+        user.githubId,
         team.event.githubOrg,
         team.event.githubOrgSecret,
         user.githubAccessToken,
@@ -525,6 +529,7 @@ export class TeamService {
 
         await this.githubApiService.addWritePermissions(
           user.username,
+          user.githubId,
           team.event.githubOrg,
           team.repo,
           team.event.githubOrgSecret,

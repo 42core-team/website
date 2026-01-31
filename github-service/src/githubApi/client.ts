@@ -11,6 +11,7 @@ export class GitHubApiClient {
   private token: string | null;
   private userAgent: string;
   private maxRetries: number;
+  private logErrors: boolean;
   private readonly logger = new Logger(GitHubApiClient.name);
 
   /**
@@ -23,12 +24,14 @@ export class GitHubApiClient {
       token?: string;
       userAgent?: string;
       maxRetries?: number;
+      logErrors?: boolean;
     } = {},
   ) {
     this.baseUrl = options.baseUrl || "https://api.github.com";
     this.token = options.token || null;
     this.userAgent = options.userAgent || "GitHub-API-Client";
     this.maxRetries = options.maxRetries || 3;
+    this.logErrors = options.logErrors ?? true;
   }
 
   /**
@@ -104,10 +107,12 @@ export class GitHubApiClient {
           await this.delay(backoffTime);
           continue;
         }
-        this.logger.error(
-          `GitHub API request failed method=${method} url=${url}`,
-          error as Error,
-        );
+        if (this.logErrors) {
+          this.logger.error(
+            `GitHub API request failed method=${method} url=${url}`,
+            error as Error,
+          );
+        }
         throw error;
       }
     }

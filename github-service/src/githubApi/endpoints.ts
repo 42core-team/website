@@ -329,6 +329,15 @@ export class UserApi {
   }
 
   /**
+   * Get a user by ID
+   * @param id GitHub user ID
+   * @returns User data
+   */
+  async getUserById(id: number | string): Promise<GitHubUser> {
+    return this.client.get<GitHubUser>(`user/${id}`);
+  }
+
+  /**
    * List repositories for a user
    * @param username GitHub username
    * @param options Query parameters
