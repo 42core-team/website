@@ -66,7 +66,8 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 			Namespace: c.namespace,
 		},
 		Data: map[string]string{
-			"server.game.config": game.GameConfig,
+			"game.config.json":   game.GameConfig,
+			"server.config.json": game.ServerConfig,
 		},
 	}
 
@@ -205,8 +206,13 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "game-config",
-				MountPath: "/core/configs/server.game.config",
-				SubPath:   "server.game.config",
+				MountPath: "/core/configs/game.config.json",
+				SubPath:   "game.config.json",
+			},
+			{
+				Name:      "server-config",
+				MountPath: "/core/configs/server.config.json",
+				SubPath:   "server.config.json",
 			},
 		},
 		Resources: corev1.ResourceRequirements{

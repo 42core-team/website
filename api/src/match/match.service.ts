@@ -383,6 +383,7 @@ export class MatchService {
         },
       ],
       gameConfig: event.gameConfig,
+      serverConfig: event.serverConfig,
     });
   }
 
