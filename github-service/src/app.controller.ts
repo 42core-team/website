@@ -5,11 +5,12 @@ import { EventPattern } from "@nestjs/microservices";
 @Controller()
 export class AppController {
   private readonly logger = new Logger(AppController.name);
-  constructor(private readonly appService: AppService) {}
+  constructor(private readonly appService: AppService) { }
 
   @EventPattern("remove_write_permissions")
   async handleRemoveWritePermissions(data: {
     username: string;
+    githubId: string;
     repoOwner: string;
     repoName: string;
     encryptedSecret: string;
@@ -24,6 +25,7 @@ export class AppController {
     );
     return await this.appService.removeWritePermissionsForUser(
       data.username,
+      data.githubId,
       data.repoOwner,
       data.repoName,
       data.encryptedSecret,
@@ -33,6 +35,7 @@ export class AppController {
   @EventPattern("add_write_permissions")
   async handleAddWritePermissions(data: {
     username: string;
+    githubId: string;
     repoOwner: string;
     repoName: string;
     encryptedSecret: string;
@@ -47,6 +50,7 @@ export class AppController {
     );
     return await this.appService.addWritePermissionsForUser(
       data.username,
+      data.githubId,
       data.repoOwner,
       data.repoName,
       data.encryptedSecret,
@@ -57,6 +61,7 @@ export class AppController {
   async handleAddUserToRepository(data: {
     repositoryName: string;
     username: string;
+    githubId: string;
     githubOrg: string;
     encryptedSecret: string;
     githubAccessToken: string;
@@ -72,6 +77,7 @@ export class AppController {
     return await this.appService.addUserToRepository(
       data.repositoryName,
       data.username,
+      data.githubId,
       data.githubOrg,
       data.encryptedSecret,
       data.githubAccessToken,
@@ -82,6 +88,7 @@ export class AppController {
   async handleRemoveUserFromRepository(data: {
     repositoryName: string;
     username: string;
+    githubId: string;
     githubOrg: string;
     encryptedSecret: string;
   }) {
@@ -96,6 +103,7 @@ export class AppController {
     return await this.appService.removeUserFromRepository(
       data.repositoryName,
       data.username,
+      data.githubId,
       data.githubOrg,
       data.encryptedSecret,
     );
@@ -127,6 +135,7 @@ export class AppController {
     teamName: string;
     githubUsers: {
       username: string;
+      githubId: string;
       githubAccessToken: string;
     }[];
     githubOrg: string;
@@ -137,6 +146,9 @@ export class AppController {
     myCoreBotDockerImage: string;
     visualizerDockerImage: string;
     eventId: string;
+    basePath: string;
+    gameConfig: string;
+    serverConfig: string;
   }) {
     const safeData = {
       name: data.name,
@@ -148,6 +160,9 @@ export class AppController {
       monoRepoVersion: data.monoRepoVersion,
       teamId: data.teamId,
       eventId: data.eventId,
+      basePath: data.basePath,
+      gameConfig: data.gameConfig.slice(0, 50),
+      serverConfig: data.serverConfig.slice(0, 50),
     };
     this.logger.log(
       `create_team_repository event received ${JSON.stringify(safeData)}`,
@@ -164,6 +179,9 @@ export class AppController {
       data.myCoreBotDockerImage,
       data.visualizerDockerImage,
       data.eventId,
+      data.basePath,
+      data.gameConfig,
+      data.serverConfig,
     );
   }
 }

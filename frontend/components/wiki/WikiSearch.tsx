@@ -143,7 +143,7 @@ export function WikiSearch({
 
       {query && (
         <div
-          className="absolute top-full left-0 right-0 mt-2 bg-background border rounded-lg shadow-lg max-h-96 overflow-y-auto z-20"
+          className="absolute top-full right-0 left-0 z-20 mt-2 max-h-96 overflow-y-auto rounded-lg border bg-background shadow-lg"
           role="listbox"
           aria-label="Search results"
         >
@@ -168,24 +168,24 @@ export function WikiSearch({
                             e.preventDefault();
                             handleResultClick(result);
                           }}
-                          className="block p-3 hover:bg-default-100 rounded-md transition-colors cursor-pointer focus:outline-none focus:bg-default-200"
+                          className="hover:bg-default-100 focus:bg-default-200 block cursor-pointer rounded-md p-3 transition-colors focus:outline-none"
                           role="option"
                           aria-selected={false}
                         >
-                          <div className="font-medium text-sm">{page.title}</div>
+                          <div className="text-sm font-medium">{page.title}</div>
                           <div
-                            className="text-xs text-muted-foreground mt-1 line-clamp-2"
+                            className="mt-1 line-clamp-2 text-xs text-muted-foreground"
                             dangerouslySetInnerHTML={{
                               __html: result.highlightedSnippet,
                             }}
                           />
-                          <div className="text-xs text-muted-foreground mt-2 flex items-center gap-2">
+                          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                             <span>
                               /
                               {page.slug.join("/")}
                             </span>
                             {page.version && page.version !== "latest" && (
-                              <span className="bg-primary-100 text-primary-700 px-1 py-0.5 rounded text-xs">
+                              <span className="bg-primary-100 text-primary-700 rounded px-1 py-0.5 text-xs">
                                 {page.version}
                               </span>
                             )}

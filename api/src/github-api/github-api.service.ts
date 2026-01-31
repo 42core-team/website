@@ -23,12 +23,14 @@ export class GithubApiService {
 
   async removeWritePermissions(
     username: string,
+    githubId: string,
     repoOwner: string,
     repoName: string,
     encryptedSecret: string,
   ) {
     this.githubClient.emit("remove_write_permissions", {
       username,
+      githubId,
       repoOwner,
       repoName,
       encryptedSecret,
@@ -37,12 +39,14 @@ export class GithubApiService {
 
   async addWritePermissions(
     username: string,
+    githubId: string,
     repoOwner: string,
     repoName: string,
     encryptedSecret: string,
   ) {
     this.githubClient.emit("add_write_permissions", {
       username,
+      githubId,
       repoOwner,
       repoName,
       encryptedSecret,
@@ -52,6 +56,7 @@ export class GithubApiService {
   async addUserToRepository(
     repositoryName: string,
     username: string,
+    githubId: string,
     githubOrg: string,
     encryptedSecret: string,
     githubAccessToken: string,
@@ -59,6 +64,7 @@ export class GithubApiService {
     this.githubClient.emit("add_user_to_repository", {
       repositoryName,
       username,
+      githubId,
       githubOrg,
       encryptedSecret,
       githubAccessToken,
@@ -68,12 +74,14 @@ export class GithubApiService {
   async removeUserFromRepository(
     repositoryName: string,
     username: string,
+    githubId: string,
     githubOrg: string,
     encryptedSecret: string,
   ) {
     this.githubClient.emit("remove_user_from_repository", {
       repositoryName,
       username,
+      githubId,
       githubOrg,
       encryptedSecret,
     });
@@ -95,8 +103,9 @@ export class GithubApiService {
     name: string,
     teamName: string,
     githubUsers: {
-      username: string,
-      githubAccessToken: string,
+      username: string;
+      githubId: string;
+      githubAccessToken: string;
     }[],
     githubOrg: string,
     encryptedSecret: string,
@@ -106,6 +115,9 @@ export class GithubApiService {
     myCoreBotDockerImage: string,
     visualizerDockerImage: string,
     eventId: string,
+    basePath: string,
+    gameConfig: string,
+    serverConfig: string,
   ) {
     this.githubClient.emit("create_team_repository", {
       name,
@@ -119,6 +131,9 @@ export class GithubApiService {
       myCoreBotDockerImage,
       visualizerDockerImage,
       eventId,
+      basePath,
+      gameConfig,
+      serverConfig,
     });
   }
 }

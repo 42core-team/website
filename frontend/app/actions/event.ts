@@ -26,6 +26,9 @@ export interface Event {
   gameServerDockerImage?: string;
   myCoreBotDockerImage?: string;
   visualizerDockerImage?: string;
+  basePath?: string;
+  gameConfig?: string;
+  serverConfig?: string;
   isPrivate: boolean;
 }
 
@@ -95,6 +98,9 @@ interface EventCreateParams {
   myCoreBotDockerImage: string;
   visualizerDockerImage: string;
   monorepoUrl: string;
+  basePath: string;
+  gameConfig: string;
+  serverConfig: string;
   isPrivate: boolean;
 }
 

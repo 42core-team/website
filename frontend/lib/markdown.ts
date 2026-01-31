@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
-import rehypeHighlight from "rehype-highlight";
+import rehypePrettyCode from "rehype-pretty-code";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
@@ -142,7 +142,7 @@ export async function getWikiPageWithVersion(
       .use(remarkParse)
       .use(remarkGfm)
       .use(remarkRehype)
-      .use(rehypeHighlight)
+      .use(rehypePrettyCode)
       .use(rehypeStringify)
       .process(content);
 
@@ -590,7 +590,8 @@ function stripHtml(html: string): string {
 
 // Helper function to highlight search terms
 function highlightText(text: string, query: string): string {
-  const regex = new RegExp(`(${query})`, "gi");
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`(${escapedQuery})`, "gi");
   return text.replace(regex, "<mark>$1</mark>");
 }
 

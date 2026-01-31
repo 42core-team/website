@@ -5,6 +5,7 @@ import Link from "next/link";
 import { siteConfig } from "@/config/site";
 
 export default function Footer() {
+  const currentYear = new Date().getFullYear();
   const handleReportIssue = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     const repo = "42core-team/website_relaunch";
@@ -114,7 +115,7 @@ export default function Footer() {
         <div className="mt-8 pt-8 border-t">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-muted-foreground text-sm">
-              © 2025 CORE Game. All rights reserved.
+              © {currentYear} CORE Game. All rights reserved.
             </p>
             <div className="flex gap-4 text-sm">
               <Link

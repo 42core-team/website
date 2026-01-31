@@ -15,6 +15,7 @@ import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations"
 import { MatchService } from "../match/match.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { LockKeys } from "../constants";
+import { EventEntity } from "../event/entities/event.entity";
 
 @Injectable()
 export class TeamService {
@@ -29,7 +30,7 @@ export class TeamService {
     private readonly matchService: MatchService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   logger = new Logger("TeamService");
 
@@ -47,10 +48,15 @@ export class TeamService {
 
       if (gotLock[0].pg_try_advisory_lock) {
         try {
-          const teams = await this.teamRepository.findBy({
-            startedRepoCreationAt: IsNull(),
-            event: {
-              startDate: LessThanOrEqual(new Date()),
+          const teams = await this.teamRepository.find({
+            where: {
+              startedRepoCreationAt: IsNull(),
+              event: {
+                startDate: LessThanOrEqual(new Date()),
+              },
+            },
+            relations: {
+              event: true,
             },
           });
           for (const team of teams) {
@@ -115,6 +121,7 @@ export class TeamService {
         try {
           await this.githubApiService.removeWritePermissions(
             user.username,
+            user.githubId,
             team.event.githubOrg,
             team.repo,
             team.event.githubOrgSecret,
@@ -160,6 +167,7 @@ export class TeamService {
       team.name,
       team.users.map((user) => ({
         username: user.username,
+        githubId: user.githubId,
         githubAccessToken: user.githubAccessToken,
       })),
       team.event.githubOrg,
@@ -170,10 +178,12 @@ export class TeamService {
       team.event.myCoreBotDockerImage,
       team.event.visualizerDockerImage,
       team.event.id,
+      team.event.basePath,
+      team.event.gameConfig ?? "",
+      team.event.serverConfig ?? "",
     );
 
     await teamRepository.update(teamId, {
-      repo: repoName,
       startedRepoCreationAt: new Date(),
     });
   }
@@ -221,6 +231,7 @@ export class TeamService {
       await this.githubApiService.removeUserFromRepository(
         team.repo,
         user.username,
+        user.githubId,
         team.event.githubOrg,
         team.event.githubOrgSecret,
       );
@@ -292,6 +303,7 @@ export class TeamService {
       await this.githubApiService.addUserToRepository(
         team.repo,
         user.username,
+        user.githubId,
         team.event.githubOrg,
         team.event.githubOrgSecret,
         user.githubAccessToken,
@@ -517,6 +529,7 @@ export class TeamService {
 
         await this.githubApiService.addWritePermissions(
           user.username,
+          user.githubId,
           team.event.githubOrg,
           team.repo,
           team.event.githubOrgSecret,

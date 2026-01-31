@@ -3,9 +3,10 @@
 import type { WikiNavItem, WikiVersion } from "@/lib/markdown";
 import { Menu } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavbar } from "@/contexts/NavbarContext";
+import { cn } from "@/lib/utils";
 import { VersionSelector } from "./VersionSelector";
 import { WikiNavigation } from "./WikiNavigation";
 import { WikiSearch } from "./WikiSearch";
@@ -16,7 +17,7 @@ interface WikiLayoutProps {
   currentSlug: string[];
   versions?: WikiVersion[];
   currentVersion?: string;
-  pageContent?: string; // Add page content for table of contents
+  pageContent?: string;
 }
 
 export function WikiLayout({
@@ -30,8 +31,8 @@ export function WikiLayout({
   const router = useRouter();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const { isBasicNavbarMenuOpen } = useNavbar();
+  const sidebarRef = useRef<HTMLElement>(null);
 
-  // Ensure clicks on in-content heading anchors scroll inside wiki-content only
   useEffect(() => {
     const container = document.querySelector(".main-wiki-content");
     if (!container)
@@ -45,12 +46,7 @@ export function WikiLayout({
       if (targetId) {
         const target = document.getElementById(targetId);
         if (target) {
-          const offset
-            = target.offsetTop - (container as HTMLElement).offsetTop;
-          (container as HTMLElement).scrollTo({
-            top: offset,
-            behavior: "smooth",
-          });
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       }
     };
@@ -61,14 +57,12 @@ export function WikiLayout({
     };
   }, []);
 
-  // Intercept in-content wiki links to enable Next.js client-side navigation
   useEffect(() => {
     const container = document.querySelector(".main-wiki-content");
     if (!container)
       return;
 
     const handleClick = (e: MouseEvent) => {
-      // Respect modifier keys and non-left clicks (open in new tab, etc.)
       if (
         e.defaultPrevented
         || e.metaKey
@@ -86,11 +80,9 @@ export function WikiLayout({
         return;
 
       const href = anchor.getAttribute("href") || "";
-      // Skip external links, hash links, and already-handled anchors
       if (!href || href.startsWith("http") || href.startsWith("#"))
         return;
 
-      // Only intercept internal wiki links
       if (!href.startsWith("/wiki/"))
         return;
 
@@ -105,25 +97,21 @@ export function WikiLayout({
   }, [router]);
 
   return (
-    <div className="flex h-[calc(100vh-60px)] bg-background">
-      {/* Mobile Navigation Overlay */}
-      {isMobileNavOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-50 lg:hidden"
-          onClick={() => setIsMobileNavOpen(false)}
-        />
-      )}
+    <div className="relative flex min-h-[calc(100vh-var(--navbar-height))]">
+      <div
+        className={cn(
+          "fixed inset-0 z-40 bg-background/50 transition-opacity duration-300 lg:hidden",
+          isMobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        onClick={() => setIsMobileNavOpen(false)}
+      />
 
-      {/* Sidebar Navigation */}
       <aside
-        className={`
-          fixed lg:sticky top-[60px] left-0 z-50 lg:z-0
-          w-64 h-[calc(100vh-60px)]
-          bg-background border-r 
-          transform lg:transform-none transition-transform duration-300 ease-in-out
-          ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-          overflow-y-auto overflow-x-hidden
-        `}
+        ref={sidebarRef}
+        className={cn(
+          "fixed top-(--navbar-height) left-0 z-50 h-[calc(100vh-var(--navbar-height))] w-(--sidebar-width) overflow-x-hidden overflow-y-auto border-r bg-background transition-transform duration-300 ease-in-out lg:sticky lg:z-0 lg:translate-x-0 lg:self-start",
+          isMobileNavOpen ? "translate-x-0" : "-translate-x-full",
+        )}
       >
         <WikiNavigation
           items={navigation}
@@ -134,18 +122,16 @@ export function WikiLayout({
         />
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 min-w-0 flex flex-col">
-        {/* Header with Search and Version Selector */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <header
-          className={`sticky top-[60px] z-40 border-b bg-content1 p-4 transition-opacity duration-300 ${
+          className={cn(
+            "sticky top-(--navbar-height) z-40 border-b bg-background/95 py-4 shadow-sm backdrop-blur transition-opacity duration-300 supports-backdrop-filter:bg-background/60 sm:p-4",
             isBasicNavbarMenuOpen
-              ? "opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto"
-              : "opacity-100"
-          }`}
+              ? "pointer-events-none opacity-0 lg:pointer-events-auto lg:opacity-100"
+              : "opacity-100",
+          )}
         >
           <div className="flex items-center justify-between gap-4">
-            {/* Mobile Menu Button */}
             <Button
               variant="ghost"
               size="icon"
@@ -154,14 +140,11 @@ export function WikiLayout({
               aria-label="Toggle navigation"
               aria-expanded={isMobileNavOpen}
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="size-5" />
             </Button>
-
-            <div className="flex-1 max-w-md">
+            <div className="max-w-md flex-1">
               <WikiSearch currentVersion={currentVersion} />
             </div>
-
-            {/* Version Selector */}
             {versions.length > 1 && (
               <VersionSelector
                 versions={versions}
@@ -171,9 +154,8 @@ export function WikiLayout({
           </div>
         </header>
 
-        {/* Content Area */}
-        <main className="main-wiki-content flex-1 overflow-y-auto p-4 sm:p-6">
-          <div className="max-w-4xl mx-auto">{children}</div>
+        <main className="main-wiki-content flex-1 p-4 sm:p-6">
+          <div className="mx-auto max-w-4xl" style={{ viewTransitionName: "wiki-content" }}>{children}</div>
         </main>
       </div>
     </div>

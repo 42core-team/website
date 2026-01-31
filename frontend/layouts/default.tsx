@@ -13,7 +13,7 @@ export default async function DefaultLayout({
   const session = await getServerSession(authOptions);
 
   return (
-    <div className="relative flex flex-col min-h-lvh overflow-x-hidden">
+    <div className="relative flex flex-col min-h-lvh">
       <Head />
       <BasicNavbar session={session} />
       <main className="container mx-auto max-w-7xl px-6 grow">{children}</main>

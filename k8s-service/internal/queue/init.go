@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"sync"
 
 	"github.com/42core-team/website_relaunch/k8s-service/internal/kube"
@@ -111,7 +112,7 @@ func (q *Queue) ConsumeGameQueue(logger *zap.SugaredLogger, kubeClient *kube.Cli
 				continue
 			}
 
-			err = kubeClient.CreateGameJob(&game)
+			err = kubeClient.CreateGameJob(context.Background(), &game)
 			if err != nil {
 				logger.Errorln("Failed to create game job", zap.Error(err))
 				continue

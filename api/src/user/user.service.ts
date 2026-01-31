@@ -13,7 +13,7 @@ export class UserService {
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
     private configService: ConfigService,
-  ) {}
+  ) { }
 
   async createUser(
     email: string,
@@ -64,11 +64,20 @@ export class UserService {
     });
   }
 
+  async updateUsername(githubId: string, newUsername: string, newName: string) {
+    return this.userRepository.update(
+      { githubId },
+      { username: newUsername, name: newName },
+    );
+  }
+
   getUserCountOfEvent(eventId: string): Promise<number> {
     return this.userRepository.count({
       where: {
-        events: {
-          id: eventId,
+        teams: {
+          event: {
+            id: eventId,
+          },
         },
       },
     });

@@ -28,6 +28,8 @@ env:
   K8S_SERVICE_URL: ""
   # CORS configuration for prod
   CORS_ORIGIN: "https://coregame.sh"
+  AUTH_COOKIE_NAME: "token"
+  AUTH_COOKIE_DOMAIN: ".coregame.sh"
 
 ingress:
   enabled: true
