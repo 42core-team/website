@@ -21,6 +21,7 @@ env:
   DB_NAME: ""
   DB_SCHEMA: ""
   K8S_SERVICE_URL: ""
+  API_BASE_URL: "https://dev.api.coregame.sh"
   # CORS configuration for dev
   CORS_ORIGIN: "https://dev.coregame.sh"
   AUTH_COOKIE_NAME: "token_dev"

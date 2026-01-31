@@ -250,6 +250,7 @@ export class AppService {
     basePath: string,
     gameConfig: string,
     serverConfig: string,
+    apiBaseUrl: string,
   ) {
     this.logger.log(
       `Creating team repository ${JSON.stringify({
@@ -257,6 +258,7 @@ export class AppService {
         teamName,
         githubOrg,
         teamId,
+        apiBaseUrl,
       })}`,
     );
     try {
@@ -295,6 +297,7 @@ export class AppService {
               basePath,
               gameConfig,
               serverConfig,
+              apiBaseUrl,
             );
           })(),
         ]);

@@ -22,6 +22,7 @@ export class RepoUtils {
     basePath: string,
     gameConfig: string,
     serverConfig: string,
+    apiBaseUrl: string,
   ): Promise<SimpleGit> {
     this.logger.log(
       `Cloning mono repo ${monoRepoUrl} to temp folder ${tempFolderPath}`,
@@ -58,10 +59,11 @@ export class RepoUtils {
         path.join(tempFolderPath, basePath),
         serverConfig,
       ),
-	  this.updateConfigsUrls(
-		path.join(tempFolderPath, basePath),
-		eventId,
-	  )
+      this.updateConfigsUrls(
+        path.join(tempFolderPath, basePath),
+        eventId,
+        apiBaseUrl,
+      )
     ]);
     return gitRepo;
   }
@@ -279,11 +281,11 @@ export class RepoUtils {
   }
 
   private async updateConfigsUrls(
-	repoRoot: string,
-	eventId: string,
-	isDev: boolean,
+    repoRoot: string,
+    eventId: string,
+    apiBaseUrl: string,
   ): Promise<void> {
-	try {
+    try {
       const scriptPath = path.join(
         repoRoot,
         "scripts",
@@ -300,7 +302,7 @@ export class RepoUtils {
         return;
       }
 
-    const eventUrl: string = `https://${isDev ? 'dev.' : ''}api.coregame.sh/event/${eventId}`;
+      const eventUrl: string = `${apiBaseUrl}/event/${eventId}`;
 
       const originalContent = await fs.readFile(scriptPath, "utf-8");
 
