@@ -182,16 +182,16 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
     };
 
     const balanceData = {
-        labels: unitNames,
-        datasets: [
-            {
-                label: "Balance Per Step",
-                data: config.units.map(u => u.balancePerCooldownStep),
-                backgroundColor: CHART_COLORS.map(c => c.bg),
-                borderColor: CHART_COLORS.map(c => c.border),
-                borderWidth: 1,
-            },
-        ],
+      labels: unitNames,
+      datasets: [
+        {
+          label: "Gems per cooldown increase",
+          data: config.units.map((u) => u.balancePerCooldownStep),
+          backgroundColor: CHART_COLORS.map((c) => c.bg),
+          borderColor: CHART_COLORS.map((c) => c.border),
+          borderWidth: 1,
+        },
+      ],
     };
 
     const radarData = {
