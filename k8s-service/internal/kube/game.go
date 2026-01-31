@@ -77,7 +77,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 	}
 
 	volumes = append(volumes, corev1.Volume{
-		Name: "game-config",
+		Name: configMapName,
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
 				LocalObjectReference: corev1.LocalObjectReference{
