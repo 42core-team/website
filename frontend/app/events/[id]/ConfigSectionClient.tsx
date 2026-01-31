@@ -9,10 +9,8 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Code2, Server, Copy, Check, X, ChartLine } from "lucide-react";
+import { Code2, Server, Copy, Check, X } from "lucide-react";
 import { useState } from "react";
-import GameConfigVisualization from "./GameConfigVisualization";
 
 interface ConfigDialogProps {
     title: string;
@@ -105,48 +103,26 @@ export default function ConfigSectionClient({
     serverConfigHtml,
 }: ConfigSectionClientProps) {
     return (
-        <div className="w-full">
-            <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                    Configuration
-                </h3>
+        <div>
+            <h3 className="text-sm font-medium text-muted-foreground">
+                Configuration
+            </h3>
+            <div className="mt-1 flex flex-col gap-2">
+                <ConfigDialog
+                    title="Game Configuration"
+                    label="Game Config"
+                    icon={<Code2 className="size-4" />}
+                    configHtml={gameConfigHtml}
+                    rawConfig={gameConfig}
+                />
+                <ConfigDialog
+                    title="Server Configuration"
+                    label="Server Config"
+                    icon={<Server className="size-4" />}
+                    configHtml={serverConfigHtml}
+                    rawConfig={serverConfig}
+                />
             </div>
-            
-            <Tabs defaultValue="visualizer" className="mt-2 w-full">
-                <TabsList className="bg-white/5 border border-white/10">
-                    <TabsTrigger value="visualizer" className="gap-2">
-                        <ChartLine className="size-4" />
-                        Visualizer
-                    </TabsTrigger>
-                    <TabsTrigger value="raw" className="gap-2">
-                        <Code2 className="size-4" />
-                        Raw Config
-                    </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="visualizer" className="w-full">
-                    <GameConfigVisualization gameConfigRaw={gameConfig} />
-                </TabsContent>
-                
-                <TabsContent value="raw">
-                    <div className="mt-2 flex flex-col gap-2">
-                        <ConfigDialog
-                            title="Game Configuration"
-                            label="Game Config"
-                            icon={<Code2 className="size-4" />}
-                            configHtml={gameConfigHtml}
-                            rawConfig={gameConfig}
-                        />
-                        <ConfigDialog
-                            title="Server Configuration"
-                            label="Server Config"
-                            icon={<Server className="size-4" />}
-                            configHtml={serverConfigHtml}
-                            rawConfig={serverConfig}
-                        />
-                    </div>
-                </TabsContent>
-            </Tabs>
         </div>
     );
 }
