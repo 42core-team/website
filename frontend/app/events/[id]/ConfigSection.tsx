@@ -1,8 +1,7 @@
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
-import rehypeSanitize from "rehype-sanitize";
-import rehypeHighlight from "rehype-highlight";
+import rehypePrettyCode from "rehype-pretty-code";
 import rehypeStringify from "rehype-stringify";
 import ConfigSectionClient from "./ConfigSectionClient";
 
@@ -15,8 +14,7 @@ async function highlightJson(json: string) {
     const file = await unified()
         .use(remarkParse)
         .use(remarkRehype)
-        .use(rehypeSanitize)
-        .use(rehypeHighlight)
+        .use(rehypePrettyCode)
         .use(rehypeStringify)
         .process(`\`\`\`json\n${json}\n\`\`\``);
     return String(file);

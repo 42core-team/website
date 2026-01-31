@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "./themes/highlightjs/github-light.css";
 @import "tw-animate-css";
 @import "./wiki.css";
 
@@ -36,16 +35,14 @@
   image-rendering: crisp-edges;
 }
 
-/* Smooth scrolling for anchor links */
-html,
 body {
+  overflow-x: clip;
   scroll-behavior: smooth;
   scrollbar-gutter: stable;
-  overflow-x: hidden;
 }
 
-body {
-  min-width: 100vw;
+body[data-scroll-locked] {
+  margin: 0 !important;
 }
 
 /* Offset for sticky header when jumping to anchors */
@@ -82,6 +79,9 @@ mark {
 
 @theme {
   --font-display: "Original", sans-serif;
+  --navbar-height: 4rem;
+  --sidebar-width: 16rem;
+  /* 256px – w-64 */
 }
 
 @theme inline {
@@ -120,6 +120,13 @@ mark {
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-content1: var(--content1);
+  --color-default-100: var(--default-100);
+  --color-default-200: var(--default-200);
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
 }
 
 :root {
@@ -155,6 +162,13 @@ mark {
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --content1: oklch(1 0 0);
+  --default-100: oklch(0.97 0 0);
+  --default-200: oklch(0.922 0 0);
+  --primary-50: oklch(0.98 0 0);
+  --primary-100: oklch(0.95 0 0);
+  --primary-600: oklch(0.3 0 0);
+  --primary-700: oklch(0.25 0 0);
 }
 
 .dark {
@@ -189,6 +203,13 @@ mark {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --content1: oklch(0.205 0 0);
+  --default-100: oklch(0.269 0 0);
+  --default-200: oklch(0.35 0 0);
+  --primary-50: oklch(0.25 0 0);
+  --primary-100: oklch(0.3 0 0);
+  --primary-600: oklch(0.85 0 0);
+  --primary-700: oklch(0.8 0 0);
 }
 
 @layer base {
@@ -201,94 +222,15 @@ mark {
   }
 }
 
-/* Code highlighting dark mode overrides - placed outside @layer to win specificity */
-.dark .hljs {
-  color: #c9d1d9 !important;
-  background: #0d1117 !important;
-}
+@layer components {
 
-.dark .hljs-doctag,
-.dark .hljs-keyword,
-.dark .hljs-meta .hljs-keyword,
-.dark .hljs-template-tag,
-.dark .hljs-template-variable,
-.dark .hljs-type,
-.dark .hljs-variable.language_ {
-  color: #ff7b72 !important;
-}
-
-.dark .hljs-title,
-.dark .hljs-title.class_,
-.dark .hljs-title.class_.inherited__,
-.dark .hljs-title.function_ {
-  color: #d2a8ff !important;
-}
-
-.dark .hljs-attr,
-.dark .hljs-attribute,
-.dark .hljs-literal,
-.dark .hljs-meta,
-.dark .hljs-number,
-.dark .hljs-operator,
-.dark .hljs-selector-attr,
-.dark .hljs-selector-class,
-.dark .hljs-selector-id,
-.dark .hljs-variable {
-  color: #79c0ff !important;
-}
-
-.dark .hljs-meta .hljs-string,
-.dark .hljs-regexp,
-.dark .hljs-string {
-  color: #a5d6ff !important;
-}
-
-.dark .hljs-built_in,
-.dark .hljs-symbol {
-  color: #ffa657 !important;
-}
-
-.dark .hljs-code,
-.dark .hljs-comment,
-.dark .hljs-formula {
-  color: #8b949e !important;
-}
-
-.dark .hljs-name,
-.dark .hljs-quote,
-.dark .hljs-selector-pseudo,
-.dark .hljs-selector-tag {
-  color: #7ee787 !important;
-}
-
-.dark .hljs-subst {
-  color: #c9d1d9 !important;
-}
-
-.dark .hljs-section {
-  color: #1f6feb !important;
-}
-
-.dark .hljs-bullet {
-  color: #f2cc60 !important;
-}
-
-.dark .hljs-emphasis {
-  color: #c9d1d9 !important;
-  font-style: italic;
-}
-
-.dark .hljs-strong {
-  color: #c9d1d9 !important;
-  font-weight: 700;
-}
-
-.dark .hljs-addition {
-  color: #aff5b4 !important;
-  background-color: #033a16 !important;
-}
-
-.dark .hljs-deletion {
-  color: #ffdcd7 !important;
-  background-color: #67060c !important;
+  *[target="_blank"]:not(.no-icon)::after,
+  a.external::after,
+  .external-link::after {
+    content: "";
+    @apply ml-[0.25em] inline-block h-[0.9em] w-[0.9em] bg-no-repeat align-baseline text-inherit;
+    mask-image: url(/external.svg);
+    -webkit-mask-image: url(/external.svg);
+    background-color: currentColor;
+  }
 }
