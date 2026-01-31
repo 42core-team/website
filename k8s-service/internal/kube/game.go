@@ -205,12 +205,12 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				Name:      "game-config",
+				Name:      configMapName,
 				MountPath: "/core/configs/game.config.json",
 				SubPath:   "game.config.json",
 			},
 			{
-				Name:      "server-config",
+				Name:      configMapName,
 				MountPath: "/core/configs/server.config.json",
 				SubPath:   "server.config.json",
 			},
