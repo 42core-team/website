@@ -35,7 +35,7 @@ export class TeamController {
     private readonly teamService: TeamService,
     private readonly userService: UserService,
     private readonly eventService: EventService,
-  ) {}
+  ) { }
 
   @Get(":id")
   getTeamById(@Param("id", new ParseUUIDPipe()) id: string) {
@@ -121,6 +121,11 @@ export class TeamController {
         })),
       };
     });
+  }
+
+  @Get(":id/event-started")
+  async hasEventStarted(@Param("id", new ParseUUIDPipe()) teamId: string) {
+    return this.eventService.hasEventStartedForTeam(teamId);
   }
 
   @UseGuards(JwtAuthGuard, MyTeamGuards, TeamNotLockedGuard)

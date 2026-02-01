@@ -7,6 +7,8 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { UserEntity, UserEventPermissionEntity } from "./entities/user.entity";
 import { SocialAccountEntity } from "./entities/social-account.entity";
 
+import { UserEventsController } from "./user.events.controller";
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -15,8 +17,8 @@ import { SocialAccountEntity } from "./entities/social-account.entity";
       SocialAccountEntity,
     ]),
   ],
-  controllers: [UserController, SocialAccountController],
+  controllers: [UserController, SocialAccountController, UserEventsController],
   providers: [UserService, SocialAccountService],
   exports: [UserService, SocialAccountService],
 })
-export class UserModule {}
+export class UserModule { }

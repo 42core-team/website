@@ -58,6 +58,12 @@ export class EventController {
     return await this.eventService.getEventServerConfig(id);
   }
 
+  @Get(":id/github-org")
+  async getEventGithubOrg(@Param("id", new ParseUUIDPipe()) id: string) {
+    const event = await this.eventService.getEventById(id);
+    return event.githubOrg;
+  }
+
   @Get("event/currentLiveEvent")
   async getCurrentLiveEvent() {
     return await this.eventService.getCurrentLiveEvent();

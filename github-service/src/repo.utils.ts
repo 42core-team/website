@@ -22,6 +22,7 @@ export class RepoUtils {
     basePath: string,
     gameConfig: string,
     serverConfig: string,
+    apiBaseUrl: string,
   ): Promise<SimpleGit> {
     this.logger.log(
       `Cloning mono repo ${monoRepoUrl} to temp folder ${tempFolderPath}`,
@@ -58,6 +59,11 @@ export class RepoUtils {
         path.join(tempFolderPath, basePath),
         serverConfig,
       ),
+      this.updateConfigsUrls(
+        path.join(tempFolderPath, basePath),
+        eventId,
+        apiBaseUrl,
+      )
     ]);
     return gitRepo;
   }
@@ -269,6 +275,55 @@ export class RepoUtils {
     } catch (error) {
       this.logger.error(
         `Failed to update README.md with team repo URL`,
+        error as Error,
+      );
+    }
+  }
+
+  private async updateConfigsUrls(
+    repoRoot: string,
+    eventId: string,
+    apiBaseUrl: string,
+  ): Promise<void> {
+    try {
+      const scriptPath = path.join(
+        repoRoot,
+        "scripts",
+        "check_update_configs.sh",
+      );
+      const exists = await fs
+        .stat(scriptPath)
+        .then(() => true)
+        .catch(() => false);
+      if (!exists) {
+        this.logger.log(
+          `No scripts/check_update_configs.sh found at ${scriptPath}, skipping config urls update`,
+        );
+        return;
+      }
+
+      const eventUrl: string = `${apiBaseUrl}/event/${eventId}`;
+
+      const originalContent = await fs.readFile(scriptPath, "utf-8");
+
+      let updatedContent = originalContent.replaceAll(
+        "[[event_url]]",
+        eventUrl,
+      );
+
+      if (updatedContent !== originalContent) {
+        await fs.writeFile(scriptPath, updatedContent);
+        this.logger.log(
+          `Replaced '[[event_url]]' with '${eventUrl}' in ${scriptPath}`,
+        );
+      } else {
+        this.logger.log(
+          `No occurrence of '[[event_url]]' found in ${scriptPath}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to update config urls`,
         error as Error,
       );
     }

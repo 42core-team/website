@@ -38,6 +38,12 @@ export async function getEventById(
   return await handleError(axiosInstance.get(`event/${eventId}`));
 }
 
+export async function getEventGithubOrg(
+  eventId: string,
+): Promise<ServerActionResponse<string>> {
+  return await handleError(axiosInstance.get(`event/${eventId}/github-org`));
+}
+
 export async function getCurrentLiveEvent(): Promise<
   ServerActionResponse<Event | undefined>
 > {

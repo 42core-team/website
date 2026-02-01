@@ -10,6 +10,7 @@ export class AppController {
   @EventPattern("remove_write_permissions")
   async handleRemoveWritePermissions(data: {
     username: string;
+    githubId: string;
     repoOwner: string;
     repoName: string;
     encryptedSecret: string;
@@ -24,6 +25,7 @@ export class AppController {
     );
     return await this.appService.removeWritePermissionsForUser(
       data.username,
+      data.githubId,
       data.repoOwner,
       data.repoName,
       data.encryptedSecret,
@@ -33,6 +35,7 @@ export class AppController {
   @EventPattern("add_write_permissions")
   async handleAddWritePermissions(data: {
     username: string;
+    githubId: string;
     repoOwner: string;
     repoName: string;
     encryptedSecret: string;
@@ -47,6 +50,7 @@ export class AppController {
     );
     return await this.appService.addWritePermissionsForUser(
       data.username,
+      data.githubId,
       data.repoOwner,
       data.repoName,
       data.encryptedSecret,
@@ -57,6 +61,7 @@ export class AppController {
   async handleAddUserToRepository(data: {
     repositoryName: string;
     username: string;
+    githubId: string;
     githubOrg: string;
     encryptedSecret: string;
     githubAccessToken: string;
@@ -72,6 +77,7 @@ export class AppController {
     return await this.appService.addUserToRepository(
       data.repositoryName,
       data.username,
+      data.githubId,
       data.githubOrg,
       data.encryptedSecret,
       data.githubAccessToken,
@@ -82,6 +88,7 @@ export class AppController {
   async handleRemoveUserFromRepository(data: {
     repositoryName: string;
     username: string;
+    githubId: string;
     githubOrg: string;
     encryptedSecret: string;
   }) {
@@ -96,6 +103,7 @@ export class AppController {
     return await this.appService.removeUserFromRepository(
       data.repositoryName,
       data.username,
+      data.githubId,
       data.githubOrg,
       data.encryptedSecret,
     );
@@ -127,6 +135,7 @@ export class AppController {
     teamName: string;
     githubUsers: {
       username: string;
+      githubId: string;
       githubAccessToken: string;
     }[];
     githubOrg: string;
@@ -140,6 +149,7 @@ export class AppController {
     basePath: string;
     gameConfig: string;
     serverConfig: string;
+    apiBaseUrl: string;
   }) {
     const safeData = {
       name: data.name,
@@ -154,6 +164,7 @@ export class AppController {
       basePath: data.basePath,
       gameConfig: data.gameConfig.slice(0, 50),
       serverConfig: data.serverConfig.slice(0, 50),
+      apiBaseUrl: data.apiBaseUrl,
     };
     this.logger.log(
       `create_team_repository event received ${JSON.stringify(safeData)}`,
@@ -173,6 +184,7 @@ export class AppController {
       data.basePath,
       data.gameConfig,
       data.serverConfig,
+      data.apiBaseUrl,
     );
   }
 }
