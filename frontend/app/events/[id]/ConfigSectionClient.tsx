@@ -101,7 +101,7 @@ function ConfigDialog({ title, icon, configHtml, rawConfig, label, showVisualize
                             <TabsContent value="visualizer" className="flex-1 overflow-auto px-6 pb-6">
                                 <GameConfigVisualization gameConfigRaw={rawConfig} />
                             </TabsContent>
-                            <TabsContent value="raw" className="flex-1 overflow-auto px-6 pb-6 pt-4">
+                            <TabsContent value="raw" className="flex-1 overflow-auto px-6 pb-6 pt-1">
                                 <div
                                     className="[&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:!m-0 prose dark:prose-invert max-w-none"
                                     dangerouslySetInnerHTML={{ __html: configHtml }}
@@ -140,7 +140,7 @@ export default function ConfigSectionClient({
                     Configuration
                 </h3>
             </div>
-            
+
             <div className="mt-2 flex flex-col gap-2">
                 <ConfigDialog
                     title="Game Configuration"

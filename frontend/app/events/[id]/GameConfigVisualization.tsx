@@ -181,7 +181,7 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
             },
         ],
     };
-    
+
     const maxCooldownData = {
         labels: unitNames,
         datasets: [
@@ -196,16 +196,16 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
     };
 
     const balanceData = {
-      labels: unitNames,
-      datasets: [
-        {
-          label: "Gems per cooldown increase",
-          data: config.units.map((u) => u.balancePerCooldownStep),
-          backgroundColor: CHART_COLORS.map((c) => c.bg),
-          borderColor: CHART_COLORS.map((c) => c.border),
-          borderWidth: 1,
-        },
-      ],
+        labels: unitNames,
+        datasets: [
+            {
+                label: "Gems per cooldown increase",
+                data: config.units.map((u) => u.balancePerCooldownStep),
+                backgroundColor: CHART_COLORS.map((c) => c.bg),
+                borderColor: CHART_COLORS.map((c) => c.border),
+                borderWidth: 1,
+            },
+        ],
     };
 
     const radarData = {
@@ -228,12 +228,12 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
     const commonBarOptions = {
         maintainAspectRatio: false,
         scales: {
-            y: { 
-                grid: { color: gridColor }, 
-                ticks: { color: textColor, font: { size: 12 } } 
+            y: {
+                grid: { color: gridColor },
+                ticks: { color: textColor, font: { size: 12 } }
             },
-            x: { 
-                ticks: { color: textColor, font: { size: 12 } } 
+            x: {
+                ticks: { color: textColor, font: { size: 12 } }
             }
         },
         plugins: {
@@ -251,17 +251,17 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
     };
 
     return (
-        <div className="flex flex-col gap-6 mt-6">
+        <div className="flex flex-col gap-6 mt-1">
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <Card className="bg-background/50 border-border">
                     <CardHeader className="p-6">
                         <CardTitle className="text-lg font-semibold">Map Layout ({config.gridSize}x{config.gridSize})</CardTitle>
                     </CardHeader>
                     <CardContent className="p-6 flex flex-col items-center justify-center min-h-[400px] gap-6">
-                        <div 
+                        <div
                             className="relative border border-border bg-muted/20"
-                            style={{ 
-                                width: "350px", 
+                            style={{
+                                width: "350px",
                                 height: "350px",
                                 display: "grid",
                                 gridTemplateColumns: `repeat(${config.gridSize}, 1fr)`,
@@ -281,11 +281,11 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
                                     title={`Core ${i + 1}: (${pos.x}, ${pos.y})`}
                                 />
                             ))}
-                            <div className="absolute inset-0 pointer-events-none opacity-20" 
-                                 style={{ 
-                                     backgroundImage: `linear-gradient(to right, ${isDark ? "white" : "black"} 1px, transparent 1px), linear-gradient(to bottom, ${isDark ? "white" : "black"} 1px, transparent 1px)`,
-                                     backgroundSize: `${350/config.gridSize}px ${350/config.gridSize}px`
-                                 }} 
+                            <div className="absolute inset-0 pointer-events-none opacity-20"
+                                style={{
+                                    backgroundImage: `linear-gradient(to right, ${isDark ? "white" : "black"} 1px, transparent 1px), linear-gradient(to bottom, ${isDark ? "white" : "black"} 1px, transparent 1px)`,
+                                    backgroundSize: `${350 / config.gridSize}px ${350 / config.gridSize}px`
+                                }}
                             />
                         </div>
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -300,9 +300,9 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
                         <CardTitle className="text-lg font-semibold">Unit Damage Comparison</CardTitle>
                     </CardHeader>
                     <CardContent className="p-6 h-[400px]">
-                        <Radar 
-                            data={radarData} 
-                            options={{ 
+                        <Radar
+                            data={radarData}
+                            options={{
                                 maintainAspectRatio: false,
                                 scales: {
                                     r: {
@@ -324,7 +324,7 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
                                         padding: 10,
                                     }
                                 }
-                            }} 
+                            }}
                         />
                     </CardContent>
                 </Card>
