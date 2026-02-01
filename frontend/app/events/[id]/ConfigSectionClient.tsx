@@ -20,9 +20,10 @@ interface ConfigDialogProps {
     configHtml: string;
     rawConfig: string;
     label: string;
+    showVisualizer?: boolean;
 }
 
-function ConfigDialog({ title, icon, configHtml, rawConfig, label }: ConfigDialogProps) {
+function ConfigDialog({ title, icon, configHtml, rawConfig, label, showVisualizer }: ConfigDialogProps) {
     const [copied, setCopied] = useState(false);
 
     const formatJson = (jsonString: string) => {
@@ -82,10 +83,38 @@ function ConfigDialog({ title, icon, configHtml, rawConfig, label }: ConfigDialo
                         </DialogClose>
                     </div>
                 </div>
-                <div
-                    className="overflow-auto flex-1 px-6 pb-6 pt-4 [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:!m-0 prose dark:prose-invert max-w-none"
-                    dangerouslySetInnerHTML={{ __html: configHtml }}
-                />
+                <div className="flex-1 overflow-hidden flex flex-col">
+                    {showVisualizer ? (
+                        <Tabs defaultValue="visualizer" className="flex-1 flex flex-col overflow-hidden">
+                            <div className="px-6 py-2 border-b border-white/5">
+                                <TabsList className="bg-white/5 border border-white/10">
+                                    <TabsTrigger value="visualizer" className="gap-2 text-white">
+                                        <ChartLine className="size-4" />
+                                        Visualizer
+                                    </TabsTrigger>
+                                    <TabsTrigger value="raw" className="gap-2 text-white">
+                                        <Code2 className="size-4" />
+                                        Raw Config
+                                    </TabsTrigger>
+                                </TabsList>
+                            </div>
+                            <TabsContent value="visualizer" className="flex-1 overflow-auto px-6 pb-6">
+                                <GameConfigVisualization gameConfigRaw={rawConfig} />
+                            </TabsContent>
+                            <TabsContent value="raw" className="flex-1 overflow-auto px-6 pb-6 pt-4">
+                                <div
+                                    className="[&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:!m-0 prose dark:prose-invert max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: configHtml }}
+                                />
+                            </TabsContent>
+                        </Tabs>
+                    ) : (
+                        <div
+                            className="overflow-auto flex-1 px-6 pb-6 pt-4 [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:!m-0 prose dark:prose-invert max-w-none"
+                            dangerouslySetInnerHTML={{ __html: configHtml }}
+                        />
+                    )}
+                </div>
             </DialogContent>
         </Dialog>
     );
@@ -112,41 +141,23 @@ export default function ConfigSectionClient({
                 </h3>
             </div>
             
-            <Tabs defaultValue="visualizer" className="mt-2 w-full">
-                <TabsList className="bg-white/5 border border-white/10">
-                    <TabsTrigger value="visualizer" className="gap-2">
-                        <ChartLine className="size-4" />
-                        Visualizer
-                    </TabsTrigger>
-                    <TabsTrigger value="raw" className="gap-2">
-                        <Code2 className="size-4" />
-                        Raw Config
-                    </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="visualizer" className="w-full">
-                    <GameConfigVisualization gameConfigRaw={gameConfig} />
-                </TabsContent>
-                
-                <TabsContent value="raw">
-                    <div className="mt-2 flex flex-col gap-2">
-                        <ConfigDialog
-                            title="Game Configuration"
-                            label="Game Config"
-                            icon={<Code2 className="size-4" />}
-                            configHtml={gameConfigHtml}
-                            rawConfig={gameConfig}
-                        />
-                        <ConfigDialog
-                            title="Server Configuration"
-                            label="Server Config"
-                            icon={<Server className="size-4" />}
-                            configHtml={serverConfigHtml}
-                            rawConfig={serverConfig}
-                        />
-                    </div>
-                </TabsContent>
-            </Tabs>
+            <div className="mt-2 flex flex-col gap-2">
+                <ConfigDialog
+                    title="Game Configuration"
+                    label="Game Config"
+                    icon={<Code2 className="size-4" />}
+                    configHtml={gameConfigHtml}
+                    rawConfig={gameConfig}
+                    showVisualizer={true}
+                />
+                <ConfigDialog
+                    title="Server Configuration"
+                    label="Server Config"
+                    icon={<Server className="size-4" />}
+                    configHtml={serverConfigHtml}
+                    rawConfig={serverConfig}
+                />
+            </div>
         </div>
     );
 }

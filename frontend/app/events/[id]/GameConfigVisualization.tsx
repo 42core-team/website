@@ -330,7 +330,7 @@ export default function GameConfigVisualization({ gameConfigRaw }: { gameConfigR
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
                 <Card className="bg-background/50 border-white/10">
                     <CardHeader className="p-6">
                         <CardTitle className="text-lg font-semibold">Unit Cost</CardTitle>
