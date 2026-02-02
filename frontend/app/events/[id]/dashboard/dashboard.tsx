@@ -405,56 +405,58 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="rounded-lg border p-4 bg-muted/50">
-                  <h3 className="text-sm font-medium mb-2 opacity-70">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="rounded-lg border p-4 bg-muted/30">
+                  <h3 className="text-xs font-medium mb-1 opacity-70 uppercase">
                     Participants
                   </h3>
-                  <p className="text-3xl font-bold">{participantsCount}</p>
+                  <p className="text-2xl font-bold">{participantsCount}</p>
                 </div>
-                <div className="rounded-lg border p-4 bg-muted/50">
-                  <h3 className="text-sm font-medium mb-2 opacity-70">Teams</h3>
-                  <p className="text-3xl font-bold">{teamsCount}</p>
+                <div className="rounded-lg border p-4 bg-muted/30">
+                  <h3 className="text-xs font-medium mb-1 opacity-70 uppercase">
+                    Teams
+                  </h3>
+                  <p className="text-2xl font-bold">{teamsCount}</p>
                 </div>
-                <div className="rounded-lg border p-4 bg-muted/50">
-                  <h3 className="text-sm font-medium mb-2 opacity-70">
+                <div className="rounded-lg border p-4 bg-muted/30">
+                  <h3 className="text-xs font-medium mb-1 opacity-70 uppercase">
                     Current Round
                   </h3>
-                  <p className="text-3xl font-bold">{event.currentRound}</p>
+                  <p className="text-2xl font-bold">{event.currentRound}</p>
+                </div>
+                <div className="rounded-lg border p-4 bg-muted/30">
+                  <h3 className="text-xs font-medium mb-1 opacity-70 uppercase">
+                    Privacy
+                  </h3>
+                  <p className="text-2xl font-bold">
+                    {event.isPrivate ? "Private" : "Public"}
+                  </p>
                 </div>
               </div>
 
-              <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 rounded-lg border">
-                  <Label className="text-sm font-medium opacity-70">
+                  <Label className="text-xs font-medium opacity-60 uppercase">
                     Start Date
                   </Label>
-                  <p className="text-lg font-semibold">
+                  <p className="text-base font-semibold mt-1">
                     {format(new Date(event.startDate), "PPP p")}
                   </p>
                 </div>
                 <div className="p-4 rounded-lg border">
-                  <Label className="text-sm font-medium opacity-70">
+                  <Label className="text-xs font-medium opacity-60 uppercase">
                     End Date
                   </Label>
-                  <p className="text-lg font-semibold">
+                  <p className="text-base font-semibold mt-1">
                     {format(new Date(event.endDate), "PPP p")}
                   </p>
                 </div>
                 <div className="p-4 rounded-lg border">
-                  <Label className="text-sm font-medium opacity-70">
+                  <Label className="text-xs font-medium opacity-60 uppercase">
                     Location
                   </Label>
-                  <p className="text-lg font-semibold">
+                  <p className="text-base font-semibold mt-1">
                     {event.location || "Online"}
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg border">
-                  <Label className="text-sm font-medium opacity-70">
-                    Privacy
-                  </Label>
-                  <p className="text-lg font-semibold">
-                    {event.isPrivate ? "Private" : "Public"}
                   </p>
                 </div>
               </div>
@@ -467,31 +469,59 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
               <CardDescription>Current technical setup.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-1 lg:col-span-2">
+                  <Label className="text-xs opacity-70 uppercase">
+                    Monorepo URL
+                  </Label>
+                  <p className="font-mono text-sm break-all bg-muted/50 p-2 rounded border">
+                    {event.monorepoUrl || "Not set"}
+                  </p>
+                </div>
                 <div className="space-y-1">
                   <Label className="text-xs opacity-70 uppercase">
                     Monorepo Version
                   </Label>
-                  <p className="font-mono text-sm break-all bg-muted p-2 rounded">
+                  <p className="font-mono text-sm break-all bg-muted/50 p-2 rounded border">
                     {event.monorepoVersion}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs opacity-70 uppercase">
+                  Base Path
+                </Label>
+                <p className="font-mono text-sm break-all bg-muted/50 p-2 rounded border">
+                  {event.basePath}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs opacity-70 uppercase">
+                    Game Server Image
+                  </Label>
+                  <p className="font-mono text-xs break-all bg-muted/50 p-2 rounded border">
+                    {event.gameServerDockerImage}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs opacity-70 uppercase">
-                    Base Path
+                    Bot Image
                   </Label>
-                  <p className="font-mono text-sm break-all bg-muted p-2 rounded">
-                    {event.basePath}
+                  <p className="font-mono text-xs break-all bg-muted/50 p-2 rounded border">
+                    {event.myCoreBotDockerImage}
                   </p>
                 </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs opacity-70 uppercase">
-                  Game Server Image
-                </Label>
-                <p className="font-mono text-sm break-all bg-muted p-2 rounded">
-                  {event.gameServerDockerImage}
-                </p>
+                <div className="space-y-1">
+                  <Label className="text-xs opacity-70 uppercase">
+                    Visualizer Image
+                  </Label>
+                  <p className="font-mono text-xs break-all bg-muted/50 p-2 rounded border">
+                    {event.visualizerDockerImage}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
