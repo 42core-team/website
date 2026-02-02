@@ -326,35 +326,38 @@ export class MatchService {
         botIdMapping[team.id] = team.id;
       });
 
-      this.gameResultsQueue.emit("game_server", {
-        game_id: matchId,
-        team_results: match.teams.map((team) => ({
-          id: team.id,
-          name: team.name,
-          place: Math.random() * 10,
-        })),
-        game_end_reason: 0,
-        version: "1.0.0",
-        BOT_ID_MAPPING: botIdMapping,
-        stats: {
-          actions_executed: Math.floor(Math.random() * 1000),
-          damage_deposits: Math.floor(Math.random() * 1000),
-          gempiles_destroyed: Math.floor(Math.random() * 1000),
-          damage_total: Math.floor(Math.random() * 1000),
-          gems_gained: Math.floor(Math.random() * 1000),
-          damage_walls: Math.floor(Math.random() * 1000),
-          damage_cores: Math.floor(Math.random() * 1000),
-          units_spawned: Math.floor(Math.random() * 1000),
-          tiles_traveled: Math.floor(Math.random() * 1000),
-          damage_self: Math.floor(Math.random() * 1000),
-          damage_units: Math.floor(Math.random() * 1000),
-          walls_destroyed: Math.floor(Math.random() * 1000),
-          gems_transferred: Math.floor(Math.random() * 1000),
-          units_destroyed: Math.floor(Math.random() * 1000),
-          cores_destroyed: Math.floor(Math.random() * 1000),
-          damage_opponent: Math.floor(Math.random() * 1000),
-        },
-      });
+      // Add a small delay in dev mode so the user can test the queue state
+      setTimeout(() => {
+        this.gameResultsQueue.emit("game_server", {
+          game_id: matchId,
+          team_results: match.teams.map((team) => ({
+            id: team.id,
+            name: team.name,
+            place: Math.random() * 10,
+          })),
+          game_end_reason: 0,
+          version: "1.0.0",
+          BOT_ID_MAPPING: botIdMapping,
+          stats: {
+            actions_executed: Math.floor(Math.random() * 1000),
+            damage_deposits: Math.floor(Math.random() * 1000),
+            gempiles_destroyed: Math.floor(Math.random() * 1000),
+            damage_total: Math.floor(Math.random() * 1000),
+            gems_gained: Math.floor(Math.random() * 1000),
+            damage_walls: Math.floor(Math.random() * 1000),
+            damage_cores: Math.floor(Math.random() * 1000),
+            units_spawned: Math.floor(Math.random() * 1000),
+            tiles_traveled: Math.floor(Math.random() * 1000),
+            damage_self: Math.floor(Math.random() * 1000),
+            damage_units: Math.floor(Math.random() * 1000),
+            walls_destroyed: Math.floor(Math.random() * 1000),
+            gems_transferred: Math.floor(Math.random() * 1000),
+            units_destroyed: Math.floor(Math.random() * 1000),
+            cores_destroyed: Math.floor(Math.random() * 1000),
+            damage_opponent: Math.floor(Math.random() * 1000),
+          },
+        });
+      }, 5000);
       return;
     }
 
@@ -821,6 +824,48 @@ export class MatchService {
       order: {
         createdAt: "DESC",
       },
+    });
+  }
+
+  async getMatchesForTeam(teamId: string) {
+    const matchesToQuery = (
+      await this.matchRepository.find({
+        select: {
+          id: true,
+        },
+        where: {
+          teams: {
+            id: teamId,
+          },
+          state: MatchState.FINISHED,
+        },
+        withDeleted: true,
+      })
+    ).map(match => match.id);
+
+    if (matchesToQuery.length === 0)
+      return [];
+
+    const matches = await this.matchRepository.find({
+      where: {
+        id: In(matchesToQuery),
+      },
+      relations: {
+        results: {
+          team: true,
+        },
+        teams: true,
+        winner: true,
+      },
+      order: {
+        createdAt: "DESC",
+      },
+      withDeleted: true,
+    });
+
+    return matches.map((match) => {
+      const { id: _id, ...rest } = match;
+      return rest;
     });
   }
 
