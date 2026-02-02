@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EventEntity } from "./entities/event.entity";
 import {
@@ -9,7 +9,7 @@ import {
   Repository,
   UpdateResult,
 } from "typeorm";
-import { PermissionRole } from "../user/entities/user.entity";
+import { PermissionRole, UserEventPermissionEntity } from "../user/entities/user.entity";
 import * as CryptoJS from "crypto-js";
 import { ConfigService } from "@nestjs/config";
 import { TeamService } from "../team/team.service";
@@ -23,6 +23,8 @@ export class EventService {
   constructor(
     @InjectRepository(EventEntity)
     private readonly eventRepository: Repository<EventEntity>,
+    @InjectRepository(UserEventPermissionEntity)
+    private readonly permissionRepository: Repository<UserEventPermissionEntity>,
     private readonly configService: ConfigService,
     @Inject(forwardRef(() => TeamService))
     private readonly teamService: TeamService,
@@ -346,20 +348,75 @@ export class EventService {
       canCreateTeam?: boolean;
       processQueue?: boolean;
       isPrivate?: boolean;
-      showConfigs?: boolean;
+      name?: string;
+      description?: string;
+      githubOrg?: string;
+      githubOrgSecret?: string;
+      location?: string;
+      startDate?: number;
+      endDate?: number;
+      minTeamSize?: number;
+      maxTeamSize?: number;
+      gameServerDockerImage?: string;
+      myCoreBotDockerImage?: string;
+      visualizerDockerImage?: string;
+      monorepoUrl?: string;
+      monorepoVersion?: string;
+      basePath?: string;
+      gameConfig?: string;
+      serverConfig?: string;
     },
   ): Promise<UpdateResult> {
     await this.getEventById(eventId);
 
     const update: Partial<EventEntity> = {};
-    if (typeof settings.canCreateTeam === "boolean") {
-      update.canCreateTeam = settings.canCreateTeam;
+
+    const booleanFields = ["canCreateTeam", "processQueue", "isPrivate"] as const;
+    for (const field of booleanFields) {
+      if (typeof settings[field] === "boolean") {
+        update[field] = settings[field];
+      }
     }
-    if (typeof settings.processQueue === "boolean") {
-      update.processQueue = settings.processQueue;
+
+    const stringFields = [
+      "name",
+      "description",
+      "githubOrg",
+      "location",
+      "gameServerDockerImage",
+      "myCoreBotDockerImage",
+      "visualizerDockerImage",
+      "monorepoUrl",
+      "monorepoVersion",
+      "basePath",
+      "gameConfig",
+      "serverConfig",
+    ] as const;
+    for (const field of stringFields) {
+      if (typeof settings[field] === "string") {
+        update[field] = settings[field];
+      }
     }
-    if (typeof settings.isPrivate === "boolean") {
-      update.isPrivate = settings.isPrivate;
+
+    if (settings.githubOrgSecret) {
+      update.githubOrgSecret = CryptoJS.AES.encrypt(
+        settings.githubOrgSecret,
+        this.configService.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
+      ).toString();
+    }
+
+    const numberFields = ["minTeamSize", "maxTeamSize"] as const;
+    for (const field of numberFields) {
+      if (typeof settings[field] === "number") {
+        update[field] = settings[field];
+      }
+    }
+
+    if (settings.startDate) {
+      update.startDate = new Date(settings.startDate);
+    }
+    if (settings.endDate) {
+      update.endDate = new Date(settings.endDate);
     }
 
     if (Object.keys(update).length === 0) {
@@ -371,6 +428,69 @@ export class EventService {
     }
 
     return this.eventRepository.update(eventId, update);
+  }
+
+  async getEventAdmins(eventId: string) {
+    const permissions = await this.permissionRepository.find({
+      where: {
+        event: { id: eventId },
+        role: PermissionRole.ADMIN,
+      },
+      relations: {
+        user: true,
+      },
+    });
+    return permissions.map((p) => p.user);
+  }
+
+  async addEventAdmin(eventId: string, userId: string) {
+    const existing = await this.permissionRepository.findOne({
+      where: {
+        event: { id: eventId },
+        user: { id: userId },
+      },
+    });
+
+    if (existing) {
+      if (existing.role === PermissionRole.ADMIN) return;
+      existing.role = PermissionRole.ADMIN;
+      await this.permissionRepository.save(existing);
+      return;
+    }
+
+    await this.permissionRepository.save({
+      event: { id: eventId },
+      user: { id: userId },
+      role: PermissionRole.ADMIN,
+    });
+  }
+
+  async removeEventAdmin(eventId: string, userId: string) {
+    const permission = await this.permissionRepository.findOne({
+      where: {
+        event: { id: eventId },
+        user: { id: userId },
+        role: PermissionRole.ADMIN,
+      },
+    });
+
+    if (!permission) {
+      throw new NotFoundException("Admin permission not found");
+    }
+
+    // Check if this is the last admin
+    const adminCount = await this.permissionRepository.count({
+      where: {
+        event: { id: eventId },
+        role: PermissionRole.ADMIN,
+      },
+    });
+
+    if (adminCount <= 1) {
+      throw new BadRequestException("Cannot remove the last admin of an event");
+    }
+
+    await this.permissionRepository.remove(permission);
   }
 
   async getCurrentLiveEvent() {
