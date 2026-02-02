@@ -15,8 +15,7 @@ export default function RepoLockCountdown(props: { repoLockDate: string }) {
 
       if (timeDiff <= 0) {
         setCountdown("Repo lock has passed");
-        if (interval)
-          clearInterval(interval);
+        if (interval) clearInterval(interval);
         return;
       }
 
@@ -34,15 +33,16 @@ export default function RepoLockCountdown(props: { repoLockDate: string }) {
     calculateTimeLeft();
 
     return () => {
-      if (interval)
-        clearInterval(interval);
+      if (interval) clearInterval(interval);
     };
   }, [props.repoLockDate]);
 
   return (
     <div>
-      <h3 className="text-sm font-medium text-gray-500">Repo Lock Countdown</h3>
-      <p className="mt-1 text-sm text text-red-400">{countdown}</p>
+      <h3 className="text-sm font-medium text-muted-foreground">
+        Repo Lock Countdown
+      </h3>
+      <p className="mt-1 text-sm text-red-400">{countdown}</p>
     </div>
   );
 }

@@ -93,8 +93,7 @@ export default async function EventPage({
             <div
               className="prose dark:prose-invert max-w-none mt-1"
               dangerouslySetInnerHTML={{ __html: renderedDescription }}
-            >
-            </div>
+            ></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -116,12 +115,7 @@ export default async function EventPage({
                 Team Size
               </h3>
               <p className="mt-1">
-                {event.minTeamSize}
-                {" "}
-                -
-                {event.maxTeamSize}
-                {" "}
-                members
+                {event.minTeamSize} - {event.maxTeamSize} members
               </p>
             </div>
             {event.repoLockDate && (
