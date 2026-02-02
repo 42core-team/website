@@ -5,10 +5,13 @@ import { useSession } from "next-auth/react";
 import React, { useEffect, useState } from "react";
 import { isActionError } from "@/app/actions/errors";
 import {
+  addEventAdmin,
+  getEventAdmins,
   getEventById,
   getParticipantsCountForEvent,
   getTeamsCountForEvent,
   isEventAdmin,
+  removeEventAdmin,
   setEventTeamsLockDate,
   updateEventSettings,
 } from "@/app/actions/event";
@@ -34,11 +37,15 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2, Maximize2, Minimize2, Save, Search, Trash2, UserPlus, Wand2 } from "lucide-react";
+import { searchUsers, type UserSearchResult } from "@/app/actions/user";
 import { Calendar } from "@/components/ui/calendar";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface DashboardPageProps {
   eventId: string;
@@ -49,6 +56,14 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   const queryClient = useQueryClient();
 
   const [teamAutoLockTime, setTeamAutoLockTime] = useState<string>("");
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isGameConfigExpanded, setIsGameConfigExpanded] = useState(false);
+  const [isServerConfigExpanded, setIsServerConfigExpanded] = useState(false);
+
+  // Local state for event settings
+  const [pendingSettings, setPendingSettings] = useState<Partial<Event>>({});
 
   const { data: event, isLoading: isEventLoading } = useQuery<Event>({
     queryKey: ["event", eventId],
@@ -60,6 +75,12 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
       return eventData;
     },
   });
+
+  useEffect(() => {
+    if (event) {
+      setPendingSettings(event);
+    }
+  }, [event]);
 
   const { data: teamsCount = 0, isLoading: isTeamsLoading } = useQuery<number>({
     queryKey: ["event", eventId, "teams-count"],
@@ -84,6 +105,16 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
       },
       enabled: session.status !== "loading",
     });
+
+  const { data: admins = [], isLoading: isAdminsLoading } = useQuery({
+    queryKey: ["event", eventId, "admins"],
+    queryFn: async () => {
+      const result = await getEventAdmins(eventId);
+      if (isActionError(result)) throw new Error(result.error);
+      return result;
+    },
+    enabled: isAdmin,
+  });
 
   const lockEventMutation = useMutation({
     mutationFn: async () => await lockEvent(eventId),
@@ -147,11 +178,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   });
 
   const updateEventSettingsMutation = useMutation({
-    mutationFn: async (settings: {
-      canCreateTeam?: boolean;
-      processQueue?: boolean;
-      isPrivate?: boolean;
-    }) => {
+    mutationFn: async (settings: any) => {
       const result = await updateEventSettings(eventId, settings);
       if (isActionError(result)) {
         throw new Error(result.error);
@@ -162,9 +189,35 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
       toast.success("Event settings updated.");
       await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
     },
-    onError: () => {
-      toast.error("Failed to update event settings.");
+    onError: (e: any) => {
+      toast.error(e.message || "Failed to update event settings.");
     },
+  });
+
+  const addAdminMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const result = await addEventAdmin(eventId, userId);
+      if (isActionError(result)) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: () => {
+      toast.success("Admin added.");
+      queryClient.invalidateQueries({ queryKey: ["event", eventId, "admins"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const removeAdminMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const result = await removeEventAdmin(eventId, userId);
+      if (isActionError(result)) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: () => {
+      toast.success("Admin removed.");
+      queryClient.invalidateQueries({ queryKey: ["event", eventId, "admins"] });
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   useEffect(() => {
@@ -174,6 +227,113 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     }
     setTeamAutoLockTime("");
   }, [event?.repoLockDate]);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (userSearchQuery.length > 2) {
+        setIsSearching(true);
+        const result = await searchUsers(userSearchQuery);
+        if (!isActionError(result)) {
+          setSearchResults(result);
+        }
+        setIsSearching(false);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [userSearchQuery]);
+
+  const formatConfig = (field: "gameConfig" | "serverConfig") => {
+    try {
+      const current = pendingSettings[field];
+      if (!current) return;
+      const parsed = JSON.parse(current);
+      const formatted = JSON.stringify(parsed, null, 2);
+      setPendingSettings({
+        ...pendingSettings,
+        [field]: formatted,
+      });
+      toast.success(`${field} formatted`);
+    } catch (e) {
+      toast.error(`Invalid JSON in ${field}`);
+    }
+  };
+
+  const handleSaveSettings = () => {
+    const updates: any = {};
+
+    // Auto-format JSON fields before saving
+    let gameConfig = pendingSettings.gameConfig;
+    let serverConfig = pendingSettings.serverConfig;
+
+    if (gameConfig) {
+      try {
+        gameConfig = JSON.stringify(JSON.parse(gameConfig), null, 2);
+      } catch (e) {
+        toast.warning(
+          "Invalid JSON in Game Config. Proceeding without formatting."
+        );
+      }
+    }
+
+    if (serverConfig) {
+      try {
+        serverConfig = JSON.stringify(JSON.parse(serverConfig), null, 2);
+      } catch (e) {
+        toast.warning(
+          "Invalid JSON in Server Config. Proceeding without formatting."
+        );
+      }
+    }
+
+    const finalSettings = {
+      ...pendingSettings,
+      gameConfig,
+      serverConfig,
+    };
+
+    const fields = [
+      "name",
+      "description",
+      "location",
+      "canCreateTeam",
+      "processQueue",
+      "isPrivate",
+      "minTeamSize",
+      "maxTeamSize",
+      "gameServerDockerImage",
+      "myCoreBotDockerImage",
+      "visualizerDockerImage",
+      "monorepoUrl",
+      "monorepoVersion",
+      "basePath",
+      "gameConfig",
+      "serverConfig",
+      "githubOrg",
+      "startDate",
+      "endDate",
+    ];
+
+    fields.forEach((field) => {
+      if ((finalSettings as any)[field] !== (event as any)[field]) {
+        updates[field] = (finalSettings as any)[field];
+      }
+    });
+
+    if (updates.startDate)
+      updates.startDate = new Date(updates.startDate).getTime();
+    if (updates.endDate) updates.endDate = new Date(updates.endDate).getTime();
+
+    if (Object.keys(updates).length > 0) {
+      updateEventSettingsMutation.mutate(updates);
+      // Update local state to show formatted text
+      setPendingSettings(finalSettings);
+    } else {
+      toast.info("No changes to save.");
+    }
+  };
 
   const isLoading =
     isEventLoading || isTeamsLoading || isParticipantsLoading || isAdminLoading;
@@ -186,148 +346,142 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     );
   }
 
+  if (!isAdmin) {
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        You are not authorized to access this dashboard.
+      </div>
+    );
+  }
+
+  const hasChanges = Object.keys(pendingSettings).some(
+    (key) => (pendingSettings as any)[key] !== (event as any)[key],
+  );
+
   return (
     <div className="container mx-auto flex flex-col gap-6 min-h-lvh py-6">
-      <h1 className="text-3xl font-bold">Event Dashboard</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Event Dashboard: {event.name}</h1>
+        {hasChanges && (
+          <Button
+            onClick={handleSaveSettings}
+            className="fixed bottom-8 right-8 shadow-xl z-50 animate-in fade-in slide-in-from-bottom-4"
+            disabled={updateEventSettingsMutation.isPending}
+          >
+            {updateEventSettingsMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Save Changes
+          </Button>
+        )}
+      </div>
 
-      {/* Admin Actions */}
-      {isAdmin && (
-        <>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="operation">Operation</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="admins">Admins</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Event Overview</CardTitle>
-              <CardDescription>
-                Key live metrics for this event.
-              </CardDescription>
+              <CardDescription>Key live metrics for this event.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">Participants</h3>
-                  <p className="text-2xl font-bold">{participantsCount}</p>
+                <div className="rounded-lg border p-4 bg-muted/50">
+                  <h3 className="text-sm font-medium mb-2 opacity-70">Participants</h3>
+                  <p className="text-3xl font-bold">{participantsCount}</p>
                 </div>
-                <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">Teams</h3>
-                  <p className="text-2xl font-bold">{teamsCount}</p>
+                <div className="rounded-lg border p-4 bg-muted/50">
+                  <h3 className="text-sm font-medium mb-2 opacity-70">Teams</h3>
+                  <p className="text-3xl font-bold">{teamsCount}</p>
                 </div>
-                <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">Current Round</h3>
-                  <p className="text-2xl font-bold">{event.currentRound}</p>
+                <div className="rounded-lg border p-4 bg-muted/50">
+                  <h3 className="text-sm font-medium mb-2 opacity-70">Current Round</h3>
+                  <p className="text-3xl font-bold">{event.currentRound}</p>
+                </div>
+              </div>
+
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-lg border">
+                  <Label className="text-sm font-medium opacity-70">Start Date</Label>
+                  <p className="text-lg font-semibold">{format(new Date(event.startDate), "PPP p")}</p>
+                </div>
+                <div className="p-4 rounded-lg border">
+                  <Label className="text-sm font-medium opacity-70">End Date</Label>
+                  <p className="text-lg font-semibold">{format(new Date(event.endDate), "PPP p")}</p>
+                </div>
+                <div className="p-4 rounded-lg border">
+                  <Label className="text-sm font-medium opacity-70">Location</Label>
+                  <p className="text-lg font-semibold">{event.location || "Online"}</p>
+                </div>
+                <div className="p-4 rounded-lg border">
+                  <Label className="text-sm font-medium opacity-70">Privacy</Label>
+                  <p className="text-lg font-semibold">{event.isPrivate ? "Private" : "Public"}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader>
-              <CardTitle>Docker Configuration</CardTitle>
-              <CardDescription>
-                Images & repository info configured for this event.
-              </CardDescription>
+              <CardTitle>Configuration Snapshot</CardTitle>
+              <CardDescription>Current technical setup.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {event.monorepoUrl && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                  <div className="rounded-lg border p-4">
-                    <h3 className="text-sm font-medium mb-2">Monorepo URL</h3>
-                    <a
-                      href={event.monorepoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary underline break-all"
-                    >
-                      {event.monorepoUrl}
-                    </a>
-                  </div>
-                  <div className="rounded-lg border p-4">
-                    <h3 className="text-sm font-medium mb-2">
-                      Monorepo Version
-                    </h3>
-                    <p className="font-mono break-all">
-                      {event.monorepoVersion}
-                    </p>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs opacity-70 uppercase">Monorepo Version</Label>
+                  <p className="font-mono text-sm break-all bg-muted p-2 rounded">{event.monorepoVersion}</p>
                 </div>
-              )}
-
-              {event.gameServerDockerImage && (
-                <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">
-                    Game Server Docker Image
-                  </h3>
-                  <p className="font-mono break-all">
-                    {event.gameServerDockerImage}
-                  </p>
+                <div className="space-y-1">
+                  <Label className="text-xs opacity-70 uppercase">Base Path</Label>
+                  <p className="font-mono text-sm break-all bg-muted p-2 rounded">{event.basePath}</p>
                 </div>
-              )}
-
-              {event.myCoreBotDockerImage && (
-                <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">
-                    My Core Bot Docker Image
-                  </h3>
-                  <p className="font-mono break-all">
-                    {event.myCoreBotDockerImage}
-                  </p>
-                </div>
-              )}
-
-              {event.visualizerDockerImage && (
-                <div className="rounded-lg border p-4">
-                  <h3 className="text-sm font-medium mb-2">
-                    Visualizer Docker Image
-                  </h3>
-                  <p className="font-mono break-all">
-                    {event.visualizerDockerImage}
-                  </p>
-                </div>
-              )}
-
-              {!event.monorepoUrl &&
-                !event.gameServerDockerImage &&
-                !event.myCoreBotDockerImage && (
-                  <p className="text-muted-foreground italic">
-                    No Docker configuration set for this event.
-                  </p>
-                )}
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs opacity-70 uppercase">Game Server Image</Label>
+                <p className="font-mono text-sm break-all bg-muted p-2 rounded">{event.gameServerDockerImage}</p>
+              </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="operation" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Admin Actions</CardTitle>
-              <CardDescription>
-                Operational controls for advancing the event.
-              </CardDescription>
+              <CardTitle>Operation Controls</CardTitle>
+              <CardDescription>Immediate actions for running the event.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-3">
+            <CardContent className="space-y-6">
+              <div className="flex flex-wrap gap-4">
                 <Button
                   disabled={event.lockedAt != null || lockEventMutation.isPending}
                   onClick={() => lockEventMutation.mutate()}
-                  variant="secondary"
+                  variant="default"
                 >
                   Lock Team Repositories
                 </Button>
                 <Button
-                  disabled={
-                    event.lockedAt == null || unlockEventMutation.isPending
-                  }
+                  disabled={event.lockedAt == null || unlockEventMutation.isPending}
                   onClick={() => unlockEventMutation.mutate()}
-                  variant="secondary"
+                  variant="outline"
                 >
                   Unlock Team Repositories
                 </Button>
-
                 <Button
-                  disabled={
-                    event.currentRound !== 0 ||
-                    startSwissMatchesMutation.isPending
-                  }
+                  disabled={event.currentRound !== 0 || startSwissMatchesMutation.isPending}
                   onClick={() => startSwissMatchesMutation.mutate()}
                   variant="secondary"
                 >
                   Start Group Phase
                 </Button>
-
                 <Button
                   disabled={startTournamentMatchesMutation.isPending}
                   onClick={() => startTournamentMatchesMutation.mutate()}
@@ -337,150 +491,536 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 </Button>
               </div>
 
-              <h3 className="mt-4 text-sm font-medium">Team auto lock</h3>
-
-              <div className="mt-2 flex gap-3">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !teamAutoLockTime && "text-muted-foreground",
-                      )}
-                    >
-                      {teamAutoLockTime ? (
-                        format(teamAutoLockTime, "PPP p")
-                      ) : (
-                        <span>Pick a date and time</span>
-                      )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={new Date(teamAutoLockTime)}
-                      onSelect={(value) => {
-                        if (!value) return;
-
-                        setTeamAutoLockTime(value.toISOString());
-                      }}
-                      disabled={(date) =>
-                        date < new Date(new Date().setHours(0, 0, 0, 0))
-                      }
-                      autoFocus={true}
-                    />
-                    <div className="p-3 border-t">
-                      <Input
-                        type="time"
-                        value={
-                          teamAutoLockTime
-                            ? format(teamAutoLockTime, "HH:mm")
-                            : ""
-                        }
-                        onChange={(e) => {
-                          const [hours, minutes] = e.target.value.split(":");
-                          const newDate = teamAutoLockTime
-                            ? new Date(teamAutoLockTime)
-                            : new Date();
-                          newDate.setHours(
-                            Number.parseInt(hours),
-                            Number.parseInt(minutes),
-                          );
-                          setTeamAutoLockTime(newDate.toISOString());
-                        }}
-                      />
-                    </div>
-                  </PopoverContent>
-                </Popover>
-
-                <Button
-                  disabled={setTeamsLockDateMutation.isPending}
-                  onClick={() => {
-                    setTeamsLockDateMutation.mutate(
-                      new Date(teamAutoLockTime).getTime(),
-                    );
-                  }}
-                >
-                  Save
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={setTeamsLockDateMutation.isPending}
-                  onClick={() => {
-                    setTeamsLockDateMutation.mutate(null, {
-                      onSuccess: () => {
-                        setTeamAutoLockTime("");
-                      },
-                    });
-                  }}
-                >
-                  Reset
-                </Button>
-              </div>
-
-              <h3 className="mt-6 text-sm font-medium">Event settings</h3>
-              <div className="mt-3 grid gap-4 md:grid-cols-2">
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div>
-                    <p className="text-sm font-medium">Allow team creation</p>
-                    <p className="text-xs text-muted-foreground">
-                      Enables participants to create teams.
-                    </p>
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-medium mb-3">Scheduling Auto-Lock</h3>
+                <div className="flex gap-4 items-end max-w-md">
+                  <div className="flex-1 space-y-2">
+                    <Label>Repo Lock Date & Time</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !teamAutoLockTime && "text-muted-foreground",
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {teamAutoLockTime ? format(new Date(teamAutoLockTime), "PPP p") : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={teamAutoLockTime ? new Date(teamAutoLockTime) : undefined}
+                          onSelect={(d) => d && setTeamAutoLockTime(d.toISOString())}
+                        />
+                        <div className="p-3 border-t">
+                          <Input
+                            type="time"
+                            value={teamAutoLockTime ? format(new Date(teamAutoLockTime), "HH:mm") : ""}
+                            onChange={(e) => {
+                              const [h, m] = e.target.value.split(":");
+                              const d = teamAutoLockTime ? new Date(teamAutoLockTime) : new Date();
+                              d.setHours(parseInt(h), parseInt(m));
+                              setTeamAutoLockTime(d.toISOString());
+                            }}
+                          />
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
-                  <Switch
-                    checked={event.canCreateTeam}
-                    disabled={updateEventSettingsMutation.isPending}
-                    onCheckedChange={(value) =>
-                      updateEventSettingsMutation.mutate({
-                        canCreateTeam: value,
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div>
-                    <p className="text-sm font-medium">Process queue</p>
-                    <p className="text-xs text-muted-foreground">
-                      Allows match queue processing.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={event.processQueue}
-                    disabled={updateEventSettingsMutation.isPending}
-                    onCheckedChange={(value) =>
-                      updateEventSettingsMutation.mutate({
-                        processQueue: value,
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div>
-                    <p className="text-sm font-medium">Private event</p>
-                    <p className="text-xs text-muted-foreground">
-                      Restricts access to invited users.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={event.isPrivate}
-                    disabled={updateEventSettingsMutation.isPending}
-                    onCheckedChange={(value) =>
-                      updateEventSettingsMutation.mutate({ isPrivate: value })
-                    }
-                  />
+                  <Button onClick={() => setTeamsLockDateMutation.mutate(new Date(teamAutoLockTime).getTime())}>Save</Button>
+                  <Button variant="ghost" onClick={() => setTeamsLockDateMutation.mutate(null)}>Reset</Button>
                 </div>
               </div>
-
-              <p className="text-sm text-muted-foreground mt-4">
-                Note: Advancing the tournament will move to the next round or
-                phase depending on the current state.
-              </p>
             </CardContent>
           </Card>
-        </>
-      )}
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Event Settings</CardTitle>
+              <CardDescription>
+                Configure the core details of your event.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Event Name</Label>
+                  <Input
+                    value={pendingSettings.name || ""}
+                    onChange={(e) =>
+                      setPendingSettings({
+                        ...pendingSettings,
+                        name: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Location</Label>
+                  <Input
+                    value={pendingSettings.location || ""}
+                    onChange={(e) =>
+                      setPendingSettings({
+                        ...pendingSettings,
+                        location: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="md:col-span-2 space-y-2">
+                  <Label>Description (Markdown)</Label>
+                  <Textarea
+                    value={pendingSettings.description || ""}
+                    onChange={(e) =>
+                      setPendingSettings({
+                        ...pendingSettings,
+                        description: e.target.value,
+                      })
+                    }
+                    className="min-h-[100px]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                <div className="space-y-2">
+                  <Label>Start Date</Label>
+                  <Input
+                    type="datetime-local"
+                    value={
+                      pendingSettings.startDate
+                        ? format(
+                          new Date(pendingSettings.startDate),
+                          "yyyy-MM-dd'T'HH:mm",
+                        )
+                        : ""
+                    }
+                    onChange={(e) =>
+                      setPendingSettings({
+                        ...pendingSettings,
+                        startDate: e.target.value as any,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>End Date</Label>
+                  <Input
+                    type="datetime-local"
+                    value={
+                      pendingSettings.endDate
+                        ? format(
+                          new Date(pendingSettings.endDate),
+                          "yyyy-MM-dd'T'HH:mm",
+                        )
+                        : ""
+                    }
+                    onChange={(e) =>
+                      setPendingSettings({
+                        ...pendingSettings,
+                        endDate: e.target.value as any,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                <div className="space-y-2">
+                  <Label>Min Team Size</Label>
+                  <Input
+                    type="number"
+                    value={pendingSettings.minTeamSize || 0}
+                    onChange={(e) =>
+                      setPendingSettings({
+                        ...pendingSettings,
+                        minTeamSize: parseInt(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Max Team Size</Label>
+                  <Input
+                    type="number"
+                    value={pendingSettings.maxTeamSize || 0}
+                    onChange={(e) =>
+                      setPendingSettings({
+                        ...pendingSettings,
+                        maxTeamSize: parseInt(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold">
+                  Visibility & Permissions
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <Label className="cursor-pointer" htmlFor="canCreateTeam">
+                      Allow Team Creation
+                    </Label>
+                    <Switch
+                      id="canCreateTeam"
+                      checked={pendingSettings.canCreateTeam || false}
+                      onCheckedChange={(v) =>
+                        setPendingSettings({
+                          ...pendingSettings,
+                          canCreateTeam: v,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <Label className="cursor-pointer" htmlFor="processQueue">
+                      Process Queue
+                    </Label>
+                    <Switch
+                      id="processQueue"
+                      checked={pendingSettings.processQueue || false}
+                      onCheckedChange={(v) =>
+                        setPendingSettings({
+                          ...pendingSettings,
+                          processQueue: v,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <Label className="cursor-pointer" htmlFor="isPrivate">
+                      Private Event
+                    </Label>
+                    <Switch
+                      id="isPrivate"
+                      checked={pendingSettings.isPrivate || false}
+                      onCheckedChange={(v) =>
+                        setPendingSettings({ ...pendingSettings, isPrivate: v })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold">
+                  Technical / Docker Images
+                </h3>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <Label>Monorepo URL</Label>
+                    <Input
+                      value={pendingSettings.monorepoUrl || ""}
+                      onChange={(e) =>
+                        setPendingSettings({
+                          ...pendingSettings,
+                          monorepoUrl: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Monorepo Version</Label>
+                      <Input
+                        value={pendingSettings.monorepoVersion || ""}
+                        onChange={(e) =>
+                          setPendingSettings({
+                            ...pendingSettings,
+                            monorepoVersion: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Base Path</Label>
+                      <Input
+                        value={pendingSettings.basePath || ""}
+                        onChange={(e) =>
+                          setPendingSettings({
+                            ...pendingSettings,
+                            basePath: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>GitHub Organization</Label>
+                    <Input
+                      value={pendingSettings.githubOrg || ""}
+                      onChange={(e) =>
+                        setPendingSettings({
+                          ...pendingSettings,
+                          githubOrg: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Game Server Image</Label>
+                    <Input
+                      value={pendingSettings.gameServerDockerImage || ""}
+                      onChange={(e) =>
+                        setPendingSettings({
+                          ...pendingSettings,
+                          gameServerDockerImage: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Bot Image</Label>
+                    <Input
+                      value={pendingSettings.myCoreBotDockerImage || ""}
+                      onChange={(e) =>
+                        setPendingSettings({
+                          ...pendingSettings,
+                          myCoreBotDockerImage: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Visualizer Image</Label>
+                    <Input
+                      value={pendingSettings.visualizerDockerImage || ""}
+                      onChange={(e) =>
+                        setPendingSettings({
+                          ...pendingSettings,
+                          visualizerDockerImage: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold text-destructive">
+                  Secret Configurations
+                </h3>
+                <div className="space-y-2">
+                  <Label>GitHub Organization Secret (Token)</Label>
+                  <Input
+                    type="password"
+                    placeholder="Enter new token to update (leave blank to keep current)"
+                    onChange={(e) =>
+                      setPendingSettings({
+                        ...pendingSettings,
+                        githubOrgSecret: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Game Config (JSON)</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => formatConfig("gameConfig")}
+                      >
+                        <Wand2 className="h-4 w-4 mr-2" />
+                        Format
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsGameConfigExpanded(!isGameConfigExpanded)}
+                      >
+                        {isGameConfigExpanded ? (
+                          <Minimize2 className="h-4 w-4 mr-2" />
+                        ) : (
+                          <Maximize2 className="h-4 w-4 mr-2" />
+                        )}
+                        {isGameConfigExpanded ? "Minimize" : "Expand"}
+                      </Button>
+                    </div>
+                  </div>
+                  <Textarea
+                    value={pendingSettings.gameConfig || ""}
+                    onChange={(e) =>
+                      setPendingSettings({
+                        ...pendingSettings,
+                        gameConfig: e.target.value,
+                      })
+                    }
+                    className={cn(
+                      "font-mono text-xs transition-all duration-200",
+                      isGameConfigExpanded ? "min-h-[1200px]" : "min-h-[200px]"
+                    )}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Server Config (JSON)</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => formatConfig("serverConfig")}
+                      >
+                        <Wand2 className="h-4 w-4 mr-2" />
+                        Format
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsServerConfigExpanded(!isServerConfigExpanded)}
+                      >
+                        {isServerConfigExpanded ? (
+                          <Minimize2 className="h-4 w-4 mr-2" />
+                        ) : (
+                          <Maximize2 className="h-4 w-4 mr-2" />
+                        )}
+                        {isServerConfigExpanded ? "Minimize" : "Expand"}
+                      </Button>
+                    </div>
+                  </div>
+                  <Textarea
+                    value={pendingSettings.serverConfig || ""}
+                    onChange={(e) =>
+                      setPendingSettings({
+                        ...pendingSettings,
+                        serverConfig: e.target.value,
+                      })
+                    }
+                    className={cn(
+                      "font-mono text-xs transition-all duration-200",
+                      isServerConfigExpanded ? "min-h-[1200px]" : "min-h-[200px]"
+                    )}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="admins" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Event Administrators</CardTitle>
+              <CardDescription>
+                Manage who can control this event.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="relative">
+                <div className="flex gap-4 items-end max-w-md">
+                  <div className="flex-1 space-y-2">
+                    <Label>Search User to add as Admin</Label>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search by name or username..."
+                        className="pl-9"
+                        value={userSearchQuery}
+                        onChange={(e) => setUserSearchQuery(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {searchResults.length > 0 && (
+                  <div className="absolute z-10 w-full max-w-md mt-1 rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in zoom-in-95">
+                    <div className="p-1">
+                      {searchResults.map((user) => (
+                        <div
+                          key={user.id}
+                          className="flex items-center justify-between p-2 rounded-sm hover:bg-accent cursor-pointer transition-colors"
+                          onClick={() => {
+                            addAdminMutation.mutate(user.id);
+                            setUserSearchQuery("");
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={user.profilePicture}
+                              alt={user.name}
+                              className="h-8 w-8 rounded-full border bg-muted"
+                            />
+                            <div>
+                              <p className="text-sm font-medium leading-none">
+                                {user.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                @{user.username}
+                              </p>
+                            </div>
+                          </div>
+                          <UserPlus className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {isSearching && (
+                  <div className="absolute z-10 w-full max-w-md mt-1 p-4 rounded-md border bg-popover text-center text-sm text-muted-foreground flex items-center justify-center">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                    Searching...
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-semibold mb-4">
+                  Current Administrators
+                </h3>
+                <div className="space-y-4">
+                  {isAdminsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    admins.map((admin: any) => (
+                      <div
+                        key={admin.id}
+                        className="flex items-center justify-between p-4 rounded-lg border bg-muted/30"
+                      >
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={admin.profilePicture}
+                            alt={admin.name}
+                            className="h-10 w-10 rounded-full border bg-background"
+                          />
+                          <div>
+                            <p className="font-semibold">
+                              {admin.name || "Unknown User"}
+                            </p>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              {admin.username} ({admin.id})
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          disabled={
+                            removeAdminMutation.isPending || admins.length <= 1
+                          }
+                          onClick={() => removeAdminMutation.mutate(admin.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
