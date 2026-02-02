@@ -37,7 +37,17 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarIcon, Loader2, Maximize2, Minimize2, Save, Search, Trash2, UserPlus, Wand2 } from "lucide-react";
+import {
+  CalendarIcon,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Save,
+  Search,
+  Trash2,
+  UserPlus,
+  Wand2,
+} from "lucide-react";
 import { searchUsers, type UserSearchResult } from "@/app/actions/user";
 import { Calendar } from "@/components/ui/calendar";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -273,7 +283,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
         gameConfig = JSON.stringify(JSON.parse(gameConfig), null, 2);
       } catch (e) {
         toast.warning(
-          "Invalid JSON in Game Config. Proceeding without formatting."
+          "Invalid JSON in Game Config. Proceeding without formatting.",
         );
       }
     }
@@ -283,7 +293,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
         serverConfig = JSON.stringify(JSON.parse(serverConfig), null, 2);
       } catch (e) {
         toast.warning(
-          "Invalid JSON in Server Config. Proceeding without formatting."
+          "Invalid JSON in Server Config. Proceeding without formatting.",
         );
       }
     }
@@ -390,12 +400,16 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Event Overview</CardTitle>
-              <CardDescription>Key live metrics for this event.</CardDescription>
+              <CardDescription>
+                Key live metrics for this event.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="rounded-lg border p-4 bg-muted/50">
-                  <h3 className="text-sm font-medium mb-2 opacity-70">Participants</h3>
+                  <h3 className="text-sm font-medium mb-2 opacity-70">
+                    Participants
+                  </h3>
                   <p className="text-3xl font-bold">{participantsCount}</p>
                 </div>
                 <div className="rounded-lg border p-4 bg-muted/50">
@@ -403,27 +417,45 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   <p className="text-3xl font-bold">{teamsCount}</p>
                 </div>
                 <div className="rounded-lg border p-4 bg-muted/50">
-                  <h3 className="text-sm font-medium mb-2 opacity-70">Current Round</h3>
+                  <h3 className="text-sm font-medium mb-2 opacity-70">
+                    Current Round
+                  </h3>
                   <p className="text-3xl font-bold">{event.currentRound}</p>
                 </div>
               </div>
 
               <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg border">
-                  <Label className="text-sm font-medium opacity-70">Start Date</Label>
-                  <p className="text-lg font-semibold">{format(new Date(event.startDate), "PPP p")}</p>
+                  <Label className="text-sm font-medium opacity-70">
+                    Start Date
+                  </Label>
+                  <p className="text-lg font-semibold">
+                    {format(new Date(event.startDate), "PPP p")}
+                  </p>
                 </div>
                 <div className="p-4 rounded-lg border">
-                  <Label className="text-sm font-medium opacity-70">End Date</Label>
-                  <p className="text-lg font-semibold">{format(new Date(event.endDate), "PPP p")}</p>
+                  <Label className="text-sm font-medium opacity-70">
+                    End Date
+                  </Label>
+                  <p className="text-lg font-semibold">
+                    {format(new Date(event.endDate), "PPP p")}
+                  </p>
                 </div>
                 <div className="p-4 rounded-lg border">
-                  <Label className="text-sm font-medium opacity-70">Location</Label>
-                  <p className="text-lg font-semibold">{event.location || "Online"}</p>
+                  <Label className="text-sm font-medium opacity-70">
+                    Location
+                  </Label>
+                  <p className="text-lg font-semibold">
+                    {event.location || "Online"}
+                  </p>
                 </div>
                 <div className="p-4 rounded-lg border">
-                  <Label className="text-sm font-medium opacity-70">Privacy</Label>
-                  <p className="text-lg font-semibold">{event.isPrivate ? "Private" : "Public"}</p>
+                  <Label className="text-sm font-medium opacity-70">
+                    Privacy
+                  </Label>
+                  <p className="text-lg font-semibold">
+                    {event.isPrivate ? "Private" : "Public"}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -437,17 +469,29 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-xs opacity-70 uppercase">Monorepo Version</Label>
-                  <p className="font-mono text-sm break-all bg-muted p-2 rounded">{event.monorepoVersion}</p>
+                  <Label className="text-xs opacity-70 uppercase">
+                    Monorepo Version
+                  </Label>
+                  <p className="font-mono text-sm break-all bg-muted p-2 rounded">
+                    {event.monorepoVersion}
+                  </p>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs opacity-70 uppercase">Base Path</Label>
-                  <p className="font-mono text-sm break-all bg-muted p-2 rounded">{event.basePath}</p>
+                  <Label className="text-xs opacity-70 uppercase">
+                    Base Path
+                  </Label>
+                  <p className="font-mono text-sm break-all bg-muted p-2 rounded">
+                    {event.basePath}
+                  </p>
                 </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs opacity-70 uppercase">Game Server Image</Label>
-                <p className="font-mono text-sm break-all bg-muted p-2 rounded">{event.gameServerDockerImage}</p>
+                <Label className="text-xs opacity-70 uppercase">
+                  Game Server Image
+                </Label>
+                <p className="font-mono text-sm break-all bg-muted p-2 rounded">
+                  {event.gameServerDockerImage}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -457,26 +501,35 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Operation Controls</CardTitle>
-              <CardDescription>Immediate actions for running the event.</CardDescription>
+              <CardDescription>
+                Immediate actions for running the event.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex flex-wrap gap-4">
                 <Button
-                  disabled={event.lockedAt != null || lockEventMutation.isPending}
+                  disabled={
+                    event.lockedAt != null || lockEventMutation.isPending
+                  }
                   onClick={() => lockEventMutation.mutate()}
                   variant="default"
                 >
                   Lock Team Repositories
                 </Button>
                 <Button
-                  disabled={event.lockedAt == null || unlockEventMutation.isPending}
+                  disabled={
+                    event.lockedAt == null || unlockEventMutation.isPending
+                  }
                   onClick={() => unlockEventMutation.mutate()}
                   variant="outline"
                 >
                   Unlock Team Repositories
                 </Button>
                 <Button
-                  disabled={event.currentRound !== 0 || startSwissMatchesMutation.isPending}
+                  disabled={
+                    event.currentRound !== 0 ||
+                    startSwissMatchesMutation.isPending
+                  }
                   onClick={() => startSwissMatchesMutation.mutate()}
                   variant="secondary"
                 >
@@ -492,7 +545,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
               </div>
 
               <div className="pt-4 border-t">
-                <h3 className="text-sm font-medium mb-3">Scheduling Auto-Lock</h3>
+                <h3 className="text-sm font-medium mb-3">
+                  Scheduling Auto-Lock
+                </h3>
                 <div className="flex gap-4 items-end max-w-md">
                   <div className="flex-1 space-y-2">
                     <Label>Repo Lock Date & Time</Label>
@@ -506,23 +561,48 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {teamAutoLockTime ? format(new Date(teamAutoLockTime), "PPP p") : "Pick a date"}
+                          {teamAutoLockTime
+                            ? format(new Date(teamAutoLockTime), "PPP p")
+                            : "Pick a date"}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
                         <Calendar
                           mode="single"
-                          selected={teamAutoLockTime ? new Date(teamAutoLockTime) : undefined}
-                          onSelect={(d) => d && setTeamAutoLockTime(d.toISOString())}
+                          selected={
+                            teamAutoLockTime
+                              ? new Date(teamAutoLockTime)
+                              : undefined
+                          }
+                          onSelect={(d) =>
+                            d && setTeamAutoLockTime(d.toISOString())
+                          }
                         />
                         <div className="p-3 border-t">
                           <Input
                             type="time"
-                            value={teamAutoLockTime ? format(new Date(teamAutoLockTime), "HH:mm") : ""}
+                            value={
+                              teamAutoLockTime
+                                ? format(new Date(teamAutoLockTime), "HH:mm")
+                                : ""
+                            }
                             onChange={(e) => {
-                              const [h, m] = e.target.value.split(":");
-                              const d = teamAutoLockTime ? new Date(teamAutoLockTime) : new Date();
-                              d.setHours(parseInt(h), parseInt(m));
+                              const val = e.target.value;
+                              if (!val) return;
+                              const parts = val.split(":");
+                              if (parts.length !== 2) return;
+
+                              const h = parseInt(parts[0], 10);
+                              const m = parseInt(parts[1], 10);
+                              if (isNaN(h) || isNaN(m)) return;
+
+                              const current = teamAutoLockTime
+                                ? new Date(teamAutoLockTime)
+                                : new Date();
+                              const d = isNaN(current.getTime())
+                                ? new Date()
+                                : current;
+                              d.setHours(h, m, 0, 0);
                               setTeamAutoLockTime(d.toISOString());
                             }}
                           />
@@ -530,8 +610,21 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                       </PopoverContent>
                     </Popover>
                   </div>
-                  <Button onClick={() => setTeamsLockDateMutation.mutate(new Date(teamAutoLockTime).getTime())}>Save</Button>
-                  <Button variant="ghost" onClick={() => setTeamsLockDateMutation.mutate(null)}>Reset</Button>
+                  <Button
+                    onClick={() =>
+                      setTeamsLockDateMutation.mutate(
+                        new Date(teamAutoLockTime).getTime(),
+                      )
+                    }
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setTeamsLockDateMutation.mutate(null)}
+                  >
+                    Reset
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -595,9 +688,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     value={
                       pendingSettings.startDate
                         ? format(
-                          new Date(pendingSettings.startDate),
-                          "yyyy-MM-dd'T'HH:mm",
-                        )
+                            new Date(pendingSettings.startDate),
+                            "yyyy-MM-dd'T'HH:mm",
+                          )
                         : ""
                     }
                     onChange={(e) =>
@@ -615,9 +708,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     value={
                       pendingSettings.endDate
                         ? format(
-                          new Date(pendingSettings.endDate),
-                          "yyyy-MM-dd'T'HH:mm",
-                        )
+                            new Date(pendingSettings.endDate),
+                            "yyyy-MM-dd'T'HH:mm",
+                          )
                         : ""
                     }
                     onChange={(e) =>
@@ -835,7 +928,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setIsGameConfigExpanded(!isGameConfigExpanded)}
+                        onClick={() =>
+                          setIsGameConfigExpanded(!isGameConfigExpanded)
+                        }
                       >
                         {isGameConfigExpanded ? (
                           <Minimize2 className="h-4 w-4 mr-2" />
@@ -856,7 +951,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     }
                     className={cn(
                       "font-mono text-xs transition-all duration-200",
-                      isGameConfigExpanded ? "min-h-[1200px]" : "min-h-[200px]"
+                      isGameConfigExpanded ? "min-h-[1200px]" : "min-h-[200px]",
                     )}
                   />
                 </div>
@@ -875,7 +970,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setIsServerConfigExpanded(!isServerConfigExpanded)}
+                        onClick={() =>
+                          setIsServerConfigExpanded(!isServerConfigExpanded)
+                        }
                       >
                         {isServerConfigExpanded ? (
                           <Minimize2 className="h-4 w-4 mr-2" />
@@ -896,7 +993,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     }
                     className={cn(
                       "font-mono text-xs transition-all duration-200",
-                      isServerConfigExpanded ? "min-h-[1200px]" : "min-h-[200px]"
+                      isServerConfigExpanded
+                        ? "min-h-[1200px]"
+                        : "min-h-[200px]",
                     )}
                   />
                 </div>

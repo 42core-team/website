@@ -1,4 +1,11 @@
-import { BadRequestException, forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EventEntity } from "./entities/event.entity";
 import {
@@ -9,7 +16,10 @@ import {
   Repository,
   UpdateResult,
 } from "typeorm";
-import { PermissionRole, UserEventPermissionEntity } from "../user/entities/user.entity";
+import {
+  PermissionRole,
+  UserEventPermissionEntity,
+} from "../user/entities/user.entity";
 import * as CryptoJS from "crypto-js";
 import { ConfigService } from "@nestjs/config";
 import { TeamService } from "../team/team.service";
@@ -29,7 +39,7 @@ export class EventService {
     @Inject(forwardRef(() => TeamService))
     private readonly teamService: TeamService,
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   logger = new Logger("EventService");
 
@@ -371,7 +381,11 @@ export class EventService {
 
     const update: Partial<EventEntity> = {};
 
-    const booleanFields = ["canCreateTeam", "processQueue", "isPrivate"] as const;
+    const booleanFields = [
+      "canCreateTeam",
+      "processQueue",
+      "isPrivate",
+    ] as const;
     for (const field of booleanFields) {
       if (typeof settings[field] === "boolean") {
         update[field] = settings[field];
@@ -466,31 +480,33 @@ export class EventService {
   }
 
   async removeEventAdmin(eventId: string, userId: string) {
-    const permission = await this.permissionRepository.findOne({
-      where: {
-        event: { id: eventId },
-        user: { id: userId },
-        role: PermissionRole.ADMIN,
-      },
+    await this.dataSource.transaction(async (manager) => {
+      // Re-query admin permissions with a row-level lock (FOR UPDATE)
+      const admins = await manager.find(UserEventPermissionEntity, {
+        where: {
+          event: { id: eventId },
+          role: PermissionRole.ADMIN,
+        },
+        relations: {
+          user: true,
+        },
+        lock: { mode: "pessimistic_write" },
+      });
+
+      const permissionToRemove = admins.find((p) => p.user.id === userId);
+
+      if (!permissionToRemove) {
+        throw new NotFoundException("Admin permission not found");
+      }
+
+      if (admins.length <= 1) {
+        throw new BadRequestException(
+          "Cannot remove the last admin of an event",
+        );
+      }
+
+      await manager.remove(permissionToRemove);
     });
-
-    if (!permission) {
-      throw new NotFoundException("Admin permission not found");
-    }
-
-    // Check if this is the last admin
-    const adminCount = await this.permissionRepository.count({
-      where: {
-        event: { id: eventId },
-        role: PermissionRole.ADMIN,
-      },
-    });
-
-    if (adminCount <= 1) {
-      throw new BadRequestException("Cannot remove the last admin of an event");
-    }
-
-    await this.permissionRepository.remove(permission);
   }
 
   async getCurrentLiveEvent() {

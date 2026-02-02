@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Param,
@@ -12,7 +13,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 @Controller("user")
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
   @UseGuards(JwtAuthGuard)
   @Get("canCreateEvent")
@@ -26,7 +27,17 @@ export class UserController {
     if (!(await this.userService.canCreateEvent(userId))) {
       throw new UnauthorizedException("Only admins can search users");
     }
-    return this.userService.searchUsers(query);
+
+    const sanitizedQuery = (query || "").trim();
+    if (!sanitizedQuery) {
+      throw new BadRequestException("Search query must not be empty");
+    }
+
+    if (sanitizedQuery.length > 100) {
+      throw new BadRequestException("Search query is too long");
+    }
+
+    return this.userService.searchUsers(sanitizedQuery);
   }
 
   @Get("github/:githubId")
