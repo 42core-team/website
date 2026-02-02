@@ -24,17 +24,20 @@ export interface Match {
     name: string;
     score: number;
     queueScore: number;
+    deletedAt?: string | null;
   }[];
   winner?: {
     id: string;
     name: string;
     score: number;
     queueScore: number;
+    deletedAt?: string | null;
   };
   results: {
     team: {
       id: string;
       name: string;
+      deletedAt?: string | null;
     };
     score: number;
   }[];

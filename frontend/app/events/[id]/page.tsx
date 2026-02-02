@@ -119,6 +119,7 @@ export default async function EventPage({
                 {event.minTeamSize}
                 {" "}
                 -
+                {" "}
                 {event.maxTeamSize}
                 {" "}
                 members
