@@ -134,7 +134,13 @@ export class TeamController {
     @EventId eventId: string,
     @Body() inviteUserDto: InviteUserDto,
     @Team() team: TeamEntity,
+    @UserId() userId: string
   ) {
+    if(userId === inviteUserDto.userToInviteId)
+      throw new BadRequestException(
+        "You cannot invite yourself to a team.",
+      )
+
     if (
       await this.teamService.getTeamOfUserForEvent(
         eventId,
