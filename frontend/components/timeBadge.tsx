@@ -1,18 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 
 export default function TimeBadge({
   time,
   className = "",
-  variant = "default",
-  // TODO:color = "success",
 }: {
   time: string | Date;
   className?: string;
-  variant?: "default" | "outline" | "secondary" | "destructive";
-  // TODO:  color?: undefined;
 }) {
   const [formatted, setFormatted] = useState(() => {
     const date = new Date(time);
@@ -42,9 +37,5 @@ export default function TimeBadge({
     );
   }, [time]);
 
-  return (
-    <Badge variant={variant} className={className}>
-      {formatted}
-    </Badge>
-  );
+  return <p className={className}>{formatted}</p>;
 }

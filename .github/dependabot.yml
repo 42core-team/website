@@ -12,6 +12,11 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+    # Grouping configuration
+    groups:
+      all-actions:
+        patterns:
+          - "*"
 
   # Node.js (npm/pnpm) workspaces
   - package-ecosystem: "npm"
@@ -25,6 +30,11 @@ updates:
     labels:
       - "dependencies"
       - "api"
+    # Groups all /api npm updates into one PR
+    groups:
+      api-npm-dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "npm"
     directory: "/frontend"
@@ -37,6 +47,11 @@ updates:
     labels:
       - "dependencies"
       - "frontend"
+    # Groups all /frontend npm updates into one PR
+    groups:
+      frontend-npm-dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "npm"
     directory: "/github-service"
@@ -49,6 +64,11 @@ updates:
     labels:
       - "dependencies"
       - "github-service"
+    # Groups all /github-service npm updates into one PR
+    groups:
+      github-service-npm-dependencies:
+        patterns:
+          - "*"
 
   # Go modules
   - package-ecosystem: "gomod"
@@ -62,6 +82,11 @@ updates:
     labels:
       - "dependencies"
       - "k8s-service"
+    # Groups all go module updates into one PR
+    groups:
+      k8s-go-dependencies:
+        patterns:
+          - "*"
 
   # Dockerfiles across services
   - package-ecosystem: "docker"
@@ -76,6 +101,11 @@ updates:
       - "dependencies"
       - "docker"
       - "api"
+    # Groups docker updates for api
+    groups:
+      api-docker-dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "docker"
     directory: "/frontend"
@@ -89,6 +119,11 @@ updates:
       - "dependencies"
       - "docker"
       - "frontend"
+    # Groups docker updates for frontend
+    groups:
+      frontend-docker-dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "docker"
     directory: "/k8s-service"
@@ -102,6 +137,11 @@ updates:
       - "dependencies"
       - "docker"
       - "k8s-service"
+    # Groups docker updates for k8s-service
+    groups:
+      k8s-docker-dependencies:
+        patterns:
+          - "*"
 
   - package-ecosystem: "docker"
     directory: "/github-service"
@@ -115,3 +155,8 @@ updates:
       - "dependencies"
       - "docker"
       - "github-service"
+    # Groups docker updates for github-service
+    groups:
+      github-service-docker-dependencies:
+        patterns:
+          - "*"
