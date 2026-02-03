@@ -71,7 +71,9 @@ export default function EventNavbar({
       <NavigationMenu className="hidden md:flex">
         <NavigationMenuList>
           {navItems.map((item) => {
-            const isActive = pathname === item.path;
+            const isActive = item.name === "Info"
+              ? pathname === item.path
+              : pathname === item.path || pathname.startsWith(`${item.path}/`);
             return (
               <NavigationMenuItem key={item.path}>
                 <NavigationMenuLink
@@ -105,7 +107,9 @@ export default function EventNavbar({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-56">
             {navItems.map((item) => {
-              const isActive = pathname === item.path;
+              const isActive = item.name === "Info"
+                ? pathname === item.path
+                : pathname === item.path || pathname.startsWith(`${item.path}/`);
               return (
                 <DropdownMenuItem
                   key={item.path}

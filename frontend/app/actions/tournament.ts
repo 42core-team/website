@@ -57,6 +57,12 @@ export async function getMatchById(
   return handleError(axiosInstance.get<Match>(`/match/${matchId}`));
 }
 
+export async function getMatchesForTeam(
+  teamId: string,
+): Promise<Match[]> {
+  return (await axiosInstance.get(`/match/team/${teamId}`)).data;
+}
+
 // Functions:
 // General:
 // - Increase round!!!!!!!!!
