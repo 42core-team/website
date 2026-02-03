@@ -28,7 +28,7 @@ env:
 
 jobs:
   deploy:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     environment: github-service-${{ inputs.environment }}
 
     permissions:
@@ -213,5 +213,3 @@ jobs:
           echo "**Release:** ${{ steps.config.outputs.release_name }}" >> $GITHUB_STEP_SUMMARY
           echo "**Values file:** ${{ steps.config.outputs.values_file }}" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** ${{ steps.config.outputs.image_repo }}:${{ steps.config.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
-
-
