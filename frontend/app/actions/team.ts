@@ -161,21 +161,6 @@ export async function searchUsersForInvite(
 }
 
 /**
- * Send a team invite to a user
- * @returns boolean indicating success
- * @param eventId
- * @param userId ID of the user to invite
- */
-export async function sendTeamInvite(
-  eventId: string,
-  userId: string,
-): Promise<void> {
-  await axiosInstance.post(`team/event/${eventId}/sendInvite`, {
-    userToInviteId: userId,
-  });
-}
-
-/**
  * Get pending team invites for a user
  * @returns Array of team invites with details
  * @param eventId
