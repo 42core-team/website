@@ -830,12 +830,18 @@ export class MatchService {
         select: {
           id: true,
         },
-        where: {
-          teams: {
-            id: teamId,
+        where: [
+          {
+            teams: { id: teamId },
+            state: MatchState.FINISHED,
+            phase: MatchPhase.QUEUE,
           },
-          state: MatchState.FINISHED,
-        },
+          {
+            teams: { id: teamId },
+            state: MatchState.FINISHED,
+            isRevealed: true,
+          },
+        ],
         withDeleted: true,
       })
     ).map((match) => match.id);
@@ -860,8 +866,15 @@ export class MatchService {
     });
 
     return matches.map((match) => {
-      const { id: _id, ...rest } = match;
-      return rest;
+      // Reveal ID only if it's NOT from the queue AND it is revealed.
+      const shouldRevealId =
+        match.phase !== MatchPhase.QUEUE && match.isRevealed;
+
+      if (!shouldRevealId) {
+        const { id: _id, ...rest } = match;
+        return rest;
+      }
+      return match;
     });
   }
 

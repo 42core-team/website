@@ -11,7 +11,7 @@ export enum MatchState {
 }
 
 export interface Match {
-  id: string;
+  id?: string;
   round: number;
   state: MatchState;
   phase: MatchPhase;
