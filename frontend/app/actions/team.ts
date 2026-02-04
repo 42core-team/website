@@ -11,6 +11,8 @@ export interface Team {
   repo: string;
   inQueue: boolean;
   score: number;
+  buchholzPoints: number;
+  hadBye: boolean;
   queueScore: number;
   locked?: boolean;
   created?: string;
@@ -67,16 +69,18 @@ export async function getTeamById(teamId: string): Promise<Team | null> {
   // TODO: directly return team object if API response is already in the correct format
   return team
     ? {
-      id: team.id,
-      name: team.name,
-      repo: team.repo || "",
-      locked: team.locked,
-      score: team.score,
-      queueScore: team.queueScore,
-      createdAt: team.createdAt,
-      inQueue: team.inQueue,
-      updatedAt: team.updatedAt,
-    }
+        id: team.id,
+        name: team.name,
+        repo: team.repo || "",
+        locked: team.locked,
+        score: team.score,
+        buchholzPoints: team.buchholzPoints || 0,
+        hadBye: team.hadBye || false,
+        queueScore: team.queueScore,
+        createdAt: team.createdAt,
+        inQueue: team.inQueue,
+        updatedAt: team.updatedAt,
+      }
     : null;
 }
 
@@ -87,8 +91,7 @@ export async function hasEventStarted(teamId: string): Promise<boolean> {
 export async function getMyEventTeam(eventId: string): Promise<Team | null> {
   const team = (await axiosInstance.get(`team/event/${eventId}/my`)).data;
 
-  if (!team)
-    return null;
+  if (!team) return null;
 
   // TODO: directly return team object if API response is already in the correct format
   return {
@@ -97,6 +100,8 @@ export async function getMyEventTeam(eventId: string): Promise<Team | null> {
     repo: team.repo || "",
     locked: team.locked,
     score: team.score,
+    buchholzPoints: team.buchholzPoints || 0,
+    hadBye: team.hadBye || false,
     queueScore: team.queueScore,
     inQueue: team.inQueue,
     createdAt: team.createdAt,
@@ -206,6 +211,8 @@ export async function getTeamsForEventTable(
     | "name"
     | "createdAt"
     | "membersCount"
+    | "score"
+    | "buchholzPoints"
     | "queueScore"
     | undefined = "name",
   sortDirection: "asc" | "desc" = "asc",
@@ -225,6 +232,9 @@ export async function getTeamsForEventTable(
     name: team.name,
     repo: team.repo || "",
     membersCount: team.userCount,
+    score: team.score || 0,
+    buchholzPoints: team.buchholzPoints || 0,
+    hadBye: team.hadBye || false,
     queueScore: team.queueScore || 0,
     createdAt: team.createdAt,
     updatedAt: team.updatedAt,

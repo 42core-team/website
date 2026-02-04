@@ -29,7 +29,7 @@ export class TeamService {
     private readonly matchService: MatchService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   logger = new Logger("TeamService");
 
@@ -352,6 +352,9 @@ export class TeamService {
         "team.name",
         "team.locked",
         "team.repo",
+        "team.score",
+        "team.buchholzPoints",
+        "team.hadBye",
         "team.queueScore",
         "team.createdAt",
         "team.updatedAt",
@@ -371,6 +374,8 @@ export class TeamService {
         "name",
         "locked",
         "repo",
+        "score",
+        "buchholzPoints",
         "queueScore",
         "createdAt",
         "updatedAt",
@@ -491,22 +496,22 @@ export class TeamService {
     });
   }
 
-    async isTeamFull(teamId: string) {
-        const team = await this.teamRepository.findOne({
-            where: {
-                id: teamId,
-            },
-            relations: {
-                event: true,
-                users: true
-            }
-        });
-        const maxUsers = team?.event.maxTeamSize;
-        if (!maxUsers) return true;
-        if (!team?.users) return true;
+  async isTeamFull(teamId: string) {
+    const team = await this.teamRepository.findOne({
+      where: {
+        id: teamId,
+      },
+      relations: {
+        event: true,
+        users: true,
+      },
+    });
+    const maxUsers = team?.event.maxTeamSize;
+    if (!maxUsers) return true;
+    if (!team?.users) return true;
 
-        return team?.users.length >= maxUsers;
-    }
+    return team?.users.length >= maxUsers;
+  }
 
   async leaveQueue(teamId: string) {
     return this.teamRepository.update(teamId, { inQueue: false });
@@ -536,12 +541,10 @@ export class TeamService {
     });
 
     for (const team of teams) {
-      if (!team.repo || !team.event)
-        continue;
+      if (!team.repo || !team.event) continue;
 
       for (const user of team.users) {
-        if (!user.username)
-          continue;
+        if (!user.username) continue;
 
         await this.githubApiService.addWritePermissions(
           user.username,
