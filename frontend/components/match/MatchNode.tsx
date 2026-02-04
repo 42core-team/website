@@ -138,7 +138,7 @@ function MatchNode({ data }: MatchNodeProps) {
                       <span className="ml-2 text-xs">
                         {(match.results || []).find(
                           (result) => result?.team?.id === team.id,
-                        )?.score || team.score}
+                        )?.score ?? team.score}
                       </span>
                     )}
                 </div>

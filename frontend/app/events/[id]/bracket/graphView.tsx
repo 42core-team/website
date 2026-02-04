@@ -129,7 +129,7 @@ export default function GraphView({
         };
 
         newNodes.push({
-          id: match.id ?? `match-${index}`,
+          id: match.id ?? `match-${round}-${index}`,
           type: "matchNode",
           position: { x: coord.x, y: coord.y },
           data: {
