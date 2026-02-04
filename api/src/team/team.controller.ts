@@ -173,8 +173,9 @@ export class TeamController {
     @EventId eventId: string,
     @Param("searchQuery") searchQuery: string,
     @Team() team: TeamEntity,
+    @UserId() userId: string
   ) {
-    return this.userService.searchUsersForInvite(eventId, searchQuery, team.id);
+    return this.userService.searchUsersForInvite(eventId, searchQuery, team.id, userId);
   }
 
   @UseGuards(JwtAuthGuard)
