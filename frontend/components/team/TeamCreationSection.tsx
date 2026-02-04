@@ -22,24 +22,34 @@ export function TeamCreationSection({
   return (
     <Card className="rounded-lg border">
       <CardHeader>
-        <CardTitle className="text-xl font-semibold">Create Your Team</CardTitle>
+        <CardTitle className="text-xl font-semibold">
+          Create Your Team
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-row gap-2">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (newTeamName && !validationError && !isLoading) {
+              handleCreateTeam();
+            }
+          }}
+          className="flex flex-row gap-2"
+        >
           <Input
             id="team-name"
             placeholder="Enter team name"
             value={newTeamName}
-            onChange={e => setNewTeamName(e.target.value)}
+            onChange={(e) => setNewTeamName(e.target.value)}
           />
           <Button
-            onClick={handleCreateTeam}
+            type="submit"
             disabled={!newTeamName || !!validationError}
             isLoading={isLoading}
           >
             Create Team
           </Button>
-        </div>
+        </form>
         <div className="mt-2">
           {validationError && (
             <div className="text-destructive text-sm">{validationError}</div>

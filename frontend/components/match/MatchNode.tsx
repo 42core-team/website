@@ -4,6 +4,7 @@ import type { Match } from "@/app/actions/tournament-model";
 import { motion } from "framer-motion";
 import { memo } from "react";
 import { MatchState } from "@/app/actions/tournament-model";
+import { useParams, useRouter } from "next/navigation";
 
 interface MatchNodeData {
   match: Match;
@@ -62,6 +63,9 @@ function MatchNode({ data }: MatchNodeProps) {
   const { match, width = 200, height = 80, onClick } = data;
   const styles = getMatchStateStyles(match.state);
   const icon = getMatchStateIcon(match.state);
+  const router = useRouter();
+  const params = useParams();
+  const eventId = params.id as string;
 
   const handleClick = () => {
     onClick?.(match);
@@ -127,12 +131,22 @@ function MatchNode({ data }: MatchNodeProps) {
                     match.winner?.name === team.name ? "font-bold" : ""
                   }`}
                 >
-                  <span className="truncate flex-1">
-                    {formatTeamName(team.name)}
+                  <div className="truncate flex-1">
+                    <span
+                      className="hover:underline transition-all duration-200 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (team.id) {
+                          router.push(`/events/${eventId}/teams/${team.id}`);
+                        }
+                      }}
+                    >
+                      {formatTeamName(team.name)}
+                    </span>
                     {team.id === match.winner?.id && (
                       <span className="ml-1 text-green-600">👑</span>
                     )}
-                  </span>
+                  </div>
                   {match.state === MatchState.FINISHED &&
                     team.score !== undefined && (
                       <span className="ml-2 text-xs">

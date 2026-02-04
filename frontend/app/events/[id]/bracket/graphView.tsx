@@ -178,50 +178,37 @@ export default function GraphView({
   }, [matches, teamCount, isEventAdmin, router, eventId, setNodes]);
 
   return (
-    <div className="w-full">
-      <div style={{ width: "100%", height: "80vh" }}>
-        <style jsx global>
-          {`
-            .react-flow__handle {
-              display: none;
-            }
-
-            .react-flow__node {
-              font-family:
-                -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                "Helvetica Neue", Arial, sans-serif;
-            }
-          `}
-        </style>
-        {isEventAdmin && (
-          <div className="flex items-center mb-2 mt-2 gap-4">
-            Toggle admin view
-            <Switch
-              onCheckedChange={(value: boolean) => {
-                const params = new URLSearchParams(window.location.search);
-                params.set("adminReveal", value ? "true" : "false");
-                router.replace(`?${params.toString()}`);
-              }}
-              defaultChecked={isAdminView}
-            />
-          </div>
-        )}
-        <ReactFlow
-          nodesDraggable={false}
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.3 }}
-          nodesConnectable={false}
-          minZoom={0.0002}
-          maxZoom={5.5}
-        >
-          <Background color="#f0f0f0" gap={16} />
-        </ReactFlow>
-      </div>
+    <div className="w-full h-full">
+      <ReactFlow
+        nodesDraggable={false}
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        nodeTypes={nodeTypes}
+        fitView
+        fitViewOptions={{
+          padding: 0.15,
+          minZoom: 0.2,
+          maxZoom: 1,
+        }}
+        nodesConnectable={false}
+        elementsSelectable={true}
+        minZoom={0.05}
+        maxZoom={1.5}
+        zoomOnScroll={true}
+        panOnScroll={false}
+        zoomOnPinch={true}
+        panOnDrag={true}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background
+          color="currentColor"
+          className="opacity-10"
+          gap={20}
+          variant={undefined}
+        />
+      </ReactFlow>
     </div>
   );
 }
