@@ -4,10 +4,10 @@ import React from "react";
 import { isActionError } from "@/app/actions/errors";
 import { getTeamById, getTeamMembers } from "@/app/actions/team";
 import { getMatchesForTeam } from "@/app/actions/tournament";
-import QueueMatchesList from "@/components/QueueMatchesList";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader } from "@/components/ui/card";
 import { History } from "lucide-react";
 import BackButton from "./BackButton";
+import TeamMatchHistory from "./TeamMatchHistory";
 import TeamUserTable from "./TeamUserTable";
 
 export async function generateMetadata({
@@ -50,16 +50,12 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
   const matches = await getMatchesForTeam(teamId);
 
   return (
-    <div className="py-3 space-y-8">
+    <div className="py-3 space-y-4">
       <Card className="px-5 py-4">
         <div className="flex flex-col gap-2 mb-4">
           <div className="flex items-center gap-4">
             <BackButton />
-            <h2 className="text-2xl font-bold">
-              Team
-              {" "}
-              {teamInfo.name}
-            </h2>
+            <h2 className="text-2xl font-bold">Team {teamInfo.name}</h2>
           </div>
         </div>
         <TeamUserTable members={members} />
@@ -69,18 +65,12 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
         <CardHeader className="px-5 py-4 bg-muted/10 border-b">
           <div className="flex items-center gap-2">
             <History className="size-5 text-muted-foreground" />
-            <h3 className="text-xl font-semibold text-foreground">Match History</h3>
+            <h3 className="text-xl font-semibold text-foreground">
+              Match History
+            </h3>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          <QueueMatchesList
-            eventId={eventId}
-            matches={matches}
-            hideUuid
-            hideReplay
-            isInsideCard
-          />
-        </CardContent>
+        <TeamMatchHistory eventId={eventId} matches={matches} />
       </Card>
     </div>
   );

@@ -282,10 +282,7 @@ export class MatchService {
     }
 
     const tournamentTeamCount = await this.getTournamentTeamCount(event.id);
-    const finalRoundIndex = Math.max(
-      0,
-      Math.log2(tournamentTeamCount) - 1,
-    );
+    const finalRoundIndex = Math.max(0, Math.log2(tournamentTeamCount) - 1);
 
     if (event.currentRound >= finalRoundIndex) {
       this.logger.log(`Event ${event.name} has finished the final round.`);
@@ -833,18 +830,23 @@ export class MatchService {
         select: {
           id: true,
         },
-        where: {
-          teams: {
-            id: teamId,
+        where: [
+          {
+            teams: { id: teamId },
+            state: MatchState.FINISHED,
+            phase: MatchPhase.QUEUE,
           },
-          state: MatchState.FINISHED,
-        },
+          {
+            teams: { id: teamId },
+            state: MatchState.FINISHED,
+            isRevealed: true,
+          },
+        ],
         withDeleted: true,
       })
-    ).map(match => match.id);
+    ).map((match) => match.id);
 
-    if (matchesToQuery.length === 0)
-      return [];
+    if (matchesToQuery.length === 0) return [];
 
     const matches = await this.matchRepository.find({
       where: {
@@ -864,8 +866,15 @@ export class MatchService {
     });
 
     return matches.map((match) => {
-      const { id: _id, ...rest } = match;
-      return rest;
+      // Reveal ID only if it's NOT from the queue AND it is revealed.
+      const shouldRevealId =
+        match.phase !== MatchPhase.QUEUE && match.isRevealed;
+
+      if (!shouldRevealId) {
+        const { id: _id, ...rest } = match;
+        return rest;
+      }
+      return match;
     });
   }
 
