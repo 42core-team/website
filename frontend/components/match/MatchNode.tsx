@@ -5,12 +5,15 @@ import { motion } from "framer-motion";
 import { memo } from "react";
 import { MatchState } from "@/app/actions/tournament-model";
 import { useParams, useRouter } from "next/navigation";
+import { Handle, Position } from "reactflow";
 
 interface MatchNodeData {
   match: Match;
   width?: number;
   height?: number;
   onClick?: (match: Match) => void;
+  showTargetHandle?: boolean;
+  showSourceHandle?: boolean;
 }
 
 interface MatchNodeProps {
@@ -60,7 +63,14 @@ function getMatchStateIcon(state: MatchState) {
 }
 
 function MatchNode({ data }: MatchNodeProps) {
-  const { match, width = 200, height = 80, onClick } = data;
+  const {
+    match,
+    width = 200,
+    height = 80,
+    onClick,
+    showTargetHandle = false,
+    showSourceHandle = false,
+  } = data;
   const styles = getMatchStateStyles(match.state);
   const icon = getMatchStateIcon(match.state);
   const router = useRouter();
@@ -91,6 +101,23 @@ function MatchNode({ data }: MatchNodeProps) {
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
     >
+      {showTargetHandle && (
+        <Handle
+          type="target"
+          position={Position.Left}
+          className="w-2 h-2 !bg-muted-foreground border-2 border-background"
+          style={{ left: -4 }}
+        />
+      )}
+      {showSourceHandle && (
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="w-2 h-2 !bg-muted-foreground border-2 border-background"
+          style={{ right: -4 }}
+        />
+      )}
+
       {/* Animated progress indicator for IN_PROGRESS matches */}
       {match.state === MatchState.IN_PROGRESS && (
         <motion.div
