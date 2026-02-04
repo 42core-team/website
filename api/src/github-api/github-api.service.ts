@@ -134,6 +134,7 @@ export class GithubApiService {
       basePath,
       gameConfig,
       serverConfig,
+      apiBaseUrl: this.configService.getOrThrow<string>("API_BASE_URL"),
     });
   }
 }

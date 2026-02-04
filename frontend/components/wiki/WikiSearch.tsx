@@ -87,19 +87,14 @@ export function WikiSearch({
             );
             for (const element of Array.from(elements)) {
               if (element.textContent?.toLowerCase().includes(searchSnapshot)) {
-                if (contentContainer instanceof HTMLElement) {
-                  const targetOffset
-                    = (element as HTMLElement).offsetTop
-                      - contentContainer.offsetTop;
-                  contentContainer.scrollTo({
-                    top: targetOffset,
-                    behavior: "smooth",
-                  });
-                }
+                element.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                });
                 element.classList.add(styles.wikiHighlightTemp);
                 setTimeout(() => {
                   element.classList.remove(styles.wikiHighlightTemp);
-                }, 1800);
+                }, 2000);
                 break;
               }
             }
@@ -149,62 +144,62 @@ export function WikiSearch({
         >
           {isLoading
             ? (
-                <div className="p-4 text-center text-muted-foreground">
-                  Searching...
-                </div>
-              )
+              <div className="p-4 text-center text-muted-foreground">
+                Searching...
+              </div>
+            )
             : results.length > 0
               ? (
-                  <div className="p-2">
-                    {results.map((result) => {
-                      const { page } = result;
-                      const href = `/wiki/${currentVersion}/${page.slug.join("/")}`;
-                      return (
-                        <Link
-                          prefetch={false}
-                          key={page.slug.join("/")}
-                          href={href}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleResultClick(result);
+                <div className="p-2">
+                  {results.map((result) => {
+                    const { page } = result;
+                    const href = `/wiki/${currentVersion}/${page.slug.join("/")}`;
+                    return (
+                      <Link
+                        prefetch={false}
+                        key={page.slug.join("/")}
+                        href={href}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleResultClick(result);
+                        }}
+                        className="hover:bg-default-100 focus:bg-default-200 block cursor-pointer rounded-md p-3 transition-colors focus:outline-none"
+                        role="option"
+                        aria-selected={false}
+                      >
+                        <div className="text-sm font-medium">{page.title}</div>
+                        <div
+                          className="mt-1 line-clamp-2 text-xs text-muted-foreground"
+                          dangerouslySetInnerHTML={{
+                            __html: result.highlightedSnippet,
                           }}
-                          className="hover:bg-default-100 focus:bg-default-200 block cursor-pointer rounded-md p-3 transition-colors focus:outline-none"
-                          role="option"
-                          aria-selected={false}
-                        >
-                          <div className="text-sm font-medium">{page.title}</div>
-                          <div
-                            className="mt-1 line-clamp-2 text-xs text-muted-foreground"
-                            dangerouslySetInnerHTML={{
-                              __html: result.highlightedSnippet,
-                            }}
-                          />
-                          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>
-                              /
-                              {page.slug.join("/")}
+                        />
+                        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>
+                            /
+                            {page.slug.join("/")}
+                          </span>
+                          {page.version && page.version !== "latest" && (
+                            <span className="bg-primary-100 text-primary-700 rounded px-1 py-0.5 text-xs">
+                              {page.version}
                             </span>
-                            {page.version && page.version !== "latest" && (
-                              <span className="bg-primary-100 text-primary-700 rounded px-1 py-0.5 text-xs">
-                                {page.version}
-                              </span>
-                            )}
-                            <span className="text-muted-foreground">
-                              {result.matchType === "title"
-                                ? "Found in title"
-                                : "Found in content"}
-                            </span>
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )
+                          )}
+                          <span className="text-muted-foreground">
+                            {result.matchType === "title"
+                              ? "Found in title"
+                              : "Found in content"}
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )
               : (
-                  <div className="p-4 text-center text-muted-foreground">
-                    No results found
-                  </div>
-                )}
+                <div className="p-4 text-center text-muted-foreground">
+                  No results found
+                </div>
+              )}
         </div>
       )}
     </div>

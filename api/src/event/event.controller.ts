@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -56,6 +57,12 @@ export class EventController {
   @Get(":id/server-config")
   async getEventServerConfig(@Param("id", new ParseUUIDPipe()) id: string) {
     return await this.eventService.getEventServerConfig(id);
+  }
+
+  @Get(":id/github-org")
+  async getEventGithubOrg(@Param("id", new ParseUUIDPipe()) id: string) {
+    const event = await this.eventService.getEventById(id);
+    return event.githubOrg;
   }
 
   @Get("event/currentLiveEvent")
@@ -212,5 +219,43 @@ export class EventController {
       );
 
     return this.eventService.updateEventSettings(eventId, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(":id/admins")
+  async getEventAdmins(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId))) {
+      throw new UnauthorizedException("You are not an admin of this event");
+    }
+    return this.eventService.getEventAdmins(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/admins/:newAdminId")
+  async addEventAdmin(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+    @Param("newAdminId", new ParseUUIDPipe()) newAdminId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId))) {
+      throw new UnauthorizedException("You are not an admin of this event");
+    }
+    return this.eventService.addEventAdmin(eventId, newAdminId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(":id/admins/:adminId")
+  async removeEventAdmin(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @Param("adminId", new ParseUUIDPipe()) adminIdToRemove: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId))) {
+      throw new UnauthorizedException("You are not an admin of this event");
+    }
+    return this.eventService.removeEventAdmin(eventId, adminIdToRemove);
   }
 }

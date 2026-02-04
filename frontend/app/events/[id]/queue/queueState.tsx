@@ -38,7 +38,7 @@ export default function QueueState(props: {
       queryKey: queueStateQueryKey(eventId),
       queryFn: () => queueStateQueryFn(eventId),
       initialData: props.queueState,
-      refetchInterval: 600,
+      refetchInterval: 2000,
     });
 
   const { data: queueMatches = [] } = useQuery<Match[]>({
@@ -76,25 +76,45 @@ export default function QueueState(props: {
     },
   });
 
+  // Tracking match state via queueState
+  const effectiveMatch = queueState?.match;
+  const matchState = effectiveMatch?.state;
+
   useEffect(() => {
-    if (!queueState) {
+    if (!matchState) {
+      // If we lose the match (e.g. queue state resets), clear the cached state
+      queryClient.setQueryData(["lastSeenMatchState", eventId], undefined);
       return;
     }
 
-    if (queueState.match?.state === MatchState.IN_PROGRESS) {
-      return;
+    const lastSeenState = queryClient.getQueryData<MatchState>([
+      "lastSeenMatchState",
+      eventId,
+    ]);
+
+    // Detect transition from IN_PROGRESS to FINISHED
+    if (
+      lastSeenState === MatchState.IN_PROGRESS &&
+      matchState === MatchState.FINISHED &&
+      effectiveMatch
+    ) {
+      // Refresh match history before redirecting
+      queryClient.invalidateQueries({
+        queryKey: queueMatchesQueryKey(eventId),
+      });
+      router.push(`/events/${eventId}/match/${effectiveMatch.id}`);
     }
 
-    const previousMatchState = props.queueState.match?.state;
-    if (previousMatchState === MatchState.IN_PROGRESS && queueState.match) {
-      router.push(`/events/${eventId}/match/${queueState.match.id}`);
+    // Update the last seen state in the query client
+    if (lastSeenState !== matchState) {
+      queryClient.setQueryData(["lastSeenMatchState", eventId], matchState);
     }
-  }, [queueState, router, eventId, props.queueState.match?.state]);
+  }, [matchState, effectiveMatch, eventId, router, queryClient]);
 
   if (isQueueStateLoading || !queueState) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-        <Spinner />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -103,14 +123,11 @@ export default function QueueState(props: {
     <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
       <h1 className="text-2xl font-bold">Queue State</h1>
       <div className="mt-4 flex flex-col items-center justify-center gap-2">
-        {queueState?.match?.state === MatchState.IN_PROGRESS ? (
-          <Spinner color="success" />
+        {matchState === MatchState.IN_PROGRESS ? (
+          <Spinner size="xl" className="text-green-600" />
         ) : (
           <>
-            <p className="text-lg">
-              Team:
-              {props.team.name}
-            </p>
+            <p className="text-lg">Team: {props.team.name}</p>
             <p
               className={cn(
                 "text-sm text-muted-foreground",

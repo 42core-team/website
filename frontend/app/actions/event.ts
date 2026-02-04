@@ -30,12 +30,19 @@ export interface Event {
   gameConfig?: string;
   serverConfig?: string;
   isPrivate: boolean;
+  githubOrgSecret?: string;
 }
 
 export async function getEventById(
   eventId: string,
 ): Promise<ServerActionResponse<Event>> {
   return await handleError(axiosInstance.get(`event/${eventId}`));
+}
+
+export async function getEventGithubOrg(
+  eventId: string,
+): Promise<ServerActionResponse<string>> {
+  return await handleError(axiosInstance.get(`event/${eventId}/github-org`));
 }
 
 export async function getCurrentLiveEvent(): Promise<
@@ -137,11 +144,48 @@ export async function updateEventSettings(
     canCreateTeam?: boolean;
     processQueue?: boolean;
     isPrivate?: boolean;
+    name?: string;
+    description?: string;
+    githubOrg?: string;
+    githubOrgSecret?: string;
+    location?: string;
+    startDate?: number;
+    endDate?: number;
+    minTeamSize?: number;
+    maxTeamSize?: number;
+    gameServerDockerImage?: string;
+    myCoreBotDockerImage?: string;
+    visualizerDockerImage?: string;
+    monorepoUrl?: string;
+    monorepoVersion?: string;
+    basePath?: string;
+    gameConfig?: string;
+    serverConfig?: string;
   },
 ): Promise<ServerActionResponse<Event>> {
   return await handleError(
     axiosInstance.put<Event>(`event/${eventId}/settings`, settings),
   );
+}
+
+export async function getEventAdmins(
+  eventId: string,
+): Promise<ServerActionResponse<{ id: string; username: string; name: string }[]>> {
+  return await handleError(axiosInstance.get(`event/${eventId}/admins`));
+}
+
+export async function addEventAdmin(
+  eventId: string,
+  userId: string,
+): Promise<ServerActionResponse<void>> {
+  return await handleError(axiosInstance.post(`event/${eventId}/admins/${userId}`));
+}
+
+export async function removeEventAdmin(
+  eventId: string,
+  userId: string,
+): Promise<ServerActionResponse<void>> {
+  return await handleError(axiosInstance.delete(`event/${eventId}/admins/${userId}`));
 }
 
 export async function getMyEvents(): Promise<Event[]> {

@@ -21,7 +21,7 @@ export class MatchController {
   constructor(
     private readonly matchService: MatchService,
     private readonly eventService: EventService,
-  ) {}
+  ) { }
 
   private logger = new Logger("MatchController");
 
@@ -109,6 +109,14 @@ export class MatchController {
         "You are not authorized to view all queue matches.",
       );
     return await this.matchService.getAllQueueMatches(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get("team/:teamId")
+  async getMatchesForTeam(
+    @Param("teamId", ParseUUIDPipe) teamId: string,
+  ) {
+    return await this.matchService.getMatchesForTeam(teamId);
   }
 
   @UseGuards(JwtAuthGuard)

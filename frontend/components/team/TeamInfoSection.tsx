@@ -30,7 +30,8 @@ interface TeamInfoSectionProps {
   onLeaveTeam: () => Promise<boolean>;
   isLeaving: boolean;
   teamMembers: TeamMember[];
-  isRepoPending?: boolean;
+  githubOrg: string;
+  isRepoPending: boolean;
 }
 
 export function TeamInfoSection({
@@ -38,23 +39,13 @@ export function TeamInfoSection({
   onLeaveTeam,
   isLeaving,
   teamMembers,
+  isRepoPending,
+  githubOrg,
 }: Readonly<TeamInfoSectionProps>) {
   const eventId = useParams().id as string;
   const [isOpen, setIsOpen] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
-  const [githubOrg, setGithubOrg] = useState<string | null>(null);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
-
-  useEffect(() => {
-    const loadGithubOrg = async () => {
-      const event = await getEventById(eventId);
-      if (isActionError(event))
-        return;
-
-      setGithubOrg(event.githubOrg);
-    };
-    loadGithubOrg();
-  }, [eventId]);
 
   const getRepoUrl = () => {
     return `https://github.com/${githubOrg}/${myTeam.repo}`;
@@ -99,9 +90,15 @@ export function TeamInfoSection({
                     {myTeam.repo}
                   </a>
                 )
-                : (
-                  <Skeleton className="h-5 w-72 rounded-md m-2" />
-                )}
+                : isRepoPending
+                  ? (
+                    <p className="text-sm text-gray-200">
+                      Repository will be created when the event starts.
+                    </p>
+                  )
+                  : (
+                    <Skeleton className="h-5 w-72 rounded-md m-2" />
+                  )}
             </div>
           </div>
           <div>

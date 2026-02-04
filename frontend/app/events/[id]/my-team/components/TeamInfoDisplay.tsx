@@ -6,7 +6,8 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import axiosInstance from "@/app/actions/axios";
 import { isActionError } from "@/app/actions/errors";
-import { leaveTeam } from "@/app/actions/team";
+import { leaveTeam, hasEventStarted } from "@/app/actions/team";
+import { getEventGithubOrg } from "@/app/actions/event";
 import { TeamInfoSection } from "@/components/team";
 
 interface TeamInfoDisplayProps {
@@ -22,8 +23,18 @@ export default function TeamInfoDisplay({
   const queryClient = useQueryClient();
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isRepoPending] = useState<boolean>(false);
   const eventId = useParams().id as string;
+
+  const { data: githubOrg } = useQuery({
+    queryKey: ["event", eventId, "github-org"],
+    queryFn: async () => {
+      const resp = await getEventGithubOrg(eventId);
+      if (isActionError(resp)) {
+        return null;
+      }
+      return resp;
+    },
+  });
 
   const { data: team } = useQuery<Team | null>({
     refetchInterval: 3000,
@@ -36,6 +47,14 @@ export default function TeamInfoDisplay({
     },
     initialData: initialTeam,
   });
+
+  const { data: eventStarted = true } = useQuery({
+    queryKey: ["team", team?.id, "event-started"],
+    queryFn: () => hasEventStarted(team!.id),
+    enabled: !!team?.id,
+  });
+
+  const isRepoPending = !eventStarted || !githubOrg;
 
   const { data: teamMembers = [] } = useQuery<TeamMember[]>({
     queryKey: ["team", team?.id, "members"],
@@ -113,6 +132,7 @@ export default function TeamInfoDisplay({
         isLeaving={leaveTeamMutation.isPending}
         teamMembers={teamMembers}
         isRepoPending={isRepoPending}
+        githubOrg={githubOrg ?? ""}
       />
     </>
   );

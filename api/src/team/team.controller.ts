@@ -35,7 +35,7 @@ export class TeamController {
     private readonly teamService: TeamService,
     private readonly userService: UserService,
     private readonly eventService: EventService,
-  ) {}
+  ) { }
 
   @Get(":id")
   getTeamById(@Param("id", new ParseUUIDPipe()) id: string) {
@@ -123,6 +123,11 @@ export class TeamController {
     });
   }
 
+  @Get(":id/event-started")
+  async hasEventStarted(@Param("id", new ParseUUIDPipe()) teamId: string) {
+    return this.eventService.hasEventStartedForTeam(teamId);
+  }
+
   @UseGuards(JwtAuthGuard, MyTeamGuards, TeamNotLockedGuard)
   @Post(`event/:${EVENT_ID_PARAM}/sendInvite`)
   async sendInviteToTeam(
@@ -130,6 +135,8 @@ export class TeamController {
     @Body() inviteUserDto: InviteUserDto,
     @Team() team: TeamEntity,
   ) {
+    if(await this.teamService.isTeamFull(team.id))
+        throw new BadRequestException("This team is full.");
     if (
       await this.teamService.getTeamOfUserForEvent(
         eventId,
@@ -188,6 +195,8 @@ export class TeamController {
       );
     if (!(await this.teamService.isUserInvitedToTeam(userId, teamId)))
       throw new BadRequestException("You are not invited to this team.");
+      if(await this.teamService.isTeamFull(teamId))
+          throw new BadRequestException("This team is full.");
 
     return this.teamService.acceptTeamInvite(userId, teamId);
   }

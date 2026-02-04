@@ -67,17 +67,21 @@ export async function getTeamById(teamId: string): Promise<Team | null> {
   // TODO: directly return team object if API response is already in the correct format
   return team
     ? {
-        id: team.id,
-        name: team.name,
-        repo: team.repo || "",
-        locked: team.locked,
-        score: team.score,
-        queueScore: team.queueScore,
-        createdAt: team.createdAt,
-        inQueue: team.inQueue,
-        updatedAt: team.updatedAt,
-      }
+      id: team.id,
+      name: team.name,
+      repo: team.repo || "",
+      locked: team.locked,
+      score: team.score,
+      queueScore: team.queueScore,
+      createdAt: team.createdAt,
+      inQueue: team.inQueue,
+      updatedAt: team.updatedAt,
+    }
     : null;
+}
+
+export async function hasEventStarted(teamId: string): Promise<boolean> {
+  return (await axiosInstance.get(`team/${teamId}/event-started`)).data;
 }
 
 export async function getMyEventTeam(eventId: string): Promise<Team | null> {
@@ -154,21 +158,6 @@ export async function searchUsersForInvite(
       `team/event/${eventId}/searchInviteUsers/${searchQuery}`,
     )
   ).data;
-}
-
-/**
- * Send a team invite to a user
- * @returns boolean indicating success
- * @param eventId
- * @param userId ID of the user to invite
- */
-export async function sendTeamInvite(
-  eventId: string,
-  userId: string,
-): Promise<void> {
-  await axiosInstance.post(`team/event/${eventId}/sendInvite`, {
-    userToInviteId: userId,
-  });
 }
 
 /**

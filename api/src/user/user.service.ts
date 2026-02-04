@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { UserEntity } from "./entities/user.entity";
-import { Repository, UpdateResult } from "typeorm";
+import { ILike, Repository, UpdateResult } from "typeorm";
 import { EventEntity } from "../event/entities/event.entity";
 import { UserInviteSearchResult } from "./dtos/user-search-invite.dto";
 import * as CryptoJS from "crypto-js";
@@ -171,5 +171,12 @@ export class UserService {
     }
 
     return queryBuilder.getRawMany<UserInviteSearchResult>();
+  }
+
+  async searchUsers(query: string): Promise<UserEntity[]> {
+    return this.userRepository.find({
+      where: [{ username: ILike(`%${query}%`) }, { name: ILike(`%${query}%`) }],
+      take: 10,
+    });
   }
 }

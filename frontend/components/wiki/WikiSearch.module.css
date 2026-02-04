@@ -1,8 +1,11 @@
 .wikiHighlightTemp {
-  background-color: #fef3c7; /* amber-100 */
-  border: 1px solid #e5e7eb; /* gray-200 */
-  border-radius: 4px;
-  padding: 2px;
-  opacity: 0.75;
+  background-color: #fef3c7;
+  color: #92400e;
   transition: all 0.3s ease;
+  border-radius: 4px;
+}
+
+:global(.dark) .wikiHighlightTemp {
+  background-color: #78350f;
+  color: #fef3c7;
 }

@@ -63,9 +63,12 @@ h6[id]::before {
 mark {
   background-color: #fef3c7;
   color: #92400e;
-  padding: 0.125rem 0.25rem;
-  border-radius: 0.25rem;
   font-weight: 500;
+}
+
+.dark mark {
+  background-color: #78350f;
+  color: #fef3c7;
 }
 
 .prose h1,
