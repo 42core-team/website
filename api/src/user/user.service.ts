@@ -12,8 +12,8 @@ export class UserService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
-    private configService: ConfigService,
-  ) { }
+    private readonly configService: ConfigService,
+  ) {}
 
   async createUser(
     email: string,
@@ -128,6 +128,7 @@ export class UserService {
     eventId: string,
     searchQuery: string,
     teamId: string,
+    userId: string,
   ): Promise<UserInviteSearchResult[]> {
     const isEventPublic = await this.userRepository.manager
       .getRepository(EventEntity)
@@ -159,6 +160,7 @@ export class UserService {
           social: `%${searchQuery}%`,
         },
       )
+      .andWhere("user.id != :userId", { userId })
       .andWhere("team.id IS NULL")
       .andWhere(
         "(inviteEvent.id IS NULL OR inviteEvent.id != :eventId OR inviteTeam.id = :teamId)",

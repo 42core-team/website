@@ -15,7 +15,6 @@ import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations"
 import { MatchService } from "../match/match.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { LockKeys } from "../constants";
-import { EventEntity } from "../event/entities/event.entity";
 
 @Injectable()
 export class TeamService {

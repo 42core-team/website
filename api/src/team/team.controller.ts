@@ -134,7 +134,13 @@ export class TeamController {
     @EventId eventId: string,
     @Body() inviteUserDto: InviteUserDto,
     @Team() team: TeamEntity,
+    @UserId() userId: string
   ) {
+    if(userId === inviteUserDto.userToInviteId)
+      throw new BadRequestException(
+        "You cannot invite yourself to a team.",
+      )
+
     if(await this.teamService.isTeamFull(team.id))
         throw new BadRequestException("This team is full.");
     if (
@@ -169,8 +175,9 @@ export class TeamController {
     @EventId eventId: string,
     @Param("searchQuery") searchQuery: string,
     @Team() team: TeamEntity,
+    @UserId() userId: string
   ) {
-    return this.userService.searchUsersForInvite(eventId, searchQuery, team.id);
+    return this.userService.searchUsersForInvite(eventId, searchQuery, team.id, userId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -195,6 +202,7 @@ export class TeamController {
       );
     if (!(await this.teamService.isUserInvitedToTeam(userId, teamId)))
       throw new BadRequestException("You are not invited to this team.");
+
       if(await this.teamService.isTeamFull(teamId))
           throw new BadRequestException("This team is full.");
 
