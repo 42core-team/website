@@ -18,6 +18,7 @@ import {
 
 import { lockEvent, unlockEvent } from "@/app/actions/team";
 import {
+  revealAllMatches,
   startSwissMatches,
   startTournamentMatches,
 } from "@/app/actions/tournament";
@@ -167,6 +168,23 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     },
     onError: () => {
       toast.error("Failed to start tournament phase.");
+    },
+  });
+
+  const revealMatchesMutation = useMutation({
+    mutationFn: async (phase: string) => {
+      const result = await revealAllMatches(eventId, phase);
+      if (isActionError(result)) {
+        throw new Error(result.error);
+      }
+      return result;
+    },
+    onSuccess: async () => {
+      toast.success("Matches revealed.");
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+    onError: (e: any) => {
+      toast.error(e.message || "Failed to reveal matches.");
     },
   });
 
@@ -535,47 +553,82 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 Immediate actions for running the event.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex flex-wrap gap-4">
-                <Button
-                  disabled={
-                    event.lockedAt != null || lockEventMutation.isPending
-                  }
-                  onClick={() => lockEventMutation.mutate()}
-                  variant="default"
-                >
-                  Lock Team Repositories
-                </Button>
-                <Button
-                  disabled={
-                    event.lockedAt == null || unlockEventMutation.isPending
-                  }
-                  onClick={() => unlockEventMutation.mutate()}
-                  variant="outline"
-                >
-                  Unlock Team Repositories
-                </Button>
-                <Button
-                  disabled={
-                    event.currentRound !== 0 ||
-                    startSwissMatchesMutation.isPending
-                  }
-                  onClick={() => startSwissMatchesMutation.mutate()}
-                  variant="secondary"
-                >
-                  Start Group Phase
-                </Button>
-                <Button
-                  disabled={startTournamentMatchesMutation.isPending}
-                  onClick={() => startTournamentMatchesMutation.mutate()}
-                  variant="secondary"
-                >
-                  Start Tournament Phase
-                </Button>
+            <CardContent className="space-y-10">
+              <div className="space-y-3">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                  Repository Management
+                </h3>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    disabled={
+                      event.lockedAt != null || lockEventMutation.isPending
+                    }
+                    onClick={() => lockEventMutation.mutate()}
+                    variant="default"
+                  >
+                    Lock Team Repositories
+                  </Button>
+                  <Button
+                    disabled={
+                      event.lockedAt == null || unlockEventMutation.isPending
+                    }
+                    onClick={() => unlockEventMutation.mutate()}
+                    variant="outline"
+                  >
+                    Unlock Team Repositories
+                  </Button>
+                </div>
               </div>
 
-              <div className="pt-4 border-t">
-                <h3 className="text-sm font-medium mb-3">
+              <div className="space-y-3">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                  Group Phase
+                </h3>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    disabled={
+                      event.currentRound !== 0 ||
+                      startSwissMatchesMutation.isPending
+                    }
+                    onClick={() => startSwissMatchesMutation.mutate()}
+                    variant="secondary"
+                  >
+                    Start Group Phase
+                  </Button>
+                  <Button
+                    disabled={revealMatchesMutation.isPending}
+                    onClick={() => revealMatchesMutation.mutate("SWISS")}
+                    variant="secondary"
+                  >
+                    Reveal Group Phase Matches
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                  Tournament Phase
+                </h3>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    disabled={startTournamentMatchesMutation.isPending}
+                    onClick={() => startTournamentMatchesMutation.mutate()}
+                    variant="secondary"
+                  >
+                    Start Tournament Phase
+                  </Button>
+                  <Button
+                    disabled={revealMatchesMutation.isPending}
+                    onClick={() => revealMatchesMutation.mutate("ELIMINATION")}
+                    variant="secondary"
+                  >
+                    Reveal Tournament Matches
+                  </Button>
+                </div>
+              </div>
+
+              <div className="pt-8 border-t">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-4">
                   Scheduling Auto-Lock
                 </h3>
                 <div className="flex gap-4 items-end max-w-md">
