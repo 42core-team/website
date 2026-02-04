@@ -282,10 +282,7 @@ export class MatchService {
     }
 
     const tournamentTeamCount = await this.getTournamentTeamCount(event.id);
-    const finalRoundIndex = Math.max(
-      0,
-      Math.log2(tournamentTeamCount) - 1,
-    );
+    const finalRoundIndex = Math.max(0, Math.log2(tournamentTeamCount) - 1);
 
     if (event.currentRound >= finalRoundIndex) {
       this.logger.log(`Event ${event.name} has finished the final round.`);
@@ -841,10 +838,9 @@ export class MatchService {
         },
         withDeleted: true,
       })
-    ).map(match => match.id);
+    ).map((match) => match.id);
 
-    if (matchesToQuery.length === 0)
-      return [];
+    if (matchesToQuery.length === 0) return [];
 
     const matches = await this.matchRepository.find({
       where: {
@@ -1023,6 +1019,26 @@ export class MatchService {
     return this.matchRepository.update(matchId, {
       isRevealed: true,
     });
+  }
+
+  async revealAllMatchesInPhase(eventId: string, phase: MatchPhase) {
+    const matches = await this.matchRepository.find({
+      where: {
+        teams: {
+          event: {
+            id: eventId,
+          },
+        },
+        phase: phase,
+      },
+    });
+
+    if (matches.length > 0) {
+      await this.matchRepository.update(
+        matches.map((m) => m.id),
+        { isRevealed: true },
+      );
+    }
   }
 
   getGlobalStats() {
