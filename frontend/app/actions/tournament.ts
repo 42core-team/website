@@ -51,10 +51,23 @@ export async function revealMatch(
   return handleError(axiosInstance.put<Match>(`/match/reveal/${matchId}`));
 }
 
+export async function revealAllMatches(
+  eventId: string,
+  phase: string,
+): Promise<ServerActionResponse<void>> {
+  return handleError(
+    axiosInstance.put<void>(`/match/reveal-all/${eventId}/${phase}`),
+  );
+}
+
 export async function getMatchById(
   matchId: string,
 ): Promise<ServerActionResponse<Match>> {
   return handleError(axiosInstance.get<Match>(`/match/${matchId}`));
+}
+
+export async function getMatchesForTeam(teamId: string): Promise<Match[]> {
+  return (await axiosInstance.get(`/match/team/${teamId}`)).data;
 }
 
 // Functions:

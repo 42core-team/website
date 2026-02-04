@@ -491,6 +491,23 @@ export class TeamService {
     });
   }
 
+    async isTeamFull(teamId: string) {
+        const team = await this.teamRepository.findOne({
+            where: {
+                id: teamId,
+            },
+            relations: {
+                event: true,
+                users: true
+            }
+        });
+        const maxUsers = team?.event.maxTeamSize;
+        if (!maxUsers) return true;
+        if (!team?.users) return true;
+
+        return team?.users.length >= maxUsers;
+    }
+
   async leaveQueue(teamId: string) {
     return this.teamRepository.update(teamId, { inQueue: false });
   }

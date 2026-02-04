@@ -141,6 +141,8 @@ export class TeamController {
         "You cannot invite yourself to a team.",
       )
 
+    if(await this.teamService.isTeamFull(team.id))
+        throw new BadRequestException("This team is full.");
     if (
       await this.teamService.getTeamOfUserForEvent(
         eventId,
@@ -200,6 +202,9 @@ export class TeamController {
       );
     if (!(await this.teamService.isUserInvitedToTeam(userId, teamId)))
       throw new BadRequestException("You are not invited to this team.");
+
+      if(await this.teamService.isTeamFull(teamId))
+          throw new BadRequestException("This team is full.");
 
     return this.teamService.acceptTeamInvite(userId, teamId);
   }

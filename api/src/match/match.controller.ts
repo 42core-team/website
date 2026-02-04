@@ -112,6 +112,12 @@ export class MatchController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get("team/:teamId")
+  async getMatchesForTeam(@Param("teamId", ParseUUIDPipe) teamId: string) {
+    return await this.matchService.getMatchesForTeam(teamId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get("logs/:matchId")
   async getMatchLogs(
     @Param("matchId", ParseUUIDPipe) matchId: string,
@@ -146,6 +152,21 @@ export class MatchController {
       );
 
     return this.matchService.revealMatch(matchId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put("reveal-all/:eventId/:phase")
+  async revealAllMatches(
+    @Param("eventId", ParseUUIDPipe) eventId: string,
+    @Param("phase") phase: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to reveal matches for this event.",
+      );
+
+    return this.matchService.revealAllMatchesInPhase(eventId, phase as any);
   }
 
   @Get(":matchId")

@@ -6,7 +6,6 @@ import { usePlausible } from "next-plausible";
 import { useEffect, useState } from "react";
 import {
   searchUsersForInvite,
-  sendTeamInvite,
 } from "@/app/actions/team";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -21,6 +20,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import axiosInstance from "@/app/actions/axios";
+import {toast} from "sonner";
 
 interface TeamInviteModalProps {
   isOpen: boolean;
@@ -61,7 +62,9 @@ export function TeamInviteModal({
     plausible("invite_team_member");
     setIsInviting(prev => ({ ...prev, [userId]: true }));
     try {
-      await sendTeamInvite(eventId, userId);
+      await axiosInstance.post(`team/event/${eventId}/sendInvite`, {
+        userToInviteId: userId,
+      });
 
       setSearchResults(prev =>
         prev.map(user =>
@@ -70,8 +73,7 @@ export function TeamInviteModal({
       );
     }
     catch (error: any) {
-      // eslint-disable-next-line no-alert
-      alert(
+      toast.error(
         error?.response?.data?.message
         || error?.message
         || "Failed to send invite.",
