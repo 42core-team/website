@@ -46,7 +46,7 @@ export default function GraphView({
 
     if (!matches || matches.length === 0) {
       // Create placeholder nodes for visualization
-      const totalRounds = Math.ceil(Math.log2(teamCount));
+      const totalRounds = getTotalRounds(teamCount);
 
       for (let round = 0; round < totalRounds; round++) {
         const matchesInRound = 2 ** (totalRounds - round - 1);
@@ -101,15 +101,17 @@ export default function GraphView({
       }
 
       const totalRounds = getTotalRounds(teamCount);
-      const lastRound = totalRounds - 1;
+      const lastRoundIndex = totalRounds - 1;
       const roundKeys = Array.from(matchesByRound.keys()).sort((a, b) => a - b);
 
       for (const round of roundKeys) {
+        const roundIndex = round - 1;
         const roundMatches = matchesByRound.get(round) || [];
-        const bracketMatches =
-          round === lastRound
-            ? roundMatches.filter((match) => !match.isPlacementMatch)
-            : roundMatches;
+        const isLastRound = roundIndex === lastRoundIndex;
+
+        const bracketMatches = isLastRound
+          ? roundMatches.filter((match) => !match.isPlacementMatch)
+          : roundMatches;
 
         // Ensure bracket matches are sorted consistently for edge creation
         bracketMatches.sort(
@@ -117,13 +119,13 @@ export default function GraphView({
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         );
 
-        const spacing = 2 ** round * VERTICAL_SPACING;
+        const spacing = 2 ** roundIndex * VERTICAL_SPACING;
         const roundNodeIds: string[] = [];
 
         bracketMatches.forEach((match, index) => {
-          const id = match.id ?? `match-${round}-${index}`;
+          const id = match.id ?? `match-${roundIndex}-${index}`;
           const coord = {
-            x: round * ROUND_SPACING,
+            x: roundIndex * ROUND_SPACING,
             y: index * spacing + spacing / 2,
           };
 
@@ -135,8 +137,8 @@ export default function GraphView({
               match,
               width: MATCH_WIDTH,
               height: MATCH_HEIGHT,
-              showTargetHandle: round > 0,
-              showSourceHandle: round < lastRound,
+              showTargetHandle: roundIndex > 0,
+              showSourceHandle: roundIndex < lastRoundIndex,
               onClick: (clickedMatch: Match) => {
                 if (
                   (match.state === MatchState.FINISHED || isEventAdmin) &&
@@ -148,16 +150,15 @@ export default function GraphView({
           });
           roundNodeIds.push(id);
         });
-        nodeIdsByRound.set(round, roundNodeIds);
+        nodeIdsByRound.set(roundIndex, roundNodeIds);
 
-        const placementMatch =
-          round === lastRound
-            ? roundMatches.find((match) => match.isPlacementMatch)
-            : undefined;
+        const placementMatch = isLastRound
+          ? roundMatches.find((match) => match.isPlacementMatch)
+          : undefined;
         if (placementMatch) {
-          const placementId = placementMatch.id ?? `placement-${round}`;
+          const placementId = placementMatch.id ?? `placement-${roundIndex}`;
           const placementCoord = {
-            x: round * ROUND_SPACING,
+            x: roundIndex * ROUND_SPACING,
             y: spacing / 2 + VERTICAL_SPACING * 2,
           };
 

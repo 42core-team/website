@@ -74,8 +74,9 @@ function MatchNode({ data }: MatchNodeProps) {
   const styles = getMatchStateStyles(match.state);
   const icon = getMatchStateIcon(match.state);
   const router = useRouter();
-  const params = useParams();
-  const eventId = params.id as string;
+  const params = useParams<{ id?: string }>();
+  const rawId = params?.id;
+  const eventId = rawId ?? "";
 
   const handleClick = () => {
     onClick?.(match);
