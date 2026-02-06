@@ -33,32 +33,18 @@ export default async function page({
   const teamCount = await getTournamentTeamCount(eventId);
 
   return (
-    <div className="flex flex-col gap-4 md:gap-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-1.5 md:space-y-2">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-            Tournament Tree
-          </h1>
-          <p className="text-muted-foreground text-base md:text-lg max-w-3xl leading-relaxed">
-            Follow the elimination bracket to see which teams advance and
-            ultimately compete in the finals.
-          </p>
-        </div>
-        {eventAdmin && (
-          <div className="flex-shrink-0">
-            <Actions />
-          </div>
-        )}
+    <div>
+      <div className="flex gap-2">
+        <Actions />
       </div>
-
-      <div className="rounded-xl md:rounded-2xl border bg-card/50 text-card-foreground shadow-sm overflow-hidden h-[60vh] md:h-[75vh] min-h-[400px] md:min-h-[600px] relative">
-        <GraphView
-          matches={serializedMatches}
-          teamCount={teamCount}
-          isEventAdmin={eventAdmin}
-          isAdminView={isAdminView}
-        />
-      </div>
+      <h1>Tournament Tree</h1>
+      <p></p>
+      <GraphView
+        matches={serializedMatches}
+        teamCount={teamCount}
+        isEventAdmin={eventAdmin}
+        isAdminView={isAdminView}
+      />
     </div>
   );
 }

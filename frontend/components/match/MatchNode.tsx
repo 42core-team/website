@@ -4,16 +4,12 @@ import type { Match } from "@/app/actions/tournament-model";
 import { motion } from "framer-motion";
 import { memo } from "react";
 import { MatchState } from "@/app/actions/tournament-model";
-import { useParams, useRouter } from "next/navigation";
-import { Handle, Position } from "reactflow";
 
 interface MatchNodeData {
   match: Match;
   width?: number;
   height?: number;
   onClick?: (match: Match) => void;
-  showTargetHandle?: boolean;
-  showSourceHandle?: boolean;
 }
 
 interface MatchNodeProps {
@@ -63,20 +59,9 @@ function getMatchStateIcon(state: MatchState) {
 }
 
 function MatchNode({ data }: MatchNodeProps) {
-  const {
-    match,
-    width = 200,
-    height = 80,
-    onClick,
-    showTargetHandle = false,
-    showSourceHandle = false,
-  } = data;
+  const { match, width = 200, height = 80, onClick } = data;
   const styles = getMatchStateStyles(match.state);
   const icon = getMatchStateIcon(match.state);
-  const router = useRouter();
-  const params = useParams<{ id?: string }>();
-  const rawId = params?.id;
-  const eventId = rawId ?? "";
 
   const handleClick = () => {
     onClick?.(match);
@@ -102,23 +87,6 @@ function MatchNode({ data }: MatchNodeProps) {
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
     >
-      {showTargetHandle && (
-        <Handle
-          type="target"
-          position={Position.Left}
-          className="w-2 h-2 !bg-muted-foreground border-2 border-background"
-          style={{ left: -4 }}
-        />
-      )}
-      {showSourceHandle && (
-        <Handle
-          type="source"
-          position={Position.Right}
-          className="w-2 h-2 !bg-muted-foreground border-2 border-background"
-          style={{ right: -4 }}
-        />
-      )}
-
       {/* Animated progress indicator for IN_PROGRESS matches */}
       {match.state === MatchState.IN_PROGRESS && (
         <motion.div
@@ -159,22 +127,12 @@ function MatchNode({ data }: MatchNodeProps) {
                     match.winner?.name === team.name ? "font-bold" : ""
                   }`}
                 >
-                  <div className="truncate flex-1">
-                    <span
-                      className="hover:underline transition-all duration-200 cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (team.id) {
-                          router.push(`/events/${eventId}/teams/${team.id}`);
-                        }
-                      }}
-                    >
-                      {formatTeamName(team.name)}
-                    </span>
+                  <span className="truncate flex-1">
+                    {formatTeamName(team.name)}
                     {team.id === match.winner?.id && (
                       <span className="ml-1 text-green-600">👑</span>
                     )}
-                  </div>
+                  </span>
                   {match.state === MatchState.FINISHED &&
                     team.score !== undefined && (
                       <span className="ml-2 text-xs">
