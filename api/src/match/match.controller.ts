@@ -172,19 +172,8 @@ export class MatchController {
   @Get(":matchId")
   async getMatchById(
     @Param("matchId", ParseUUIDPipe) matchId: string,
-    @UserId() userId: string,
-    @Query("adminRevealQuery") adminRevealQuery: boolean,
   ): Promise<MatchEntity> {
-    return await this.matchService.getMatchById(
-      matchId,
-      {
-        teams: {
-          event: true,
-        },
-      },
-      userId,
-      Boolean(adminRevealQuery),
-    );
+    return await this.matchService.getMatchById(matchId);
   }
 
   @UseGuards(JwtAuthGuard)
