@@ -15,7 +15,6 @@ import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations"
 import { MatchService } from "../match/match.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { LockKeys } from "../constants";
-import { MatchEntity } from "../match/entites/match.entity";
 
 @Injectable()
 export class TeamService {
@@ -30,7 +29,7 @@ export class TeamService {
     private readonly matchService: MatchService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   logger = new Logger("TeamService");
 
@@ -335,8 +334,6 @@ export class TeamService {
     searchName?: string,
     searchDir?: string,
     sortBy?: string,
-    userId?: string,
-    adminReveal?: boolean,
   ): Promise<
     Array<
       TeamEntity & {
@@ -344,55 +341,23 @@ export class TeamService {
       }
     >
   > {
-    const isAdmin = userId
-      ? await this.eventService.isEventAdmin(eventId, userId)
-      : false;
-    const revealAll = isAdmin && adminReveal;
-
     const query = this.teamRepository
       .createQueryBuilder("team")
       .innerJoin("team.event", "event")
       .leftJoin("team.users", "user")
       .where("event.id = :eventId", { eventId })
-      .andWhere("team.deletedAt IS NULL");
-
-    if (revealAll) {
-      query.select([
+      .andWhere("team.deletedAt IS NULL")
+      .select([
         "team.id",
         "team.name",
         "team.locked",
-        "team.score",
-        "team.buchholzPoints",
-        "team.hadBye",
+        "team.repo",
         "team.queueScore",
         "team.createdAt",
         "team.updatedAt",
-      ]);
-    } else {
-      // Calculate revealed score dynamically
-      query
-        .leftJoin(
-          MatchEntity,
-          "match",
-          "match.winnerId = team.id AND match.isRevealed = true AND match.phase = 'SWISS'",
-        )
-        .select([
-          "team.id",
-          "team.name",
-          "team.locked",
-          "team.hadBye",
-          "team.queueScore",
-          "team.createdAt",
-          "team.updatedAt",
-        ])
-        .addSelect("COUNT(DISTINCT match.id)", "revealed_score");
-
-      // Buchholz points are harder to calculate in a single query without nested aggregation.
-      // We'll calculate them in JS for now or accept that for search it might be 0/placeholder if too complex.
-      // However, for the Ranking Table, we need them.
-    }
-
-    query.addSelect("COUNT(DISTINCT user.id)", "user_count").groupBy("team.id");
+      ])
+      .addSelect("COUNT(user.id)", "userCount")
+      .groupBy("team.id");
 
     if (searchName) {
       query.andWhere("team.name LIKE :searchName", {
@@ -402,70 +367,27 @@ export class TeamService {
 
     if (sortBy) {
       const direction = searchDir?.toUpperCase() === "DESC" ? "DESC" : "ASC";
-      let sortColumn = sortBy;
-
       const validSortColumns = [
         "name",
         "locked",
-        "score",
+        "repo",
         "queueScore",
         "createdAt",
         "updatedAt",
       ];
-
-      if (validSortColumns.includes(sortColumn)) {
-        if (!revealAll && sortColumn === "score") {
-          query.orderBy("revealed_score", direction as "ASC" | "DESC");
-        } else {
-          query.orderBy(`team.${sortColumn}`, direction as "ASC" | "DESC");
-        }
+      if (validSortColumns.includes(sortBy)) {
+        query.orderBy(`team.${sortBy}`, direction as "ASC" | "DESC");
       }
-
-      if (sortBy === "buchholzPoints") {
-        if (revealAll) {
-          query.orderBy("team.buchholzPoints", direction as "ASC" | "DESC");
-        } else {
-          // If sorting by Buchholz and not revealed, we might just skip or sort by score
-          query.orderBy("revealed_score", direction as "ASC" | "DESC");
-        }
-      }
-
       if (sortBy === "membersCount") {
-        query.orderBy("COUNT(DISTINCT user.id)", direction as "ASC" | "DESC");
+        query.orderBy("COUNT(user.id)", direction as "ASC" | "DESC");
       }
     }
 
     const result = await query.getRawAndEntities();
-
-    const teamsWithCounts = result.entities.map((team, idx) => {
-      const raw = result.raw[idx];
-      const mappedTeam = {
-        ...team,
-        userCount: parseInt(raw.user_count, 10),
-      };
-
-      if (!revealAll) {
-        (mappedTeam as any).score = parseInt(raw.revealed_score, 10);
-        // Buchholz points will be calculated below for consistent Ranking Table experience
-        (mappedTeam as any).buchholzPoints = 0;
-      }
-
-      return mappedTeam;
-    });
-
-    if (!revealAll) {
-      // Calculate dynamic Buchholz for the returned block
-      // This is efficient enough for pagination sizes (default is usually small, or all for ranking)
-      for (const team of teamsWithCounts) {
-        (team as any).buchholzPoints =
-          await this.matchService.calculateRevealedBuchholzPointsForTeam(
-            team.id,
-            eventId,
-          );
-      }
-    }
-
-    return teamsWithCounts as any;
+    return result.entities.map((team, idx) => ({
+      ...team,
+      userCount: parseInt(result.raw[idx].userCount, 10),
+    }));
   }
 
   async joinQueue(teamId: string) {
@@ -569,22 +491,22 @@ export class TeamService {
     });
   }
 
-  async isTeamFull(teamId: string) {
-    const team = await this.teamRepository.findOne({
-      where: {
-        id: teamId,
-      },
-      relations: {
-        event: true,
-        users: true,
-      },
-    });
-    const maxUsers = team?.event.maxTeamSize;
-    if (!maxUsers) return true;
-    if (!team?.users) return true;
+    async isTeamFull(teamId: string) {
+        const team = await this.teamRepository.findOne({
+            where: {
+                id: teamId,
+            },
+            relations: {
+                event: true,
+                users: true
+            }
+        });
+        const maxUsers = team?.event.maxTeamSize;
+        if (!maxUsers) return true;
+        if (!team?.users) return true;
 
-    return team?.users.length >= maxUsers;
-  }
+        return team?.users.length >= maxUsers;
+    }
 
   async leaveQueue(teamId: string) {
     return this.teamRepository.update(teamId, { inQueue: false });
@@ -614,10 +536,12 @@ export class TeamService {
     });
 
     for (const team of teams) {
-      if (!team.repo || !team.event) continue;
+      if (!team.repo || !team.event)
+        continue;
 
       for (const user of team.users) {
-        if (!user.username) continue;
+        if (!user.username)
+          continue;
 
         await this.githubApiService.addWritePermissions(
           user.username,
