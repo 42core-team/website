@@ -129,7 +129,7 @@ export default function GraphView({
         };
 
         newNodes.push({
-          id: match.id,
+          id: match.id ?? `match-${round}-${index}`,
           type: "matchNode",
           position: { x: coord.x, y: coord.y },
           data: {
@@ -137,7 +137,10 @@ export default function GraphView({
             width: MATCH_WIDTH,
             height: MATCH_HEIGHT,
             onClick: (clickedMatch: Match) => {
-              if (match.state === MatchState.FINISHED || isEventAdmin)
+              if (
+                (match.state === MatchState.FINISHED || isEventAdmin) &&
+                clickedMatch.id
+              )
                 router.push(`/events/${eventId}/match/${clickedMatch.id}`);
             },
           },
@@ -151,7 +154,7 @@ export default function GraphView({
         };
 
         newNodes.push({
-          id: placementMatch.id,
+          id: placementMatch.id ?? `placement-${round}`,
           type: "matchNode",
           position: { x: placementCoord.x, y: placementCoord.y },
           data: {
@@ -160,8 +163,9 @@ export default function GraphView({
             height: MATCH_HEIGHT,
             onClick: (clickedMatch: Match) => {
               if (
-                placementMatch.state === MatchState.FINISHED ||
-                isEventAdmin
+                (placementMatch.state === MatchState.FINISHED ||
+                  isEventAdmin) &&
+                clickedMatch.id
               )
                 router.push(`/events/${eventId}/match/${clickedMatch.id}`);
             },

@@ -19,8 +19,8 @@ on:
           - prod
 
 concurrency:
-  group: ${{ format('{0}-{1}-{2}', github.workflow, github.ref, github.event_name == 'workflow_call' && github.run_id || 'manual') }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.environment }}
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
