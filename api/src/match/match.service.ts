@@ -1021,15 +1021,37 @@ export class MatchService {
   async getMatchById(
     matchId: string,
     relations: FindOptionsRelations<MatchEntity> = {},
+    userId?: string,
+    adminReveal?: boolean,
   ): Promise<MatchEntity> {
-    return this.matchRepository.findOneOrFail({
+    const match = await this.matchRepository.findOneOrFail({
       where: { id: matchId },
       relations,
     });
+
+    if (match.isRevealed) return match;
+
+    if (userId) {
+      const eventId = match.teams?.[0]?.event?.id;
+      if (
+        eventId &&
+        (await this.eventService.isEventAdmin(eventId, userId)) &&
+        adminReveal
+      ) {
+        return match;
+      }
+    }
+
+    return {
+      ...match,
+      state: MatchState.PLANNED,
+      winner: null,
+      results: [],
+    };
   }
 
-  revealMatch(matchId: string) {
-    return this.matchRepository.update(matchId, {
+  async revealMatch(matchId: string) {
+    await this.matchRepository.update(matchId, {
       isRevealed: true,
     });
   }
@@ -1052,6 +1074,41 @@ export class MatchService {
         { isRevealed: true },
       );
     }
+  }
+
+  async calculateRevealedBuchholzPointsForTeam(
+    teamId: string,
+    eventId: string,
+  ): Promise<number> {
+    // A team's revealed Buchholz points is the sum of revealed scores of its opponents.
+    // We already have getFormerOpponents, but that's for ALL finished matches.
+    // For "revealed" Buchholz, we only care about Swiss phase.
+
+    const matches = await this.matchRepository.find({
+      where: {
+        teams: { id: teamId },
+        phase: MatchPhase.SWISS,
+        state: MatchState.FINISHED,
+      },
+      relations: { teams: true },
+    });
+
+    let totalRevealedBuchholz = 0;
+    for (const match of matches) {
+      const opponent = match.teams.find((t) => t.id !== teamId);
+      if (opponent) {
+        // Opponent's revealed score = count of revealed wins in Swiss
+        const revealedWins = await this.matchRepository.count({
+          where: {
+            winner: { id: opponent.id },
+            isRevealed: true,
+            phase: MatchPhase.SWISS,
+          },
+        });
+        totalRevealedBuchholz += revealedWins;
+      }
+    }
+    return totalRevealedBuchholz;
   }
 
   getGlobalStats() {

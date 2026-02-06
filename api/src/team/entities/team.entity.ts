@@ -27,7 +27,7 @@ export class TeamEntity {
   @Column({ nullable: true })
   repo: string;
 
-  @Column({nullable: true, type: "timestamp" })
+  @Column({ nullable: true, type: "timestamp" })
   startedRepoCreationAt: Date | null;
 
   @Column({ default: 0 })

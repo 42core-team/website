@@ -35,16 +35,19 @@ export class TeamController {
     private readonly teamService: TeamService,
     private readonly userService: UserService,
     private readonly eventService: EventService,
-  ) { }
+  ) {}
 
   @Get(":id")
   getTeamById(@Param("id", new ParseUUIDPipe()) id: string) {
     return this.teamService.getTeamById(id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get(`event/:${EVENT_ID_PARAM}`)
   getTeamsForEvent(
     @EventId eventId: string,
+    @UserId() userId: string,
+    @Query("adminRevealQuery") adminRevealQuery: string, // It's a string in query params
     @Query("searchName") searchName?: string,
     @Query("sortDir") sortDir?: string,
     @Query("sortBy") sortBy?: string,
@@ -54,6 +57,8 @@ export class TeamController {
       searchName,
       sortDir,
       sortBy,
+      userId,
+      adminRevealQuery === "true",
     );
   }
 
@@ -134,15 +139,13 @@ export class TeamController {
     @EventId eventId: string,
     @Body() inviteUserDto: InviteUserDto,
     @Team() team: TeamEntity,
-    @UserId() userId: string
+    @UserId() userId: string,
   ) {
-    if(userId === inviteUserDto.userToInviteId)
-      throw new BadRequestException(
-        "You cannot invite yourself to a team.",
-      )
+    if (userId === inviteUserDto.userToInviteId)
+      throw new BadRequestException("You cannot invite yourself to a team.");
 
-    if(await this.teamService.isTeamFull(team.id))
-        throw new BadRequestException("This team is full.");
+    if (await this.teamService.isTeamFull(team.id))
+      throw new BadRequestException("This team is full.");
     if (
       await this.teamService.getTeamOfUserForEvent(
         eventId,
@@ -175,9 +178,14 @@ export class TeamController {
     @EventId eventId: string,
     @Param("searchQuery") searchQuery: string,
     @Team() team: TeamEntity,
-    @UserId() userId: string
+    @UserId() userId: string,
   ) {
-    return this.userService.searchUsersForInvite(eventId, searchQuery, team.id, userId);
+    return this.userService.searchUsersForInvite(
+      eventId,
+      searchQuery,
+      team.id,
+      userId,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -203,8 +211,8 @@ export class TeamController {
     if (!(await this.teamService.isUserInvitedToTeam(userId, teamId)))
       throw new BadRequestException("You are not invited to this team.");
 
-      if(await this.teamService.isTeamFull(teamId))
-          throw new BadRequestException("This team is full.");
+    if (await this.teamService.isTeamFull(teamId))
+      throw new BadRequestException("This team is full.");
 
     return this.teamService.acceptTeamInvite(userId, teamId);
   }
