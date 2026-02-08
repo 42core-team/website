@@ -61,17 +61,7 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
         <TeamUserTable members={members} />
       </Card>
 
-      <Card className="overflow-hidden border shadow-sm">
-        <CardHeader className="px-5 py-4 bg-muted/10 border-b">
-          <div className="flex items-center gap-2">
-            <History className="size-5 text-muted-foreground" />
-            <h3 className="text-xl font-semibold text-foreground">
-              Match History
-            </h3>
-          </div>
-        </CardHeader>
-        <TeamMatchHistory eventId={eventId} matches={matches} />
-      </Card>
+      <TeamMatchHistory eventId={eventId} matches={matches} />
     </div>
   );
 }
