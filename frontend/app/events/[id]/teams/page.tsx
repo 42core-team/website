@@ -1,5 +1,6 @@
 import type { Metadata } from "next/dist/lib/metadata/types/metadata-interface";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { getTeamsForEventTable } from "@/app/actions/team";
 import { Card } from "@/components/ui/card";
 import TeamsSearchBar from "./TeamsSearchBar";
@@ -21,37 +22,33 @@ export default async function TeamsPage({
 }: TeamsPageProps) {
   const eventId = (await params).id;
   const searchParamsObj = await searchParams;
-  if (!eventId || !searchParamsObj)
-    return notFound();
+  if (!eventId || !searchParamsObj) return notFound();
 
   // Get filter/sort from query params
-  const filterValue
-    = typeof searchParamsObj?.q === "string" ? searchParamsObj.q : "";
+  const filterValue =
+    typeof searchParamsObj?.q === "string" ? searchParamsObj.q : "";
   const allowedSortColumns = [
     "name",
     "createdAt",
     "membersCount",
     "queueScore",
   ] as const;
-  const sortColumn
-    = typeof searchParamsObj?.sort === "string"
-      && allowedSortColumns.includes(searchParamsObj.sort as any)
+  const sortColumn =
+    typeof searchParamsObj?.sort === "string" &&
+    allowedSortColumns.includes(searchParamsObj.sort as any)
       ? (searchParamsObj.sort as
-      | "name"
-      | "createdAt"
-      | "membersCount"
-      | "queueScore")
+          | "name"
+          | "createdAt"
+          | "membersCount"
+          | "queueScore")
       : "name";
   // Map "ascending"/"descending" to "asc"/"desc"
   let sortDirection: "asc" | "desc" | undefined;
   if (typeof searchParamsObj?.dir === "string") {
-    if (searchParamsObj.dir === "ascending")
-      sortDirection = "asc";
-    else if (searchParamsObj.dir === "descending")
-      sortDirection = "desc";
+    if (searchParamsObj.dir === "ascending") sortDirection = "asc";
+    else if (searchParamsObj.dir === "descending") sortDirection = "desc";
     else sortDirection = undefined;
-  }
-  else {
+  } else {
     sortDirection = "asc";
   }
 
@@ -69,9 +66,19 @@ export default async function TeamsPage({
         <div className="flex flex-col gap-4">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold">Teams</h1>
-            <TeamsSearchBar initialValue={filterValue} />
+            <Suspense>
+              <TeamsSearchBar initialValue={filterValue} />
+            </Suspense>
           </div>
-          <TeamsTable teams={teams} eventId={eventId} />
+          <Suspense
+            fallback={
+              <div className="py-10 text-center text-muted-foreground italic">
+                Updating team list...
+              </div>
+            }
+          >
+            <TeamsTable teams={teams} eventId={eventId} />
+          </Suspense>
         </div>
       </Card>
     </div>
