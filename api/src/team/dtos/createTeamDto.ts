@@ -1,5 +1,11 @@
-import { IsNotEmpty, IsOptional, IsString, Matches } from "class-validator";
-import { ApiProperty } from "@nestjs/swagger";
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Matches,
+} from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class CreateTeamDto {
   @ApiProperty()
@@ -11,8 +17,8 @@ export class CreateTeamDto {
   })
   name: string;
 
-  @ApiProperty()
-  @IsString()
+  @ApiPropertyOptional()
+  @IsUUID()
   @IsOptional()
   starterTemplateId?: string;
 }

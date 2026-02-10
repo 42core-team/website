@@ -371,6 +371,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
       "gameConfig",
       "serverConfig",
       "githubOrg",
+      "githubOrgSecret",
       "startDate",
       "endDate",
     ];

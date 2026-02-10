@@ -38,7 +38,7 @@ export default function TeamCreationForm() {
   const eventId = useParams().id as string;
   const queryClient = useQueryClient();
 
-  const { data: templates = [] } = useQuery({
+  const { data: templates = [], isLoading } = useQuery({
     queryKey: ["event", eventId, "templates"],
     queryFn: async () => {
       const result = await getStarterTemplates(eventId);
@@ -257,6 +257,7 @@ export default function TeamCreationForm() {
                   !newTeamName ||
                   !!validationError ||
                   (templates.length > 0 && !selectedTemplateId) ||
+                  isLoading ||
                   createTeamMutation.isPending
                 }
               >

@@ -84,7 +84,7 @@ export function StarterTemplatesManagement({
       myCoreBotDockerImage: "",
     },
     validators: {
-      onSubmit: formSchema,
+      onChange: formSchema,
     },
     onSubmit: async ({ value }) => {
       await createMutation.mutateAsync(value);
@@ -277,7 +277,7 @@ export function StarterTemplatesManagement({
               )}
 
               <TableRow className="border-t-2 bg-muted/30">
-                <TableCell>
+                <TableCell className="align-top">
                   <form.Field
                     name="name"
                     children={(field) => (
@@ -289,57 +289,113 @@ export function StarterTemplatesManagement({
                           onBlur={field.handleBlur}
                           onChange={(e) => field.handleChange(e.target.value)}
                           placeholder="New Template Name..."
-                          className="h-8 bg-background"
+                          className={`h-8 bg-background ${
+                            field.state.meta.errors.length > 0
+                              ? "border-destructive focus-visible:ring-destructive"
+                              : ""
+                          }`}
                         />
+                        {field.state.meta.errors.length > 0 && (
+                          <p className="text-[10px] font-medium text-destructive">
+                            {field.state.meta.errors
+                              .map((err: any) =>
+                                typeof err === "object" && err?.message
+                                  ? err.message
+                                  : String(err),
+                              )
+                              .join(", ")}
+                          </p>
+                        )}
                       </div>
                     )}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="align-top">
                   <form.Field
                     name="basePath"
                     children={(field) => (
-                      <Input
-                        id={field.name}
-                        name={field.name}
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        placeholder="bots/c/softcore"
-                        className="h-8 bg-background"
-                      />
+                      <div className="space-y-1">
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          placeholder="bots/c/softcore"
+                          className={`h-8 bg-background ${
+                            field.state.meta.errors.length > 0
+                              ? "border-destructive focus-visible:ring-destructive"
+                              : ""
+                          }`}
+                        />
+                        {field.state.meta.errors.length > 0 && (
+                          <p className="text-[10px] font-medium text-destructive">
+                            {field.state.meta.errors
+                              .map((err: any) =>
+                                typeof err === "object" && err?.message
+                                  ? err.message
+                                  : String(err),
+                              )
+                              .join(", ")}
+                          </p>
+                        )}
+                      </div>
                     )}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="align-top">
                   <form.Field
                     name="myCoreBotDockerImage"
                     children={(field) => (
-                      <Input
-                        id={field.name}
-                        name={field.name}
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        placeholder="ghcr.io/42core-team/my-core-bot:dev"
-                        className="h-8 bg-background"
-                      />
+                      <div className="space-y-1">
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          placeholder="ghcr.io/42core-team/my-core-bot:dev"
+                          className={`h-8 bg-background ${
+                            field.state.meta.errors.length > 0
+                              ? "border-destructive focus-visible:ring-destructive"
+                              : ""
+                          }`}
+                        />
+                        {field.state.meta.errors.length > 0 && (
+                          <p className="text-[10px] font-medium text-destructive">
+                            {field.state.meta.errors
+                              .map((err: any) =>
+                                typeof err === "object" && err?.message
+                                  ? err.message
+                                  : String(err),
+                              )
+                              .join(", ")}
+                          </p>
+                        )}
+                      </div>
                     )}
                   />
                 </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    size="sm"
-                    variant="default"
-                    className="h-8"
-                    onClick={() => form.handleSubmit()}
-                    disabled={createMutation.isPending}
-                  >
-                    {createMutation.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    Create
-                  </Button>
+                <TableCell className="align-top text-right">
+                  <form.Subscribe
+                    selector={(state) => [state.canSubmit, state.isSubmitting]}
+                    children={([canSubmit, isSubmitting]) => (
+                      <Button
+                        size="sm"
+                        variant={!canSubmit ? "destructive" : "default"}
+                        className="h-8"
+                        onClick={() => form.handleSubmit()}
+                        disabled={
+                          !canSubmit || isSubmitting || createMutation.isPending
+                        }
+                      >
+                        {createMutation.isPending || isSubmitting ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        Create
+                      </Button>
+                    )}
+                  />
                 </TableCell>
               </TableRow>
             </TableBody>
