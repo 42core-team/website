@@ -48,7 +48,6 @@ import {
   Search,
   Trash2,
   UserPlus,
-  Wand2,
 } from "lucide-react";
 import { searchUsers, type UserSearchResult } from "@/app/actions/user";
 import { Calendar } from "@/components/ui/calendar";
@@ -304,53 +303,11 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     return () => clearTimeout(delayDebounceFn);
   }, [userSearchQuery]);
 
-  const formatConfig = (field: "gameConfig" | "serverConfig") => {
-    try {
-      const current = pendingSettings[field];
-      if (!current) return;
-      const parsed = JSON.parse(current);
-      const formatted = JSON.stringify(parsed, null, 2);
-      setPendingSettings({
-        ...pendingSettings,
-        [field]: formatted,
-      });
-      toast.success(`${field} formatted`);
-    } catch (e) {
-      toast.error(`Invalid JSON in ${field}`);
-    }
-  };
-
   const handleSaveSettings = () => {
     const updates: any = {};
 
-    // Auto-format JSON fields before saving
-    let gameConfig = pendingSettings.gameConfig;
-    let serverConfig = pendingSettings.serverConfig;
-
-    if (gameConfig) {
-      try {
-        gameConfig = JSON.stringify(JSON.parse(gameConfig), null, 2);
-      } catch (e) {
-        toast.warning(
-          "Invalid JSON in Game Config. Proceeding without formatting.",
-        );
-      }
-    }
-
-    if (serverConfig) {
-      try {
-        serverConfig = JSON.stringify(JSON.parse(serverConfig), null, 2);
-      } catch (e) {
-        toast.warning(
-          "Invalid JSON in Server Config. Proceeding without formatting.",
-        );
-      }
-    }
-
     const finalSettings = {
       ...pendingSettings,
-      gameConfig,
-      serverConfig,
     };
 
     const fields = [
@@ -1091,14 +1048,6 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => formatConfig("gameConfig")}
-                    >
-                      <Wand2 className="h-4 w-4 mr-2" />
-                      Format
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
                       onClick={() =>
                         setIsGameConfigExpanded(!isGameConfigExpanded)
                       }
@@ -1130,14 +1079,6 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 <div className="flex items-center justify-between">
                   <Label>Server Config (JSON)</Label>
                   <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => formatConfig("serverConfig")}
-                    >
-                      <Wand2 className="h-4 w-4 mr-2" />
-                      Format
-                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
