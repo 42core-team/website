@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   forwardRef,
   Inject,
   Injectable,
@@ -8,6 +9,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EventEntity } from "./entities/event.entity";
+import { EventStarterTemplateEntity } from "./entities/event-starter-template.entity";
 import {
   DataSource,
   IsNull,
@@ -35,6 +37,8 @@ export class EventService {
     private readonly eventRepository: Repository<EventEntity>,
     @InjectRepository(UserEventPermissionEntity)
     private readonly permissionRepository: Repository<UserEventPermissionEntity>,
+    @InjectRepository(EventStarterTemplateEntity)
+    private readonly templateRepository: Repository<EventStarterTemplateEntity>,
     private readonly configService: ConfigService,
     @Inject(forwardRef(() => TeamService))
     private readonly teamService: TeamService,
@@ -259,6 +263,61 @@ export class EventService {
       serverConfig,
       isPrivate,
     });
+  }
+
+  async getStarterTemplates(eventId: string) {
+    return this.templateRepository.find({
+      where: { event: { id: eventId } },
+    });
+  }
+
+  async createStarterTemplate(
+    eventId: string,
+    name: string,
+    basePath: string,
+    myCoreBotDockerImage: string,
+  ) {
+    const event = await this.getEventById(eventId);
+    const template = this.templateRepository.create({
+      name,
+      basePath,
+      myCoreBotDockerImage,
+      event,
+    });
+    return this.templateRepository.save(template);
+  }
+
+  async updateStarterTemplate(
+    eventId: string,
+    templateId: string,
+    data: { name?: string; basePath?: string; myCoreBotDockerImage?: string },
+  ) {
+    const template = await this.templateRepository.findOneOrFail({
+      where: { id: templateId, event: { id: eventId } },
+    });
+
+    if (data.name) template.name = data.name;
+    if (data.basePath) template.basePath = data.basePath;
+    if (data.myCoreBotDockerImage)
+      template.myCoreBotDockerImage = data.myCoreBotDockerImage;
+
+    return this.templateRepository.save(template);
+  }
+
+  async deleteStarterTemplate(eventId: string, templateId: string) {
+    try {
+      await this.templateRepository.delete({
+        id: templateId,
+        event: { id: eventId },
+      });
+    } catch (e: any) {
+      if (e.code === "23503") {
+        throw new ConflictException(
+          "Cannot delete template because it is still in use by one or more teams.",
+        );
+      }
+      throw e;
+    }
   }
 
   increaseEventRound(eventId: string): Promise<UpdateResult> {

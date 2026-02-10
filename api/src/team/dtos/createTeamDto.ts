@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, Matches } from "class-validator";
+import { IsNotEmpty, IsOptional, IsString, Matches } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 
 export class CreateTeamDto {
@@ -10,4 +10,9 @@ export class CreateTeamDto {
       "Name can only contain letters, numbers, underscores, dots, and hyphens. Must be between 5 and 30 characters.",
   })
   name: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  starterTemplateId?: string;
 }
