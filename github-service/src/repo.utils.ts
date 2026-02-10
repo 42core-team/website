@@ -56,7 +56,6 @@ export class RepoUtils {
         path.join(tempFolderPath, basePath),
         eventId,
         apiBaseUrl,
-        starterTemplateId,
       ),
     ]);
     return gitRepo;
@@ -303,18 +302,41 @@ export class RepoUtils {
           );
           continue;
         }
+    const scriptsToUpdate = [
+      "check_update_configs.sh",
+      "check_image_updates.sh",
+    ];
+    const eventUrl: string = starterTemplateId
+      ? `${apiBaseUrl}/event/${eventId}/templates/${starterTemplateId}`
+      : `${apiBaseUrl}/event/${eventId}`;
 
-      const eventUrl: string = starterTemplateId
-        ? `${apiBaseUrl}/event/${eventId}/templates/${starterTemplateId}`
-        : `${apiBaseUrl}/event/${eventId}`;
+    for (const scriptName of scriptsToUpdate) {
+      try {
+        const scriptPath = path.join(repoRoot, "scripts", scriptName);
+        const exists = await fs
+          .stat(scriptPath)
+          .then(() => true)
+          .catch(() => false);
 
-      const originalContent = await fs.readFile(scriptPath, "utf-8");
-      const updatedContent = originalContent.replaceAll(
-        "[[event_url]]",
-        eventUrl,
-      );
+        if (!exists) {
+          this.logger.log(
+            `No scripts/${scriptName} found at ${scriptPath}, skipping url update`,
+          );
+          continue;
+        }
 
-      if (updatedContent !== originalContent) {
+        const eventUrl: string = starterTemplateId
+          ? `${apiBaseUrl}/event/${eventId}/templates/${starterTemplateId}`
+          : `${apiBaseUrl}/event/${eventId}`;
+
+        const originalContent = await fs.readFile(scriptPath, "utf-8");
+
+        let updatedContent = originalContent.replaceAll(
+          "[[event_url]]",
+          eventUrl,
+        );
+
+        if (updatedContent !== originalContent) {
         await fs.writeFile(scriptPath, updatedContent);
         this.logger.log(
           `Replaced '[[event_url]]' with '${eventUrl}' in ${scriptPath}`,
@@ -327,17 +349,18 @@ export class RepoUtils {
     } catch (error) {
       this.logger.error(`Failed to update config urls`, error as Error);
       if (updatedContent !== originalContent) {
-        await fs.writeFile(scriptPath, updatedContent);
-        this.logger.log(
-          `Replaced '[[event_url]]' with '${eventUrl}' in ${scriptPath}`,
-        );
-      } else {
-        this.logger.log(
-          `No occurrence of '[[event_url]]' found in ${scriptPath}`,
-        );
+          await fs.writeFile(scriptPath, updatedContent);
+          this.logger.log(
+            `Replaced '[[event_url]]' with '${eventUrl}' in ${scriptPath}`,
+          );
+        } else {
+          this.logger.log(
+            `No occurrence of '[[event_url]]' found in ${scriptPath}`,
+          );
+        }
+      } catch (error) {
+        this.logger.error(`Failed to update config urls`, error as Error);
       }
-    } catch (error) {
-      this.logger.error(`Failed to update config urls`, error as Error);
     }
   }
 
