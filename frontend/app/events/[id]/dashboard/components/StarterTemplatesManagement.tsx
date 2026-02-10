@@ -1,25 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { EventStarterTemplate } from "@/app/actions/event";
 import { useForm } from "@tanstack/react-form";
-import { zodValidator } from "@tanstack/zod-form-adapter";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import * as z from "zod";
+import { isActionError } from "@/app/actions/errors";
 import {
-  type EventStarterTemplate,
   createStarterTemplate,
   deleteStarterTemplate,
   getStarterTemplates,
   updateStarterTemplate,
 } from "@/app/actions/event";
-import { isActionError } from "@/app/actions/errors";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-  FieldGroup,
-} from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -29,7 +23,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -38,8 +31,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { toast } from "sonner";
-import { Pencil, Loader2, Plus, Trash2, Save, X, Check } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -57,20 +48,6 @@ export function StarterTemplatesManagement({
   const queryClient = useQueryClient();
   const [editingTemplate, setEditingTemplate] =
     useState<EventStarterTemplate | null>(null);
-
-  const form = useForm({
-    defaultValues: {
-      name: "",
-      basePath: "",
-      myCoreBotDockerImage: "",
-    },
-    validators: {
-      onSubmit: formSchema,
-    },
-    onSubmit: async ({ value }) => {
-      createMutation.mutate(value);
-    },
-  });
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["event", eventId, "templates"],
@@ -93,12 +70,26 @@ export function StarterTemplatesManagement({
     },
     onSuccess: () => {
       toast.success("Template created");
-      form.reset();
       queryClient.invalidateQueries({
         queryKey: ["event", eventId, "templates"],
       });
     },
     onError: (e: any) => toast.error(e.message),
+  });
+
+  const form = useForm({
+    defaultValues: {
+      name: "",
+      basePath: "",
+      myCoreBotDockerImage: "",
+    },
+    validators: {
+      onSubmit: formSchema,
+    },
+    onSubmit: async ({ value }) => {
+      await createMutation.mutateAsync(value);
+      form.reset();
+    },
   });
 
   const updateMutation = useMutation({
@@ -144,7 +135,7 @@ export function StarterTemplatesManagement({
   return (
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <div>
             <CardTitle>Starter Templates</CardTitle>
             <CardDescription>
@@ -173,7 +164,7 @@ export function StarterTemplatesManagement({
                 <TableRow>
                   <TableCell
                     colSpan={4}
-                    className="text-center p-8 text-muted-foreground italic text-xs"
+                    className="p-8 text-center text-xs text-muted-foreground italic"
                   >
                     No templates found. Enter details below to create your first
                     template.
@@ -271,7 +262,7 @@ export function StarterTemplatesManagement({
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                               onClick={() => deleteMutation.mutate(template.id)}
                               disabled={deleteMutation.isPending}
                             >
@@ -285,20 +276,22 @@ export function StarterTemplatesManagement({
                 ))
               )}
 
-              <TableRow className="bg-muted/30 border-t-2">
+              <TableRow className="border-t-2 bg-muted/30">
                 <TableCell>
                   <form.Field
                     name="name"
                     children={(field) => (
-                      <Input
-                        id={field.name}
-                        name={field.name}
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        placeholder="New Template Name..."
-                        className="h-8 bg-background"
-                      />
+                      <div className="space-y-1">
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          placeholder="New Template Name..."
+                          className="h-8 bg-background"
+                        />
+                      </div>
                     )}
                   />
                 </TableCell>
@@ -328,7 +321,7 @@ export function StarterTemplatesManagement({
                         value={field.state.value}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
-                        placeholder="ghcr.io/..."
+                        placeholder="ghcr.io/42core-team/my-core-bot:dev"
                         className="h-8 bg-background"
                       />
                     )}
@@ -343,7 +336,7 @@ export function StarterTemplatesManagement({
                     disabled={createMutation.isPending}
                   >
                     {createMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : null}
                     Create
                   </Button>
