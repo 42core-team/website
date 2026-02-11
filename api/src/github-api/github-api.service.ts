@@ -118,6 +118,7 @@ export class GithubApiService {
     basePath: string,
     gameConfig: string,
     serverConfig: string,
+    starterTemplateId?: string,
   ) {
     this.githubClient.emit("create_team_repository", {
       name,
@@ -134,6 +135,7 @@ export class GithubApiService {
       basePath,
       gameConfig,
       serverConfig,
+      starterTemplateId,
       apiBaseUrl: this.configService.getOrThrow<string>("API_BASE_URL"),
     });
   }

@@ -51,6 +51,14 @@ export class EventController {
     return await this.eventService.getEventVersion(id);
   }
 
+  @Get(":id/templates/:templateId/version")
+  async getStarterTemplateVersion(
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Param("templateId", new ParseUUIDPipe()) templateId: string,
+  ) {
+    return await this.eventService.getTemplateVersion(id, templateId);
+  }
+
   @Get(":id/game-config")
   async getEventGameConfig(@Param("id", new ParseUUIDPipe()) id: string) {
     return await this.eventService.getEventGameConfig(id);

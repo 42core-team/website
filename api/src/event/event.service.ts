@@ -180,6 +180,48 @@ export class EventService {
     };
   }
 
+  async getStarterTemplateVersions(id: string) {
+    const templates = await this.templateRepository.find({
+      where: { event: { id } },
+      select: {
+        name: true,
+        myCoreBotDockerImage: true,
+      },
+    });
+
+    return templates.map((t) => ({
+      name: t.name,
+      version: t.myCoreBotDockerImage,
+    }));
+  }
+
+  async getTemplateVersion(
+    eventId: string,
+    templateId: string,
+  ): Promise<EventVersionDto> {
+    const event = await this.eventRepository.findOneOrFail({
+      where: { id: eventId },
+      select: {
+        gameServerDockerImage: true,
+        visualizerDockerImage: true,
+      },
+    });
+
+    const template = await this.templateRepository.findOneOrFail({
+      where: { id: templateId, event: { id: eventId } },
+      select: {
+        id: true,
+        myCoreBotDockerImage: true,
+      },
+    });
+
+    return {
+      gameServerVersion: event.gameServerDockerImage,
+      myCoreBotVersion: template.myCoreBotDockerImage,
+      visualizerVersion: event.visualizerDockerImage,
+    };
+  }
+
   async getEventGameConfig(id: string): Promise<string | null> {
     const event = await this.eventRepository.findOneOrFail({
       where: { id },

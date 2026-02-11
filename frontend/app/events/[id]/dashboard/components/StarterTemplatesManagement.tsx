@@ -153,6 +153,7 @@ export function StarterTemplatesManagement({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[100px]">ID</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Base Path</TableHead>
                 <TableHead>Bot Image</TableHead>
@@ -163,7 +164,7 @@ export function StarterTemplatesManagement({
               {templates.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={5}
                     className="p-8 text-center text-xs text-muted-foreground italic"
                   >
                     No templates found. Enter details below to create your first
@@ -175,6 +176,9 @@ export function StarterTemplatesManagement({
                   <TableRow key={template.id}>
                     {editingTemplate?.id === template.id ? (
                       <>
+                        <TableCell className="font-mono text-[10px] text-muted-foreground">
+                          {template.id}
+                        </TableCell>
                         <TableCell>
                           <Input
                             value={editingTemplate.name}
@@ -241,6 +245,9 @@ export function StarterTemplatesManagement({
                       </>
                     ) : (
                       <>
+                        <TableCell className="font-mono text-[10px] text-muted-foreground">
+                          {template.id}
+                        </TableCell>
                         <TableCell>{template.name}</TableCell>
                         <TableCell>{template.basePath}</TableCell>
                         <TableCell
@@ -277,6 +284,7 @@ export function StarterTemplatesManagement({
               )}
 
               <TableRow className="border-t-2 bg-muted/30">
+                <TableCell className="align-top" />
                 <TableCell className="align-top">
                   <form.Field
                     name="name"

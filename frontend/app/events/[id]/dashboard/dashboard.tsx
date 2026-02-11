@@ -543,6 +543,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[100px]">ID</TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Path</TableHead>
                         <TableHead>Docker Image</TableHead>
@@ -551,6 +552,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     <TableBody>
                       {starterTemplates.map((template) => (
                         <TableRow key={template.id}>
+                          <TableCell className="font-mono text-[10px] text-muted-foreground">
+                            {template.id}
+                          </TableCell>
                           <TableCell className="font-medium">
                             {template.name}
                           </TableCell>

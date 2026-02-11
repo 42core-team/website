@@ -189,6 +189,7 @@ export class TeamService {
       basePath,
       team.event.gameConfig ?? "",
       team.event.serverConfig ?? "",
+      team.starterTemplate?.id,
     );
 
     await teamRepository.update(teamId, {

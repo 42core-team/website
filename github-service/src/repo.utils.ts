@@ -23,6 +23,7 @@ export class RepoUtils {
     gameConfig: string,
     serverConfig: string,
     apiBaseUrl: string,
+    starterTemplateId?: string,
   ): Promise<SimpleGit> {
     this.logger.log(
       `Cloning mono repo ${monoRepoUrl} to temp folder ${tempFolderPath}`,
@@ -39,22 +40,14 @@ export class RepoUtils {
 
     const [gitRepo, _] = await Promise.all([
       this.initRepo(tempFolderPath, basePath),
-      this.updateGitignoreFromCoreignore(
-        path.join(tempFolderPath, basePath),
-      ),
+      this.updateGitignoreFromCoreignore(path.join(tempFolderPath, basePath)),
       this.updateDevcontainerDockerCompose(
         path.join(tempFolderPath, basePath),
         myCoreBotDockerImage,
         visualizerDockerImage,
       ),
-      this.updateTeamName(
-        path.join(tempFolderPath, basePath),
-        teamName,
-      ),
-      this.updateGameConfig(
-        path.join(tempFolderPath, basePath),
-        gameConfig,
-      ),
+      this.updateTeamName(path.join(tempFolderPath, basePath), teamName),
+      this.updateGameConfig(path.join(tempFolderPath, basePath), gameConfig),
       this.updateServerConfig(
         path.join(tempFolderPath, basePath),
         serverConfig,
@@ -63,7 +56,8 @@ export class RepoUtils {
         path.join(tempFolderPath, basePath),
         eventId,
         apiBaseUrl,
-      )
+        starterTemplateId,
+      ),
     ]);
     return gitRepo;
   }
@@ -98,7 +92,10 @@ export class RepoUtils {
     );
   }
 
-  private async initRepo(tempFolderPath: string, basePath: string): Promise<SimpleGit> {
+  private async initRepo(
+    tempFolderPath: string,
+    basePath: string,
+  ): Promise<SimpleGit> {
     await Promise.all([
       fs.rm(`${tempFolderPath}/.git`, { recursive: true, force: true }),
       fs.rm(`${tempFolderPath}/${basePath}/.git`, {
@@ -107,9 +104,7 @@ export class RepoUtils {
       }),
     ]);
 
-    const gitRepo = simpleGit(
-      path.join(tempFolderPath, basePath),
-    );
+    const gitRepo = simpleGit(path.join(tempFolderPath, basePath));
     await gitRepo.init();
 
     return gitRepo;
@@ -284,6 +279,7 @@ export class RepoUtils {
     repoRoot: string,
     eventId: string,
     apiBaseUrl: string,
+    starterTemplateId?: string,
   ): Promise<void> {
     try {
       const scriptPath = path.join(
@@ -302,7 +298,9 @@ export class RepoUtils {
         return;
       }
 
-      const eventUrl: string = `${apiBaseUrl}/event/${eventId}`;
+      const eventUrl: string = starterTemplateId
+        ? `${apiBaseUrl}/event/${eventId}/templates/${starterTemplateId}`
+        : `${apiBaseUrl}/event/${eventId}`;
 
       const originalContent = await fs.readFile(scriptPath, "utf-8");
 
@@ -322,10 +320,7 @@ export class RepoUtils {
         );
       }
     } catch (error) {
-      this.logger.error(
-        `Failed to update config urls`,
-        error as Error,
-      );
+      this.logger.error(`Failed to update config urls`, error as Error);
     }
   }
 
@@ -334,12 +329,7 @@ export class RepoUtils {
     teamName: string,
   ): Promise<void> {
     try {
-      const mainCPath = path.join(
-        repoRoot,
-        "my-core-bot",
-        "src",
-        "main.c",
-      );
+      const mainCPath = path.join(repoRoot, "my-core-bot", "src", "main.c");
       const exists = await fs
         .stat(mainCPath)
         .then(() => true)
