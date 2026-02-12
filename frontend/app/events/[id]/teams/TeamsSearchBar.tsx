@@ -1,5 +1,5 @@
 "use client";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SearchIcon } from "@/components/icons";
 import { Input } from "@/components/ui/input";
@@ -12,14 +12,14 @@ export default function TeamsSearchBar({
   const [value, setValue] = useState(initialValue);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   useEffect(() => {
     const handler = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value)
-        params.set("q", value);
+      if (value) params.set("q", value);
       else params.delete("q");
-      router.replace(`?${params.toString()}`);
+      router.replace(`${pathname}?${params.toString()}`);
     }, 400); // 400ms debounce
 
     return () => clearTimeout(handler);
@@ -32,7 +32,7 @@ export default function TeamsSearchBar({
         className="w-full pl-10"
         placeholder="Search teams..."
         value={value}
-        onChange={e => setValue(e.target.value)}
+        onChange={(e) => setValue(e.target.value)}
       />
     </div>
   );
