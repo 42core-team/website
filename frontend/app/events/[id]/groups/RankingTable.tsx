@@ -2,6 +2,8 @@
 
 import type { Team } from "@/app/actions/team";
 import type { Match } from "@/app/actions/tournament-model";
+import Link from "next/link";
+import { Fragment } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -12,8 +14,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
-import { Fragment } from "react";
 
 interface RankingTableProps {
   teams: Team[];
@@ -35,18 +35,20 @@ export default function RankingTable({
     const buchholzA = a.buchholzPoints ?? 0;
     const buchholzB = b.buchholzPoints ?? 0;
 
-    if (scoreB !== scoreA) return scoreB - scoreA;
+    if (scoreB !== scoreA)
+      return scoreB - scoreA;
     return buchholzB - buchholzA;
   });
 
   const getMatchHistory = (teamId: string) => {
     return matches
       .filter(
-        (m) => m.state === "FINISHED" && m.teams.some((t) => t.id === teamId),
+        m => m.state === "FINISHED" && m.teams.some(t => t.id === teamId),
       )
       .sort((a, b) => a.round - b.round)
       .map((m) => {
-        if (!m.winner) return "T"; // Tie (not really possible in currently implemented swiss but good for safety)
+        if (!m.winner)
+          return "T"; // Tie (not really possible in currently implemented swiss but good for safety)
         return m.winner.id === teamId ? "W" : "L";
       });
   };
@@ -55,7 +57,7 @@ export default function RankingTable({
     <div className="w-full">
       <Table>
         <TableHeader>
-          <TableRow className="hover:bg-transparent border-b border-border/50">
+          <TableRow className="border-b border-border/50 hover:bg-transparent">
             <TableHead className="w-[80px]">Rank</TableHead>
             <TableHead>Participant</TableHead>
             <TableHead className="text-center">Score</TableHead>
@@ -72,7 +74,7 @@ export default function RankingTable({
 
             return (
               <Fragment key={team.id}>
-                <TableRow className="group hover:bg-muted/30 transition-colors border-b border-border/40">
+                <TableRow className="group border-b border-border/40 transition-colors hover:bg-muted/30">
                   <TableCell className="font-medium text-muted-foreground">
                     {rank}
                   </TableCell>
@@ -80,7 +82,7 @@ export default function RankingTable({
                     <div className="flex items-center gap-3">
                       <Link
                         href={`/events/${eventId}/teams/${team.id}`}
-                        className="font-semibold hover:text-primary transition-colors truncate max-w-[200px]"
+                        className="max-w-[200px] truncate font-semibold transition-colors hover:text-primary"
                       >
                         {team.name}
                       </Link>
@@ -126,9 +128,9 @@ export default function RankingTable({
                       colSpan={6}
                       className="h-10 p-0 text-center align-middle"
                     >
-                      <div className="flex items-center gap-4 px-4 w-full h-full">
+                      <div className="flex h-full w-full items-center gap-4 px-4">
                         <div className="h-px flex-1 bg-emerald-500/50" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500/80">
+                        <span className="text-[10px] font-bold tracking-widest text-emerald-500/80 uppercase">
                           Advancement Cutoff
                         </span>
                         <div className="h-px flex-1 bg-emerald-500/50" />

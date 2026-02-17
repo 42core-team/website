@@ -81,10 +81,10 @@ export default function QueueMatchesControls({
   return (
     <form
       onSubmit={apply}
-      className="flex flex-col md:flex-row items-end gap-4"
+      className="flex flex-col items-end gap-4 md:flex-row"
     >
       <div>
-        <label className="block text-sm font-medium mb-1">
+        <label className="mb-1 block text-sm font-medium">
           Bucket interval
         </label>
         <Select value={interval} onValueChange={onChangeInterval}>
@@ -99,8 +99,8 @@ export default function QueueMatchesControls({
         </Select>
       </div>
 
-      <div className="flex-1 min-w-[280px]">
-        <label className="block text-sm font-medium mb-1">Date range</label>
+      <div className="min-w-[280px] flex-1">
+        <label className="mb-1 block text-sm font-medium">Date range</label>
         <div className="flex gap-2">
           <Popover>
             <PopoverTrigger asChild>
@@ -130,7 +130,7 @@ export default function QueueMatchesControls({
                 initialFocus
               />
               {interval !== "day" && (
-                <div className="p-3 border-t">
+                <div className="border-t p-3">
                   <Input
                     type="time"
                     value={range.start ? format(range.start, "HH:mm") : ""}
@@ -176,7 +176,7 @@ export default function QueueMatchesControls({
                 initialFocus
               />
               {interval !== "day" && (
-                <div className="p-3 border-t">
+                <div className="border-t p-3">
                   <Input
                     type="time"
                     value={range.end ? format(range.end, "HH:mm") : ""}

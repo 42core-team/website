@@ -46,14 +46,15 @@ export function StarterTemplatesManagement({
   eventId,
 }: StarterTemplatesManagementProps) {
   const queryClient = useQueryClient();
-  const [editingTemplate, setEditingTemplate] =
-    useState<EventStarterTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate]
+    = useState<EventStarterTemplate | null>(null);
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["event", eventId, "templates"],
     queryFn: async () => {
       const result = await getStarterTemplates(eventId);
-      if (isActionError(result)) throw new Error(result.error);
+      if (isActionError(result))
+        throw new Error(result.error);
       return result;
     },
   });
@@ -65,7 +66,8 @@ export function StarterTemplatesManagement({
       myCoreBotDockerImage: string;
     }) => {
       const result = await createStarterTemplate(eventId, data);
-      if (isActionError(result)) throw new Error(result.error);
+      if (isActionError(result))
+        throw new Error(result.error);
       return result;
     },
     onSuccess: () => {
@@ -104,7 +106,8 @@ export function StarterTemplatesManagement({
         basePath: data.basePath,
         myCoreBotDockerImage: data.myCoreBotDockerImage,
       });
-      if (isActionError(result)) throw new Error(result.error);
+      if (isActionError(result))
+        throw new Error(result.error);
       return result;
     },
     onSuccess: () => {
@@ -120,7 +123,8 @@ export function StarterTemplatesManagement({
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const result = await deleteStarterTemplate(eventId, id);
-      if (isActionError(result)) throw new Error(result.error);
+      if (isActionError(result))
+        throw new Error(result.error);
       return result;
     },
     onSuccess: () => {
@@ -145,270 +149,276 @@ export function StarterTemplatesManagement({
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="flex justify-center p-4">
-            <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">ID</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Base Path</TableHead>
-                <TableHead>Bot Image</TableHead>
-                <TableHead className="w-[100px] text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {templates.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="p-8 text-center text-xs text-muted-foreground italic"
-                  >
-                    No templates found. Enter details below to create your first
-                    template.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                templates.map((template) => (
-                  <TableRow key={template.id}>
-                    {editingTemplate?.id === template.id ? (
-                      <>
-                        <TableCell className="font-mono text-[10px] text-muted-foreground">
-                          {template.id}
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={editingTemplate.name}
-                            onChange={(e) =>
-                              setEditingTemplate({
-                                ...editingTemplate,
-                                name: e.target.value,
-                              })
-                            }
-                            className="h-8"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={editingTemplate.basePath}
-                            onChange={(e) =>
-                              setEditingTemplate({
-                                ...editingTemplate,
-                                basePath: e.target.value,
-                              })
-                            }
-                            className="h-8"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={editingTemplate.myCoreBotDockerImage}
-                            onChange={(e) =>
-                              setEditingTemplate({
-                                ...editingTemplate,
-                                myCoreBotDockerImage: e.target.value,
-                              })
-                            }
-                            className="h-8"
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-1">
-                            <Button
-                              size="icon"
-                              variant="default"
-                              className="h-8 w-8"
-                              onClick={() =>
-                                updateMutation.mutate(editingTemplate)
-                              }
-                              disabled={updateMutation.isPending}
-                            >
-                              {updateMutation.isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Check className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-muted-foreground"
-                              onClick={() => setEditingTemplate(null)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </>
-                    ) : (
-                      <>
-                        <TableCell className="font-mono text-[10px] text-muted-foreground">
-                          {template.id}
-                        </TableCell>
-                        <TableCell>{template.name}</TableCell>
-                        <TableCell>{template.basePath}</TableCell>
-                        <TableCell
-                          className="max-w-[200px] truncate"
-                          title={template.myCoreBotDockerImage}
-                        >
-                          {template.myCoreBotDockerImage}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8"
-                              onClick={() => setEditingTemplate(template)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                              onClick={() => deleteMutation.mutate(template.id)}
-                              disabled={deleteMutation.isPending}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </>
-                    )}
+        {isLoading
+          ? (
+              <div className="flex justify-center p-4">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            )
+          : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[100px]">ID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Base Path</TableHead>
+                    <TableHead>Bot Image</TableHead>
+                    <TableHead className="w-[100px] text-right">Actions</TableHead>
                   </TableRow>
-                ))
-              )}
+                </TableHeader>
+                <TableBody>
+                  {templates.length === 0
+                    ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={5}
+                            className="p-8 text-center text-xs text-muted-foreground italic"
+                          >
+                            No templates found. Enter details below to create your first
+                            template.
+                          </TableCell>
+                        </TableRow>
+                      )
+                    : (
+                        templates.map(template => (
+                          <TableRow key={template.id}>
+                            {editingTemplate?.id === template.id
+                              ? (
+                                  <>
+                                    <TableCell className="font-mono text-[10px] text-muted-foreground">
+                                      {template.id}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Input
+                                        value={editingTemplate.name}
+                                        onChange={e =>
+                                          setEditingTemplate({
+                                            ...editingTemplate,
+                                            name: e.target.value,
+                                          })}
+                                        className="h-8"
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <Input
+                                        value={editingTemplate.basePath}
+                                        onChange={e =>
+                                          setEditingTemplate({
+                                            ...editingTemplate,
+                                            basePath: e.target.value,
+                                          })}
+                                        className="h-8"
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <Input
+                                        value={editingTemplate.myCoreBotDockerImage}
+                                        onChange={e =>
+                                          setEditingTemplate({
+                                            ...editingTemplate,
+                                            myCoreBotDockerImage: e.target.value,
+                                          })}
+                                        className="h-8"
+                                      />
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex justify-end space-x-1">
+                                        <Button
+                                          size="icon"
+                                          variant="default"
+                                          className="h-8 w-8"
+                                          onClick={() =>
+                                            updateMutation.mutate(editingTemplate)}
+                                          disabled={updateMutation.isPending}
+                                        >
+                                          {updateMutation.isPending
+                                            ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                              )
+                                            : (
+                                                <Check className="h-4 w-4" />
+                                              )}
+                                        </Button>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-8 w-8 text-muted-foreground"
+                                          onClick={() => setEditingTemplate(null)}
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </>
+                                )
+                              : (
+                                  <>
+                                    <TableCell className="font-mono text-[10px] text-muted-foreground">
+                                      {template.id}
+                                    </TableCell>
+                                    <TableCell>{template.name}</TableCell>
+                                    <TableCell>{template.basePath}</TableCell>
+                                    <TableCell
+                                      className="max-w-[200px] truncate"
+                                      title={template.myCoreBotDockerImage}
+                                    >
+                                      {template.myCoreBotDockerImage}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex justify-end space-x-1">
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-8 w-8"
+                                          onClick={() => setEditingTemplate(template)}
+                                        >
+                                          <Pencil className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                          onClick={() => deleteMutation.mutate(template.id)}
+                                          disabled={deleteMutation.isPending}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </>
+                                )}
+                          </TableRow>
+                        ))
+                      )}
 
-              <TableRow className="border-t-2 bg-muted/30">
-                <TableCell className="align-top" />
-                <TableCell className="align-top">
-                  <form.Field
-                    name="name"
-                    children={(field) => (
-                      <div className="space-y-1">
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          placeholder="New Template Name..."
-                          className={`h-8 bg-background ${
-                            field.state.meta.errors.length > 0
-                              ? "border-destructive focus-visible:ring-destructive"
-                              : ""
-                          }`}
-                        />
-                        {field.state.meta.errors.length > 0 && (
-                          <p className="text-[10px] font-medium text-destructive">
-                            {field.state.meta.errors
-                              .map((err: any) =>
-                                typeof err === "object" && err?.message
-                                  ? err.message
-                                  : String(err),
-                              )
-                              .join(", ")}
-                          </p>
+                  <TableRow className="border-t-2 bg-muted/30">
+                    <TableCell className="align-top" />
+                    <TableCell className="align-top">
+                      <form.Field
+                        name="name"
+                        children={field => (
+                          <div className="space-y-1">
+                            <Input
+                              id={field.name}
+                              name={field.name}
+                              value={field.state.value}
+                              onBlur={field.handleBlur}
+                              onChange={e => field.handleChange(e.target.value)}
+                              placeholder="New Template Name..."
+                              className={`h-8 bg-background ${
+                                field.state.meta.errors.length > 0
+                                  ? "border-destructive focus-visible:ring-destructive"
+                                  : ""
+                              }`}
+                            />
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-[10px] font-medium text-destructive">
+                                {field.state.meta.errors
+                                  .map((err: any) =>
+                                    typeof err === "object" && err?.message
+                                      ? err.message
+                                      : String(err),
+                                  )
+                                  .join(", ")}
+                              </p>
+                            )}
+                          </div>
                         )}
-                      </div>
-                    )}
-                  />
-                </TableCell>
-                <TableCell className="align-top">
-                  <form.Field
-                    name="basePath"
-                    children={(field) => (
-                      <div className="space-y-1">
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          placeholder="bots/c/softcore"
-                          className={`h-8 bg-background ${
-                            field.state.meta.errors.length > 0
-                              ? "border-destructive focus-visible:ring-destructive"
-                              : ""
-                          }`}
-                        />
-                        {field.state.meta.errors.length > 0 && (
-                          <p className="text-[10px] font-medium text-destructive">
-                            {field.state.meta.errors
-                              .map((err: any) =>
-                                typeof err === "object" && err?.message
-                                  ? err.message
-                                  : String(err),
-                              )
-                              .join(", ")}
-                          </p>
+                      />
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <form.Field
+                        name="basePath"
+                        children={field => (
+                          <div className="space-y-1">
+                            <Input
+                              id={field.name}
+                              name={field.name}
+                              value={field.state.value}
+                              onBlur={field.handleBlur}
+                              onChange={e => field.handleChange(e.target.value)}
+                              placeholder="bots/c/softcore"
+                              className={`h-8 bg-background ${
+                                field.state.meta.errors.length > 0
+                                  ? "border-destructive focus-visible:ring-destructive"
+                                  : ""
+                              }`}
+                            />
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-[10px] font-medium text-destructive">
+                                {field.state.meta.errors
+                                  .map((err: any) =>
+                                    typeof err === "object" && err?.message
+                                      ? err.message
+                                      : String(err),
+                                  )
+                                  .join(", ")}
+                              </p>
+                            )}
+                          </div>
                         )}
-                      </div>
-                    )}
-                  />
-                </TableCell>
-                <TableCell className="align-top">
-                  <form.Field
-                    name="myCoreBotDockerImage"
-                    children={(field) => (
-                      <div className="space-y-1">
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          placeholder="ghcr.io/42core-team/my-core-bot:dev"
-                          className={`h-8 bg-background ${
-                            field.state.meta.errors.length > 0
-                              ? "border-destructive focus-visible:ring-destructive"
-                              : ""
-                          }`}
-                        />
-                        {field.state.meta.errors.length > 0 && (
-                          <p className="text-[10px] font-medium text-destructive">
-                            {field.state.meta.errors
-                              .map((err: any) =>
-                                typeof err === "object" && err?.message
-                                  ? err.message
-                                  : String(err),
-                              )
-                              .join(", ")}
-                          </p>
+                      />
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <form.Field
+                        name="myCoreBotDockerImage"
+                        children={field => (
+                          <div className="space-y-1">
+                            <Input
+                              id={field.name}
+                              name={field.name}
+                              value={field.state.value}
+                              onBlur={field.handleBlur}
+                              onChange={e => field.handleChange(e.target.value)}
+                              placeholder="ghcr.io/42core-team/my-core-bot:dev"
+                              className={`h-8 bg-background ${
+                                field.state.meta.errors.length > 0
+                                  ? "border-destructive focus-visible:ring-destructive"
+                                  : ""
+                              }`}
+                            />
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-[10px] font-medium text-destructive">
+                                {field.state.meta.errors
+                                  .map((err: any) =>
+                                    typeof err === "object" && err?.message
+                                      ? err.message
+                                      : String(err),
+                                  )
+                                  .join(", ")}
+                              </p>
+                            )}
+                          </div>
                         )}
-                      </div>
-                    )}
-                  />
-                </TableCell>
-                <TableCell className="align-top text-right">
-                  <form.Subscribe
-                    selector={(state) => [state.canSubmit, state.isSubmitting]}
-                    children={([canSubmit, isSubmitting]) => (
-                      <Button
-                        size="sm"
-                        variant={!canSubmit ? "destructive" : "default"}
-                        className="h-8"
-                        onClick={() => form.handleSubmit()}
-                        disabled={
-                          !canSubmit || isSubmitting || createMutation.isPending
-                        }
-                      >
-                        {createMutation.isPending || isSubmitting ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : null}
-                        Create
-                      </Button>
-                    )}
-                  />
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        )}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right align-top">
+                      <form.Subscribe
+                        selector={state => [state.canSubmit, state.isSubmitting]}
+                        children={([canSubmit, isSubmitting]) => (
+                          <Button
+                            size="sm"
+                            variant={!canSubmit ? "destructive" : "default"}
+                            className="h-8"
+                            onClick={() => form.handleSubmit()}
+                            disabled={
+                              !canSubmit || isSubmitting || createMutation.isPending
+                            }
+                          >
+                            {createMutation.isPending || isSubmitting
+                              ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                )
+                              : null}
+                            Create
+                          </Button>
+                        )}
+                      />
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            )}
       </CardContent>
     </Card>
   );

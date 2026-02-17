@@ -34,12 +34,12 @@ export default async function page({
 
   return (
     <div className="flex flex-col gap-4 md:gap-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div className="space-y-1.5 md:space-y-2">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
             Tournament Tree
           </h1>
-          <p className="text-muted-foreground text-base md:text-lg max-w-3xl leading-relaxed">
+          <p className="max-w-3xl text-base leading-relaxed text-muted-foreground md:text-lg">
             Follow the elimination bracket to see which teams advance and
             ultimately compete in the finals.
           </p>
@@ -51,7 +51,7 @@ export default async function page({
         )}
       </div>
 
-      <div className="rounded-xl md:rounded-2xl border bg-card/50 text-card-foreground shadow-sm overflow-hidden h-[60vh] md:h-[75vh] min-h-[400px] md:min-h-[600px] relative">
+      <div className="relative h-[60vh] min-h-[400px] overflow-hidden rounded-xl border bg-card/50 text-card-foreground shadow-sm md:h-[75vh] md:min-h-[600px] md:rounded-2xl">
         <GraphView
           matches={serializedMatches}
           teamCount={teamCount}

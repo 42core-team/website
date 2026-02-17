@@ -66,7 +66,7 @@ export default function EventNavbar({
   }, [eventId, isUserRegistered, isEventAdmin, hasStarted]);
 
   return (
-    <div className="py-4 flex items-center pl-12 md:pl-0 justify-start md:justify-center">
+    <div className="flex items-center justify-start py-4 pl-12 md:justify-center md:pl-0">
       {/* Desktop navigation */}
       <NavigationMenu className="hidden md:flex">
         <NavigationMenuList>
@@ -92,7 +92,7 @@ export default function EventNavbar({
       </NavigationMenu>
 
       {/* Mobile navigation dropdown */}
-      <div className="px-3 flex md:hidden">
+      <div className="flex px-3 md:hidden">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

@@ -2,7 +2,6 @@
 
 import type { ServerActionResponse } from "@/app/actions/errors";
 import axiosInstance, { handleError } from "@/app/actions/axios";
-import { isActionError } from "@/app/actions/errors";
 
 export interface Event {
   id: string;
@@ -129,7 +128,8 @@ export async function createEvent(
 export async function canUserCreateEvent(): Promise<boolean> {
   try {
     return (await axiosInstance.get<boolean>("user/canCreateEvent")).data;
-  } catch {
+  }
+  catch {
     return false;
   }
 }
@@ -204,7 +204,8 @@ export async function removeEventAdmin(
 export async function getMyEvents(): Promise<Event[]> {
   try {
     return (await axiosInstance.get("event/my")).data as Event[];
-  } catch {
+  }
+  catch {
     return [];
   }
 }

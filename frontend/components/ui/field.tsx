@@ -1,6 +1,6 @@
 import * as React from "react";
-import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 const Field = React.forwardRef<
   HTMLDivElement,
@@ -35,7 +35,8 @@ const FieldError = React.forwardRef<
   React.HTMLAttributes<HTMLParagraphElement> & { errors?: any[] }
 >(({ className, errors, children, ...props }, ref) => {
   const error = errors?.[0] || children;
-  if (!error) return null;
+  if (!error)
+    return null;
 
   return (
     <p
@@ -87,11 +88,11 @@ FieldLegend.displayName = "FieldLegend";
 
 export {
   Field,
-  FieldLabel,
+  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldContent,
-  FieldSet,
+  FieldLabel,
   FieldLegend,
+  FieldSet,
 };

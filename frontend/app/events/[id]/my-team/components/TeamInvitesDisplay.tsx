@@ -33,7 +33,7 @@ export default function TeamInvitesDisplay({
 
   const handleAcceptInvite = async (teamId: string) => {
     plausible("accept_team_invite");
-    setActionStates((prev) => ({
+    setActionStates(prev => ({
       ...prev,
       [teamId]: { ...prev[teamId], isAccepting: true, message: undefined },
     }));
@@ -41,7 +41,7 @@ export default function TeamInvitesDisplay({
     const result = await acceptTeamInvite(eventId, teamId);
 
     if (isActionError(result)) {
-      setActionStates((prev) => ({
+      setActionStates(prev => ({
         ...prev,
         [teamId]: {
           ...prev[teamId],
@@ -58,14 +58,14 @@ export default function TeamInvitesDisplay({
 
   const handleDeclineInvite = async (teamId: string) => {
     plausible("decline_team_invite");
-    setActionStates((prev) => ({
+    setActionStates(prev => ({
       ...prev,
       [teamId]: { ...prev[teamId], isDeclining: true, message: undefined },
     }));
 
     const result = await declineTeamInvite(eventId, teamId);
     if (isActionError(result)) {
-      setActionStates((prev) => ({
+      setActionStates(prev => ({
         ...prev,
         [teamId]: {
           ...prev[teamId],
@@ -75,7 +75,7 @@ export default function TeamInvitesDisplay({
       }));
       return;
     }
-    setInvites((prev) => prev.filter((invite) => invite.id !== teamId));
+    setInvites(prev => prev.filter(invite => invite.id !== teamId));
   };
 
   return (
@@ -86,47 +86,49 @@ export default function TeamInvitesDisplay({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {invites.length === 0 ? (
-          <p className="text-muted-foreground">No pending team invitations</p>
-        ) : (
-          <div className="divide-y">
-            {invites.map((invite) => (
-              <div
-                key={invite.id}
-                className="py-3 flex items-center justify-between"
-              >
-                <div>
-                  <p className="font-medium">{invite.name}</p>
-                  <p className="text-sm text-muted-foreground">Invited</p>
-                </div>
-                <div className="flex gap-2 items-center">
-                  {actionStates[invite.id]?.message && (
-                    <span className="text-destructive text-sm mr-2">
-                      {actionStates[invite.id]?.message}
-                    </span>
-                  )}
-                  <Button
-                    size="sm"
-                    isLoading={actionStates[invite.id]?.isAccepting}
-                    disabled={actionStates[invite.id]?.isDeclining}
-                    onClick={() => handleAcceptInvite(invite.id)}
+        {invites.length === 0
+          ? (
+              <p className="text-muted-foreground">No pending team invitations</p>
+            )
+          : (
+              <div className="divide-y">
+                {invites.map(invite => (
+                  <div
+                    key={invite.id}
+                    className="flex items-center justify-between py-3"
                   >
-                    Accept
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    isLoading={actionStates[invite.id]?.isDeclining}
-                    disabled={actionStates[invite.id]?.isAccepting}
-                    onClick={() => handleDeclineInvite(invite.id)}
-                  >
-                    Decline
-                  </Button>
-                </div>
+                    <div>
+                      <p className="font-medium">{invite.name}</p>
+                      <p className="text-sm text-muted-foreground">Invited</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {actionStates[invite.id]?.message && (
+                        <span className="mr-2 text-sm text-destructive">
+                          {actionStates[invite.id]?.message}
+                        </span>
+                      )}
+                      <Button
+                        size="sm"
+                        isLoading={actionStates[invite.id]?.isAccepting}
+                        disabled={actionStates[invite.id]?.isDeclining}
+                        onClick={() => handleAcceptInvite(invite.id)}
+                      >
+                        Accept
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        isLoading={actionStates[invite.id]?.isDeclining}
+                        disabled={actionStates[invite.id]?.isAccepting}
+                        onClick={() => handleDeclineInvite(invite.id)}
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
       </CardContent>
     </Card>
   );

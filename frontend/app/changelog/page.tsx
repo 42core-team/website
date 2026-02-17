@@ -79,7 +79,7 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
   return (
     <div className="py-10">
       <header className="mb-4">
-        <h1 className="text-4xl font-bold pb-2">Changelog</h1>
+        <h1 className="pb-2 text-4xl font-bold">Changelog</h1>
         <p className="text-muted-foreground">
           All changes from
           {" "}
@@ -147,7 +147,7 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
           return (
             <AccordionItem key={rel.id} value={String(rel.id)}>
               <AccordionTrigger className="px-4">
-                <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-2">
                     <span className={`${sizeClass} ${weightClass}`}>
                       {rel.name}
@@ -168,7 +168,7 @@ export default async function ChangelogPage({ searchParams }: SearchProps) {
                 {html.trim()
                   ? (
                       <article
-                        className="prose dark:prose-invert max-w-none"
+                        className="prose max-w-none dark:prose-invert"
                         dangerouslySetInnerHTML={{ __html: html }}
                       />
                     )

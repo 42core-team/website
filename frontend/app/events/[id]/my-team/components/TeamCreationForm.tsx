@@ -42,7 +42,8 @@ export default function TeamCreationForm() {
     queryKey: ["event", eventId, "templates"],
     queryFn: async () => {
       const result = await getStarterTemplates(eventId);
-      if (isActionError(result)) throw new Error(result.error);
+      if (isActionError(result))
+        throw new Error(result.error);
       return result;
     },
   });
@@ -89,8 +90,8 @@ export default function TeamCreationForm() {
       if (error.response?.status === 400) {
         // Handle specific 400 errors if needed, or generic message
         if (
-          typeof error.response.data === "object" &&
-          (error.response.data as any).message
+          typeof error.response.data === "object"
+          && (error.response.data as any).message
         ) {
           setErrorMessage((error.response.data as any).message);
           return;
@@ -103,7 +104,8 @@ export default function TeamCreationForm() {
 
       if (error.message && !error.message.startsWith("An unexpected")) {
         setErrorMessage(error.message);
-      } else {
+      }
+      else {
         setErrorMessage(
           "An unexpected error occurred while creating the team.",
         );
@@ -211,7 +213,7 @@ export default function TeamCreationForm() {
                   placeholder="e.g. MasseIstMacht"
                   className="h-10"
                   value={newTeamName}
-                  onChange={(e) => handleTeamNameChange(e.target.value)}
+                  onChange={e => handleTeamNameChange(e.target.value)}
                 />
                 {validationError && (
                   <p className="text-xs font-medium text-destructive">
@@ -233,7 +235,7 @@ export default function TeamCreationForm() {
                       <SelectValue placeholder="Choose your foundation" />
                     </SelectTrigger>
                     <SelectContent>
-                      {templates.map((template) => (
+                      {templates.map(template => (
                         <SelectItem key={template.id} value={template.id}>
                           {template.name}
                         </SelectItem>
@@ -254,18 +256,20 @@ export default function TeamCreationForm() {
                 size="lg"
                 onClick={handleCreateTeam}
                 disabled={
-                  !newTeamName ||
-                  !!validationError ||
-                  (templates.length > 0 && !selectedTemplateId) ||
-                  isLoading ||
-                  createTeamMutation.isPending
+                  !newTeamName
+                  || !!validationError
+                  || (templates.length > 0 && !selectedTemplateId)
+                  || isLoading
+                  || createTeamMutation.isPending
                 }
               >
-                {createTeamMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  "Create My Team"
-                )}
+                {createTeamMutation.isPending
+                  ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )
+                  : (
+                      "Create My Team"
+                    )}
               </Button>
             </div>
           </div>

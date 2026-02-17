@@ -37,10 +37,12 @@ export default async function EventQueuePage({
         <AlertTitle>You are not part of any team</AlertTitle>
         <AlertDescription>
           Join or create a team to access the event queue. You can do this in
-          the{" "}
+          the
+          {" "}
           <a href={`/events/${id}/my-team`} className="underline">
             My Team
-          </a>{" "}
+          </a>
+          {" "}
           section.
         </AlertDescription>
       </Alert>
@@ -59,7 +61,7 @@ export default async function EventQueuePage({
     queryFn: () => queueMatchesQueryFn(id),
   });
 
-  const sortedQueueMatches = queueMatches.map((match) => ({
+  const sortedQueueMatches = queueMatches.map(match => ({
     ...match,
     teams: match.teams.sort((a, _b) => (a.id === myTeam.id ? -1 : 1)),
   }));
@@ -67,8 +69,8 @@ export default async function EventQueuePage({
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <div className="container mx-auto py-3">
-        <h1 className="text-3xl font-bold mb-8">Event Queue</h1>
-        <p className="text-lg text-muted-foreground mb-4">
+        <h1 className="mb-8 text-3xl font-bold">Event Queue</h1>
+        <p className="mb-4 text-lg text-muted-foreground">
           Play against other participants in the queue to test your code.
         </p>
         <p className="text-sm text-muted-foreground">

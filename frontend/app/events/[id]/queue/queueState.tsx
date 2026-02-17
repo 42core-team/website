@@ -33,8 +33,8 @@ export default function QueueState(props: {
 
   const queryClient = useQueryClient();
 
-  const { data: queueState, isLoading: isQueueStateLoading } =
-    useQuery<QueueStateType>({
+  const { data: queueState, isLoading: isQueueStateLoading }
+    = useQuery<QueueStateType>({
       queryKey: queueStateQueryKey(eventId),
       queryFn: () => queueStateQueryFn(eventId),
       initialData: props.queueState,
@@ -94,9 +94,9 @@ export default function QueueState(props: {
 
     // Detect transition from IN_PROGRESS to FINISHED
     if (
-      lastSeenState === MatchState.IN_PROGRESS &&
-      matchState === MatchState.FINISHED &&
-      effectiveMatch
+      lastSeenState === MatchState.IN_PROGRESS
+      && matchState === MatchState.FINISHED
+      && effectiveMatch
     ) {
       // Refresh match history before redirecting
       queryClient.invalidateQueries({
@@ -123,47 +123,56 @@ export default function QueueState(props: {
     <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
       <h1 className="text-2xl font-bold">Queue State</h1>
       <div className="mt-4 flex flex-col items-center justify-center gap-2">
-        {matchState === MatchState.IN_PROGRESS ? (
-          <Spinner size="xl" className="text-green-600" />
-        ) : (
-          <>
-            <p className="text-lg">Team: {props.team.name}</p>
-            <p
-              className={cn(
-                "text-sm text-muted-foreground",
-                queueState.inQueue ? "text-green-500" : "",
-              )}
-            >
-              Status: {queueState.inQueue ? "In Queue" : "Not in Queue"}
-            </p>
-            {queueState.inQueue ? (
-              <div className="flex flex-col items-center justify-center gap-2">
-                <p className="text-sm">
-                  Queue Count:
-                  {queueState.queueCount}
+        {matchState === MatchState.IN_PROGRESS
+          ? (
+              <Spinner size="xl" className="text-green-600" />
+            )
+          : (
+              <>
+                <p className="text-lg">
+                  Team:
+                  {props.team.name}
                 </p>
-                <Button
-                  disabled={leaveQueueMutation.isPending}
-                  variant="destructive"
-                  onClick={() => {
-                    leaveQueueMutation.mutate();
-                  }}
+                <p
+                  className={cn(
+                    "text-sm text-muted-foreground",
+                    queueState.inQueue ? "text-green-500" : "",
+                  )}
                 >
-                  {leaveQueueMutation.isPending ? "Leaving..." : "Leave Queue"}
-                </Button>
-              </div>
-            ) : (
-              <Button
-                disabled={joinQueueMutation.isPending}
-                onClick={() => {
-                  joinQueueMutation.mutate();
-                }}
-              >
-                {joinQueueMutation.isPending ? "Joining..." : "play"}
-              </Button>
+                  Status:
+                  {" "}
+                  {queueState.inQueue ? "In Queue" : "Not in Queue"}
+                </p>
+                {queueState.inQueue
+                  ? (
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <p className="text-sm">
+                          Queue Count:
+                          {queueState.queueCount}
+                        </p>
+                        <Button
+                          disabled={leaveQueueMutation.isPending}
+                          variant="destructive"
+                          onClick={() => {
+                            leaveQueueMutation.mutate();
+                          }}
+                        >
+                          {leaveQueueMutation.isPending ? "Leaving..." : "Leave Queue"}
+                        </Button>
+                      </div>
+                    )
+                  : (
+                      <Button
+                        disabled={joinQueueMutation.isPending}
+                        onClick={() => {
+                          joinQueueMutation.mutate();
+                        }}
+                      >
+                        {joinQueueMutation.isPending ? "Joining..." : "play"}
+                      </Button>
+                    )}
+              </>
             )}
-          </>
-        )}
       </div>
 
       <div className="mt-8 w-full max-w-2xl">

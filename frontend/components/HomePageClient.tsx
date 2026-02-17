@@ -72,11 +72,11 @@ export default function HomePageClient(props: {
 
   return (
     <div>
-      <section className="flex flex-col items-center justify-center mb-15">
+      <section className="mb-15 flex flex-col items-center justify-center">
         {/* Foreground (logo + text + links) */}
-        <div className="flex flex-col text-center justify-center w-full mb-25">
-          <CoreLogoWhite className="mx-auto w-[30%] h-auto" />
-          <h1 className="mx-auto text-balance text-2xl font-bold block mt-2 max-w-2xl">
+        <div className="mb-25 flex w-full flex-col justify-center text-center">
+          <CoreLogoWhite className="mx-auto h-auto w-[30%]" />
+          <h1 className="mx-auto mt-2 block max-w-2xl text-2xl font-bold text-balance">
             Imagine a game contest that brings people
             from around the world together for fun and learning.
           </h1>
@@ -99,8 +99,8 @@ export default function HomePageClient(props: {
             </Button>
           </div>
           {props.currentLiveEvent && timeLeftMs > 0 && (
-            <Card className="mt-6 mx-auto max-w-sm">
-              <CardHeader className="flex flex-row justify-between items-center gap-3">
+            <Card className="mx-auto mt-6 max-w-sm">
+              <CardHeader className="flex flex-row items-center justify-between gap-3">
                 <CardTitle className="text-lg font-semibold">
                   {props.currentLiveEvent.name}
                 </CardTitle>
@@ -125,14 +125,14 @@ export default function HomePageClient(props: {
         </div>
 
         {/* Visualizer Embed under the logo */}
-        <div className="w-full flex justify-center">
-          <div className="w-full max-w-6xl px-4 mx-auto">
-            <div className="w-full aspect-video overflow-hidden flex items-center justify-center rounded-2xl">
+        <div className="flex w-full justify-center">
+          <div className="mx-auto w-full max-w-6xl px-4">
+            <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl">
               {isMounted && (
                 <iframe
                   key={visualizerUrl}
                   src={visualizerUrl}
-                  className="min-w-full min-h-full"
+                  className="min-h-full min-w-full"
                   allow="autoplay; fullscreen"
                   loading="lazy"
                   referrerPolicy="no-referrer"
@@ -151,7 +151,7 @@ export default function HomePageClient(props: {
       {/* Global Stats Section */}
       <GlobalStats initialStats={props.initialStats} />
 
-      <section className="flex flex-col items-center justify-center gap-16 min-h-lvh">
+      <section className="flex min-h-lvh flex-col items-center justify-center gap-16">
         <motion.div
           className="flex flex-col gap-32"
           initial={{ opacity: 0 }}
@@ -225,13 +225,13 @@ export default function HomePageClient(props: {
           ].map(character => (
             <motion.div
               key={character.alt}
-              className="flex flex-col items-center min-h-lvh justify-center relative"
+              className="relative flex min-h-lvh flex-col items-center justify-center"
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: false, margin: "-100px" }}
               transition={{ duration: 1.2 }}
             >
-              <div className="absolute z-10 left-1/2 -translate-x-1/2 w-[50vw]">
+              <div className="absolute left-1/2 z-10 w-[50vw] -translate-x-1/2">
                 {character.content}
               </div>
               <motion.div
