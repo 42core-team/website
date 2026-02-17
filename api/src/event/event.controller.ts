@@ -17,6 +17,8 @@ import { UserService } from "../user/user.service";
 import { CreateEventDto } from "./dtos/createEventDto";
 import { SetLockTeamsDateDto } from "./dtos/setLockTeamsDateDto";
 import { UpdateEventSettingsDto } from "./dtos/updateEventSettingsDto";
+import { CreateEventStarterTemplateDto } from "./dtos/createEventStarterTemplateDto";
+import { UpdateEventStarterTemplateDto } from "./dtos/updateEventStarterTemplateDto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { UserId } from "../guards/UserGuard";
 
@@ -26,7 +28,7 @@ export class EventController {
     private readonly eventService: EventService,
     private readonly teamService: TeamService,
     private readonly userService: UserService,
-  ) { }
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Get("my")
@@ -47,6 +49,14 @@ export class EventController {
   @Get(":id/version")
   async getEventVersion(@Param("id", new ParseUUIDPipe()) id: string) {
     return await this.eventService.getEventVersion(id);
+  }
+
+  @Get(":id/templates/:templateId/version")
+  async getStarterTemplateVersion(
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Param("templateId", new ParseUUIDPipe()) templateId: string,
+  ) {
+    return await this.eventService.getTemplateVersion(id, templateId);
   }
 
   @Get(":id/game-config")
@@ -257,5 +267,56 @@ export class EventController {
       throw new UnauthorizedException("You are not an admin of this event");
     }
     return this.eventService.removeEventAdmin(eventId, adminIdToRemove);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(":id/templates")
+  async getStarterTemplates(@Param("id", new ParseUUIDPipe()) eventId: string) {
+    return this.eventService.getStarterTemplates(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/templates")
+  async createStarterTemplate(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+    @Body() body: CreateEventStarterTemplateDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId))) {
+      throw new UnauthorizedException("You are not an admin of this event");
+    }
+    return this.eventService.createStarterTemplate(
+      eventId,
+      body.name,
+      body.basePath,
+      body.myCoreBotDockerImage,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(":id/templates/:templateId")
+  async updateStarterTemplate(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @Param("templateId", new ParseUUIDPipe()) templateId: string,
+    @UserId() userId: string,
+    @Body() body: UpdateEventStarterTemplateDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId))) {
+      throw new UnauthorizedException("You are not an admin of this event");
+    }
+    return this.eventService.updateStarterTemplate(eventId, templateId, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(":id/templates/:templateId")
+  async deleteStarterTemplate(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @Param("templateId", new ParseUUIDPipe()) templateId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId))) {
+      throw new UnauthorizedException("You are not an admin of this event");
+    }
+    return this.eventService.deleteStarterTemplate(eventId, templateId);
   }
 }

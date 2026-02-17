@@ -22,7 +22,6 @@ export default function EventsTable({ events }: Readonly<{ events: Event[] }>) {
     text: string;
     variant: "default" | "secondary" | "destructive";
   } => {
-    console.log("try to format state for event", event);
     const hasStarted = Date.now() >= new Date(event.startDate).getTime();
 
     if (!hasStarted) {

@@ -304,6 +304,7 @@ export class MatchService {
       relations: {
         teams: {
           event: true,
+          starterTemplate: true,
         },
         winner: true,
       },
@@ -371,13 +372,17 @@ export class MatchService {
       bots: [
         {
           id: match.teams[0].id,
-          image: event.myCoreBotDockerImage,
+          image:
+            match.teams[0].starterTemplate?.myCoreBotDockerImage ??
+            event.myCoreBotDockerImage,
           repoURL: repoPrefix + match.teams[0].repo,
           name: match.teams[0].name,
         },
         {
           id: match.teams[1].id,
-          image: event.myCoreBotDockerImage,
+          image:
+            match.teams[1].starterTemplate?.myCoreBotDockerImage ??
+            event.myCoreBotDockerImage,
           repoURL: repoPrefix + match.teams[1].repo,
           name: match.teams[1].name,
         },

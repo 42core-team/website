@@ -43,12 +43,15 @@ export class UserEntity {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @Exclude()
   @ManyToMany(() => TeamEntity, (team) => team.users)
   teams: TeamEntity[];
 
+  @Exclude()
   @ManyToMany(() => TeamEntity, (team) => team.teamInvites)
   teamInvites: TeamEntity[];
 
+  @Exclude()
   @ManyToMany(() => EventEntity, (event) => event.users)
   events: EventEntity[];
 
@@ -85,6 +88,7 @@ export class UserEventPermissionEntity {
   })
   user: UserEntity;
 
+  @Exclude()
   @ManyToOne(() => EventEntity, (event: EventEntity) => event.permissions, {
     onDelete: "CASCADE",
   })

@@ -9,6 +9,7 @@ import {
   getEventAdmins,
   getEventById,
   getParticipantsCountForEvent,
+  getStarterTemplates,
   getTeamsCountForEvent,
   isEventAdmin,
   removeEventAdmin,
@@ -47,16 +48,25 @@ import {
   Search,
   Trash2,
   UserPlus,
-  Wand2,
 } from "lucide-react";
 import { searchUsers, type UserSearchResult } from "@/app/actions/user";
 import { Calendar } from "@/components/ui/calendar";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { StarterTemplatesManagement } from "./components/StarterTemplatesManagement";
 
 interface DashboardPageProps {
   eventId: string;
@@ -65,6 +75,16 @@ interface DashboardPageProps {
 export function DashboardPage({ eventId }: DashboardPageProps) {
   const session = useSession();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get("tab") || "overview";
+
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", value);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   const [teamAutoLockTime, setTeamAutoLockTime] = useState<string>("");
   const [userSearchQuery, setUserSearchQuery] = useState("");
@@ -125,6 +145,16 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
       return result;
     },
     enabled: isAdmin,
+  });
+
+  const { data: starterTemplates = [] } = useQuery({
+    queryKey: ["event", eventId, "templates"],
+    queryFn: async () => {
+      const result = await getStarterTemplates(eventId);
+      if (isActionError(result)) throw new Error(result.error);
+      return result;
+    },
+    enabled: !!eventId,
   });
 
   const lockEventMutation = useMutation({
@@ -273,53 +303,11 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     return () => clearTimeout(delayDebounceFn);
   }, [userSearchQuery]);
 
-  const formatConfig = (field: "gameConfig" | "serverConfig") => {
-    try {
-      const current = pendingSettings[field];
-      if (!current) return;
-      const parsed = JSON.parse(current);
-      const formatted = JSON.stringify(parsed, null, 2);
-      setPendingSettings({
-        ...pendingSettings,
-        [field]: formatted,
-      });
-      toast.success(`${field} formatted`);
-    } catch (e) {
-      toast.error(`Invalid JSON in ${field}`);
-    }
-  };
-
   const handleSaveSettings = () => {
     const updates: any = {};
 
-    // Auto-format JSON fields before saving
-    let gameConfig = pendingSettings.gameConfig;
-    let serverConfig = pendingSettings.serverConfig;
-
-    if (gameConfig) {
-      try {
-        gameConfig = JSON.stringify(JSON.parse(gameConfig), null, 2);
-      } catch (e) {
-        toast.warning(
-          "Invalid JSON in Game Config. Proceeding without formatting.",
-        );
-      }
-    }
-
-    if (serverConfig) {
-      try {
-        serverConfig = JSON.stringify(JSON.parse(serverConfig), null, 2);
-      } catch (e) {
-        toast.warning(
-          "Invalid JSON in Server Config. Proceeding without formatting.",
-        );
-      }
-    }
-
     const finalSettings = {
       ...pendingSettings,
-      gameConfig,
-      serverConfig,
     };
 
     const fields = [
@@ -340,6 +328,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
       "gameConfig",
       "serverConfig",
       "githubOrg",
+      "githubOrgSecret",
       "startDate",
       "endDate",
     ];
@@ -406,7 +395,11 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
         )}
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs
+        value={currentTab}
+        onValueChange={handleTabChange}
+        className="w-full"
+      >
         <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="operation">Operation</TabsTrigger>
@@ -526,7 +519,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs opacity-70 uppercase">
-                    Bot Image
+                    Bot Image (default)
                   </Label>
                   <p className="font-mono text-xs break-all bg-muted/50 p-2 rounded border">
                     {event.myCoreBotDockerImage}
@@ -541,6 +534,42 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   </p>
                 </div>
               </div>
+
+              {starterTemplates && starterTemplates.length > 0 && (
+                <div className="space-y-2 pt-4 border-t">
+                  <Label className="text-xs opacity-70 uppercase">
+                    Starter Templates
+                  </Label>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[100px]">ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Path</TableHead>
+                        <TableHead>Docker Image</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {starterTemplates.map((template) => (
+                        <TableRow key={template.id}>
+                          <TableCell className="font-mono text-[10px] text-muted-foreground">
+                            {template.id}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {template.name}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {template.basePath}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-muted-foreground break-all">
+                            {template.myCoreBotDockerImage}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -717,10 +746,8 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
         <TabsContent value="settings" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Event Settings</CardTitle>
-              <CardDescription>
-                Configure the core details of your event.
-              </CardDescription>
+              <CardTitle>General Information</CardTitle>
+              <CardDescription>Basic details about the event.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -805,8 +832,18 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   />
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+          <Card>
+            <CardHeader>
+              <CardTitle>Participation & Privacy</CardTitle>
+              <CardDescription>
+                Manage who can join and strictness of the event.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>Min Team Size</Label>
                   <Input
@@ -836,9 +873,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
               </div>
 
               <div className="space-y-4 pt-4 border-t">
-                <h3 className="text-sm font-semibold">
-                  Visibility & Permissions
-                </h3>
+                <h3 className="text-sm font-semibold">Toggles</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="flex items-center justify-between p-3 rounded-lg border">
                     <Label className="cursor-pointer" htmlFor="canCreateTeam">
@@ -884,204 +919,199 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="space-y-4 pt-4 border-t">
-                <h3 className="text-sm font-semibold">
-                  Technical / Docker Images
-                </h3>
-                <div className="grid grid-cols-1 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Technical Configuration</CardTitle>
+              <CardDescription>
+                Docker images and repository settings.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <Label>Monorepo URL</Label>
+                  <Input
+                    value={pendingSettings.monorepoUrl || ""}
+                    onChange={(e) =>
+                      setPendingSettings({
+                        ...pendingSettings,
+                        monorepoUrl: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Monorepo URL</Label>
+                    <Label>Monorepo Version</Label>
                     <Input
-                      value={pendingSettings.monorepoUrl || ""}
+                      value={pendingSettings.monorepoVersion || ""}
                       onChange={(e) =>
                         setPendingSettings({
                           ...pendingSettings,
-                          monorepoUrl: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Monorepo Version</Label>
-                      <Input
-                        value={pendingSettings.monorepoVersion || ""}
-                        onChange={(e) =>
-                          setPendingSettings({
-                            ...pendingSettings,
-                            monorepoVersion: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Base Path</Label>
-                      <Input
-                        value={pendingSettings.basePath || ""}
-                        onChange={(e) =>
-                          setPendingSettings({
-                            ...pendingSettings,
-                            basePath: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>GitHub Organization</Label>
-                    <Input
-                      value={pendingSettings.githubOrg || ""}
-                      onChange={(e) =>
-                        setPendingSettings({
-                          ...pendingSettings,
-                          githubOrg: e.target.value,
+                          monorepoVersion: e.target.value,
                         })
                       }
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Game Server Image</Label>
+                    <Label>Base Path</Label>
                     <Input
-                      value={pendingSettings.gameServerDockerImage || ""}
+                      value={pendingSettings.basePath || ""}
                       onChange={(e) =>
                         setPendingSettings({
                           ...pendingSettings,
-                          gameServerDockerImage: e.target.value,
+                          basePath: e.target.value,
                         })
                       }
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Bot Image</Label>
-                    <Input
-                      value={pendingSettings.myCoreBotDockerImage || ""}
-                      onChange={(e) =>
-                        setPendingSettings({
-                          ...pendingSettings,
-                          myCoreBotDockerImage: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Visualizer Image</Label>
-                    <Input
-                      value={pendingSettings.visualizerDockerImage || ""}
-                      onChange={(e) =>
-                        setPendingSettings({
-                          ...pendingSettings,
-                          visualizerDockerImage: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Game Server Image</Label>
+                  <Input
+                    value={pendingSettings.gameServerDockerImage || ""}
+                    onChange={(e) =>
+                      setPendingSettings({
+                        ...pendingSettings,
+                        gameServerDockerImage: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Bot Image (default)</Label>
+                  <Input
+                    value={pendingSettings.myCoreBotDockerImage || ""}
+                    onChange={(e) =>
+                      setPendingSettings({
+                        ...pendingSettings,
+                        myCoreBotDockerImage: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Visualizer Image</Label>
+                  <Input
+                    value={pendingSettings.visualizerDockerImage || ""}
+                    onChange={(e) =>
+                      setPendingSettings({
+                        ...pendingSettings,
+                        visualizerDockerImage: e.target.value,
+                      })
+                    }
+                  />
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="space-y-4 pt-4 border-t">
-                <h3 className="text-sm font-semibold text-destructive">
-                  Secret Configurations
-                </h3>
-                <div className="space-y-2">
-                  <Label>GitHub Organization Secret (Token)</Label>
-                  <Input
-                    type="password"
-                    placeholder="Enter new token to update (leave blank to keep current)"
-                    onChange={(e) =>
-                      setPendingSettings({
-                        ...pendingSettings,
-                        githubOrgSecret: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Game Config (JSON)</Label>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => formatConfig("gameConfig")}
-                      >
-                        <Wand2 className="h-4 w-4 mr-2" />
-                        Format
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          setIsGameConfigExpanded(!isGameConfigExpanded)
-                        }
-                      >
-                        {isGameConfigExpanded ? (
-                          <Minimize2 className="h-4 w-4 mr-2" />
-                        ) : (
-                          <Maximize2 className="h-4 w-4 mr-2" />
-                        )}
-                        {isGameConfigExpanded ? "Minimize" : "Expand"}
-                      </Button>
-                    </div>
+          <StarterTemplatesManagement eventId={eventId} />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Advanced / Secrets</CardTitle>
+              <CardDescription>
+                Sensitive configuration and JSON configs.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>GitHub Organization</Label>
+                <Input
+                  value={pendingSettings.githubOrg || ""}
+                  onChange={(e) =>
+                    setPendingSettings({
+                      ...pendingSettings,
+                      githubOrg: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>GitHub Organization Secret (Token)</Label>
+                <Input
+                  type="password"
+                  placeholder="Enter new token to update (leave blank to keep current)"
+                  onChange={(e) =>
+                    setPendingSettings({
+                      ...pendingSettings,
+                      githubOrgSecret: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Game Config (JSON)</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setIsGameConfigExpanded(!isGameConfigExpanded)
+                      }
+                    >
+                      {isGameConfigExpanded ? (
+                        <Minimize2 className="h-4 w-4 mr-2" />
+                      ) : (
+                        <Maximize2 className="h-4 w-4 mr-2" />
+                      )}
+                      {isGameConfigExpanded ? "Minimize" : "Expand"}
+                    </Button>
                   </div>
-                  <Textarea
-                    value={pendingSettings.gameConfig || ""}
-                    onChange={(e) =>
-                      setPendingSettings({
-                        ...pendingSettings,
-                        gameConfig: e.target.value,
-                      })
-                    }
-                    className={cn(
-                      "font-mono text-xs transition-all duration-200",
-                      isGameConfigExpanded ? "min-h-[1200px]" : "min-h-[200px]",
-                    )}
-                  />
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Server Config (JSON)</Label>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => formatConfig("serverConfig")}
-                      >
-                        <Wand2 className="h-4 w-4 mr-2" />
-                        Format
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          setIsServerConfigExpanded(!isServerConfigExpanded)
-                        }
-                      >
-                        {isServerConfigExpanded ? (
-                          <Minimize2 className="h-4 w-4 mr-2" />
-                        ) : (
-                          <Maximize2 className="h-4 w-4 mr-2" />
-                        )}
-                        {isServerConfigExpanded ? "Minimize" : "Expand"}
-                      </Button>
-                    </div>
+                <Textarea
+                  value={pendingSettings.gameConfig || ""}
+                  onChange={(e) =>
+                    setPendingSettings({
+                      ...pendingSettings,
+                      gameConfig: e.target.value,
+                    })
+                  }
+                  className={cn(
+                    "font-mono text-xs transition-all duration-200",
+                    isGameConfigExpanded ? "min-h-[1200px]" : "min-h-[200px]",
+                  )}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Server Config (JSON)</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setIsServerConfigExpanded(!isServerConfigExpanded)
+                      }
+                    >
+                      {isServerConfigExpanded ? (
+                        <Minimize2 className="h-4 w-4 mr-2" />
+                      ) : (
+                        <Maximize2 className="h-4 w-4 mr-2" />
+                      )}
+                      {isServerConfigExpanded ? "Minimize" : "Expand"}
+                    </Button>
                   </div>
-                  <Textarea
-                    value={pendingSettings.serverConfig || ""}
-                    onChange={(e) =>
-                      setPendingSettings({
-                        ...pendingSettings,
-                        serverConfig: e.target.value,
-                      })
-                    }
-                    className={cn(
-                      "font-mono text-xs transition-all duration-200",
-                      isServerConfigExpanded
-                        ? "min-h-[1200px]"
-                        : "min-h-[200px]",
-                    )}
-                  />
                 </div>
+                <Textarea
+                  value={pendingSettings.serverConfig || ""}
+                  onChange={(e) =>
+                    setPendingSettings({
+                      ...pendingSettings,
+                      serverConfig: e.target.value,
+                    })
+                  }
+                  className={cn(
+                    "font-mono text-xs transition-all duration-200",
+                    isServerConfigExpanded ? "min-h-[1200px]" : "min-h-[200px]",
+                  )}
+                />
               </div>
             </CardContent>
           </Card>
@@ -1157,47 +1187,62 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 <h3 className="text-sm font-semibold mb-4">
                   Current Administrators
                 </h3>
-                <div className="space-y-4">
-                  {isAdminsLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : (
-                    admins.map((admin: any) => (
-                      <div
-                        key={admin.id}
-                        className="flex items-center justify-between p-4 rounded-lg border bg-muted/30"
-                      >
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={admin.profilePicture}
-                            alt={admin.name}
-                            className="h-10 w-10 rounded-full border bg-background"
-                          />
-                          <div>
-                            <p className="font-semibold">
-                              {admin.name || "Unknown User"}
-                            </p>
-                            <p className="text-xs text-muted-foreground font-mono">
-                              {admin.username} ({admin.id})
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          disabled={
-                            removeAdminMutation.isPending || admins.length <= 1
-                          }
-                          onClick={() => removeAdminMutation.mutate(admin.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </div>
+
+                {isAdminsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead className="w-[100px] text-right">
+                          Actions
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {admins.map((admin: any) => (
+                        <TableRow key={admin.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={admin.profilePicture}
+                                alt={admin.name}
+                                className="h-10 w-10 rounded-full border bg-background"
+                              />
+                              <div>
+                                <p className="font-semibold leading-none">
+                                  {admin.name || "Unknown User"}
+                                </p>
+                                <p className="text-xs text-muted-foreground font-mono mt-1">
+                                  @{admin.username}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              disabled={
+                                removeAdminMutation.isPending ||
+                                admins.length <= 1
+                              }
+                              onClick={() =>
+                                removeAdminMutation.mutate(admin.id)
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </div>
             </CardContent>
           </Card>

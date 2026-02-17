@@ -1,4 +1,10 @@
-import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+} from "@nestjs/common";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { TeamEntity } from "./entities/team.entity";
 import {
@@ -29,7 +35,7 @@ export class TeamService {
     private readonly matchService: MatchService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   logger = new Logger("TeamService");
 
@@ -149,6 +155,7 @@ export class TeamService {
       relations: {
         users: true,
         event: true,
+        starterTemplate: true,
       },
     });
 
@@ -160,6 +167,14 @@ export class TeamService {
     }
 
     const repoName = team.event.name + "-" + team.name + "-" + team.id;
+
+    // Determine values to use: template or event default
+    const basePath = team.starterTemplate
+      ? team.starterTemplate.basePath
+      : team.event.basePath;
+    const myCoreBotDockerImage = team.starterTemplate
+      ? team.starterTemplate.myCoreBotDockerImage
+      : team.event.myCoreBotDockerImage;
 
     await this.githubApiService.createTeamRepository(
       repoName,
@@ -174,12 +189,13 @@ export class TeamService {
       team.id,
       team.event.monorepoUrl,
       team.event.monorepoVersion,
-      team.event.myCoreBotDockerImage,
+      myCoreBotDockerImage,
       team.event.visualizerDockerImage,
       team.event.id,
-      team.event.basePath,
+      basePath,
       team.event.gameConfig ?? "",
       team.event.serverConfig ?? "",
+      team.starterTemplate?.id,
     );
 
     await teamRepository.update(teamId, {
@@ -187,14 +203,34 @@ export class TeamService {
     });
   }
 
-  async createTeam(name: string, userId: string, eventId: string) {
+  async createTeam(
+    name: string,
+    userId: string,
+    eventId: string,
+    starterTemplateId?: string,
+  ) {
     return await this.dataSource.transaction(async (entityManager) => {
+      if (
+        starterTemplateId &&
+        !(await this.eventService.isStarterTemplateInEvent(
+          starterTemplateId,
+          eventId,
+        ))
+      ) {
+        throw new BadRequestException(
+          "Starter template does not belong to this event.",
+        );
+      }
+
       const teamRepository = entityManager.getRepository(TeamEntity);
 
       const newTeam = await teamRepository.save({
         name,
         event: { id: eventId },
         users: [{ id: userId }],
+        starterTemplate: starterTemplateId
+          ? { id: starterTemplateId }
+          : undefined,
       });
 
       if (await this.eventService.hasEventStarted(eventId))
@@ -491,22 +527,22 @@ export class TeamService {
     });
   }
 
-    async isTeamFull(teamId: string) {
-        const team = await this.teamRepository.findOne({
-            where: {
-                id: teamId,
-            },
-            relations: {
-                event: true,
-                users: true
-            }
-        });
-        const maxUsers = team?.event.maxTeamSize;
-        if (!maxUsers) return true;
-        if (!team?.users) return true;
+  async isTeamFull(teamId: string) {
+    const team = await this.teamRepository.findOne({
+      where: {
+        id: teamId,
+      },
+      relations: {
+        event: true,
+        users: true,
+      },
+    });
+    const maxUsers = team?.event.maxTeamSize;
+    if (!maxUsers) return true;
+    if (!team?.users) return true;
 
-        return team?.users.length >= maxUsers;
-    }
+    return team?.users.length >= maxUsers;
+  }
 
   async leaveQueue(teamId: string) {
     return this.teamRepository.update(teamId, { inQueue: false });
@@ -536,12 +572,10 @@ export class TeamService {
     });
 
     for (const team of teams) {
-      if (!team.repo || !team.event)
-        continue;
+      if (!team.repo || !team.event) continue;
 
       for (const user of team.users) {
-        if (!user.username)
-          continue;
+        if (!user.username) continue;
 
         await this.githubApiService.addWritePermissions(
           user.username,

@@ -108,7 +108,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 				"sh", "-c", fmt.Sprintf(`
 					set -eu;
 					echo "Bot ID: '%s'";
-					echo "Repository: '%s'";
+					echo "Bot Name: '%s'";
 					echo '--- Cloning repository (verbose, progress) ---';
 					GIT_TERMINAL_PROMPT=0 git clone --single-branch --depth 1 --verbose --progress '%s' /shared-data/repo;
 					cd /shared-data/repo;
@@ -122,7 +122,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 					git --no-pager show --stat -1;
 					echo '--- changing permissions ---';
 					chown -R 2000:2000 /shared-data/repo && chmod -R 770 /shared-data/repo;
-				`, bot.ID.String(), bot.RepoURL, bot.RepoURL),
+				`, bot.ID.String(), *bot.Name, bot.RepoURL),
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
