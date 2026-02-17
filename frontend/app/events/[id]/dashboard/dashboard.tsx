@@ -19,6 +19,7 @@ import {
 
 import { lockEvent, unlockEvent } from "@/app/actions/team";
 import {
+  cleanupAllMatches,
   revealAllMatches,
   startSwissMatches,
   startTournamentMatches,
@@ -215,6 +216,23 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     },
     onError: (e: any) => {
       toast.error(e.message || "Failed to reveal matches.");
+    },
+  });
+
+  const cleanupMatchesMutation = useMutation({
+    mutationFn: async (phase: string) => {
+      const result = await cleanupAllMatches(eventId, phase);
+      if (isActionError(result)) {
+        throw new Error(result.error);
+      }
+      return result;
+    },
+    onSuccess: async () => {
+      toast.success("Matches cleaned up.");
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+    onError: (e: any) => {
+      toast.error(e.message || "Failed to cleanup matches.");
     },
   });
 
@@ -631,6 +649,26 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   >
                     Reveal Group Phase Matches
                   </Button>
+                  <Button
+                    disabled={cleanupMatchesMutation.isPending}
+                    onClick={() => {
+                      if (
+                        confirm(
+                          "Are you sure you want to delete ALL Group Phase matches? This will also reset team scores!",
+                        )
+                      ) {
+                        cleanupMatchesMutation.mutate("SWISS");
+                      }
+                    }}
+                    variant="destructive"
+                  >
+                    {cleanupMatchesMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="mr-2 h-4 w-4" />
+                    )}
+                    Clean Up Group Phase
+                  </Button>
                 </div>
               </div>
 
@@ -652,6 +690,26 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     variant="secondary"
                   >
                     Reveal Tournament Matches
+                  </Button>
+                  <Button
+                    disabled={cleanupMatchesMutation.isPending}
+                    onClick={() => {
+                      if (
+                        confirm(
+                          "Are you sure you want to delete ALL Tournament matches?",
+                        )
+                      ) {
+                        cleanupMatchesMutation.mutate("ELIMINATION");
+                      }
+                    }}
+                    variant="destructive"
+                  >
+                    {cleanupMatchesMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="mr-2 h-4 w-4" />
+                    )}
+                    Clean Up Tournament matches
                   </Button>
                 </div>
               </div>

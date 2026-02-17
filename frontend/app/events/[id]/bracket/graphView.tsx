@@ -61,7 +61,7 @@ export default function GraphView({
           const placeholderMatch: Match = {
             id: ``,
             isRevealed: false,
-            round: round + 1,
+            round: round,
             state: "PLANNED" as any,
             phase: "ELIMINATION" as any,
             createdAt: new Date().toISOString(),
@@ -105,7 +105,7 @@ export default function GraphView({
       const roundKeys = Array.from(matchesByRound.keys()).sort((a, b) => a - b);
 
       for (const round of roundKeys) {
-        const roundIndex = round - 1;
+        const roundIndex = round;
         const roundMatches = matchesByRound.get(round) || [];
         const isLastRound = roundIndex === lastRoundIndex;
 
@@ -159,7 +159,7 @@ export default function GraphView({
           const placementId = placementMatch.id ?? `placement-${roundIndex}`;
           const placementCoord = {
             x: roundIndex * ROUND_SPACING,
-            y: spacing / 2 + VERTICAL_SPACING * 2,
+            y: spacing / 2 + VERTICAL_SPACING * 1.5,
           };
 
           newNodes.push({

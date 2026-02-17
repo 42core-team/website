@@ -169,6 +169,21 @@ export class MatchController {
     return this.matchService.revealAllMatchesInPhase(eventId, phase as any);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Put("cleanup-all/:eventId/:phase")
+  async cleanupMatches(
+    @Param("eventId", ParseUUIDPipe) eventId: string,
+    @Param("phase") phase: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to cleanup matches for this event.",
+      );
+
+    return this.matchService.cleanupMatchesInPhase(eventId, phase as any);
+  }
+
   @Get(":matchId")
   async getMatchById(
     @Param("matchId", ParseUUIDPipe) matchId: string,

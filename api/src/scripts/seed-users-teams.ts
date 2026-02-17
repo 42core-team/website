@@ -89,6 +89,8 @@ async function bootstrap() {
     // Assign 3 users to each team
     const teamUsers = savedUsers.slice((i - 1) * 3, i * 3);
     team.users = teamUsers;
+    team.repo = "https://github.com/42core-team/monorepo";
+    team.startedRepoCreationAt = new Date();
 
     teams.push(team);
   }

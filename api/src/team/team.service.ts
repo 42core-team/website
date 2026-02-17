@@ -667,4 +667,13 @@ export class TeamService {
 
     return teams;
   }
+
+  async resetSwissStatsForEvent(eventId: string) {
+    await this.teamRepository
+      .createQueryBuilder()
+      .update()
+      .set({ score: 0, buchholzPoints: 0, hadBye: false })
+      .where("eventId = :eventId", { eventId })
+      .execute();
+  }
 }
