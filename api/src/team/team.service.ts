@@ -1,4 +1,10 @@
-import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+} from "@nestjs/common";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { TeamEntity } from "./entities/team.entity";
 import {
@@ -204,6 +210,18 @@ export class TeamService {
     starterTemplateId?: string,
   ) {
     return await this.dataSource.transaction(async (entityManager) => {
+      if (
+        starterTemplateId &&
+        !(await this.eventService.isStarterTemplateInEvent(
+          starterTemplateId,
+          eventId,
+        ))
+      ) {
+        throw new BadRequestException(
+          "Starter template does not belong to this event.",
+        );
+      }
+
       const teamRepository = entityManager.getRepository(TeamEntity);
 
       const newTeam = await teamRepository.save({

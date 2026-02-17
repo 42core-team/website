@@ -313,6 +313,16 @@ export class EventService {
     });
   }
 
+  isStarterTemplateInEvent(
+    templateId: string,
+    eventId: string,
+  ): Promise<boolean> {
+    return this.templateRepository.existsBy({
+      id: templateId,
+      event: { id: eventId },
+    });
+  }
+
   async createStarterTemplate(
     eventId: string,
     name: string,
