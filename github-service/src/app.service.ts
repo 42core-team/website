@@ -74,7 +74,7 @@ export class AppService {
     githubId: string,
     encryptedSecret: string,
     actionName: string,
-    context: Record<string, any>,
+    context: Record<string, unknown>,
     action: (
       username: string,
       repositoryApi: RepositoryApi,
@@ -357,7 +357,7 @@ export class AppService {
 
       await Promise.all(
         githubUsers.map(async (user) => {
-          let { username } = user;
+          const { username } = user;
           const { githubAccessToken, githubId } = user;
           this.logger.log(
             `Adding user ${username} to repository ${name} in org ${githubOrg}`,
