@@ -26,7 +26,7 @@ export default async function page({
   const [matches, eventAdmin, teams, advancementCount] = await Promise.all([
     getSwissMatches(eventId, isAdminView),
     isEventAdmin(eventId),
-    getTeamsForEventTable(eventId, undefined, "score", "desc"),
+    getTeamsForEventTable(eventId, undefined, "score", "desc", isAdminView),
     getTournamentTeamCount(eventId),
   ]);
 

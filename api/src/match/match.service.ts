@@ -288,14 +288,9 @@ export class MatchService {
 
     const finishedRound = event.currentRound;
     await this.eventService.increaseEventRound(evenId);
-    this.logger.log(
-      `Event ${event.name} has finished round ${finishedRound}.`,
-    );
+    this.logger.log(`Event ${event.name} has finished round ${finishedRound}.`);
 
-    if (
-      finishedRound + 1 >=
-      this.getMaxSwissRounds(event.teams.length)
-    ) {
+    if (finishedRound + 1 >= this.getMaxSwissRounds(event.teams.length)) {
       this.logger.log(
         `Event ${event.name} has reached the maximum Swiss rounds.`,
       );
@@ -347,9 +342,7 @@ export class MatchService {
 
     const finishedRound = event.currentRound;
     await this.eventService.increaseEventRound(event.id);
-    this.logger.log(
-      `Event ${event.name} has finished round ${finishedRound}.`,
-    );
+    this.logger.log(`Event ${event.name} has finished round ${finishedRound}.`);
     await this.createNextTournamentMatches(event.id);
   }
 
@@ -540,13 +533,12 @@ export class MatchService {
         }
 
         if (!match.player1 || !match.player2) {
+          const teamId = (match.player1 || match.player2) as string;
           this.logger.log(
-            `The team ${match.player1 || match.player2} got a bye in round ${event.currentRound} of event ${event.name}.`,
+            `The team ${teamId} got a bye in round ${event.currentRound} of event ${event.name}.`,
           );
-          await this.teamService.setHadBye(
-            (match.player1 || match.player2) as string,
-            true,
-          );
+          await this.teamService.setHadBye(teamId, true);
+          await this.teamService.increaseTeamScore(teamId, 1);
           return null;
         }
         return this.createMatch(
@@ -1193,35 +1185,84 @@ export class MatchService {
     teamId: string,
     eventId: string,
   ): Promise<number> {
-    // A team's revealed Buchholz points is the sum of revealed scores of its opponents.
-    // We already have getFormerOpponents, but that's for ALL finished matches.
-    // For "revealed" Buchholz, we only care about Swiss phase.
+    const results = await this.calculateBuchholzPointsForTeams(
+      [teamId],
+      eventId,
+      true,
+    );
+    return results.get(teamId) || 0;
+  }
 
-    const matches = await this.matchRepository.find({
-      where: {
-        teams: { id: teamId },
-        phase: MatchPhase.SWISS,
-        state: MatchState.FINISHED,
-      },
-      relations: { teams: true },
+  async calculateBuchholzPointsForTeams(
+    teamIds: string[],
+    eventId: string,
+    revealedOnly: boolean,
+  ): Promise<Map<string, number>> {
+    const query = this.matchRepository
+      .createQueryBuilder("match")
+      .innerJoinAndSelect("match.teams", "team")
+      .leftJoinAndSelect("match.winner", "winner")
+      .where("team.event = :eventId", { eventId })
+      .andWhere("match.phase = :phase", { phase: MatchPhase.SWISS })
+      .andWhere("match.state = :state", { state: MatchState.FINISHED });
+
+    if (revealedOnly) {
+      query.andWhere("match.isRevealed = true");
+    }
+
+    const matches = await query.getMany();
+
+    // Fetch all teams for this event to get their bye status and current total scores
+    const teams = await this.dataSource.getRepository(TeamEntity).find({
+      where: { event: { id: eventId } },
+      select: ["id", "hadBye", "score"],
     });
 
-    let totalRevealedBuchholz = 0;
-    for (const match of matches) {
-      const opponent = match.teams.find((t) => t.id !== teamId);
-      if (opponent) {
-        // Opponent's revealed score = count of revealed wins in Swiss
-        const revealedWins = await this.matchRepository.count({
-          where: {
-            winner: { id: opponent.id },
-            isRevealed: true,
-            phase: MatchPhase.SWISS,
-          },
-        });
-        totalRevealedBuchholz += revealedWins;
+    const teamsMap = new Map(teams.map((t) => [t.id, t]));
+
+    // Calculate score for everyone (Revealed wins + Bye)
+    const scoresMap = new Map<string, number>();
+    if (revealedOnly) {
+      const winCounts = new Map<string, number>();
+      for (const m of matches) {
+        if (m.winner) {
+          winCounts.set(m.winner.id, (winCounts.get(m.winner.id) || 0) + 1);
+        }
+      }
+      for (const t of teams) {
+        const wins = winCounts.get(t.id) || 0;
+        const bye = t.hadBye ? 1 : 0;
+        scoresMap.set(t.id, wins + bye);
+      }
+    } else {
+      // For admins, we can use the DB score (which now includes byes)
+      for (const t of teams) {
+        scoresMap.set(t.id, t.score || 0);
       }
     }
-    return totalRevealedBuchholz;
+
+    // Calculate Buchholz
+    const results = new Map<string, number>();
+    for (const teamId of teamIds) {
+      results.set(teamId, 0);
+    }
+
+    const teamIdsSet = new Set(teamIds);
+
+    for (const m of matches) {
+      const t1 = m.teams[0]?.id;
+      const t2 = m.teams[1]?.id;
+      if (t1 && t2) {
+        if (teamIdsSet.has(t1)) {
+          results.set(t1, (results.get(t1) || 0) + (scoresMap.get(t2) || 0));
+        }
+        if (teamIdsSet.has(t2)) {
+          results.set(t2, (results.get(t2) || 0) + (scoresMap.get(t1) || 0));
+        }
+      }
+    }
+
+    return results;
   }
 
   getGlobalStats() {

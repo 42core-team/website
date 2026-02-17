@@ -216,6 +216,7 @@ export async function getTeamsForEventTable(
     | "queueScore"
     | undefined = "name",
   sortDirection: "asc" | "desc" = "asc",
+  adminReveal: boolean = false,
 ) {
   const teams = (
     await axiosInstance.get(`team/event/${eventId}/`, {
@@ -223,6 +224,7 @@ export async function getTeamsForEventTable(
         searchName: searchTeamName,
         sortBy: sortColumn,
         sortDir: sortDirection,
+        adminRevealQuery: adminReveal,
       },
     })
   ).data;
@@ -232,10 +234,10 @@ export async function getTeamsForEventTable(
     name: team.name,
     repo: team.repo || "",
     membersCount: team.userCount,
-    score: team.score || 0,
-    buchholzPoints: team.buchholzPoints || 0,
-    hadBye: team.hadBye || false,
-    queueScore: team.queueScore || 0,
+    score: team.score ?? 0,
+    buchholzPoints: team.buchholzPoints ?? 0,
+    hadBye: team.hadBye ?? false,
+    queueScore: team.queueScore ?? 0,
     createdAt: team.createdAt,
     updatedAt: team.updatedAt,
   }));

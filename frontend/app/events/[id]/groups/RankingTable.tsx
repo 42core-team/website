@@ -30,8 +30,13 @@ export default function RankingTable({
 }: RankingTableProps) {
   // Sort teams by score (desc), then buchholzPoints (desc)
   const sortedTeams = [...teams].sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return b.buchholzPoints - a.buchholzPoints;
+    const scoreA = a.score ?? 0;
+    const scoreB = b.score ?? 0;
+    const buchholzA = a.buchholzPoints ?? 0;
+    const buchholzB = b.buchholzPoints ?? 0;
+
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    return buchholzB - buchholzA;
   });
 
   const getMatchHistory = (teamId: string) => {
@@ -82,10 +87,10 @@ export default function RankingTable({
                     </div>
                   </TableCell>
                   <TableCell className="text-center font-bold">
-                    {team.score.toFixed(1)}
+                    {(team.score ?? 0).toFixed(1)}
                   </TableCell>
                   <TableCell className="text-center text-muted-foreground">
-                    {team.buchholzPoints.toFixed(1)}
+                    {(team.buchholzPoints ?? 0).toFixed(1)}
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge variant="outline" className="font-mono">

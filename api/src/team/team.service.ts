@@ -420,12 +420,9 @@ export class TeamService {
           "team.queueScore",
           "team.createdAt",
           "team.updatedAt",
+          "team.score",
         ])
-        .addSelect("COUNT(DISTINCT match.id)", "revealed_score");
-
-      // Buchholz points are harder to calculate in a single query without nested aggregation.
-      // We'll calculate them in JS for now or accept that for search it might be 0/placeholder if too complex.
-      // However, for the Ranking Table, we need them.
+        .addSelect("COUNT(DISTINCT match.id)", "revealed_match_wins");
     }
 
     query.addSelect("COUNT(DISTINCT user.id)", "user_count").groupBy("team.id");
@@ -451,7 +448,7 @@ export class TeamService {
 
       if (validSortColumns.includes(sortColumn)) {
         if (!revealAll && sortColumn === "score") {
-          query.orderBy("revealed_score", direction as "ASC" | "DESC");
+          query.orderBy("revealed_match_wins", direction as "ASC" | "DESC");
         } else {
           query.orderBy(`team.${sortColumn}`, direction as "ASC" | "DESC");
         }
@@ -461,8 +458,7 @@ export class TeamService {
         if (revealAll) {
           query.orderBy("team.buchholzPoints", direction as "ASC" | "DESC");
         } else {
-          // If sorting by Buchholz and not revealed, we might just skip or sort by score
-          query.orderBy("revealed_score", direction as "ASC" | "DESC");
+          query.orderBy("revealed_match_wins", direction as "ASC" | "DESC");
         }
       }
 
@@ -473,35 +469,51 @@ export class TeamService {
 
     const result = await query.getRawAndEntities();
 
-    const teamsWithCounts = result.entities.map((team, idx) => {
-      const raw = result.raw[idx];
-      const mappedTeam = {
-        ...team,
-        userCount: parseInt(raw.user_count, 10),
-      };
+    // Batch calculate Buchholz points for all teams in the result
+    const teamIds = result.entities.map((t) => t.id);
+    const buchholzMap = await this.matchService.calculateBuchholzPointsForTeams(
+      teamIds,
+      eventId,
+      !revealAll,
+    );
 
-      if (!revealAll) {
-        (mappedTeam as any).score = parseInt(raw.revealed_score, 10);
-        // Buchholz points will be calculated below for consistent Ranking Table experience
-        (mappedTeam as any).buchholzPoints = 0;
-      }
+    // Map properties from raw if entity is missing them due to partial select
+    const teamsWithCounts = await Promise.all(
+      result.entities.map(async (team, idx) => {
+        const raw = result.raw[idx];
 
-      return mappedTeam;
-    });
+        // Be robust about boolean hydration from different DB drivers/QueryBuilder setups
+        const hadByeRaw = raw.team_hadBye ?? raw.hadBye ?? raw.team_had_bye;
+        const hadBye =
+          team.hadBye ||
+          hadByeRaw === "1" ||
+          hadByeRaw === 1 ||
+          hadByeRaw === true ||
+          hadByeRaw === "true";
 
-    if (!revealAll) {
-      // Calculate dynamic Buchholz for the returned block
-      // This is efficient enough for pagination sizes (default is usually small, or all for ranking)
-      for (const team of teamsWithCounts) {
-        (team as any).buchholzPoints =
-          await this.matchService.calculateRevealedBuchholzPointsForTeam(
-            team.id,
-            eventId,
-          );
-      }
-    }
+        const mappedTeam: any = {
+          ...team,
+          hadBye,
+          userCount: parseInt(raw.user_count, 10) || 0,
+        };
 
-    return teamsWithCounts as any;
+        if (revealAll) {
+          // For admins, use DB score which includes byes
+          mappedTeam.score = team.score || 0;
+        } else {
+          // For public, Revealed Match Wins + Bye
+          mappedTeam.score =
+            (parseInt(raw.revealed_match_wins, 10) || 0) + (hadBye ? 1 : 0);
+        }
+
+        // Use the batch-calculated Buchholz points
+        mappedTeam.buchholzPoints = buchholzMap.get(team.id) || 0;
+
+        return mappedTeam;
+      }),
+    );
+
+    return teamsWithCounts;
   }
 
   async joinQueue(teamId: string) {
