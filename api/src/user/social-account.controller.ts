@@ -1,9 +1,7 @@
 import {
   Controller,
-  Post,
   Delete,
   Get,
-  Body,
   Param,
   HttpCode,
   HttpStatus,
@@ -17,12 +15,6 @@ import {
 } from "./entities/social-account.entity";
 import { UserId } from "../guards/UserGuard";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-
-class LinkSocialAccountDto {
-  platform: SocialPlatform;
-  username: string;
-  platformUserId: string;
-}
 
 @UseGuards(JwtAuthGuard)
 @ApiTags("social-accounts")

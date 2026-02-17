@@ -6,7 +6,7 @@ import { MatchStatsEntity } from "./entites/matchStats.entity";
 import { DataSource, In, Not, Repository } from "typeorm";
 import { Swiss } from "tournament-pairings";
 import { EventService } from "../event/event.service";
-// @ts-ignore
+// @ts-expect-error: tournament-pairings interfaces are not correctly typed and missing 'interfaces' export.
 import { Player } from "tournament-pairings/interfaces";
 import { EventEntity } from "../event/entities/event.entity";
 import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
@@ -170,9 +170,9 @@ export class MatchService {
       await this.teamService.increaseTeamScore(winner.id, 1);
       match.results = match.teams.map((team) => {
         return {
-          team: { id: team.id } as any,
+          team: { id: team.id } as TeamEntity,
           score: team.id === winnerId ? team.score + 1 : team.score,
-          match: { id: match.id } as any,
+          match: { id: match.id } as MatchEntity,
         } as MatchTeamResultEntity;
       });
     } else if (match.phase === MatchPhase.QUEUE) {
@@ -194,9 +194,9 @@ export class MatchService {
         await this.teamService.setQueueScore(loser.id, newLoserElo);
         match.results = match.teams.map((team) => {
           return {
-            team: { id: team.id } as any,
+            team: { id: team.id } as TeamEntity,
             score: team.id === winner.id ? newWinnerElo : newLoserElo,
-            match: { id: match.id } as any,
+            match: { id: match.id } as MatchEntity,
           } as MatchTeamResultEntity;
         });
       }
@@ -555,7 +555,7 @@ export class MatchService {
     this.logger.log(
       `Created ${filteredMatchEntities.length} Swiss matches for event ${event.name} in round ${event.currentRound}.`,
     );
-    for (let matchEntity of filteredMatchEntities)
+    for (const matchEntity of filteredMatchEntities)
       await this.startMatch(matchEntity.id);
     return filteredMatchEntities;
   }
@@ -781,17 +781,13 @@ export class MatchService {
       teams.map(async (team) => {
         const buchholzPoints = await this.calculateBuchholzPointsForTeam(
           team.id,
-          eventId,
         );
         await this.teamService.updateBuchholzPoints(team.id, buchholzPoints);
       }),
     );
   }
 
-  async calculateBuchholzPointsForTeam(
-    teamId: string,
-    eventId: string,
-  ): Promise<number> {
+  async calculateBuchholzPointsForTeam(teamId: string): Promise<number> {
     const wonMatches = await this.matchRepository.find({
       where: {
         winner: {
@@ -952,7 +948,8 @@ export class MatchService {
         match.phase !== MatchPhase.QUEUE && match.isRevealed;
 
       if (!shouldRevealId) {
-        const { id: _id, ...rest } = match;
+        const { id: _matchId, ...rest } = match;
+        void _matchId;
         return rest;
       }
       return match;
@@ -1218,7 +1215,7 @@ export class MatchService {
       select: ["id", "hadBye", "score"],
     });
 
-    const teamsMap = new Map(teams.map((t) => [t.id, t]));
+    // const teamsMap = new Map(teams.map((t) => [t.id, t]));
 
     // Calculate score for everyone (Revealed wins + Bye)
     const scoresMap = new Map<string, number>();
@@ -1337,7 +1334,7 @@ export class MatchService {
 
     const rows = await qb.getRawMany<{ bucket: Date; count: string }>();
     return rows.map((r) => ({
-      bucket: new Date(r.bucket as any).toISOString(),
+      bucket: new Date(r.bucket as unknown as string).toISOString(),
       count: parseInt(r.count, 10),
     }));
   }

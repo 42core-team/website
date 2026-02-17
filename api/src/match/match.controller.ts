@@ -14,7 +14,7 @@ import {
 import { MatchService } from "./match.service";
 import { EventService } from "../event/event.service";
 import { UserId } from "../guards/UserGuard";
-import { MatchEntity } from "./entites/match.entity";
+import { MatchEntity, MatchPhase } from "./entites/match.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 @Controller("match")
@@ -169,7 +169,10 @@ export class MatchController {
         "You are not authorized to reveal matches for this event.",
       );
 
-    return this.matchService.revealAllMatchesInPhase(eventId, phase as any);
+    return this.matchService.revealAllMatchesInPhase(
+      eventId,
+      phase as MatchPhase,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -184,7 +187,10 @@ export class MatchController {
         "You are not authorized to cleanup matches for this event.",
       );
 
-    return this.matchService.cleanupMatchesInPhase(eventId, phase as any);
+    return this.matchService.cleanupMatchesInPhase(
+      eventId,
+      phase as MatchPhase,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

@@ -21,6 +21,17 @@ async function bootstrap() {
     process.exit(1);
   }
 
+  const numUsersArg = process.argv[3];
+  const numUsers = numUsersArg ? parseInt(numUsersArg, 10) : 90;
+  if (isNaN(numUsers) || numUsers <= 0) {
+    console.error(
+      "Please provide a valid number of users as the second argument",
+    );
+    process.exit(1);
+  }
+
+  const numTeams = Math.ceil(numUsers / 3);
+
   console.log("Connecting to database...");
   const configService = new ConfigService();
   const databaseConfig = new DatabaseConfig(configService);
@@ -31,7 +42,6 @@ async function bootstrap() {
     ...baseConfig,
     entities: [join(__dirname, "..", "**", "*.entity.ts")],
   } as DataSourceOptions);
-
 
   await dataSource.initialize();
   console.log("Database connected!");
@@ -50,12 +60,12 @@ async function bootstrap() {
     }
 
     console.log(
-      `Seeding 90 users and 30 teams for event: ${event.name} (${event.id})`,
+      `Seeding ${numUsers} users and ${numTeams} teams for event: ${event.name} (${event.id})`,
     );
 
     const users: UserEntity[] = [];
     const now = Date.now();
-    for (let i = 1; i <= 90; i++) {
+    for (let i = 1; i <= numUsers; i++) {
       const user = new UserEntity();
       user.githubId = `seed-user-${i}-${now}`;
       user.githubAccessToken = "dummy-token";
@@ -67,7 +77,7 @@ async function bootstrap() {
     }
 
     const savedUsers = await userRepository.save(users);
-    console.log(`Successfully saved 90 users`);
+    console.log(`Successfully saved ${numUsers} users`);
 
     // Add event permissions for these users
     const permissions = savedUsers.map((user) => {
@@ -78,10 +88,10 @@ async function bootstrap() {
       return perm;
     });
     await permissionRepository.save(permissions);
-    console.log(`Successfully added event permissions for 90 users`);
+    console.log(`Successfully added event permissions for ${numUsers} users`);
 
     const teams: TeamEntity[] = [];
-    for (let i = 1; i <= 30; i++) {
+    for (let i = 1; i <= numTeams; i++) {
       const team = new TeamEntity();
       team.name = `Seed Team ${i}`;
       team.event = event;
@@ -96,7 +106,7 @@ async function bootstrap() {
     }
 
     await teamRepository.save(teams);
-    console.log(`Successfully saved 30 teams and assigned users`);
+    console.log(`Successfully saved ${numTeams} teams and assigned users`);
 
     console.log("Seeding completed successfully!");
   } finally {

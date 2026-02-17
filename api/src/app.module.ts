@@ -24,7 +24,7 @@ import { StatsModule } from "./stats/stats.module";
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => {
         const databaseConfig = new DatabaseConfig(config);
-        return databaseConfig.getConfig() as any;
+        return databaseConfig.getConfig();
       },
       inject: [ConfigService],
     }),
