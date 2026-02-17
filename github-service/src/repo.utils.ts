@@ -336,7 +336,7 @@ export class RepoUtils {
           eventUrl,
         );
 
-        if (updatedContent !== originalContent) {
+      if (updatedContent !== originalContent) {
         await fs.writeFile(scriptPath, updatedContent);
         this.logger.log(
           `Replaced '[[event_url]]' with '${eventUrl}' in ${scriptPath}`,
@@ -348,19 +348,6 @@ export class RepoUtils {
       }
     } catch (error) {
       this.logger.error(`Failed to update config urls`, error as Error);
-      if (updatedContent !== originalContent) {
-          await fs.writeFile(scriptPath, updatedContent);
-          this.logger.log(
-            `Replaced '[[event_url]]' with '${eventUrl}' in ${scriptPath}`,
-          );
-        } else {
-          this.logger.log(
-            `No occurrence of '[[event_url]]' found in ${scriptPath}`,
-          );
-        }
-      } catch (error) {
-        this.logger.error(`Failed to update config urls`, error as Error);
-      }
     }
   }
 

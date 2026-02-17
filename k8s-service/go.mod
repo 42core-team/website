@@ -1,6 +1,6 @@
 module github.com/42core-team/website_relaunch/k8s-service
 
-go 1.25.6
+go 1.26.0
 
 tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 
@@ -16,9 +16,9 @@ require (
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/sethvargo/go-envconfig v1.3.0
 	go.uber.org/zap v1.27.1
-	k8s.io/api v0.35.0
-	k8s.io/apimachinery v0.35.0
-	k8s.io/client-go v0.35.0
+	k8s.io/api v0.35.1
+	k8s.io/apimachinery v0.35.1
+	k8s.io/client-go v0.35.1
 )
 
 require (

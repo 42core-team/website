@@ -288,7 +288,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 		Spec: batchv1.JobSpec{
 			Completions:             int32Ptr(1),
 			BackoffLimit:            int32Ptr(0),
-			ActiveDeadlineSeconds:   int64Ptr(60 * 15),
+			ActiveDeadlineSeconds:   int64Ptr(60 * 30),
 			TTLSecondsAfterFinished: int32Ptr(60 * 60 * 6),
 			Template: corev1.PodTemplateSpec{
 				Spec: podSpec,
