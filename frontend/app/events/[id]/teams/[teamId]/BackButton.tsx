@@ -14,7 +14,11 @@ export default function BackButton() {
       variant="ghost"
       aria-label="Back to teams list"
       onClick={() => {
-        router.push(`/events/${eventId}/teams`);
+        if (window.history.length > 1) {
+          router.back();
+        } else {
+          router.push(`/events/${eventId}/teams`);
+        }
       }}
     >
       <ArrowLeftIcon size={18} />

@@ -9,6 +9,8 @@ import { isActionError } from "@/app/actions/errors";
 import { leaveTeam, hasEventStarted } from "@/app/actions/team";
 import { getEventGithubOrg } from "@/app/actions/event";
 import { TeamInfoSection } from "@/components/team";
+import { getMatchesForTeam } from "@/app/actions/tournament";
+import TeamMatchHistory from "@/app/events/[id]/teams/[teamId]/TeamMatchHistory";
 
 interface TeamInfoDisplayProps {
   team: Team;
@@ -29,6 +31,17 @@ export default function TeamInfoDisplay({
     queryKey: ["event", eventId, "github-org"],
     queryFn: async () => {
       const resp = await getEventGithubOrg(eventId);
+      if (isActionError(resp)) {
+        return null;
+      }
+      return resp;
+    },
+  });
+
+  const { data: matches } = useQuery({
+    queryKey: ["event", eventId, "matches"],
+    queryFn: async () => {
+      const resp = await getMatchesForTeam(initialTeam.id);
       if (isActionError(resp)) {
         return null;
       }
@@ -109,8 +122,7 @@ export default function TeamInfoDisplay({
         }),
       ]);
       return true;
-    }
-    catch {
+    } catch {
       return false;
     }
   }
@@ -126,14 +138,18 @@ export default function TeamInfoDisplay({
           {errorMessage}
         </div>
       )}
-      <TeamInfoSection
-        myTeam={team}
-        onLeaveTeam={handleLeaveTeam}
-        isLeaving={leaveTeamMutation.isPending}
-        teamMembers={teamMembers}
-        isRepoPending={isRepoPending}
-        githubOrg={githubOrg ?? ""}
-      />
+      <div className="py-3 space-y-4">
+        <TeamInfoSection
+          myTeam={team}
+          onLeaveTeam={handleLeaveTeam}
+          isLeaving={leaveTeamMutation.isPending}
+          teamMembers={teamMembers}
+          isRepoPending={isRepoPending}
+          githubOrg={githubOrg ?? ""}
+        />
+
+        <TeamMatchHistory eventId={eventId} matches={matches || []} />
+      </div>
     </>
   );
 }

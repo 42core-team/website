@@ -107,16 +107,22 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 			Command: []string{
 				"sh", "-c", fmt.Sprintf(`
 					set -eu;
+					echo "Bot ID: '%s'";
+					echo "Repository: '%s'";
 					echo '--- Cloning repository (verbose, progress) ---';
-					GIT_TERMINAL_PROMPT=0 git clone --single-branch --depth 1 --verbose --progress %s /shared-data/repo;
+					GIT_TERMINAL_PROMPT=0 git clone --single-branch --depth 1 --verbose --progress '%s' /shared-data/repo;
 					cd /shared-data/repo;
+					echo '--- Repo content ---';
+					ls -F;
+					echo '--- Repository size ---';
+					du -sh /shared-data/repo;
 					echo '--- Last commit ---';
 					git --no-pager log -1 --decorate=short --pretty=fuller;
 					echo '--- Diffstat ---';
 					git --no-pager show --stat -1;
-					echo '--- changing permissions ---'
+					echo '--- changing permissions ---';
 					chown -R 2000:2000 /shared-data/repo && chmod -R 770 /shared-data/repo;
-				`, bot.RepoURL),
+				`, bot.ID.String(), bot.RepoURL, bot.RepoURL),
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -282,7 +288,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 		Spec: batchv1.JobSpec{
 			Completions:             int32Ptr(1),
 			BackoffLimit:            int32Ptr(0),
-			ActiveDeadlineSeconds:   int64Ptr(60 * 15),
+			ActiveDeadlineSeconds:   int64Ptr(60 * 30),
 			TTLSecondsAfterFinished: int32Ptr(60 * 60 * 6),
 			Template: corev1.PodTemplateSpec{
 				Spec: podSpec,

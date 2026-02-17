@@ -1,14 +1,13 @@
 "use client";
-import type { SortingState } from "@tanstack/react-table";
+import type { OnChangeFn, SortingState, Updater } from "@tanstack/react-table";
 import type { Team } from "@/app/actions/team";
 import {
   flexRender,
   getCoreRowModel,
-  getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -18,7 +17,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-// ...existing code...
 interface TeamsTableProps {
   teams: Team[];
   eventId: string;
@@ -26,9 +24,31 @@ interface TeamsTableProps {
 
 export default function TeamsTable({ teams, eventId }: TeamsTableProps) {
   const router = useRouter();
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "name", desc: false },
-  ]);
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  const sorting = useMemo<SortingState>(() => {
+    const sort = searchParams.get("sort") || "name";
+    const dir = searchParams.get("dir") || "ascending";
+    return [{ id: sort, desc: dir === "descending" }];
+  }, [searchParams]);
+
+  const onSortingChange: OnChangeFn<SortingState> = (updaterOrValue) => {
+    const newSorting =
+      typeof updaterOrValue === "function"
+        ? updaterOrValue(sorting)
+        : updaterOrValue;
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (newSorting.length > 0) {
+      params.set("sort", newSorting[0].id);
+      params.set("dir", newSorting[0].desc ? "descending" : "ascending");
+    } else {
+      params.delete("sort");
+      params.delete("dir");
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   const columns = [
     {
@@ -60,16 +80,16 @@ export default function TeamsTable({ teams, eventId }: TeamsTableProps) {
     data: teams,
     columns,
     state: { sorting },
-    onSortingChange: setSorting,
+    onSortingChange,
+    manualSorting: true,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          {table.getHeaderGroups()[0].headers.map(header => (
+          {table.getHeaderGroups()[0].headers.map((header) => (
             <TableHead
               key={header.id}
               onClick={header.column.getToggleSortingHandler()}
@@ -83,28 +103,27 @@ export default function TeamsTable({ teams, eventId }: TeamsTableProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {table.getRowModel().rows.length === 0
-          ? (
-              <TableRow>
-                <TableCell colSpan={columns.length}>No teams found</TableCell>
-              </TableRow>
-            )
-          : (
-              table.getRowModel().rows.map(row => (
-                <TableRow
-                  key={row.id}
-                  className="cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() =>
-                    router.push(`/events/${eventId}/teams/${row.original.id}`)}
-                >
-                  {row.getVisibleCells().map(cell => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            )}
+        {table.getRowModel().rows.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={columns.length}>No teams found</TableCell>
+          </TableRow>
+        ) : (
+          table.getRowModel().rows.map((row) => (
+            <TableRow
+              key={row.id}
+              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() =>
+                router.push(`/events/${eventId}/teams/${row.original.id}`)
+              }
+            >
+              {row.getVisibleCells().map((cell) => (
+                <TableCell key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))
+        )}
       </TableBody>
     </Table>
   );
