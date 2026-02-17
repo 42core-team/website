@@ -292,9 +292,6 @@ export class RepoUtils {
       "check_update_configs.sh",
       "check_image_updates.sh",
     ];
-    const eventUrl: string = starterTemplateId
-      ? `${apiBaseUrl}/event/${eventId}/templates/${starterTemplateId}`
-      : `${apiBaseUrl}/event/${eventId}`;
 
     for (const scriptName of scriptsToUpdate) {
       try {
@@ -309,6 +306,11 @@ export class RepoUtils {
             `No scripts/${scriptName} found at ${scriptPath}, skipping url update`,
           );
           continue;
+        }
+
+        let eventUrl = `${apiBaseUrl}/event/${eventId}`;
+        if (scriptName === "check_image_updates.sh" && starterTemplateId) {
+          eventUrl = `${apiBaseUrl}/event/${eventId}/templates/${starterTemplateId}`;
         }
 
         const originalContent = await fs.readFile(scriptPath, "utf-8");
