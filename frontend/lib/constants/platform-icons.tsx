@@ -12,7 +12,7 @@ export const PLATFORM_ICONS: Record<string, React.ReactNode> = {
       alt="42 School"
       width={24}
       height={24}
-      className="w-6 h-6 invert dark:invert-0"
+      className="h-6 w-6 invert dark:invert-0"
     />
   ),
   [OAUTH_PROVIDERS.DISCORD]: "💬",

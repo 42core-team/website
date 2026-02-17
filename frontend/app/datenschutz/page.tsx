@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function DatenschtutzPage() {
   return (
     <div className="container mx-auto max-w-4xl px-8 py-12">
-      <div className="prose prose-lg dark:prose-invert max-w-none">
+      <div className="prose prose-lg max-w-none dark:prose-invert">
         <h1>Datenschutz&shy;erkl&auml;rung</h1>
         <h2>1. Datenschutz auf einen Blick</h2>
         <h3>Allgemeine Hinweise</h3>

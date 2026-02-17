@@ -29,13 +29,13 @@ export default function Footer() {
   };
   return (
     <footer className="w-full border-t">
-      <div className="container mx-auto max-w-7xl py-12 px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="container mx-auto max-w-7xl px-8 py-12">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           {/* Logo and Description */}
           <div className="col-span-1 md:col-span-2">
             <Link href="/" className="flex items-center gap-2">
               <Image src="/logo-white.svg" alt="CORE" width={32} height={32} className="size-8" />
-              <span className="font-bold text-xl">CORE</span>
+              <span className="text-xl font-bold">CORE</span>
             </Link>
             <p className="mt-4 text-muted-foreground">
               CORE Game is a competitive coding challenge where you design and
@@ -45,7 +45,7 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h3 className="font-bold mb-4">Quick Links</h3>
+            <h3 className="mb-4 font-bold">Quick Links</h3>
             <div className="flex flex-col gap-2">
               <Link
                 href="/"
@@ -82,7 +82,7 @@ export default function Footer() {
 
           {/* Social Links */}
           <div>
-            <h3 className="font-bold mb-4">Connect</h3>
+            <h3 className="mb-4 font-bold">Connect</h3>
             <div className="flex flex-col gap-2">
               <Link
                 href="https://status.coregame.sh"
@@ -112,10 +112,14 @@ export default function Footer() {
         </div>
 
         {/* Bottom Section */}
-        <div className="mt-8 pt-8 border-t">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-muted-foreground text-sm">
-              © {currentYear} CORE Game. All rights reserved.
+        <div className="mt-8 border-t pt-8">
+          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+            <p className="text-sm text-muted-foreground">
+              ©
+              {" "}
+              {currentYear}
+              {" "}
+              CORE Game. All rights reserved.
             </p>
             <div className="flex gap-4 text-sm">
               <Link

@@ -40,7 +40,7 @@ export function TeamCreationSection({
             id="team-name"
             placeholder="Enter team name"
             value={newTeamName}
-            onChange={(e) => setNewTeamName(e.target.value)}
+            onChange={e => setNewTeamName(e.target.value)}
           />
           <Button
             type="submit"
@@ -52,10 +52,10 @@ export function TeamCreationSection({
         </form>
         <div className="mt-2">
           {validationError && (
-            <div className="text-destructive text-sm">{validationError}</div>
+            <div className="text-sm text-destructive">{validationError}</div>
           )}
           {errorMessage && (
-            <div className="text-destructive text-sm">{errorMessage}</div>
+            <div className="text-sm text-destructive">{errorMessage}</div>
           )}
         </div>
       </CardContent>

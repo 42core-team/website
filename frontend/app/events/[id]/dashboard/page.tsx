@@ -1,5 +1,5 @@
-import { Suspense } from "react";
 import type { Metadata } from "next/dist/lib/metadata/types/metadata-interface";
+import { Suspense } from "react";
 import { DashboardPage } from "./dashboard";
 
 export const metadata: Metadata = {

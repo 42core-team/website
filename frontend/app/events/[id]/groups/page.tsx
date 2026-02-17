@@ -35,13 +35,13 @@ export default async function page({
   }
 
   return (
-    <div className="flex flex-col gap-4 md:gap-8 pb-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="flex flex-col gap-4 pb-8 md:gap-8">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div className="space-y-1.5 md:space-y-2">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
             Group Phase
           </h1>
-          <p className="text-muted-foreground text-base md:text-lg max-w-3xl leading-relaxed">
+          <p className="max-w-3xl text-base leading-relaxed text-muted-foreground md:text-lg">
             In the group phase, teams compete using the Swiss tournament system,
             with rankings determined by the Buchholz scoring system.
           </p>

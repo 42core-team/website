@@ -1,5 +1,5 @@
 "use client";
-import type { Node, Edge } from "reactflow";
+import type { Edge, Node } from "reactflow";
 import type { Match } from "@/app/actions/tournament-model";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -18,7 +18,8 @@ const nodeTypes = {
 };
 
 function getTotalRounds(teamCount: number) {
-  if (teamCount <= 1) return 1;
+  if (teamCount <= 1)
+    return 1;
   return Math.ceil(Math.log2(teamCount));
 }
 
@@ -26,12 +27,10 @@ export default function GraphView({
   matches,
   teamCount,
   isEventAdmin,
-  isAdminView,
 }: {
   matches: Match[];
   teamCount: number;
   isEventAdmin: boolean;
-  isAdminView: boolean;
 }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -61,7 +60,7 @@ export default function GraphView({
           const placeholderMatch: Match = {
             id: ``,
             isRevealed: false,
-            round: round,
+            round,
             state: "PLANNED" as any,
             phase: "ELIMINATION" as any,
             createdAt: new Date().toISOString(),
@@ -86,7 +85,8 @@ export default function GraphView({
         }
         nodeIdsByRound.set(round, roundNodeIds);
       }
-    } else {
+    }
+    else {
       // Create nodes from actual match data
       const sortedMatches = [...matches].sort(
         (a, b) =>
@@ -110,7 +110,7 @@ export default function GraphView({
         const isLastRound = roundIndex === lastRoundIndex;
 
         const bracketMatches = isLastRound
-          ? roundMatches.filter((match) => !match.isPlacementMatch)
+          ? roundMatches.filter(match => !match.isPlacementMatch)
           : roundMatches;
 
         // Ensure bracket matches are sorted consistently for edge creation
@@ -141,10 +141,11 @@ export default function GraphView({
               showSourceHandle: roundIndex < lastRoundIndex,
               onClick: (clickedMatch: Match) => {
                 if (
-                  (match.state === MatchState.FINISHED || isEventAdmin) &&
-                  clickedMatch.id
-                )
+                  (match.state === MatchState.FINISHED || isEventAdmin)
+                  && clickedMatch.id
+                ) {
                   router.push(`/events/${eventId}/match/${clickedMatch.id}`);
+                }
               },
             },
           });
@@ -153,7 +154,7 @@ export default function GraphView({
         nodeIdsByRound.set(roundIndex, roundNodeIds);
 
         const placementMatch = isLastRound
-          ? roundMatches.find((match) => match.isPlacementMatch)
+          ? roundMatches.find(match => match.isPlacementMatch)
           : undefined;
         if (placementMatch) {
           const placementId = placementMatch.id ?? `placement-${roundIndex}`;
@@ -174,11 +175,12 @@ export default function GraphView({
               showSourceHandle: false,
               onClick: (clickedMatch: Match) => {
                 if (
-                  (placementMatch.state === MatchState.FINISHED ||
-                    isEventAdmin) &&
-                  clickedMatch.id
-                )
+                  (placementMatch.state === MatchState.FINISHED
+                    || isEventAdmin)
+                  && clickedMatch.id
+                ) {
                   router.push(`/events/${eventId}/match/${clickedMatch.id}`);
+                }
               },
             },
           });
@@ -218,7 +220,7 @@ export default function GraphView({
   }, [matches, teamCount, isEventAdmin, router, eventId, setNodes, setEdges]);
 
   return (
-    <div className="w-full h-full">
+    <div className="h-full w-full">
       <ReactFlow
         nodesDraggable={false}
         nodes={nodes}

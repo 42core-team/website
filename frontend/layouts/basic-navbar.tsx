@@ -54,7 +54,7 @@ function HamburgerIcon({ className, ...props }: SVGAttributes<SVGElement>) {
     >
       <path
         d="M4 12L20 12"
-        className="origin-center -translate-y-[7px] transition-all duration-300 ease-[cubic-bezier(.5,.85,.25,1.1)] group-aria-expanded:translate-x-0 group-aria-expanded:translate-y-0 group-aria-expanded:rotate-315"
+        className="origin-center translate-y-[-7px] transition-all duration-300 ease-[cubic-bezier(.5,.85,.25,1.1)] group-aria-expanded:translate-x-0 group-aria-expanded:translate-y-0 group-aria-expanded:rotate-315"
       />
       <path
         d="M4 12H20"
@@ -151,7 +151,7 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
             </div>
             {/* Brand */}
             <Link href="/" className="flex items-center">
-              <Logo className="size-6 light:invert" />
+              <Logo className="light:invert size-6" />
               <span className="ml-1 text-sm font-bold text-foreground">
                 CORE
               </span>
@@ -159,7 +159,7 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
           </div>
 
           {/* Desktop nav (centered) */}
-          <NavigationMenu className="hidden md:flex flex-1 justify-center">
+          <NavigationMenu className="hidden flex-1 justify-center md:flex">
             <NavigationMenuList className="gap-2">
               {navLinks.map(link => (
                 <NavigationMenuItem key={link.href}>
@@ -179,17 +179,16 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
             </NavigationMenuList>
           </NavigationMenu>
 
-          {/* Right side */
-          }
+          {/* Right side */}
           <div className="flex items-center gap-2">
             <ThemeSwitch />
             {session?.user?.id
               ? (
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button className="outline-none rounded-full">
+                      <button className="rounded-full outline-none">
                         <Image
-                          className="transition-transform rounded-full"
+                          className="rounded-full transition-transform"
                           src={session?.user?.profilePicture}
                           alt="Profile"
                           width={40}
@@ -199,13 +198,13 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
                     </PopoverTrigger>
                     <PopoverContent align="end" className="w-48 p-2">
                       <button
-                        className="w-full rounded-md px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left"
+                        className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
                         onClick={() => router.push("/profile")}
                       >
                         Profile
                       </button>
                       <button
-                        className="w-full rounded-md px-3 py-2 text-sm text-destructive hover:bg-accent hover:text-accent-foreground text-left"
+                        className="w-full rounded-md px-3 py-2 text-left text-sm text-destructive hover:bg-accent hover:text-accent-foreground"
                         onClick={() => {
                           signOut().then(() => router.push("/"));
                         }}

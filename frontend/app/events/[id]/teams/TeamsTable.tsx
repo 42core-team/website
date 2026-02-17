@@ -1,5 +1,5 @@
 "use client";
-import type { OnChangeFn, SortingState, Updater } from "@tanstack/react-table";
+import type { OnChangeFn, SortingState } from "@tanstack/react-table";
 import type { Team } from "@/app/actions/team";
 import {
   flexRender,
@@ -34,8 +34,8 @@ export default function TeamsTable({ teams, eventId }: TeamsTableProps) {
   }, [searchParams]);
 
   const onSortingChange: OnChangeFn<SortingState> = (updaterOrValue) => {
-    const newSorting =
-      typeof updaterOrValue === "function"
+    const newSorting
+      = typeof updaterOrValue === "function"
         ? updaterOrValue(sorting)
         : updaterOrValue;
 
@@ -43,7 +43,8 @@ export default function TeamsTable({ teams, eventId }: TeamsTableProps) {
     if (newSorting.length > 0) {
       params.set("sort", newSorting[0].id);
       params.set("dir", newSorting[0].desc ? "descending" : "ascending");
-    } else {
+    }
+    else {
       params.delete("sort");
       params.delete("dir");
     }
@@ -89,7 +90,7 @@ export default function TeamsTable({ teams, eventId }: TeamsTableProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          {table.getHeaderGroups()[0].headers.map((header) => (
+          {table.getHeaderGroups()[0].headers.map(header => (
             <TableHead
               key={header.id}
               onClick={header.column.getToggleSortingHandler()}
@@ -103,27 +104,28 @@ export default function TeamsTable({ teams, eventId }: TeamsTableProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {table.getRowModel().rows.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={columns.length}>No teams found</TableCell>
-          </TableRow>
-        ) : (
-          table.getRowModel().rows.map((row) => (
-            <TableRow
-              key={row.id}
-              className="cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={() =>
-                router.push(`/events/${eventId}/teams/${row.original.id}`)
-              }
-            >
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))
-        )}
+        {table.getRowModel().rows.length === 0
+          ? (
+              <TableRow>
+                <TableCell colSpan={columns.length}>No teams found</TableCell>
+              </TableRow>
+            )
+          : (
+              table.getRowModel().rows.map(row => (
+                <TableRow
+                  key={row.id}
+                  className="cursor-pointer transition-colors hover:bg-muted/50"
+                  onClick={() =>
+                    router.push(`/events/${eventId}/teams/${row.original.id}`)}
+                >
+                  {row.getVisibleCells().map(cell => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
       </TableBody>
     </Table>
   );

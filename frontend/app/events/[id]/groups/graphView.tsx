@@ -6,15 +6,16 @@ import { useEffect } from "react";
 import ReactFlow, { Background, useNodesState } from "reactflow";
 import { MatchState } from "@/app/actions/tournament-model";
 import { MatchNode } from "@/components/match";
-import { Switch } from "@/components/ui/switch";
 import "reactflow/dist/style.css";
 
 // Custom node types for ReactFlow
-const RoundNode = ({ data }: { data: { label: string } }) => (
-  <div className="flex items-center justify-center h-full w-full bg-card/90 backdrop-blur-md border border-border/50 rounded-xl shadow-sm text-foreground font-bold text-sm tracking-tight px-4 uppercase">
-    {data.label}
-  </div>
-);
+function RoundNode({ data }: { data: { label: string } }) {
+  return (
+    <div className="flex h-full w-full items-center justify-center rounded-xl border border-border/50 bg-card/90 px-4 text-sm font-bold tracking-tight text-foreground uppercase shadow-sm backdrop-blur-md">
+      {data.label}
+    </div>
+  );
+}
 
 const nodeTypes = {
   matchNode: MatchNode,
@@ -24,11 +25,9 @@ const nodeTypes = {
 export default function GraphView({
   matches,
   eventAdmin,
-  isAdminView,
 }: {
   matches: Match[];
   eventAdmin: boolean;
-  isAdminView: boolean;
 }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
 
@@ -36,11 +35,13 @@ export default function GraphView({
   const eventId = useParams().id as string;
 
   useEffect(() => {
-    if (!matches || matches.length === 0) return;
+    if (!matches || matches.length === 0)
+      return;
 
     const matchesByRound = matches.reduce(
       (acc, match) => {
-        if (!acc[match.round]) acc[match.round] = [];
+        if (!acc[match.round])
+          acc[match.round] = [];
         acc[match.round].push(match);
         return acc;
       },
@@ -83,10 +84,10 @@ export default function GraphView({
 
       // Add match nodes
       roundMatches.forEach((match, matchIndex) => {
-        const xPos =
-          roundIndex * COLUMN_WIDTH +
-          PADDING +
-          (COLUMN_WIDTH - MATCH_WIDTH - PADDING * 2) / 2;
+        const xPos
+          = roundIndex * COLUMN_WIDTH
+            + PADDING
+            + (COLUMN_WIDTH - MATCH_WIDTH - PADDING * 2) / 2;
         const yPos = (matchIndex + 1) * ROW_HEIGHT + PADDING + 20;
 
         newNodes.push({
@@ -99,10 +100,11 @@ export default function GraphView({
             height: MATCH_HEIGHT,
             onClick: (clickedMatch: Match) => {
               if (
-                (match.state === MatchState.FINISHED || eventAdmin) &&
-                clickedMatch.id
-              )
+                (match.state === MatchState.FINISHED || eventAdmin)
+                && clickedMatch.id
+              ) {
                 router.push(`/events/${eventId}/match/${clickedMatch.id}`);
+              }
             },
           },
         });
@@ -113,7 +115,7 @@ export default function GraphView({
   }, [matches, eventAdmin, eventId, router]);
 
   return (
-    <div className="w-full h-full">
+    <div className="h-full w-full">
       <ReactFlow
         nodes={nodes}
         onNodesChange={onNodesChange}
