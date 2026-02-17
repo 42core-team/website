@@ -435,7 +435,7 @@ export class TeamService {
 
     if (sortBy) {
       const direction = searchDir?.toUpperCase() === "DESC" ? "DESC" : "ASC";
-      let sortColumn = sortBy;
+      const sortColumn = sortBy;
 
       const validSortColumns = [
         "name",
@@ -491,10 +491,16 @@ export class TeamService {
           hadByeRaw === true ||
           hadByeRaw === "true";
 
-        const mappedTeam: any = {
+        const mappedTeam: TeamEntity & {
+          userCount: number;
+          score: number;
+          buchholzPoints: number;
+        } = {
           ...team,
           hadBye,
           userCount: parseInt(raw.user_count, 10) || 0,
+          score: 0,
+          buchholzPoints: 0,
         };
 
         if (revealAll) {

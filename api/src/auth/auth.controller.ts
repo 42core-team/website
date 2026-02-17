@@ -7,6 +7,7 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
+import { UserEntity } from "../user/entities/user.entity";
 import { AuthGuard } from "@nestjs/passport";
 import { Request, Response } from "express";
 import { AuthService } from "./auth.service";
@@ -25,19 +26,24 @@ export class AuthController {
     private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly socialAccountService: SocialAccountService,
-  ) { }
+  ) {}
 
   @Get("/github/callback")
   @UseGuards(AuthGuard("github"))
   githubCallback(@Req() req: Request, @Res() res: Response) {
-    const user: any = (req as any).user;
+    const user = req.user as UserEntity;
     const token = this.auth.signToken(user);
     const redirectUrl = this.configService.getOrThrow<string>(
       "OAUTH_SUCCESS_REDIRECT_URL",
     );
     if (redirectUrl) {
-      const cookieName = this.configService.get<string>("AUTH_COOKIE_NAME") || "token";
-      const cookieDomain = this.configService.get<string>("AUTH_COOKIE_DOMAIN") || (this.configService.get("NODE_ENV") === "development" ? "localhost" : ".coregame.sh");
+      const cookieName =
+        this.configService.get<string>("AUTH_COOKIE_NAME") || "token";
+      const cookieDomain =
+        this.configService.get<string>("AUTH_COOKIE_DOMAIN") ||
+        (this.configService.get("NODE_ENV") === "development"
+          ? "localhost"
+          : ".coregame.sh");
       res.cookie(cookieName, token, {
         httpOnly: true,
         secure: true,
@@ -121,7 +127,7 @@ export class AuthController {
   @Get("/me")
   @UseGuards(JwtAuthGuard)
   me(@Req() req: Request) {
-    const user: any = (req as any).user;
+    const user = req.user as UserEntity;
     return this.userService.getUserById(user.id);
   }
 }

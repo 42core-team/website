@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseUUIDPipe } from "@nestjs/common";
+import { Controller } from "@nestjs/common";
 import { EventPattern } from "@nestjs/microservices";
 import { TeamService } from "./team.service";
 
