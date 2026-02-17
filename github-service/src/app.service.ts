@@ -190,7 +190,9 @@ export class AppService {
       "Adding user to repository",
       { repositoryName, username, githubOrg },
       async (user, repositoryApi, userApi) => {
-        const githubAccessToken = this.decryptSecret(encryptedGithubAccessToken);
+        const githubAccessToken = this.decryptSecret(
+          encryptedGithubAccessToken,
+        );
         await repositoryApi.addCollaborator(
           githubOrg,
           repositoryName,
@@ -220,11 +222,7 @@ export class AppService {
       "Removing user from repository",
       { repositoryName, username, githubOrg },
       async (user, repositoryApi) => {
-        await repositoryApi.removeCollaborator(
-          githubOrg,
-          repositoryName,
-          user,
-        );
+        await repositoryApi.removeCollaborator(githubOrg, repositoryName, user);
       },
     );
   }
@@ -280,6 +278,7 @@ export class AppService {
     gameConfig: string,
     serverConfig: string,
     apiBaseUrl: string,
+    starterTemplateId?: string,
   ) {
     this.logger.log(
       `Creating team repository ${JSON.stringify({
@@ -327,6 +326,7 @@ export class AppService {
               gameConfig,
               serverConfig,
               apiBaseUrl,
+              starterTemplateId,
             );
           })(),
         ]);
@@ -354,7 +354,6 @@ export class AppService {
         repositoryName: name,
         teamId: teamId,
       });
-
 
       await Promise.all(
         githubUsers.map(async (user) => {

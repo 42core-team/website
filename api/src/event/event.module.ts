@@ -8,9 +8,15 @@ import { UserModule } from "../user/user.module";
 import { UserEventPermissionEntity } from "../user/entities/user.entity";
 import { CheckController } from "./check.controller";
 
+import { EventStarterTemplateEntity } from "./entities/event-starter-template.entity";
+
 @Module({
   imports: [
-    TypeOrmModule.forFeature([EventEntity, UserEventPermissionEntity]),
+    TypeOrmModule.forFeature([
+      EventEntity,
+      UserEventPermissionEntity,
+      EventStarterTemplateEntity,
+    ]),
     UserModule,
     forwardRef(() => TeamModule),
   ],
@@ -18,4 +24,4 @@ import { CheckController } from "./check.controller";
   providers: [EventService],
   exports: [EventService],
 })
-export class EventModule { }
+export class EventModule {}

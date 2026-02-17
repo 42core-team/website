@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next/dist/lib/metadata/types/metadata-interface";
 import { DashboardPage } from "./dashboard";
 
@@ -13,5 +14,9 @@ export default async function Page({
 }) {
   const eventId = (await params).id;
 
-  return <DashboardPage eventId={eventId} />;
+  return (
+    <Suspense fallback={<div>Loading dashboard...</div>}>
+      <DashboardPage eventId={eventId} />
+    </Suspense>
+  );
 }
