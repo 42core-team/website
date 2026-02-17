@@ -47,15 +47,23 @@ export class RepoUtils {
         visualizerDockerImage,
       ),
       this.updateTeamName(path.join(tempFolderPath, basePath), teamName),
-      this.updateGameConfig(path.join(tempFolderPath, basePath), gameConfig),
-      this.updateServerConfig(
+      this.writeJsonConfig(
         path.join(tempFolderPath, basePath),
+        "game.config.json",
+        gameConfig,
+        "game",
+      ),
+      this.writeJsonConfig(
+        path.join(tempFolderPath, basePath),
+        "server.config.json",
         serverConfig,
+        "server",
       ),
       this.updateConfigsUrls(
         path.join(tempFolderPath, basePath),
         eventId,
         apiBaseUrl,
+        starterTemplateId,
       ),
     ]);
     return gitRepo;
@@ -302,52 +310,30 @@ export class RepoUtils {
           );
           continue;
         }
-    const scriptsToUpdate = [
-      "check_update_configs.sh",
-      "check_image_updates.sh",
-    ];
-    const eventUrl: string = starterTemplateId
-      ? `${apiBaseUrl}/event/${eventId}/templates/${starterTemplateId}`
-      : `${apiBaseUrl}/event/${eventId}`;
-
-    for (const scriptName of scriptsToUpdate) {
-      try {
-        const scriptPath = path.join(repoRoot, "scripts", scriptName);
-        const exists = await fs
-          .stat(scriptPath)
-          .then(() => true)
-          .catch(() => false);
-
-        if (!exists) {
-          this.logger.log(
-            `No scripts/${scriptName} found at ${scriptPath}, skipping url update`,
-          );
-          continue;
-        }
-
-        const eventUrl: string = starterTemplateId
-          ? `${apiBaseUrl}/event/${eventId}/templates/${starterTemplateId}`
-          : `${apiBaseUrl}/event/${eventId}`;
 
         const originalContent = await fs.readFile(scriptPath, "utf-8");
 
-        let updatedContent = originalContent.replaceAll(
+        const updatedContent = originalContent.replaceAll(
           "[[event_url]]",
           eventUrl,
         );
 
-      if (updatedContent !== originalContent) {
-        await fs.writeFile(scriptPath, updatedContent);
-        this.logger.log(
-          `Replaced '[[event_url]]' with '${eventUrl}' in ${scriptPath}`,
-        );
-      } else {
-        this.logger.log(
-          `No occurrence of '[[event_url]]' found in ${scriptPath}`,
+        if (updatedContent !== originalContent) {
+          await fs.writeFile(scriptPath, updatedContent);
+          this.logger.log(
+            `Replaced '[[event_url]]' with '${eventUrl}' in ${scriptPath}`,
+          );
+        } else {
+          this.logger.log(
+            `No occurrence of '[[event_url]]' found in ${scriptPath}`,
+          );
+        }
+      } catch (error) {
+        this.logger.error(
+          `Failed to update config urls in ${scriptName}`,
+          error as Error,
         );
       }
-    } catch (error) {
-      this.logger.error(`Failed to update config urls`, error as Error);
     }
   }
 
@@ -393,47 +379,26 @@ export class RepoUtils {
     }
   }
 
-  private async updateGameConfig(
+  private async writeJsonConfig(
     repoRoot: string,
-    gameConfig: string,
+    fileName: string,
+    content: string,
+    configType: string,
   ): Promise<void> {
-    if (!gameConfig || gameConfig.length === 0) return;
+    if (!content || content.length === 0) return;
 
     try {
       const configsDir = path.join(repoRoot, "configs");
-      const gameConfigPath = path.join(configsDir, "game.config.json");
+      const filePath = path.join(configsDir, fileName);
 
       // Ensure configs directory exists
       await fs.mkdir(configsDir, { recursive: true });
 
-      await fs.writeFile(gameConfigPath, gameConfig);
-      this.logger.log(`Updated game config at ${gameConfigPath}`);
+      await fs.writeFile(filePath, content);
+      this.logger.log(`Updated ${configType} config at ${filePath}`);
     } catch (error) {
       this.logger.error(
-        `Failed to update game config in configs/game.config.json`,
-        error as Error,
-      );
-    }
-  }
-
-  private async updateServerConfig(
-    repoRoot: string,
-    serverConfig: string,
-  ): Promise<void> {
-    if (!serverConfig || serverConfig.length === 0) return;
-
-    try {
-      const configsDir = path.join(repoRoot, "configs");
-      const serverConfigPath = path.join(configsDir, "server.config.json");
-
-      // Ensure configs directory exists
-      await fs.mkdir(configsDir, { recursive: true });
-
-      await fs.writeFile(serverConfigPath, serverConfig);
-      this.logger.log(`Updated server config at ${serverConfigPath}`);
-    } catch (error) {
-      this.logger.error(
-        `Failed to update server config in configs/server.config.json`,
+        `Failed to update ${configType} config in configs/${fileName}`,
         error as Error,
       );
     }
