@@ -197,16 +197,23 @@ export class GitHubApiClient {
   /**
    * Determine if we should retry based on the error
    */
-  private shouldRetry(error: any): boolean {
+  private shouldRetry(error: unknown): boolean {
     // Retry on network errors, timeouts, or specific API errors
     if (error instanceof TypeError && error.message === "Failed to fetch") {
       // Network error or timeout
       return true;
     }
 
-    if (error.name === "AbortError" || error.name === "TimeoutError") {
-      // Request was aborted or timed out
-      return true;
+    if (
+      error &&
+      typeof error === "object" &&
+      ("name" in error || "message" in error)
+    ) {
+      const e = error as { name?: string; message?: string };
+      if (e.name === "AbortError" || e.name === "TimeoutError") {
+        // Request was aborted or timed out
+        return true;
+      }
     }
 
     // Could add other specific API errors to retry on
@@ -228,7 +235,6 @@ export class GitHubApiClient {
 
     // Add jitter (±20%)
     const jitter = 0.2;
-    const jitterAmount = exponentialDelay * jitter;
     const jitterFactor = 1 - jitter + Math.random() * jitter * 2;
 
     return Math.floor(exponentialDelay * jitterFactor);
@@ -256,7 +262,7 @@ export class GitHubApiClient {
    */
   async post<T>(
     endpoint: string,
-    data: any,
+    data: unknown,
     options: Omit<RequestOptions, "method" | "body"> = {},
   ): Promise<T> {
     return this.request<T>(endpoint, {
@@ -271,7 +277,7 @@ export class GitHubApiClient {
    */
   async patch<T>(
     endpoint: string,
-    data: any,
+    data: unknown,
     options: Omit<RequestOptions, "method" | "body"> = {},
   ): Promise<T> {
     return this.request<T>(endpoint, {
@@ -286,7 +292,7 @@ export class GitHubApiClient {
    */
   async put<T>(
     endpoint: string,
-    data: any,
+    data: unknown,
     options: Omit<RequestOptions, "method" | "body"> = {},
   ): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: "PUT", body: data });

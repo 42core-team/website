@@ -24,7 +24,7 @@ export interface RequestOptions {
   /**
    * Request body (will be JSON stringified)
    */
-  body?: any;
+  body?: unknown;
 
   /**
    * Query parameters

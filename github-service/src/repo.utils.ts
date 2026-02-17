@@ -38,7 +38,7 @@ export class RepoUtils {
     ]);
     await gitMono.raw(["sparse-checkout", "set", basePath]);
 
-    const [gitRepo, _] = await Promise.all([
+    const [gitRepo] = await Promise.all([
       this.initRepo(tempFolderPath, basePath),
       this.updateGitignoreFromCoreignore(path.join(tempFolderPath, basePath)),
       this.updateDevcontainerDockerCompose(
@@ -358,7 +358,7 @@ export class RepoUtils {
 
       const originalContent = await fs.readFile(mainCPath, "utf-8");
 
-      let updatedContent = originalContent.replaceAll(
+      const updatedContent = originalContent.replaceAll(
         "YOUR TEAM NAME HERE",
         teamName,
       );
