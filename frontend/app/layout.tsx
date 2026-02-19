@@ -60,7 +60,7 @@ export default function App({ children }: { children: React.ReactNode }) {
         <Providers>
           <PlausibleProvider
             domain={process.env.PLAUSIBLE_DOMAIN ?? "coregame.sh"}
-            customDomain={process.env.PLAUSIBLE_CUSTOM_DOMAIN}
+            customDomain={process.env.NEXTAUTH_URL ?? "coregame.sh"}
             selfHosted={true}
             trackOutboundLinks={true}
             trackFileDownloads={true}
