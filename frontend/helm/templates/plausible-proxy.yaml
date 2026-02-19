@@ -42,7 +42,7 @@ spec:
       http:
         paths:
         - path: /js/script.js
-          pathType: Exact
+          pathType: ImplementationSpecific
           backend:
             service:
               name: {{ include "frontend.fullname" $ }}-plausible
