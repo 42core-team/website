@@ -31,7 +31,7 @@ export class MatchController {
   getSwissMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
     @UserId() userId: string,
-    @Query("adminRevealQuery", ParseBoolPipe) adminRevealQuery: boolean,
+    @Query("adminRevealQuery", new ParseBoolPipe({ optional: true })) adminRevealQuery: boolean,
   ) {
     return this.matchService.getSwissMatches(
       eventId,
@@ -81,7 +81,7 @@ export class MatchController {
   getTournamentMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
     @UserId() userId: string,
-    @Query("adminRevealQuery", ParseBoolPipe) adminRevealQuery: boolean,
+    @Query("adminRevealQuery", new ParseBoolPipe({ optional: true })) adminRevealQuery: boolean,
   ) {
     return this.matchService.getTournamentMatches(
       eventId,
@@ -190,7 +190,7 @@ export class MatchController {
   async getMatchById(
     @Param("matchId", ParseUUIDPipe) matchId: string,
     @UserId() userId: string,
-    @Query("adminRevealQuery", ParseBoolPipe) adminRevealQuery: boolean,
+    @Query("adminRevealQuery", new ParseBoolPipe({ optional: true })) adminRevealQuery: boolean,
   ): Promise<MatchEntity> {
     return await this.matchService.getMatchById(
       matchId,
@@ -200,7 +200,7 @@ export class MatchController {
         },
       },
       userId,
-      adminRevealQuery,
+      adminRevealQuery ?? false,
     );
   }
 

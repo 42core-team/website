@@ -150,21 +150,20 @@ function MatchNode({ data }: MatchNodeProps) {
           {/* Teams */}
           <div className="space-y-1">
             {match.teams &&
-            match.state === MatchState.FINISHED &&
-            match.teams.length > 0 ? (
+              match.state === MatchState.FINISHED &&
+              match.teams.length > 0 ? (
               match.teams.map((team, index) => (
                 <div
                   key={index}
-                  className={`text-sm font-medium flex justify-between items-center ${
-                    match.winner?.name === team.name ? "font-bold" : ""
-                  }`}
+                  className={`text-sm font-medium flex justify-between items-center ${match.winner?.name === team.name ? "font-bold" : ""
+                    }`}
                 >
                   <div className="truncate flex-1">
                     <span
                       className="hover:underline transition-all duration-200 cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (team.id) {
+                        if (team.id && eventId) {
                           router.push(`/events/${eventId}/teams/${team.id}`);
                         }
                       }}

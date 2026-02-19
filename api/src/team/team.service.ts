@@ -36,7 +36,7 @@ export class TeamService {
     private readonly matchService: MatchService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   logger = new Logger("TeamService");
 
@@ -444,21 +444,22 @@ export class TeamService {
         "queueScore",
         "createdAt",
         "updatedAt",
+        "buchholzPoints",
       ];
 
       if (validSortColumns.includes(sortColumn)) {
-        if (!revealAll && sortColumn === "score") {
+        if (sortColumn === "score" && !revealAll) {
           query.orderBy("revealed_match_wins", direction as "ASC" | "DESC");
+        } else if (sortColumn === "buchholzPoints") {
+          if (revealAll) {
+            query.orderBy("team.buchholzPoints", direction as "ASC" | "DESC");
+          } else {
+            throw new BadRequestException(
+              "Buchholz points are hidden for this event.",
+            );
+          }
         } else {
           query.orderBy(`team.${sortColumn}`, direction as "ASC" | "DESC");
-        }
-      }
-
-      if (sortBy === "buchholzPoints") {
-        if (revealAll) {
-          query.orderBy("team.buchholzPoints", direction as "ASC" | "DESC");
-        } else {
-          query.orderBy("revealed_match_wins", direction as "ASC" | "DESC");
         }
       }
 
