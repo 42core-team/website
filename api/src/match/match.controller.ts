@@ -4,6 +4,7 @@ import {
   Get,
   Logger,
   Param,
+  ParseBoolPipe,
   ParseUUIDPipe,
   Put,
   Query,
@@ -21,7 +22,7 @@ export class MatchController {
   constructor(
     private readonly matchService: MatchService,
     private readonly eventService: EventService,
-  ) {}
+  ) { }
 
   private logger = new Logger("MatchController");
 
@@ -30,12 +31,12 @@ export class MatchController {
   getSwissMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
     @UserId() userId: string,
-    @Query("adminRevealQuery") adminRevealQuery: boolean,
+    @Query("adminRevealQuery", ParseBoolPipe) adminRevealQuery: boolean,
   ) {
     return this.matchService.getSwissMatches(
       eventId,
       userId,
-      Boolean(adminRevealQuery),
+      adminRevealQuery,
     );
   }
 
@@ -80,7 +81,7 @@ export class MatchController {
   getTournamentMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
     @UserId() userId: string,
-    @Query("adminRevealQuery") adminRevealQuery: boolean,
+    @Query("adminRevealQuery", ParseBoolPipe) adminRevealQuery: boolean,
   ) {
     return this.matchService.getTournamentMatches(
       eventId,
@@ -184,11 +185,12 @@ export class MatchController {
     return this.matchService.cleanupMatchesInPhase(eventId, phase as any);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get(":matchId")
   async getMatchById(
     @Param("matchId", ParseUUIDPipe) matchId: string,
     @UserId() userId: string,
-    @Query("adminRevealQuery") adminRevealQuery: boolean,
+    @Query("adminRevealQuery", ParseBoolPipe) adminRevealQuery: boolean,
   ): Promise<MatchEntity> {
     return await this.matchService.getMatchById(
       matchId,
@@ -198,7 +200,7 @@ export class MatchController {
         },
       },
       userId,
-      Boolean(adminRevealQuery),
+      adminRevealQuery,
     );
   }
 
