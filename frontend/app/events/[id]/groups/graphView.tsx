@@ -24,10 +24,10 @@ const nodeTypes = {
 
 export default function GraphView({
   matches,
-  eventAdmin,
+  isEventAdmin,
 }: {
   matches: Match[];
-  eventAdmin: boolean;
+  isEventAdmin: boolean;
 }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
 
@@ -100,7 +100,7 @@ export default function GraphView({
             height: MATCH_HEIGHT,
             onClick: (clickedMatch: Match) => {
               if (
-                (match.state === MatchState.FINISHED || eventAdmin)
+                (match.state === MatchState.FINISHED || isEventAdmin)
                 && clickedMatch.id
               ) {
                 router.push(`/events/${eventId}/match/${clickedMatch.id}`);
@@ -112,7 +112,7 @@ export default function GraphView({
     });
 
     setNodes(newNodes);
-  }, [matches, eventAdmin, eventId, router]);
+  }, [matches, isEventAdmin, eventId, router]);
 
   return (
     <div className="h-full w-full">

@@ -12,7 +12,6 @@ interface GroupPhaseTabsProps {
   eventId: string;
   matches: Match[];
   teams: Team[];
-  eventAdmin: boolean;
   isAdminView: boolean;
   advancementCount: number;
 }
@@ -21,8 +20,7 @@ export default function GroupPhaseTabs({
   eventId,
   matches,
   teams,
-  eventAdmin,
-  isAdminView,
+  isEventAdmin,
   advancementCount,
 }: GroupPhaseTabsProps) {
   const router = useRouter();
@@ -54,11 +52,7 @@ export default function GroupPhaseTabs({
 
       <TabsContent value="graph" className="mt-0">
         <div className="relative h-[60vh] min-h-[400px] overflow-hidden rounded-xl border bg-card/50 text-card-foreground shadow-sm md:h-[75vh] md:min-h-[600px] md:rounded-2xl">
-          <GraphView
-            matches={matches}
-            eventAdmin={eventAdmin}
-            isAdminView={isAdminView}
-          />
+          <GraphView matches={matches} isEventAdmin={isEventAdmin} />
         </div>
       </TabsContent>
 

@@ -56,7 +56,6 @@ export default async function page({
           matches={serializedMatches}
           teamCount={teamCount}
           isEventAdmin={eventAdmin}
-          isAdminView={isAdminView}
         />
       </div>
     </div>

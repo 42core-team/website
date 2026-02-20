@@ -30,18 +30,20 @@ export default function RankingTable({
 }: RankingTableProps) {
   // Sort teams by score (desc), then buchholzPoints (desc)
   const sortedTeams = [...teams].sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
+    if (b.score !== a.score)
+      return b.score - a.score;
     return b.buchholzPoints - a.buchholzPoints;
   });
 
   const getMatchHistory = (teamId: string) => {
     return matches
       .filter(
-        (m) => m.state === "FINISHED" && m.teams.some((t) => t.id === teamId),
+        m => m.state === "FINISHED" && m.teams.some(t => t.id === teamId),
       )
       .sort((a, b) => a.round - b.round)
       .map((m) => {
-        if (!m.winner) return "T"; // Tie (not really possible in currently implemented swiss but good for safety)
+        if (!m.winner)
+          return "T"; // Tie (not really possible in currently implemented swiss but good for safety)
         return m.winner.id === teamId ? "W" : "L";
       });
   };
