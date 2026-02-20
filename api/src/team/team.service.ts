@@ -36,7 +36,7 @@ export class TeamService {
     private readonly matchService: MatchService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   logger = new Logger("TeamService");
 
@@ -483,22 +483,13 @@ export class TeamService {
       result.entities.map(async (team, idx) => {
         const raw = result.raw[idx];
 
-        // Be robust about boolean hydration from different DB drivers/QueryBuilder setups
-        const hadByeRaw = raw.team_hadBye ?? raw.hadBye ?? raw.team_had_bye;
-        const hadBye =
-          team.hadBye ||
-          hadByeRaw === "1" ||
-          hadByeRaw === 1 ||
-          hadByeRaw === true ||
-          hadByeRaw === "true";
-
         const mappedTeam: TeamEntity & {
           userCount: number;
           score: number;
           buchholzPoints: number;
         } = {
           ...team,
-          hadBye,
+          hadBye: team.hadBye,
           userCount: parseInt(raw.user_count, 10) || 0,
           score: 0,
           buchholzPoints: 0,
@@ -510,7 +501,8 @@ export class TeamService {
         } else {
           // For public, Revealed Match Wins + Bye
           mappedTeam.score =
-            (parseInt(raw.revealed_match_wins, 10) || 0) + (hadBye ? 1 : 0);
+            (parseInt(raw.revealed_match_wins, 10) || 0) +
+            (team.hadBye ? 1 : 0);
         }
 
         // Use the batch-calculated Buchholz points
