@@ -113,7 +113,7 @@ export default function AboutPageClient() {
         >
           <div className="flex flex-row items-center justify-center gap-4">
             <h1 className={title()}>About</h1>
-            <CoreLogoWhite className="w-20 h-auto" />
+            <CoreLogoWhite className="h-auto w-20" />
           </div>
           <p className="mt-4 text-lg text-muted-foreground">
             Bringing the world together through code and creativity
@@ -121,7 +121,7 @@ export default function AboutPageClient() {
         </motion.div>
 
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto px-6"
+          className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 md:grid-cols-2"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -211,33 +211,33 @@ export default function AboutPageClient() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.6 }}
         >
-          <h2 className="text-3xl font-bold text-center mb-12">
+          <h2 className="mb-12 text-center text-3xl font-bold">
             Meet Our Team
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
             {team.map((m, i) => (
               <motion.div
                 key={m.name}
-                className="w-full max-w-sm mx-auto"
+                className="mx-auto w-full max-w-sm"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 * (i + 1) }}
               >
                 <Card>
-                  <CardContent className="p-6 flex flex-col items-center">
+                  <CardContent className="flex flex-col items-center p-6">
                     <div className="relative">
                       <Image
                         src={m.imgSrc}
                         alt={`Photo of ${m.name}`}
                         width={200}
                         height={200}
-                        className="w-40 h-40 rounded-full object-cover mb-4"
+                        className="mb-4 h-40 w-40 rounded-full object-cover"
                       />
                       <a
                         href={m.linkUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="absolute bottom-2.5 right-2.5 bg-primary text-primary-foreground rounded-full p-2 hover:scale-110 transition-transform"
+                        className="absolute right-2.5 bottom-2.5 rounded-full bg-primary p-2 text-primary-foreground transition-transform hover:scale-110"
                         aria-label={`${m.name} profile link`}
                       >
                         {m.linkType === "github"
@@ -249,11 +249,11 @@ export default function AboutPageClient() {
                             )}
                       </a>
                     </div>
-                    <h3 className="text-xl font-semibold text-center">
+                    <h3 className="text-center text-xl font-semibold">
                       {m.name}
                     </h3>
 
-                    <p className="text-muted-foreground text-center">
+                    <p className="text-center text-muted-foreground">
                       {m.role}
                     </p>
                   </CardContent>

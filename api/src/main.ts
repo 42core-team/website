@@ -3,14 +3,18 @@ import { AppModule } from "./app.module";
 import { ClassSerializerInterceptor, ValidationPipe } from "@nestjs/common";
 import { TypeormExceptionFilter } from "./common/TypeormExceptionFilter";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-import { MicroserviceOptions, Transport } from "@nestjs/microservices";
+import {
+  MicroserviceOptions,
+  RmqOptions,
+  Transport,
+} from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
 import * as cookieParser from "cookie-parser";
 
-export const getRabbitmqConfig: any = (
+export const getRabbitmqConfig = (
   configService: ConfigService,
   queue: string,
-) => {
+): RmqOptions => {
   return {
     transport: Transport.RMQ,
     options: {

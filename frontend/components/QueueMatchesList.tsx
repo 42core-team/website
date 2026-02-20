@@ -1,9 +1,9 @@
 import type { Match } from "@/app/actions/tournament-model";
 import Link from "next/link";
-import { MatchState, MatchPhase } from "@/app/actions/tournament-model";
+import { MatchPhase, MatchState } from "@/app/actions/tournament-model";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export default function QueueMatchesList(props: {
@@ -21,7 +21,7 @@ export default function QueueMatchesList(props: {
           !isInsideCard && "border rounded-lg bg-muted/10",
         )}
       >
-        <p className="text-muted-foreground font-medium">
+        <p className="font-medium text-muted-foreground">
           No past matches found
         </p>
       </div>
@@ -32,13 +32,13 @@ export default function QueueMatchesList(props: {
     <div className={cn("flex flex-col", isInsideCard ? "divide-y" : "gap-4")}>
       {matches.map((match, index) => {
         const content = (
-          <div className="flex flex-col sm:flex-row items-stretch">
+          <div className="flex flex-col items-stretch sm:flex-row">
             {/* Match Meta */}
             <div
               className={cn(
                 "px-4 py-3 sm:w-40 bg-muted/10 flex flex-row sm:flex-col items-center sm:items-start justify-between sm:justify-center gap-2",
-                !isInsideCard &&
-                  "bg-muted/20 border-b sm:border-b-0 sm:border-r",
+                !isInsideCard
+                && "bg-muted/20 border-b sm:border-b-0 sm:border-r",
               )}
             >
               <div className="flex flex-wrap gap-1.5">
@@ -50,17 +50,17 @@ export default function QueueMatchesList(props: {
                   }
                   className={cn(
                     "text-[10px] uppercase font-bold px-1.5",
-                    match.state === MatchState.FINISHED &&
-                      "bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-400 border-success-200/50",
-                    match.state === MatchState.IN_PROGRESS &&
-                      "bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-400 border-warning-200/50",
+                    match.state === MatchState.FINISHED
+                    && "bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-400 border-success-200/50",
+                    match.state === MatchState.IN_PROGRESS
+                    && "bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-400 border-warning-200/50",
                   )}
                 >
                   {match.state}
                 </Badge>
                 <Badge
                   variant="outline"
-                  className="text-[10px] uppercase font-bold px-1.5 border-border/50 text-muted-foreground"
+                  className="border-border/50 px-1.5 text-[10px] font-bold text-muted-foreground uppercase"
                 >
                   {match.phase === MatchPhase.QUEUE && "Queue"}
                   {match.phase === MatchPhase.SWISS && "Swiss"}
@@ -68,7 +68,7 @@ export default function QueueMatchesList(props: {
                 </Badge>
               </div>
               <div className="flex flex-col text-right sm:text-left">
-                <span className="text-xs text-muted-foreground font-medium">
+                <span className="text-xs font-medium text-muted-foreground">
                   {new Date(match.createdAt).toLocaleDateString()}
                 </span>
                 <span className="text-[10px] text-muted-foreground/60">
@@ -81,52 +81,56 @@ export default function QueueMatchesList(props: {
             </div>
 
             {/* Match Content */}
-            <div className="flex-1 p-6 flex items-center justify-center">
-              <div className="flex items-center justify-center w-full max-w-2xl gap-4 sm:gap-12">
+            <div className="flex flex-1 items-center justify-center p-6">
+              <div className="flex w-full max-w-2xl items-center justify-center gap-4 sm:gap-12">
                 {/* Team 1 */}
-                <div className="flex-1 flex flex-col items-end gap-1 min-w-0">
-                  {match.teams[0] ? (
-                    <>
-                      {match.teams[0].deletedAt ? (
-                        <div className="flex flex-col items-end w-full">
-                          <span className="text-sm sm:text-base font-semibold truncate text-muted-foreground/50 line-through">
-                            {match.teams[0].name}
+                <div className="flex min-w-0 flex-1 flex-col items-end gap-1">
+                  {match.teams[0]
+                    ? (
+                        <>
+                          {match.teams[0].deletedAt
+                            ? (
+                                <div className="flex w-full flex-col items-end">
+                                  <span className="truncate text-sm font-semibold text-muted-foreground/50 line-through sm:text-base">
+                                    {match.teams[0].name}
+                                  </span>
+                                </div>
+                              )
+                            : (
+                                <Link
+                                  href={`/events/${eventId}/teams/${match.teams[0].id}`}
+                                  className={cn(
+                                    "text-sm sm:text-base font-semibold truncate hover:underline hover:text-primary transition-colors text-right w-full",
+                                    match.winner?.id === match.teams[0].id
+                                      ? "text-foreground"
+                                      : "text-muted-foreground",
+                                  )}
+                                >
+                                  {match.teams[0].name}
+                                  {match.winner?.id === match.teams[0].id && (
+                                    <span className="ml-2">👑</span>
+                                  )}
+                                </Link>
+                              )}
+                          <span
+                            className={cn(
+                              "text-2xl sm:text-3xl font-bold tracking-tighter",
+                              match.winner?.id === match.teams[0].id
+                                ? "text-foreground"
+                                : "text-muted-foreground/40",
+                            )}
+                          >
+                            {match.results.find(
+                              r => r.team?.id === match.teams[0].id,
+                            )?.score ?? 0}
                           </span>
-                        </div>
-                      ) : (
-                        <Link
-                          href={`/events/${eventId}/teams/${match.teams[0].id}`}
-                          className={cn(
-                            "text-sm sm:text-base font-semibold truncate hover:underline hover:text-primary transition-colors text-right w-full",
-                            match.winner?.id === match.teams[0].id
-                              ? "text-foreground"
-                              : "text-muted-foreground",
-                          )}
-                        >
-                          {match.teams[0].name}
-                          {match.winner?.id === match.teams[0].id && (
-                            <span className="ml-2">👑</span>
-                          )}
-                        </Link>
+                        </>
+                      )
+                    : (
+                        <span className="text-muted-foreground/40 italic">
+                          Unknown
+                        </span>
                       )}
-                      <span
-                        className={cn(
-                          "text-2xl sm:text-3xl font-bold tracking-tighter",
-                          match.winner?.id === match.teams[0].id
-                            ? "text-foreground"
-                            : "text-muted-foreground/40",
-                        )}
-                      >
-                        {match.results.find(
-                          (r) => r.team?.id === match.teams[0].id,
-                        )?.score ?? 0}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground/40 italic">
-                      Unknown
-                    </span>
-                  )}
                 </div>
 
                 {/* VS */}
@@ -137,49 +141,53 @@ export default function QueueMatchesList(props: {
                 </div>
 
                 {/* Team 2 */}
-                <div className="flex-1 flex flex-col items-start gap-1 min-w-0">
-                  {match.teams[1] ? (
-                    <>
-                      {match.teams[1].deletedAt ? (
-                        <div className="flex flex-col items-start w-full">
-                          <span className="text-sm sm:text-base font-semibold truncate text-muted-foreground/50 line-through">
-                            {match.teams[1].name}
+                <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+                  {match.teams[1]
+                    ? (
+                        <>
+                          {match.teams[1].deletedAt
+                            ? (
+                                <div className="flex w-full flex-col items-start">
+                                  <span className="truncate text-sm font-semibold text-muted-foreground/50 line-through sm:text-base">
+                                    {match.teams[1].name}
+                                  </span>
+                                </div>
+                              )
+                            : (
+                                <Link
+                                  href={`/events/${eventId}/teams/${match.teams[1].id}`}
+                                  className={cn(
+                                    "text-sm sm:text-base font-semibold truncate hover:underline hover:text-primary transition-colors text-left w-full",
+                                    match.winner?.id === match.teams[1].id
+                                      ? "text-foreground"
+                                      : "text-muted-foreground",
+                                  )}
+                                >
+                                  {match.winner?.id === match.teams[1].id && (
+                                    <span className="mr-2">👑</span>
+                                  )}
+                                  {match.teams[1].name}
+                                </Link>
+                              )}
+                          <span
+                            className={cn(
+                              "text-2xl sm:text-3xl font-bold tracking-tighter",
+                              match.winner?.id === match.teams[1].id
+                                ? "text-foreground"
+                                : "text-muted-foreground/40",
+                            )}
+                          >
+                            {match.results.find(
+                              r => r.team?.id === match.teams[1].id,
+                            )?.score ?? 0}
                           </span>
-                        </div>
-                      ) : (
-                        <Link
-                          href={`/events/${eventId}/teams/${match.teams[1].id}`}
-                          className={cn(
-                            "text-sm sm:text-base font-semibold truncate hover:underline hover:text-primary transition-colors text-left w-full",
-                            match.winner?.id === match.teams[1].id
-                              ? "text-foreground"
-                              : "text-muted-foreground",
-                          )}
-                        >
-                          {match.winner?.id === match.teams[1].id && (
-                            <span className="mr-2">👑</span>
-                          )}
-                          {match.teams[1].name}
-                        </Link>
+                        </>
+                      )
+                    : (
+                        <span className="text-muted-foreground/40 italic">
+                          Unknown
+                        </span>
                       )}
-                      <span
-                        className={cn(
-                          "text-2xl sm:text-3xl font-bold tracking-tighter",
-                          match.winner?.id === match.teams[1].id
-                            ? "text-foreground"
-                            : "text-muted-foreground/40",
-                        )}
-                      >
-                        {match.results.find(
-                          (r) => r.team?.id === match.teams[1].id,
-                        )?.score ?? 0}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground/40 italic">
-                      Unknown
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
@@ -196,7 +204,7 @@ export default function QueueMatchesList(props: {
                   <Button
                     size="sm"
                     variant="secondary"
-                    className="font-bold text-xs uppercase"
+                    className="text-xs font-bold uppercase"
                   >
                     Replay
                   </Button>

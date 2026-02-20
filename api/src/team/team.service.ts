@@ -21,6 +21,7 @@ import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations"
 import { MatchService } from "../match/match.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { LockKeys } from "../constants";
+import { MatchEntity } from "../match/entites/match.entity";
 
 @Injectable()
 export class TeamService {
@@ -370,6 +371,8 @@ export class TeamService {
     searchName?: string,
     searchDir?: string,
     sortBy?: string,
+    userId?: string,
+    adminReveal?: boolean,
   ): Promise<
     Array<
       TeamEntity & {
@@ -377,23 +380,52 @@ export class TeamService {
       }
     >
   > {
+    const isAdmin = userId
+      ? await this.eventService.isEventAdmin(eventId, userId)
+      : false;
+    const revealAll = isAdmin && adminReveal;
+
     const query = this.teamRepository
       .createQueryBuilder("team")
       .innerJoin("team.event", "event")
       .leftJoin("team.users", "user")
       .where("event.id = :eventId", { eventId })
-      .andWhere("team.deletedAt IS NULL")
-      .select([
+      .andWhere("team.deletedAt IS NULL");
+
+    if (revealAll) {
+      query.select([
         "team.id",
         "team.name",
         "team.locked",
-        "team.repo",
+        "team.score",
+        "team.buchholzPoints",
+        "team.hadBye",
         "team.queueScore",
         "team.createdAt",
         "team.updatedAt",
-      ])
-      .addSelect("COUNT(user.id)", "userCount")
-      .groupBy("team.id");
+      ]);
+    } else {
+      // Calculate revealed score dynamically
+      query
+        .leftJoin(
+          MatchEntity,
+          "match",
+          "match.winnerId = team.id AND match.isRevealed = true AND match.phase = 'SWISS'",
+        )
+        .select([
+          "team.id",
+          "team.name",
+          "team.locked",
+          "team.hadBye",
+          "team.queueScore",
+          "team.createdAt",
+          "team.updatedAt",
+          "team.score",
+        ])
+        .addSelect("COUNT(DISTINCT match.id)", "revealed_match_wins");
+    }
+
+    query.addSelect("COUNT(DISTINCT user.id)", "user_count").groupBy("team.id");
 
     if (searchName) {
       query.andWhere("team.name LIKE :searchName", {
@@ -403,27 +435,84 @@ export class TeamService {
 
     if (sortBy) {
       const direction = searchDir?.toUpperCase() === "DESC" ? "DESC" : "ASC";
+      const sortColumn = sortBy;
+
       const validSortColumns = [
         "name",
         "locked",
-        "repo",
+        "score",
         "queueScore",
         "createdAt",
         "updatedAt",
+        "buchholzPoints",
       ];
-      if (validSortColumns.includes(sortBy)) {
-        query.orderBy(`team.${sortBy}`, direction as "ASC" | "DESC");
+
+      if (validSortColumns.includes(sortColumn)) {
+        if (sortColumn === "score" && !revealAll) {
+          query.orderBy("revealed_match_wins", direction as "ASC" | "DESC");
+        } else if (sortColumn === "buchholzPoints") {
+          if (revealAll) {
+            query.orderBy("team.buchholzPoints", direction as "ASC" | "DESC");
+          } else {
+            throw new BadRequestException(
+              "Buchholz points are hidden for this event.",
+            );
+          }
+        } else {
+          query.orderBy(`team.${sortColumn}`, direction as "ASC" | "DESC");
+        }
       }
+
       if (sortBy === "membersCount") {
-        query.orderBy("COUNT(user.id)", direction as "ASC" | "DESC");
+        query.orderBy("COUNT(DISTINCT user.id)", direction as "ASC" | "DESC");
       }
     }
 
     const result = await query.getRawAndEntities();
-    return result.entities.map((team, idx) => ({
-      ...team,
-      userCount: parseInt(result.raw[idx].userCount, 10),
-    }));
+
+    // Batch calculate Buchholz points for all teams in the result
+    const teamIds = result.entities.map((t) => t.id);
+    const buchholzMap = await this.matchService.calculateBuchholzPointsForTeams(
+      teamIds,
+      eventId,
+      !revealAll,
+    );
+
+    // Map properties from raw if entity is missing them due to partial select
+    const teamsWithCounts = await Promise.all(
+      result.entities.map(async (team, idx) => {
+        const raw = result.raw[idx];
+
+        const mappedTeam: TeamEntity & {
+          userCount: number;
+          score: number;
+          buchholzPoints: number;
+        } = {
+          ...team,
+          hadBye: team.hadBye,
+          userCount: parseInt(raw.user_count, 10) || 0,
+          score: 0,
+          buchholzPoints: 0,
+        };
+
+        if (revealAll) {
+          // For admins, use DB score which includes byes
+          mappedTeam.score = team.score || 0;
+        } else {
+          // For public, Revealed Match Wins + Bye
+          mappedTeam.score =
+            (parseInt(raw.revealed_match_wins, 10) || 0) +
+            (team.hadBye ? 1 : 0);
+        }
+
+        // Use the batch-calculated Buchholz points
+        mappedTeam.buchholzPoints = buchholzMap.get(team.id) || 0;
+
+        return mappedTeam;
+      }),
+    );
+
+    return teamsWithCounts;
   }
 
   async joinQueue(teamId: string) {
@@ -588,5 +677,14 @@ export class TeamService {
     }
 
     return teams;
+  }
+
+  async resetSwissStatsForEvent(eventId: string) {
+    await this.teamRepository
+      .createQueryBuilder()
+      .update()
+      .set({ score: 0, buchholzPoints: 0, hadBye: false })
+      .where("eventId = :eventId", { eventId })
+      .execute();
   }
 }

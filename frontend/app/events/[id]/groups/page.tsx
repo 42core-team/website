@@ -1,8 +1,12 @@
 import { isActionError } from "@/app/actions/errors";
 import { isEventAdmin } from "@/app/actions/event";
-import { getSwissMatches } from "@/app/actions/tournament";
+import { getTeamsForEventTable } from "@/app/actions/team";
+import {
+  getSwissMatches,
+  getTournamentTeamCount,
+} from "@/app/actions/tournament";
 import Actions from "@/app/events/[id]/groups/actions";
-import GraphView from "@/app/events/[id]/groups/graphView";
+import GroupPhaseTabs from "@/app/events/[id]/groups/GroupPhaseTabs";
 
 export const metadata = {
   title: "Group Phase",
@@ -15,30 +19,46 @@ export default async function page({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ adminReveal?: string }>;
+  searchParams: Promise<{ adminReveal?: string; tab?: string }>;
 }) {
   const eventId = (await params).id;
   const isAdminView = (await searchParams).adminReveal === "true";
-  const matches = await getSwissMatches(eventId, isAdminView);
-  const eventAdmin = await isEventAdmin(eventId);
+  const [matches, eventAdmin, teams, advancementCount] = await Promise.all([
+    getSwissMatches(eventId, isAdminView),
+    isEventAdmin(eventId),
+    getTeamsForEventTable(eventId, undefined, "score", "desc", isAdminView),
+    getTournamentTeamCount(eventId),
+  ]);
+
   if (isActionError(eventAdmin)) {
     throw new Error("Failed to verify admin status");
   }
 
   return (
-    <div>
-      <div className="flex gap-2">
-        <Actions />
+    <div className="flex flex-col gap-4 pb-8 md:gap-8">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+        <div className="space-y-1.5 md:space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+            Group Phase
+          </h1>
+          <p className="max-w-3xl text-base leading-relaxed text-muted-foreground md:text-lg">
+            In the group phase, teams compete using the Swiss tournament system,
+            with rankings determined by the Buchholz scoring system.
+          </p>
+        </div>
+        {eventAdmin && (
+          <div className="flex-shrink-0">
+            <Actions />
+          </div>
+        )}
       </div>
-      <h1>Group phase</h1>
-      <p>
-        In the group phase, teams compete using the Swiss tournament system,
-        with rankings determined by the Buchholz scoring system.
-      </p>
-      <GraphView
+
+      <GroupPhaseTabs
+        eventId={eventId}
         matches={matches}
-        eventAdmin={eventAdmin}
-        isAdminView={isAdminView}
+        teams={teams}
+        isEventAdmin={eventAdmin}
+        advancementCount={advancementCount}
       />
     </div>
   );

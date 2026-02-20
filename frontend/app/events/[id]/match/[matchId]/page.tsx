@@ -40,10 +40,10 @@ export default async function MatchPage({
   return (
     <div className="space-y-8">
       {/* Iframe container with in-frame-style overlay control */}
-      <div className="relative w-full h-[750px] rounded-md overflow-hidden border border-gray-200">
+      <div className="relative h-[750px] w-full overflow-hidden rounded-md border border-gray-200">
         <iframe
           src={visualizerUrl}
-          className="w-full h-full"
+          className="h-full w-full"
           title="Match Visualizer"
           allow="fullscreen"
         />

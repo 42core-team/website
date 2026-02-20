@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 
@@ -16,7 +16,8 @@ export default function BackButton() {
       onClick={() => {
         if (window.history.length > 1) {
           router.back();
-        } else {
+        }
+        else {
           router.push(`/events/${eventId}/teams`);
         }
       }}

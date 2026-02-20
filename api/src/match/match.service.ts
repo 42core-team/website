@@ -6,7 +6,7 @@ import { MatchStatsEntity } from "./entites/matchStats.entity";
 import { DataSource, In, Not, Repository } from "typeorm";
 import { Swiss } from "tournament-pairings";
 import { EventService } from "../event/event.service";
-// @ts-ignore
+// @ts-expect-error: tournament-pairings interfaces are not correctly typed and missing 'interfaces' export.
 import { Player } from "tournament-pairings/interfaces";
 import { EventEntity } from "../event/entities/event.entity";
 import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
@@ -170,9 +170,9 @@ export class MatchService {
       await this.teamService.increaseTeamScore(winner.id, 1);
       match.results = match.teams.map((team) => {
         return {
-          team: { id: team.id } as any,
+          team: { id: team.id } as TeamEntity,
           score: team.id === winnerId ? team.score + 1 : team.score,
-          match: { id: match.id } as any,
+          match: { id: match.id } as MatchEntity,
         } as MatchTeamResultEntity;
       });
     } else if (match.phase === MatchPhase.QUEUE) {
@@ -194,9 +194,9 @@ export class MatchService {
         await this.teamService.setQueueScore(loser.id, newLoserElo);
         match.results = match.teams.map((team) => {
           return {
-            team: { id: team.id } as any,
+            team: { id: team.id } as TeamEntity,
             score: team.id === winner.id ? newWinnerElo : newLoserElo,
-            match: { id: match.id } as any,
+            match: { id: match.id } as MatchEntity,
           } as MatchTeamResultEntity;
         });
       }
@@ -226,10 +226,59 @@ export class MatchService {
 
     if (notFinishedMatches > 0) return;
 
-    if (match.phase == MatchPhase.SWISS)
-      return this.processSwissFinishRound(event.id);
-    else if (match.phase == MatchPhase.ELIMINATION)
-      return this.processTournamentFinishRound(event);
+    const [lockPart1, lockPart2] = this.getEventLockKey(event.id);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Use advisory lock to prevent multiple round finishes for the same event
+      await queryRunner.query("SELECT pg_advisory_xact_lock($1, $2)", [
+        lockPart1,
+        lockPart2,
+      ]);
+
+      // Re-check if the round is still unfinished inside the transaction
+      const stillNotFinished = await queryRunner.manager.count(MatchEntity, {
+        where: {
+          teams: { event: { id: event.id } },
+          state: Not(MatchState.FINISHED),
+          phase: match.phase,
+          round: match.round,
+        },
+      });
+
+      const currentEvent = await queryRunner.manager.findOne(EventEntity, {
+        where: { id: event.id },
+      });
+
+      if (
+        stillNotFinished === 0 &&
+        currentEvent &&
+        currentEvent.currentRound === match.round
+      ) {
+        if (match.phase == MatchPhase.SWISS) {
+          await this.processSwissFinishRound(event.id);
+        } else if (match.phase == MatchPhase.ELIMINATION) {
+          await this.processTournamentFinishRound(currentEvent);
+        }
+      }
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(
+        `Error finishing round for event ${event.id}: ${err.message}`,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  private getEventLockKey(eventId: string): [number, number] {
+    const hex = eventId.replace(/-/g, "");
+    const part1 = parseInt(hex.slice(0, 8), 16) | 0;
+    const part2 = parseInt(hex.slice(8, 16), 16) | 0;
+    return [part1, part2];
   }
 
   async processSwissFinishRound(evenId: string) {
@@ -237,11 +286,11 @@ export class MatchService {
       teams: true,
     });
 
+    const finishedRound = event.currentRound;
     await this.eventService.increaseEventRound(evenId);
-    this.logger.log(
-      `Event ${event.name} has finished round ${event.currentRound}.`,
-    );
-    if (event.currentRound + 1 >= this.getMaxSwissRounds(event.teams.length)) {
+    this.logger.log(`Event ${event.name} has finished round ${finishedRound}.`);
+
+    if (finishedRound + 1 >= this.getMaxSwissRounds(event.teams.length)) {
       this.logger.log(
         `Event ${event.name} has reached the maximum Swiss rounds.`,
       );
@@ -291,10 +340,9 @@ export class MatchService {
 
     if (finishedMatches < totalMatches) return;
 
+    const finishedRound = event.currentRound;
     await this.eventService.increaseEventRound(event.id);
-    this.logger.log(
-      `Event ${event.name} has finished round ${event.currentRound}.`,
-    );
+    this.logger.log(`Event ${event.name} has finished round ${finishedRound}.`);
     await this.createNextTournamentMatches(event.id);
   }
 
@@ -435,25 +483,21 @@ export class MatchService {
       teams: true,
     });
 
-    if (
-      event.currentRound != 0 &&
-      (await this.matchRepository.findOneBy({
-        teams: {
-          event: {
-            id: eventId,
-          },
+    const existingMatches = await this.matchRepository.countBy({
+      teams: {
+        event: {
+          id: eventId,
         },
-        round: event.currentRound,
-        state: MatchState.IN_PROGRESS, // TODO need to change later to MatchState.PLANNED
-        phase: MatchPhase.SWISS,
-      }))
-    ) {
-      this.logger.error(
-        "Not all matches of the current round are finished. Cannot create Swiss matches.",
+      },
+      round: event.currentRound,
+      phase: MatchPhase.SWISS,
+    });
+
+    if (existingMatches > 0) {
+      this.logger.warn(
+        `Matches for Swiss round ${event.currentRound} already exist for event ${event.name}. Skipping creation.`,
       );
-      throw new Error(
-        "Not all matches of the current round are finished. Cannot create Swiss matches.",
-      );
+      return [];
     }
 
     const maxSwissRounds = this.getMaxSwissRounds(event.teams.length);
@@ -489,13 +533,12 @@ export class MatchService {
         }
 
         if (!match.player1 || !match.player2) {
+          const teamId = (match.player1 || match.player2) as string;
           this.logger.log(
-            `The team ${match.player1 || match.player2} got a bye in round ${event.currentRound} of event ${event.name}.`,
+            `The team ${teamId} got a bye in round ${event.currentRound} of event ${event.name}.`,
           );
-          await this.teamService.setHadBye(
-            (match.player1 || match.player2) as string,
-            true,
-          );
+          await this.teamService.setHadBye(teamId, true);
+          await this.teamService.increaseTeamScore(teamId, 1);
           return null;
         }
         return this.createMatch(
@@ -512,7 +555,7 @@ export class MatchService {
     this.logger.log(
       `Created ${filteredMatchEntities.length} Swiss matches for event ${event.name} in round ${event.currentRound}.`,
     );
-    for (let matchEntity of filteredMatchEntities)
+    for (const matchEntity of filteredMatchEntities)
       await this.startMatch(matchEntity.id);
     return filteredMatchEntities;
   }
@@ -530,6 +573,23 @@ export class MatchService {
     const sortedTeams = await this.teamService.getSortedTeamsForTournament(
       event.id,
     );
+
+    const existingMatches = await this.matchRepository.countBy({
+      teams: {
+        event: {
+          id: event.id,
+        },
+      },
+      round: 0,
+      phase: MatchPhase.ELIMINATION,
+    });
+
+    if (existingMatches > 0) {
+      this.logger.warn(
+        `Matches for tournament round 0 already exist for event ${event.name}. Skipping creation.`,
+      );
+      return;
+    }
 
     this.logger.log(
       `start tournament with ${highestPowerOfTwo} teams for event ${event.name}`,
@@ -556,7 +616,7 @@ export class MatchService {
     }
 
     this.logger.log(
-      `Created next tournament matches for event ${event.name} in round ${event.currentRound + 1}.`,
+      `Created tournament matches for event ${event.name} in round 0.`,
     );
   }
 
@@ -567,6 +627,23 @@ export class MatchService {
 
     if (event.currentRound == 0)
       return this.createFirstTournamentMatches(event);
+
+    const existingMatches = await this.matchRepository.countBy({
+      teams: {
+        event: {
+          id: eventId,
+        },
+      },
+      round: event.currentRound,
+      phase: MatchPhase.ELIMINATION,
+    });
+
+    if (existingMatches > 0) {
+      this.logger.warn(
+        `Matches for elimination round ${event.currentRound} already exist for event ${event.name}. Skipping creation.`,
+      );
+      return [];
+    }
 
     const lastMatches = await this.matchRepository.find({
       where: {
@@ -601,37 +678,36 @@ export class MatchService {
     }
 
     for (let i = 0; i < lastMatches.length; i += 2) {
-      const match = lastMatches[i];
-      const nextMatch = lastMatches[i + 1];
+      const match1 = lastMatches[i];
+      const match2 = lastMatches[i + 1];
 
-      if (!match.winner || !nextMatch.winner) {
+      if (!match1.winner || !match2.winner) {
         throw new Error(
           "One of the matches does not have a winner. Cannot create next tournament matches.",
         );
       }
 
-      const newMatch = await this.createMatch(
-        [match.winner.id, nextMatch.winner.id],
+      // Winners play for the next round (or Final)
+      const finalMatch = await this.createMatch(
+        [match1.winner.id, match2.winner.id],
         event.currentRound,
         MatchPhase.ELIMINATION,
       );
-      await this.startMatch(newMatch.id);
-    }
+      await this.startMatch(finalMatch.id);
 
-    if (lastMatches.length == 2) {
-      const losers = lastMatches
-        .map((match) =>
-          match.teams.find((team) => team.id !== match.winner?.id),
-        )
-        .filter((team): team is TeamEntity => Boolean(team));
+      // If this was the semi-final (2 matches in last round), also create third place match
+      if (lastMatches.length === 2) {
+        const loser1 = match1.teams.find((t) => t.id !== match1.winner?.id);
+        const loser2 = match2.teams.find((t) => t.id !== match2.winner?.id);
 
-      if (losers.length === 2) {
-        const placementMatch = await this.createMatch(
-          [losers[0].id, losers[1].id],
-          event.currentRound,
-          MatchPhase.ELIMINATION,
-        );
-        await this.startMatch(placementMatch.id);
+        if (loser1 && loser2) {
+          const thirdPlaceMatch = await this.createMatch(
+            [loser1.id, loser2.id],
+            event.currentRound,
+            MatchPhase.ELIMINATION,
+          );
+          await this.startMatch(thirdPlaceMatch.id);
+        }
       }
     }
 
@@ -705,17 +781,13 @@ export class MatchService {
       teams.map(async (team) => {
         const buchholzPoints = await this.calculateBuchholzPointsForTeam(
           team.id,
-          eventId,
         );
         await this.teamService.updateBuchholzPoints(team.id, buchholzPoints);
       }),
     );
   }
 
-  async calculateBuchholzPointsForTeam(
-    teamId: string,
-    eventId: string,
-  ): Promise<number> {
+  async calculateBuchholzPointsForTeam(teamId: string): Promise<number> {
     const wonMatches = await this.matchRepository.find({
       where: {
         winner: {
@@ -876,7 +948,8 @@ export class MatchService {
         match.phase !== MatchPhase.QUEUE && match.isRevealed;
 
       if (!shouldRevealId) {
-        const { id: _id, ...rest } = match;
+        const { id: _matchId, ...rest } = match;
+        void _matchId;
         return rest;
       }
       return match;
@@ -1026,15 +1099,37 @@ export class MatchService {
   async getMatchById(
     matchId: string,
     relations: FindOptionsRelations<MatchEntity> = {},
+    userId?: string,
+    adminReveal?: boolean,
   ): Promise<MatchEntity> {
-    return this.matchRepository.findOneOrFail({
+    const match = await this.matchRepository.findOneOrFail({
       where: { id: matchId },
       relations,
     });
+
+    if (match.isRevealed) return match;
+
+    if (userId) {
+      const eventId = match.teams?.[0]?.event?.id;
+      if (
+        eventId &&
+        (await this.eventService.isEventAdmin(eventId, userId)) &&
+        adminReveal
+      ) {
+        return match;
+      }
+    }
+
+    return {
+      ...match,
+      state: MatchState.PLANNED,
+      winner: null,
+      results: [],
+    };
   }
 
-  revealMatch(matchId: string) {
-    return this.matchRepository.update(matchId, {
+  async revealMatch(matchId: string) {
+    await this.matchRepository.update(matchId, {
       isRevealed: true,
     });
   }
@@ -1057,6 +1152,114 @@ export class MatchService {
         { isRevealed: true },
       );
     }
+  }
+
+  async cleanupMatchesInPhase(eventId: string, phase: MatchPhase) {
+    const matches = await this.matchRepository.find({
+      where: {
+        teams: {
+          event: {
+            id: eventId,
+          },
+        },
+        phase: phase,
+      },
+    });
+
+    if (matches.length > 0) {
+      await this.matchRepository.delete(matches.map((m) => m.id));
+    }
+
+    if (phase === MatchPhase.SWISS) {
+      await this.eventService.setCurrentRound(eventId, 0);
+      await this.teamService.resetSwissStatsForEvent(eventId);
+    } else if (phase === MatchPhase.ELIMINATION) {
+      await this.eventService.setCurrentRound(eventId, 0);
+    }
+  }
+
+  async calculateRevealedBuchholzPointsForTeam(
+    teamId: string,
+    eventId: string,
+  ): Promise<number> {
+    const results = await this.calculateBuchholzPointsForTeams(
+      [teamId],
+      eventId,
+      true,
+    );
+    return results.get(teamId) || 0;
+  }
+
+  async calculateBuchholzPointsForTeams(
+    teamIds: string[],
+    eventId: string,
+    revealedOnly: boolean,
+  ): Promise<Map<string, number>> {
+    const query = this.matchRepository
+      .createQueryBuilder("match")
+      .innerJoinAndSelect("match.teams", "team")
+      .leftJoinAndSelect("match.winner", "winner")
+      .where("team.event = :eventId", { eventId })
+      .andWhere("match.phase = :phase", { phase: MatchPhase.SWISS })
+      .andWhere("match.state = :state", { state: MatchState.FINISHED });
+
+    if (revealedOnly) {
+      query.andWhere("match.isRevealed = true");
+    }
+
+    const matches = await query.getMany();
+
+    // Fetch all teams for this event to get their bye status and current total scores
+    const teams = await this.dataSource.getRepository(TeamEntity).find({
+      where: { event: { id: eventId } },
+      select: ["id", "hadBye", "score"],
+    });
+
+    // const teamsMap = new Map(teams.map((t) => [t.id, t]));
+
+    // Calculate score for everyone (Revealed wins + Bye)
+    const scoresMap = new Map<string, number>();
+    if (revealedOnly) {
+      const winCounts = new Map<string, number>();
+      for (const m of matches) {
+        if (m.winner) {
+          winCounts.set(m.winner.id, (winCounts.get(m.winner.id) || 0) + 1);
+        }
+      }
+      for (const t of teams) {
+        const wins = winCounts.get(t.id) || 0;
+        const bye = t.hadBye ? 1 : 0;
+        scoresMap.set(t.id, wins + bye);
+      }
+    } else {
+      // For admins, we can use the DB score (which now includes byes)
+      for (const t of teams) {
+        scoresMap.set(t.id, t.score || 0);
+      }
+    }
+
+    // Calculate Buchholz
+    const results = new Map<string, number>();
+    for (const teamId of teamIds) {
+      results.set(teamId, 0);
+    }
+
+    const teamIdsSet = new Set(teamIds);
+
+    for (const m of matches) {
+      const t1 = m.teams[0]?.id;
+      const t2 = m.teams[1]?.id;
+      if (t1 && t2) {
+        if (teamIdsSet.has(t1)) {
+          results.set(t1, (results.get(t1) || 0) + (scoresMap.get(t2) || 0));
+        }
+        if (teamIdsSet.has(t2)) {
+          results.set(t2, (results.get(t2) || 0) + (scoresMap.get(t1) || 0));
+        }
+      }
+    }
+
+    return results;
   }
 
   getGlobalStats() {
@@ -1131,7 +1334,7 @@ export class MatchService {
 
     const rows = await qb.getRawMany<{ bucket: Date; count: string }>();
     return rows.map((r) => ({
-      bucket: new Date(r.bucket as any).toISOString(),
+      bucket: new Date(r.bucket as unknown as string).toISOString(),
       count: parseInt(r.count, 10),
     }));
   }

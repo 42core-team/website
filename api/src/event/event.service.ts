@@ -362,8 +362,8 @@ export class EventService {
         id: templateId,
         event: { id: eventId },
       });
-    } catch (e: any) {
-      if (e.code === "23503") {
+    } catch (e: unknown) {
+      if (e && typeof e === "object" && "code" in e && e.code === "23503") {
         throw new ConflictException(
           "Cannot delete template because it is still in use by one or more teams.",
         );

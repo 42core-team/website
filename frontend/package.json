@@ -9,7 +9,7 @@
     "dev": "NODE_ENV=development TZ=UTC next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "npx eslint . --fix"
+    "lint": "eslint . --fix"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -27,7 +27,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@react-aria/visually-hidden": "^3.8.30",
-    "@tanstack/react-form": "^1.28.0",
+    "@tanstack/react-form": "^1.28.3",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-table": "^8.21.3",
     "axios": "^1.13.5",
@@ -35,9 +35,9 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "framer-motion": "^12.34.0",
+    "framer-motion": "^12.34.1",
     "gray-matter": "^4.0.3",
-    "lucide-react": "^0.564.0",
+    "lucide-react": "^0.574.0",
     "next": "^16.1.6",
     "next-auth": "^4.24.13",
     "next-plausible": "^3.12.5",
@@ -77,7 +77,7 @@
     "@types/node": "^25.2.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "eslint": "^10.0.0",
+    "eslint": "^9.39.2",
     "eslint-plugin-format": "^1.4.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.0",

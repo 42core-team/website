@@ -126,28 +126,28 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
 
   if (error) {
     return (
-      <div className="flex justify-center items-center min-h-lvh">
-        <div className="max-w-md mx-auto text-center">
-          <div className="p-6 bg-danger-50 border border-danger-200 rounded-lg dark:bg-danger-100/10">
+      <div className="flex min-h-lvh items-center justify-center">
+        <div className="mx-auto max-w-md text-center">
+          <div className="bg-danger-50 border-danger-200 dark:bg-danger-100/10 rounded-lg border p-6">
             <div className="flex items-start gap-3">
-              <span className="text-destructive text-2xl shrink-0">⚠️</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-lg font-medium text-destructive mb-2">
+              <span className="shrink-0 text-2xl text-destructive">⚠️</span>
+              <div className="min-w-0 flex-1">
+                <p className="mb-2 text-lg font-medium text-destructive">
                   OAuth Error
                 </p>
-                <p className="text-sm text-destructive-600 mb-4 wrap-break-word">
+                <p className="text-destructive-600 mb-4 text-sm wrap-break-word">
                   {error}
                 </p>
-                <div className="flex gap-2 justify-center">
+                <div className="flex justify-center gap-2">
                   <button
                     onClick={() => router.push("/profile")}
-                    className="px-4 py-2 bg-danger-100 text-destructive-700 rounded-md hover:bg-danger-200 transition-colors"
+                    className="bg-danger-100 text-destructive-700 hover:bg-danger-200 rounded-md px-4 py-2 transition-colors"
                   >
                     Go to Profile
                   </button>
                   <button
                     onClick={() => window.location.reload()}
-                    className="px-4 py-2 bg-danger-600 text-white rounded-md hover:bg-danger-700 transition-colors"
+                    className="bg-danger-600 hover:bg-danger-700 rounded-md px-4 py-2 text-white transition-colors"
                   >
                     Try Again
                   </button>
@@ -161,9 +161,9 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
   }
 
   return (
-    <div className="flex justify-center items-center min-h-lvh">
+    <div className="flex min-h-lvh items-center justify-center">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+        <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
         <p className="mt-4 text-lg ">
           {isProcessing
             ? `Linking ${provider} account...`

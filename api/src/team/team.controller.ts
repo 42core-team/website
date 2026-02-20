@@ -42,9 +42,12 @@ export class TeamController {
     return this.teamService.getTeamById(id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get(`event/:${EVENT_ID_PARAM}`)
   getTeamsForEvent(
     @EventId eventId: string,
+    @UserId() userId: string,
+    @Query("adminRevealQuery") adminRevealQuery: string, // It's a string in query params
     @Query("searchName") searchName?: string,
     @Query("sortDir") sortDir?: string,
     @Query("sortBy") sortBy?: string,
@@ -54,6 +57,8 @@ export class TeamController {
       searchName,
       sortDir,
       sortBy,
+      userId,
+      adminRevealQuery === "true",
     );
   }
 

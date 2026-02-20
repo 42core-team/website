@@ -25,7 +25,8 @@
     "migration:generate": "sh -c 'npm run typeorm:ts -- -d ./typeOrm.config.ts migration:generate ./db/migrations/\"$0\"'",
     "migration:create": "sh -c 'npm run typeorm:ts -- migration:create ./db/migrations/\"$0\"'",
     "migration:revert": "npm run typeorm -- -d ./dist/typeOrm.config.js migration:revert",
-    "migration:revert-local": "npm run typeorm:ts -- -d ./typeOrm.config.ts migration:revert"
+    "migration:revert-local": "npm run typeorm:ts -- -d ./typeOrm.config.ts migration:revert",
+    "seed:users": "ts-node -r tsconfig-paths/register src/scripts/seed-users-teams.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.13",
@@ -45,6 +46,7 @@
     "class-validator": "^0.14.3",
     "cookie-parser": "^1.4.7",
     "crypto-js": "^4.2.0",
+    "jiti": "^2.6.1",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
     "passport-jwt": "^4.0.1",

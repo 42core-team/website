@@ -63,16 +63,16 @@ export function TableOfContents({ content }: TableOfContentsProps) {
 
   return (
     <nav className="sticky top-24 h-fit">
-      <div className="border rounded-lg p-4 bg-content1">
-        <h3 className="text-sm font-semibold mb-3">On this page</h3>
+      <div className="rounded-lg border bg-content1 p-4">
+        <h3 className="mb-3 text-sm font-semibold">On this page</h3>
         <ul className="space-y-1">
           {toc.map(item => (
             <li key={item.id}>
               <Link
                 href={`#${item.id}`}
-                className={`block text-sm hover:text-primary transition-colors ${
+                className={`block text-sm transition-colors hover:text-primary ${
                   activeId === item.id
-                    ? "text-primary font-medium"
+                    ? "font-medium text-primary"
                     : "text-muted-foreground"
                 }`}
                 style={{ paddingLeft: `${(item.level - 1) * 12}px` }}

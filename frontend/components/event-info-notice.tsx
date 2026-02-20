@@ -49,15 +49,17 @@ export default function EventInfoNotice({
   }
 
   return (
-    <div className="w-full bg-primary-50 border-b border-primary-200 sm:mt-0 sm:pb-0 pb-7 mt-5">
-      <div className="container mx-auto max-w-7xl px-6 h-14 flex items-center justify-between">
-        <div className="w-full flex items-center justify-between flex-wrap">
+    <div className="border-primary-200 mt-5 w-full border-b bg-primary-50 pb-7 sm:mt-0 sm:pb-0">
+      <div className="container mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
+        <div className="flex w-full flex-wrap items-center justify-between">
           <p className="text-warning-400">
             This event has not started yet. You can start coding when the
             countdown ends.
           </p>
           <Badge variant="destructive" aria-label="Event countdown">
-            Starts in {formatTimeLeft(timeLeftMs)}
+            Starts in
+            {" "}
+            {formatTimeLeft(timeLeftMs)}
           </Badge>
         </div>
       </div>

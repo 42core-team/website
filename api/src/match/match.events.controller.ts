@@ -1,5 +1,5 @@
 import { Controller, Logger } from "@nestjs/common";
-import { Ctx, EventPattern, Payload, RmqContext } from "@nestjs/microservices";
+import { EventPattern, Payload } from "@nestjs/microservices";
 import { MatchService } from "./match.service";
 
 @Controller("match-events")
@@ -40,7 +40,6 @@ export class MatchEventsController {
         [key: string]: string;
       };
     },
-    @Ctx() context: RmqContext,
   ) {
     try {
       this.logger.log(

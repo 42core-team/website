@@ -56,37 +56,44 @@ export default function EventsTable({ events }: Readonly<{ events: Event[] }>) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {events.length === 0 ? (
-            <TableRow>
-              <TableCell
-                colSpan={4}
-                className="text-center text-muted-foreground"
-              >
-                No events found
-              </TableCell>
-            </TableRow>
-          ) : (
-            events.map((event) => (
-              <TableRow
-                key={event.id}
-                className="cursor-pointer transition-colors hover:bg-muted/50"
-                onClick={() => router.push(`/events/${event.id}`)}
-              >
-                <TableCell className="font-medium">{event.name}</TableCell>
-                <TableCell>
-                  {new Date(event.startDate).toLocaleDateString()}
-                </TableCell>
-                <TableCell>
-                  {event.minTeamSize} -{event.maxTeamSize} members
-                </TableCell>
-                <TableCell>
-                  <Badge variant={formatState(event).variant}>
-                    {formatState(event).text}
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
+          {events.length === 0
+            ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center text-muted-foreground"
+                  >
+                    No events found
+                  </TableCell>
+                </TableRow>
+              )
+            : (
+                events.map(event => (
+                  <TableRow
+                    key={event.id}
+                    className="cursor-pointer transition-colors hover:bg-muted/50"
+                    onClick={() => router.push(`/events/${event.id}`)}
+                  >
+                    <TableCell className="font-medium">{event.name}</TableCell>
+                    <TableCell>
+                      {new Date(event.startDate).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {event.minTeamSize}
+                      {" "}
+                      -
+                      {event.maxTeamSize}
+                      {" "}
+                      members
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={formatState(event).variant}>
+                        {formatState(event).text}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
         </TableBody>
       </Table>
     </div>

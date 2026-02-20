@@ -2,18 +2,18 @@ name: Build API
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [main, dev]
     paths:
       - "api/**"
       - ".github/workflows/api-build.yml"
       - ".github/workflows/api-deploy.yml"
   pull_request:
-    branches: [ main, dev ]
+    branches: [main, dev]
     paths:
       - "api/**"
       - ".github/workflows/api-build.yml"
       - ".github/workflows/api-deploy.yml"
-    types: [ opened, synchronize, reopened ]
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
       environment:
@@ -34,6 +34,49 @@ env:
   IMAGE_NAME: ${{ github.repository }}-api
 
 jobs:
+  lint:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' &&
+       github.head_ref != 'dev' &&
+       github.event.pull_request.base.ref != github.event.pull_request.head.ref)
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 25
+          cache: "pnpm"
+          cache-dependency-path: api/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: ./api
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint code
+        working-directory: ./api
+        run: |
+          pnpm lint
+          git diff --exit-code ..
+
+      - name: Cancel workflow on failure
+        if: failure()
+        run: gh run cancel ${{ github.run_id }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   build:
     # Only run on pull requests that are cross-branch or on direct pushes
     if: |
@@ -45,10 +88,11 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     strategy:
       matrix:
-        platform: [ linux/amd64 ]
+        platform: [linux/amd64]
     permissions:
       contents: read
       packages: write
+      actions: write
     outputs:
       short_sha: ${{ steps.short-sha.outputs.short_sha }}
 
@@ -135,9 +179,15 @@ jobs:
             echo "ℹ️ **Note:** Image was built for testing but not pushed to registry (only pushes on direct commits to main/dev)" >> $GITHUB_STEP_SUMMARY
           fi
 
+      - name: Cancel workflow on failure
+        if: failure()
+        run: gh run cancel ${{ github.run_id }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   # Deploy job - only runs on push events or manual dispatch
   deploy:
-    needs: build
+    needs: [lint, build]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/api-deploy.yml
     with:

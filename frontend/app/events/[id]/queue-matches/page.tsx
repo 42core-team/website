@@ -32,7 +32,7 @@ export default async function EventQueueMatchesAdminPage({
   const admin = await isEventAdmin(id);
   if (isActionError(admin) || !admin) {
     return (
-      <div className="flex items-center justify-center min-h-[200px]">
+      <div className="flex min-h-[200px] items-center justify-center">
         <p>You do not have permission to view this page.</p>
       </div>
     );
@@ -73,7 +73,7 @@ export default async function EventQueueMatchesAdminPage({
 
   return (
     <div className="container mx-auto py-3">
-      <h1 className="text-3xl font-bold mb-8">All Queue Matches</h1>
+      <h1 className="mb-8 text-3xl font-bold">All Queue Matches</h1>
 
       <div className="mb-6">
         <QueueMatchesControls
@@ -84,7 +84,7 @@ export default async function EventQueueMatchesAdminPage({
       </div>
 
       <div className="mb-10">
-        <h2 className="text-xl font-semibold mb-4">{chartTitle}</h2>
+        <h2 className="mb-4 text-xl font-semibold">{chartTitle}</h2>
         <QueueMatchesChart data={series} title={chartTitle} />
       </div>
 

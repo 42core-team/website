@@ -19,7 +19,6 @@
 
 @utility prose {
   code {
-
     &::before,
     &::after {
       display: none;
@@ -226,7 +225,6 @@ mark {
 }
 
 @layer components {
-
   *[target="_blank"]:not(.no-icon)::after,
   a.external::after,
   .external-link::after {

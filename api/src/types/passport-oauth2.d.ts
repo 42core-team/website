@@ -10,6 +10,6 @@ declare module "passport-oauth2" {
   }
 
   export class Strategy extends PassportStrategy {
-    constructor(options: StrategyOptions, verify?: any);
+    constructor(options: StrategyOptions, verify?: unknown);
   }
 }

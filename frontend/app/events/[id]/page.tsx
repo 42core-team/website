@@ -1,17 +1,17 @@
-import { unified } from "unified";
-import remarkParse from "remark-parse";
-import remarkGfm from "remark-gfm";
-import remarkRehype from "remark-rehype";
 import rehypeSanitize from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
+import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import { unified } from "unified";
 import { isActionError } from "@/app/actions/errors";
 import {
   getEventById,
   getParticipantsCountForEvent,
   getTeamsCountForEvent,
 } from "@/app/actions/event";
-import RepoLockCountdown from "@/app/events/[id]/repoLockCountdown";
 import ConfigSection from "@/app/events/[id]/ConfigSection";
+import RepoLockCountdown from "@/app/events/[id]/repoLockCountdown";
 import TimeBadge from "@/components/timeBadge";
 import {
   Card,
@@ -33,7 +33,7 @@ function StatCard({
   return (
     <Card className={`${className}`}>
       <CardHeader>
-        <CardTitle className="text-lg font-semibold mb-2">{title}</CardTitle>
+        <CardTitle className="mb-2 text-lg font-semibold">{title}</CardTitle>
         <CardDescription className="text-3xl font-bold">
           {value}
         </CardDescription>
@@ -52,7 +52,7 @@ export default async function EventPage({
   const event = await getEventById(id);
   if (isActionError(event)) {
     return (
-      <div className="flex items-center justify-center min-h-[200px]">
+      <div className="flex min-h-[200px] items-center justify-center">
         <p>No event data found</p>
       </div>
     );
@@ -73,9 +73,9 @@ export default async function EventPage({
 
   return (
     <div className="container mx-auto py-4">
-      <h1 className="text-3xl font-bold mb-8">{event.name}</h1>
+      <h1 className="mb-8 text-3xl font-bold">{event.name}</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         <StatCard title="Participants" value={participantsCount} />
         <StatCard title="Teams" value={teamsCount} />
         <StatCard title="Location" value={event.location || "TBA"} />
@@ -91,11 +91,12 @@ export default async function EventPage({
               Description
             </h3>
             <div
-              className="prose dark:prose-invert max-w-none mt-1"
+              className="prose mt-1 max-w-none dark:prose-invert"
               dangerouslySetInnerHTML={{ __html: renderedDescription }}
-            ></div>
+            >
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <h3 className="text-sm font-medium text-muted-foreground">
                 Start Date
@@ -109,13 +110,18 @@ export default async function EventPage({
               <TimeBadge className="mt-1" time={event.endDate} />
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <h3 className="text-sm font-medium text-muted-foreground">
                 Team Size
               </h3>
               <p className="mt-1">
-                {event.minTeamSize} - {event.maxTeamSize} members
+                {event.minTeamSize}
+                {" "}
+                -
+                {event.maxTeamSize}
+                {" "}
+                members
               </p>
             </div>
             {event.repoLockDate && (

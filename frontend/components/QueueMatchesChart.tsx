@@ -165,7 +165,7 @@ export default function QueueMatchesChart({
   };
 
   return (
-    <div className="w-full h-72">
+    <div className="h-72 w-full">
       <Bar data={chartData} options={options} />
     </div>
   );
