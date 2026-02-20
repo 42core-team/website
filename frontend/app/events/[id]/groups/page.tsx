@@ -57,8 +57,7 @@ export default async function page({
         eventId={eventId}
         matches={matches}
         teams={teams}
-        eventAdmin={eventAdmin}
-        isAdminView={isAdminView}
+        isEventAdmin={eventAdmin}
         advancementCount={advancementCount}
       />
     </div>

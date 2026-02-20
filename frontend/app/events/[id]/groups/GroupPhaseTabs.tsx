@@ -12,7 +12,7 @@ interface GroupPhaseTabsProps {
   eventId: string;
   matches: Match[];
   teams: Team[];
-  isAdminView: boolean;
+  isEventAdmin: boolean;
   advancementCount: number;
 }
 
