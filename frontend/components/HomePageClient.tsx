@@ -11,12 +11,9 @@ import { useEffect, useMemo, useState } from "react";
 import GlobalStats from "@/components/GlobalStats";
 import { GithubIcon, WikiIcon } from "@/components/icons";
 import { CoreLogoWhite } from "@/components/social";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -99,28 +96,55 @@ export default function HomePageClient(props: {
             </Button>
           </div>
           {props.currentLiveEvent && timeLeftMs > 0 && (
-            <Card className="mx-auto mt-6 max-w-sm">
-              <CardHeader className="flex flex-row items-center justify-between gap-3">
-                <CardTitle className="text-lg font-semibold">
-                  {props.currentLiveEvent.name}
-                </CardTitle>
-                <CardDescription className="space-x-2">
-                  <Badge>Live</Badge>
-                  <Badge>
-                    Ends in
-                    {" "}
-                    {formatTimeLeft(timeLeftMs)}
-                  </Badge>
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button asChild>
-                  <Link href={`/events/${props.currentLiveEvent.id}`}>
-                    View event
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <Link href={`/events/${props.currentLiveEvent.id}`} className="group mx-auto mt-6 block w-full max-w-lg rounded-xl focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none md:mt-8">
+                <Card className="relative h-full w-full overflow-hidden border-white/10 bg-background/60 shadow-2xl backdrop-blur-xl transition-all duration-300 group-hover:-translate-y-1 group-hover:border-primary/50 group-hover:bg-background/80 group-hover:shadow-[0_20px_40px_-15px_rgba(var(--primary),0.3)] group-active:translate-y-0 group-active:scale-[0.98]">
+                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50 transition-opacity group-hover:opacity-100" />
+                  <CardHeader className="flex flex-row items-center justify-between pb-6">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute top-0 left-0 inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75"></span>
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive"></span>
+                        </span>
+                        <span className="text-xs font-semibold tracking-widest text-destructive uppercase">
+                          Live
+                        </span>
+                      </div>
+                      <CardTitle className="text-xl font-bold tracking-tight text-foreground transition-colors group-hover:text-primary md:text-2xl">
+                        {props.currentLiveEvent.name}
+                      </CardTitle>
+                    </div>
+                    <div className="flex items-center gap-4 border-l border-border/50 pl-4 transition-colors group-hover:border-primary/30">
+                      <div className="flex flex-col items-end gap-1 text-right">
+                        <span className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase transition-colors group-hover:text-primary/70">Closing in</span>
+                        <span className="font-mono text-base font-bold text-foreground tabular-nums transition-colors group-hover:text-primary">
+                          {formatTimeLeft(timeLeftMs)}
+                        </span>
+                      </div>
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary shadow-sm transition-all group-hover:scale-105 group-hover:bg-primary/20 group-hover:text-primary">
+                        <svg
+                          className="h-5 w-5"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </Link>
+            </motion.div>
           )}
         </div>
 
