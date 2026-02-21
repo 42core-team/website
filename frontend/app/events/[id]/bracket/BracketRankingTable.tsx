@@ -30,19 +30,19 @@ export default function BracketRankingTable({
   const router = useRouter();
 
   const searchParams = useSearchParams();
-  const shouldReveal =
-    isEventAdmin && searchParams.get("adminReveal") === "true";
+  const shouldReveal
+    = isEventAdmin && searchParams.get("adminReveal") === "true";
 
-  const revealedMatches = matches.filter((m) => m.isRevealed || shouldReveal);
-  const maxRound = Math.max(...matches.map((m) => m.round), 1);
+  const revealedMatches = matches.filter(m => m.isRevealed || shouldReveal);
+  const maxRound = Math.max(...matches.map(m => m.round), 1);
 
   const getTeamStats = (teamId: string) => {
-    const teamMatches = revealedMatches.filter((m) =>
-      m.teams.some((t) => t.id === teamId),
+    const teamMatches = revealedMatches.filter(m =>
+      m.teams.some(t => t.id === teamId),
     );
 
-    const highestRound = Math.max(...teamMatches.map((m) => m.round), 0);
-    const lastMatch = teamMatches.find((m) => m.round === highestRound);
+    const highestRound = Math.max(...teamMatches.map(m => m.round), 0);
+    const lastMatch = teamMatches.find(m => m.round === highestRound);
 
     const isWinner = lastMatch?.winner?.id === teamId;
     const hasWinner = !!lastMatch?.winner;
@@ -51,18 +51,20 @@ export default function BracketRankingTable({
     if (highestRound === maxRound && highestRound > 0) {
       if (lastMatch?.isPlacementMatch) {
         actualRank = isWinner ? 3 : hasWinner ? 4 : 3;
-      } else {
+      }
+      else {
         actualRank = isWinner ? 1 : hasWinner ? 2 : 1;
       }
-    } else {
+    }
+    else {
       const effectiveRound = isWinner ? highestRound + 1 : highestRound;
       actualRank = 2 ** (maxRound - effectiveRound) + 1;
     }
 
     const history = teamMatches
-      .filter((m) => m.state === "FINISHED")
+      .filter(m => m.state === "FINISHED")
       .sort((a, b) => a.round - b.round)
-      .map((m) => (m.winner ? (m.winner.id === teamId ? "W" : "L") : "T"));
+      .map(m => (m.winner ? (m.winner.id === teamId ? "W" : "L") : "T"));
 
     return {
       highestRound,
@@ -83,15 +85,17 @@ export default function BracketRankingTable({
   );
 
   const sortedTeams = teams
-    .map((team) => ({
+    .map(team => ({
       ...team,
       swissRank: swissRankMap.get(team.id),
       ...getTeamStats(team.id),
     }))
-    .filter((team) => team.hasMatches)
+    .filter(team => team.hasMatches)
     .sort((a, b) => {
-      if (a.actualRank !== b.actualRank) return a.actualRank - b.actualRank;
-      if (b.score !== a.score) return b.score - a.score;
+      if (a.actualRank !== b.actualRank)
+        return a.actualRank - b.actualRank;
+      if (b.score !== a.score)
+        return b.score - a.score;
       return b.buchholzPoints - a.buchholzPoints;
     });
 
@@ -110,85 +114,92 @@ export default function BracketRankingTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedTeams.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  Matches will appear here once the bracket starts.
-                </TableCell>
-              </TableRow>
-            ) : (
-              sortedTeams.map((team) => {
-                const rank = team.actualRank;
-                const isWinner = rank === 1;
-                const isFinalist = rank === 2;
-                const isSemi = rank === 3;
-
-                return (
-                  <TableRow
-                    key={team.id}
-                    className={cn(
-                      "group cursor-pointer transition-all hover:bg-muted/40",
-                      isWinner &&
-                        "bg-yellow-500/5 hover:bg-yellow-500/10 border-l-4 border-l-yellow-500",
-                      isFinalist &&
-                        "bg-slate-500/5 hover:bg-slate-500/10 border-l-4 border-l-slate-400",
-                      isSemi && "border-l-4 border-l-amber-700/50",
-                      !isWinner &&
-                        !isFinalist &&
-                        !isSemi &&
-                        "border-l-4 border-l-transparent border-b border-border/40",
-                    )}
-                    onClick={() =>
-                      router.push(`/events/${eventId}/teams/${team.id}`)
-                    }
-                  >
-                    <TableCell className="text-center">
-                      <div className="flex justify-center">
-                        {isWinner ? (
-                          <Trophy className="h-6 w-6 text-yellow-500" />
-                        ) : isFinalist ? (
-                          <Medal className="h-6 w-6 text-slate-400" />
-                        ) : isSemi ? (
-                          <Award className="h-6 w-6 text-amber-700" />
-                        ) : (
-                          <span className="font-mono font-bold">{rank}</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center text-muted-foreground">
-                      {team.swissRank}
-                    </TableCell>
-                    <TableCell className="pl-8">{team.name}</TableCell>
-                    <TableCell className="pr-6 text-right">
-                      <div className="flex justify-end gap-1">
-                        {team.history.map((result, i) => (
-                          <div
-                            key={i}
-                            className={cn(
-                              "w-6 h-6 rounded flex items-center justify-center text-[11px] shadow-sm",
-                              result === "W" && "bg-emerald-500 text-white",
-                              result === "L" && "bg-destructive text-white",
-                              result === "T" &&
-                                "bg-muted-foreground text-white",
-                            )}
-                          >
-                            {result}
-                          </div>
-                        ))}
-                        {team.history.length === 0 && (
-                          <span className="text-xs text-muted-foreground">
-                            No matches
-                          </span>
-                        )}
-                      </div>
+            {sortedTeams.length === 0
+              ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      Matches will appear here once the bracket starts.
                     </TableCell>
                   </TableRow>
-                );
-              })
-            )}
+                )
+              : (
+                  sortedTeams.map((team) => {
+                    const rank = team.actualRank;
+                    const isWinner = rank === 1;
+                    const isFinalist = rank === 2;
+                    const isSemi = rank === 3;
+
+                    return (
+                      <TableRow
+                        key={team.id}
+                        className={cn(
+                          "group cursor-pointer transition-all hover:bg-muted/40",
+                          isWinner
+                          && "bg-yellow-500/5 hover:bg-yellow-500/10 border-l-4 border-l-yellow-500",
+                          isFinalist
+                          && "bg-slate-500/5 hover:bg-slate-500/10 border-l-4 border-l-slate-400",
+                          isSemi && "border-l-4 border-l-amber-700/50",
+                          !isWinner
+                          && !isFinalist
+                          && !isSemi
+                          && "border-l-4 border-l-transparent border-b border-border/40",
+                        )}
+                        onClick={() =>
+                          router.push(`/events/${eventId}/teams/${team.id}`)}
+                      >
+                        <TableCell className="text-center">
+                          <div className="flex justify-center">
+                            {isWinner
+                              ? (
+                                  <Trophy className="h-6 w-6 text-yellow-500" />
+                                )
+                              : isFinalist
+                                ? (
+                                    <Medal className="h-6 w-6 text-slate-400" />
+                                  )
+                                : isSemi
+                                  ? (
+                                      <Award className="h-6 w-6 text-amber-700" />
+                                    )
+                                  : (
+                                      <span className="font-mono font-bold">{rank}</span>
+                                    )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center text-muted-foreground">
+                          {team.swissRank}
+                        </TableCell>
+                        <TableCell className="pl-8">{team.name}</TableCell>
+                        <TableCell className="pr-6 text-right">
+                          <div className="flex justify-end gap-1">
+                            {team.history.map((result, i) => (
+                              <div
+                                key={i}
+                                className={cn(
+                                  "w-6 h-6 rounded flex items-center justify-center text-[11px] shadow-sm",
+                                  result === "W" && "bg-emerald-500 text-white",
+                                  result === "L" && "bg-destructive text-white",
+                                  result === "T"
+                                  && "bg-muted-foreground text-white",
+                                )}
+                              >
+                                {result}
+                              </div>
+                            ))}
+                            {team.history.length === 0 && (
+                              <span className="text-xs text-muted-foreground">
+                                No matches
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
           </TableBody>
         </Table>
       </div>
