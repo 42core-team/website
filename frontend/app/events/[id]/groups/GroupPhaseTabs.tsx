@@ -57,7 +57,7 @@ export default function GroupPhaseTabs({
       </TabsContent>
 
       <TabsContent value="ranking" className="mt-0">
-        <div className="overflow-hidden rounded-xl border bg-card/50 p-1 text-card-foreground shadow-sm md:rounded-2xl md:p-4">
+        <div className="overflow-hidden rounded-xl border bg-card/50 px-2 py-1 text-card-foreground shadow-sm md:rounded-2xl">
           <RankingTable
             teams={teams}
             matches={matches}

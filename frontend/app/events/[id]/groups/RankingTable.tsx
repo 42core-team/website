@@ -2,7 +2,7 @@
 
 import type { Team } from "@/app/actions/team";
 import type { Match } from "@/app/actions/tournament-model";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Fragment } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,6 +28,8 @@ export default function RankingTable({
   eventId,
   advancementCount,
 }: RankingTableProps) {
+  const router = useRouter();
+
   // Sort teams by score (desc), then buchholzPoints (desc)
   const sortedTeams = [...teams].sort((a, b) => {
     if (b.score !== a.score)
@@ -52,7 +54,7 @@ export default function RankingTable({
     <div className="w-full">
       <Table>
         <TableHeader>
-          <TableRow className="border-b border-border/50 hover:bg-transparent">
+          <TableRow>
             <TableHead className="w-[80px]">Rank</TableHead>
             <TableHead>Participant</TableHead>
             <TableHead className="text-center">Score</TableHead>
@@ -69,24 +71,17 @@ export default function RankingTable({
 
             return (
               <Fragment key={team.id}>
-                <TableRow className="group border-b border-border/40 transition-colors hover:bg-muted/30">
-                  <TableCell className="font-medium text-muted-foreground">
-                    {rank}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Link
-                        href={`/events/${eventId}/teams/${team.id}`}
-                        className="max-w-[200px] truncate font-semibold transition-colors hover:text-primary"
-                      >
-                        {team.name}
-                      </Link>
-                    </div>
-                  </TableCell>
+                <TableRow
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() =>
+                    router.push(`/events/${eventId}/teams/${team.id}`)}
+                >
+                  <TableCell>{rank}</TableCell>
+                  <TableCell>{team.name}</TableCell>
                   <TableCell className="text-center font-bold">
                     {(team.score ?? 0).toFixed(1)}
                   </TableCell>
-                  <TableCell className="text-center text-muted-foreground">
+                  <TableCell className="text-center">
                     {(team.buchholzPoints ?? 0).toFixed(1)}
                   </TableCell>
                   <TableCell className="text-center">
@@ -100,7 +95,7 @@ export default function RankingTable({
                         <div
                           key={i}
                           className={cn(
-                            "w-6 h-6 rounded flex items-center justify-center text-[11px] font-bold shadow-sm",
+                            "w-6 h-6 rounded flex items-center justify-center text-[11px] shadow-sm",
                             result === "W" && "bg-emerald-500 text-white",
                             result === "L" && "bg-destructive text-white",
                             result === "T" && "bg-muted-foreground text-white",
@@ -118,11 +113,8 @@ export default function RankingTable({
                   </TableCell>
                 </TableRow>
                 {isAtCutoff && index < sortedTeams.length - 1 && (
-                  <TableRow className="hover:bg-transparent">
-                    <TableCell
-                      colSpan={6}
-                      className="h-10 p-0 text-center align-middle"
-                    >
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center align-middle">
                       <div className="flex h-full w-full items-center gap-4 px-4">
                         <div className="h-px flex-1 bg-emerald-500/50" />
                         <span className="text-[10px] font-bold tracking-widest text-emerald-500/80 uppercase">

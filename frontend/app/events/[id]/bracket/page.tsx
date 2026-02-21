@@ -33,7 +33,7 @@ export default async function page({
   ]);
 
   return (
-    <div className="flex flex-col gap-4 md:gap-8">
+    <div className="flex flex-col gap-4 pb-8 md:gap-8">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div className="space-y-1.5 md:space-y-2">
           <h1 className="text-3xl font-bold tracking-tight md:text-4xl">

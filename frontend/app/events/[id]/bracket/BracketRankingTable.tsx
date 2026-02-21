@@ -3,7 +3,7 @@
 import type { Team } from "@/app/actions/team";
 import type { Match } from "@/app/actions/tournament-model";
 import { Award, Medal, Trophy } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -25,6 +25,7 @@ export default function BracketRankingTable({
   matches,
   eventId,
 }: RankingTableProps) {
+  const router = useRouter();
   const maxRound = Math.max(...matches.map(m => m.round), 1);
 
   const getTeamStats = (teamId: string) => {
@@ -92,15 +93,13 @@ export default function BracketRankingTable({
     <div className="w-full">
       <div className="overflow-hidden rounded-xl border bg-card/50 shadow-sm">
         <Table>
-          <TableHeader className="bg-muted/30">
-            <TableRow className="border-b border-border hover:bg-transparent">
-              <TableHead className="w-[100px] text-center font-bold">
-                Standing
-              </TableHead>
-              <TableHead className="font-bold">Team Name</TableHead>
-              <TableHead className="hidden text-center font-bold sm:table-cell">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[100px] text-center">Standing</TableHead>
+              <TableHead className="w-[100px] text-center">
                 Swiss Rank
               </TableHead>
+              <TableHead className="pl-8">Name</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -114,7 +113,7 @@ export default function BracketRankingTable({
                 <TableRow
                   key={team.id}
                   className={cn(
-                    "group transition-all hover:bg-muted/40",
+                    "group cursor-pointer transition-all hover:bg-muted/40",
                     isWinner
                     && "bg-yellow-500/5 hover:bg-yellow-500/10 border-l-4 border-l-yellow-500",
                     isFinalist
@@ -125,6 +124,8 @@ export default function BracketRankingTable({
                     && !isSemi
                     && "border-l-4 border-l-transparent border-b border-border/40",
                   )}
+                  onClick={() =>
+                    router.push(`/events/${eventId}/teams/${team.id}`)}
                 >
                   <TableCell className="text-center">
                     <div className="flex justify-center">
@@ -141,24 +142,14 @@ export default function BracketRankingTable({
                                 <Award className="h-6 w-6 text-amber-700" />
                               )
                             : (
-                                <span className="font-mono font-bold text-muted-foreground">
-                                  {rank}
-                                </span>
+                                <span className="font-mono font-bold">{rank}</span>
                               )}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/events/${eventId}/teams/${team.id}`}
-                      className="inline-block max-w-[250px] truncate text-base font-bold transition-colors hover:text-primary"
-                    >
-                      {team.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="hidden pr-6 text-center font-mono text-muted-foreground sm:table-cell">
-                    #
+                  <TableCell className="text-center text-muted-foreground">
                     {team.swissRank}
                   </TableCell>
+                  <TableCell className="pl-8">{team.name}</TableCell>
                 </TableRow>
               );
             })}
