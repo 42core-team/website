@@ -35,7 +35,8 @@ const FieldError = React.forwardRef<
   React.HTMLAttributes<HTMLParagraphElement> & { errors?: any[] }
 >(({ className, errors, children, ...props }, ref) => {
   const error = errors?.[0] || children;
-  if (!error) return null;
+  if (!error)
+    return null;
 
   return (
     <p

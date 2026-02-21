@@ -26,8 +26,8 @@ const tabsListVariants = cva(
 
 const TabsList = React.forwardRef<
   React.ComponentRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> &
-    VariantProps<typeof tabsListVariants>
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+  & VariantProps<typeof tabsListVariants>
 >(({ className, variant, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}
@@ -55,8 +55,8 @@ const tabsTriggerVariants = cva(
 
 const TabsTrigger = React.forwardRef<
   React.ComponentRef<typeof TabsPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> &
-    VariantProps<typeof tabsTriggerVariants>
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
+  & VariantProps<typeof tabsTriggerVariants>
 >(({ className, variant, ...props }, ref) => (
   <TabsPrimitive.Trigger
     ref={ref}

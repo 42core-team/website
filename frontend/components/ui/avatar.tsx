@@ -26,8 +26,8 @@ const AvatarImage = React.forwardRef<
 >(({ className, src, ...props }, ref) => {
   let finalSrc = src;
   if (
-    typeof finalSrc === "string" &&
-    (finalSrc.includes("github") || finalSrc.includes("cdn.intra.42.fr"))
+    typeof finalSrc === "string"
+    && (finalSrc.includes("github") || finalSrc.includes("cdn.intra.42.fr"))
   ) {
     finalSrc = `/_next/image?url=${encodeURIComponent(finalSrc)}&w=256&q=75`;
   }
