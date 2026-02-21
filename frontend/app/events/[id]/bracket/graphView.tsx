@@ -139,6 +139,7 @@ export default function GraphView({
               height: MATCH_HEIGHT,
               showTargetHandle: roundIndex > 0,
               showSourceHandle: roundIndex < lastRoundIndex,
+              hideScore: true,
               onClick: (clickedMatch: Match) => {
                 if (
                   (match.state === MatchState.FINISHED || isEventAdmin)
@@ -173,6 +174,7 @@ export default function GraphView({
               height: MATCH_HEIGHT,
               showTargetHandle: false,
               showSourceHandle: false,
+              hideScore: true,
               onClick: (clickedMatch: Match) => {
                 if (
                   (placementMatch.state === MatchState.FINISHED
@@ -244,12 +246,7 @@ export default function GraphView({
         panOnDrag={true}
         proOptions={{ hideAttribution: true }}
       >
-        <Background
-          color="currentColor"
-          className="opacity-10"
-          gap={20}
-          variant={undefined}
-        />
+        <Background color="currentColor" className="opacity-10" gap={20} />
       </ReactFlow>
     </div>
   );

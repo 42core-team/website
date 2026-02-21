@@ -114,7 +114,7 @@ export default function TeamsTable({ teams, eventId }: TeamsTableProps) {
               table.getRowModel().rows.map(row => (
                 <TableRow
                   key={row.id}
-                  className="cursor-pointer transition-colors hover:bg-muted/50"
+                  className="cursor-pointer hover:bg-muted/50"
                   onClick={() =>
                     router.push(`/events/${eventId}/teams/${row.original.id}`)}
                 >
