@@ -65,6 +65,7 @@ export default function BracketTabs({
           teams={teams}
           matches={matches}
           eventId={eventId}
+          isEventAdmin={isEventAdmin}
         />
       </TabsContent>
     </Tabs>
