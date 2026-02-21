@@ -118,13 +118,23 @@ export class AuthController {
 
       return res.redirect(redirectUrl);
     } catch (e) {
-      // Use a more detailed log, and preserve specific error messages for BadRequestException
-      this.logger.error("Error in FortyTwo callback:", e);
       if (e instanceof BadRequestException) {
+        this.logger.error(
+          `Error in FortyTwo callback: ${e.message}`,
+          e.stack || String(e),
+        );
         throw e;
       }
+
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      const errorStack = e instanceof Error ? e.stack || String(e) : String(e);
+      this.logger.error(
+        `Error in FortyTwo callback: ${errorMessage}`,
+        errorStack,
+      );
+
       throw new BadRequestException(
-        e && typeof e.message === "string"
+        e instanceof Error
           ? `Invalid state parameter: ${e.message}`
           : "Invalid state parameter.",
       );

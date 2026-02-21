@@ -93,7 +93,7 @@ export class TeamController {
       );
 
     this.logger.log({
-      action: "create_team",
+      action: "attempt_create_team",
       userId,
       eventId,
       teamName: createTeamDto.name,
@@ -112,7 +112,7 @@ export class TeamController {
   @Put(`event/:${EVENT_ID_PARAM}/leave`)
   async leaveTeam(@UserId() userId: string, @Team() team: TeamEntity) {
     this.logger.log({
-      action: "leave_team",
+      action: "attempt_leave_team",
       userId,
       teamId: team.id,
     });
@@ -188,7 +188,7 @@ export class TeamController {
       );
 
     this.logger.log({
-      action: "send_team_invite",
+      action: "attempt_send_team_invite",
       inviterId: userId,
       inviteeId: inviteUserDto.userToInviteId,
       teamId: team.id,
@@ -244,7 +244,7 @@ export class TeamController {
       throw new BadRequestException("This team is full.");
 
     this.logger.log({
-      action: "accept_team_invite",
+      action: "attempt_accept_team_invite",
       userId,
       teamId,
       eventId,
@@ -261,7 +261,7 @@ export class TeamController {
       throw new BadRequestException("You are not invited to this team.");
 
     this.logger.log({
-      action: "decline_team_invite",
+      action: "attempt_decline_team_invite",
       userId,
       teamId,
     });
@@ -271,7 +271,7 @@ export class TeamController {
 
   @UseGuards(JwtAuthGuard, MyTeamGuards)
   @Put(`event/:${EVENT_ID_PARAM}/queue/join`)
-  async joinQueue(@Team() team: TeamEntity) {
+  async joinQueue(@Team() team: TeamEntity, @UserId() userId: string) {
     if (team.inQueue)
       throw new BadRequestException("You are already in the queue.");
 
@@ -279,8 +279,9 @@ export class TeamController {
       throw new BadRequestException("The event has not started yet.");
 
     this.logger.log({
-      action: "join_queue",
+      action: "attempt_join_queue",
       teamId: team.id,
+      userId,
     });
 
     return this.teamService.joinQueue(team.id);
@@ -288,13 +289,14 @@ export class TeamController {
 
   @UseGuards(JwtAuthGuard, MyTeamGuards)
   @Put(`event/:${EVENT_ID_PARAM}/queue/leave`)
-  async leaveQueue(@Team() team: TeamEntity) {
+  async leaveQueue(@Team() team: TeamEntity, @UserId() userId: string) {
     if (!team.inQueue)
       throw new BadRequestException("You are not in the queue.");
 
     this.logger.log({
-      action: "leave_queue",
+      action: "attempt_leave_queue",
       teamId: team.id,
+      userId,
     });
 
     return this.teamService.leaveQueue(team.id);

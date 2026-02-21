@@ -24,7 +24,7 @@ export class MatchController {
     private readonly eventService: EventService,
   ) {}
 
-  private logger = new Logger("MatchController");
+  private readonly logger = new Logger(MatchController.name);
 
   @UseGuards(JwtAuthGuard)
   @Get("swiss/:eventId")
@@ -56,7 +56,7 @@ export class MatchController {
       throw new BadRequestException("swiss matches have already started");
     }
 
-    this.logger.log({ action: "start_swiss_matches", userId, eventId });
+    this.logger.log({ action: "attempt_start_swiss_matches", userId, eventId });
 
     return await this.matchService.createNextSwissMatches(eventId);
   }
@@ -72,7 +72,11 @@ export class MatchController {
         "You are not authorized to lock this event.",
       );
 
-    this.logger.log({ action: "start_tournament_matches", userId, eventId });
+    this.logger.log({
+      action: "attempt_start_tournament_matches",
+      userId,
+      eventId,
+    });
 
     return this.matchService.createNextTournamentMatches(eventId);
   }
@@ -159,7 +163,7 @@ export class MatchController {
         "You are not authorized to reveal this match.",
       );
 
-    this.logger.log({ action: "reveal_match", userId, matchId });
+    this.logger.log({ action: "attempt_reveal_match", userId, matchId });
 
     return this.matchService.revealMatch(matchId);
   }
@@ -176,7 +180,12 @@ export class MatchController {
         "You are not authorized to reveal matches for this event.",
       );
 
-    this.logger.log({ action: "reveal_all_matches", userId, eventId, phase });
+    this.logger.log({
+      action: "attempt_reveal_all_matches",
+      userId,
+      eventId,
+      phase,
+    });
 
     return this.matchService.revealAllMatchesInPhase(
       eventId,
@@ -196,7 +205,12 @@ export class MatchController {
         "You are not authorized to cleanup matches for this event.",
       );
 
-    this.logger.log({ action: "cleanup_matches", userId, eventId, phase });
+    this.logger.log({
+      action: "attempt_cleanup_matches",
+      userId,
+      eventId,
+      phase,
+    });
 
     return this.matchService.cleanupMatchesInPhase(
       eventId,

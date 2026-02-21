@@ -17,7 +17,7 @@ export class TypeormExceptionFilter implements ExceptionFilter {
 
     // Log the error
     Logger.error(
-      `Entity not found for request ${request.method} ${request.url}`,
+      `Entity not found for request ${request.method} ${request.url}: ${exception.message}`,
       exception.stack,
       "TypeormExceptionFilter",
     );
@@ -26,7 +26,6 @@ export class TypeormExceptionFilter implements ExceptionFilter {
       statusCode: HttpStatus.NOT_FOUND,
       timestamp: new Date().toISOString(),
       message: "Entity not found",
-      error: exception.message,
     });
   }
 }

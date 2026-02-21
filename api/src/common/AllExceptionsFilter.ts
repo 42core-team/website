@@ -15,6 +15,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
   constructor(private readonly httpAdapterHost: HttpAdapterHost) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
+    if (host.getType() !== "http") {
+      return;
+    }
+
     const { httpAdapter } = this.httpAdapterHost;
     const ctx = host.switchToHttp();
 
@@ -42,10 +46,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else {
       // 4xx errors
       if (exception instanceof Error) {
-        this.logger.warn(
-          `HTTP Exception: ${exception.message}`,
-          exception.stack,
-        );
+        this.logger.warn(`HTTP Exception: ${exception.message}`);
       } else {
         this.logger.warn(`HTTP Exception: ${exception}`);
       }

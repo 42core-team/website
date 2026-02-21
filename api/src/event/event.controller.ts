@@ -95,7 +95,7 @@ export class EventController {
       );
 
     this.logger.log({
-      action: "create_event",
+      action: "attempt_create_event",
       userId,
       eventName: createEventDto.name,
     });
@@ -174,7 +174,7 @@ export class EventController {
       throw new BadRequestException("Event has not started yet.");
     }
 
-    this.logger.log({ action: "join_event", userId, eventId });
+    this.logger.log({ action: "attempt_join_event", userId, eventId });
 
     return this.userService.joinEvent(userId, eventId);
   }
@@ -190,7 +190,7 @@ export class EventController {
         "You are not authorized to lock this event.",
       );
 
-    this.logger.log({ action: "lock_event", userId, eventId });
+    this.logger.log({ action: "attempt_lock_event", userId, eventId });
 
     return this.eventService.lockEvent(eventId);
   }
@@ -206,7 +206,7 @@ export class EventController {
         "You are not authorized to unlock teams for this event.",
       );
 
-    this.logger.log({ action: "unlock_event", userId, eventId });
+    this.logger.log({ action: "attempt_unlock_event", userId, eventId });
 
     return this.eventService.unlockEvent(eventId);
   }
@@ -224,7 +224,7 @@ export class EventController {
       );
 
     this.logger.log({
-      action: "set_lock_teams_date",
+      action: "attempt_set_lock_teams_date",
       userId,
       eventId,
       repoLockDate: body.repoLockDate,
@@ -250,7 +250,11 @@ export class EventController {
         "You are not authorized to update settings for this event.",
       );
 
-    this.logger.log({ action: "update_event_settings", userId, eventId });
+    this.logger.log({
+      action: "attempt_update_event_settings",
+      userId,
+      eventId,
+    });
 
     return this.eventService.updateEventSettings(eventId, body);
   }
@@ -278,7 +282,12 @@ export class EventController {
       throw new UnauthorizedException("You are not an admin of this event");
     }
 
-    this.logger.log({ action: "add_event_admin", userId, eventId, newAdminId });
+    this.logger.log({
+      action: "attempt_add_event_admin",
+      userId,
+      eventId,
+      newAdminId,
+    });
     return this.eventService.addEventAdmin(eventId, newAdminId);
   }
 
@@ -294,7 +303,7 @@ export class EventController {
     }
 
     this.logger.log({
-      action: "remove_event_admin",
+      action: "attempt_remove_event_admin",
       userId,
       eventId,
       removedAdminId: adminIdToRemove,
@@ -320,7 +329,7 @@ export class EventController {
     }
 
     this.logger.log({
-      action: "create_starter_template",
+      action: "attempt_create_starter_template",
       userId,
       eventId,
       templateName: body.name,
@@ -346,7 +355,7 @@ export class EventController {
     }
 
     this.logger.log({
-      action: "update_starter_template",
+      action: "attempt_update_starter_template",
       userId,
       eventId,
       templateId,
@@ -366,7 +375,7 @@ export class EventController {
     }
 
     this.logger.log({
-      action: "delete_starter_template",
+      action: "attempt_delete_starter_template",
       userId,
       eventId,
       templateId,
