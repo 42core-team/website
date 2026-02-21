@@ -17,8 +17,7 @@ import {
 
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { isActionError } from "@/app/actions/errors";
 import {
@@ -68,6 +67,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useTabParam } from "@/hooks/useTabParam";
 import { cn } from "@/lib/utils";
 import { StarterTemplatesManagement } from "./components/StarterTemplatesManagement";
 
@@ -78,16 +78,7 @@ interface DashboardPageProps {
 export function DashboardPage({ eventId }: DashboardPageProps) {
   const session = useSession();
   const queryClient = useQueryClient();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const currentTab = searchParams.get("tab") || "overview";
-
-  const handleTabChange = (value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", value);
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  };
+  const { currentTab, onTabChange: handleTabChange } = useTabParam("overview");
 
   const [teamAutoLockTime, setTeamAutoLockTime] = useState<string>("");
   const [userSearchQuery, setUserSearchQuery] = useState("");
@@ -121,14 +112,14 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     queryFn: async () => await getTeamsCountForEvent(eventId),
   });
 
-  const { data: participantsCount = 0, isLoading: isParticipantsLoading }
-    = useQuery<number>({
+  const { data: participantsCount = 0, isLoading: isParticipantsLoading } =
+    useQuery<number>({
       queryKey: ["event", eventId, "participants-count"],
       queryFn: async () => await getParticipantsCountForEvent(eventId),
     });
 
-  const { data: isAdmin = false, isLoading: isAdminLoading }
-    = useQuery<boolean>({
+  const { data: isAdmin = false, isLoading: isAdminLoading } =
+    useQuery<boolean>({
       queryKey: ["event", eventId, "is-admin"],
       queryFn: async () => {
         const adminCheck = await isEventAdmin(eventId);
@@ -144,8 +135,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     queryKey: ["event", eventId, "admins"],
     queryFn: async () => {
       const result = await getEventAdmins(eventId);
-      if (isActionError(result))
-        throw new Error(result.error);
+      if (isActionError(result)) throw new Error(result.error);
       return result;
     },
     enabled: isAdmin,
@@ -155,8 +145,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     queryKey: ["event", eventId, "templates"],
     queryFn: async () => {
       const result = await getStarterTemplates(eventId);
-      if (isActionError(result))
-        throw new Error(result.error);
+      if (isActionError(result)) throw new Error(result.error);
       return result;
     },
     enabled: !!eventId,
@@ -277,8 +266,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   const addAdminMutation = useMutation({
     mutationFn: async (userId: string) => {
       const result = await addEventAdmin(eventId, userId);
-      if (isActionError(result))
-        throw new Error(result.error);
+      if (isActionError(result)) throw new Error(result.error);
       return result;
     },
     onSuccess: () => {
@@ -291,8 +279,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   const removeAdminMutation = useMutation({
     mutationFn: async (userId: string) => {
       const result = await removeEventAdmin(eventId, userId);
-      if (isActionError(result))
-        throw new Error(result.error);
+      if (isActionError(result)) throw new Error(result.error);
       return result;
     },
     onSuccess: () => {
@@ -319,8 +306,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
           setSearchResults(result);
         }
         setIsSearching(false);
-      }
-      else {
+      } else {
         setSearchResults([]);
       }
     }, 300);
@@ -366,21 +352,19 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
     if (updates.startDate)
       updates.startDate = new Date(updates.startDate).getTime();
-    if (updates.endDate)
-      updates.endDate = new Date(updates.endDate).getTime();
+    if (updates.endDate) updates.endDate = new Date(updates.endDate).getTime();
 
     if (Object.keys(updates).length > 0) {
       updateEventSettingsMutation.mutate(updates);
       // Update local state to show formatted text
       setPendingSettings(finalSettings);
-    }
-    else {
+    } else {
       toast.info("No changes to save.");
     }
   };
 
-  const isLoading
-    = isEventLoading || isTeamsLoading || isParticipantsLoading || isAdminLoading;
+  const isLoading =
+    isEventLoading || isTeamsLoading || isParticipantsLoading || isAdminLoading;
 
   if (isLoading || !event) {
     return (
@@ -399,7 +383,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   }
 
   const hasChanges = Object.keys(pendingSettings).some(
-    key => (pendingSettings as any)[key] !== (event as any)[key],
+    (key) => (pendingSettings as any)[key] !== (event as any)[key],
   );
 
   return (
@@ -415,13 +399,11 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
             className="fixed right-8 bottom-8 z-50 animate-in shadow-xl fade-in slide-in-from-bottom-4"
             disabled={updateEventSettingsMutation.isPending}
           >
-            {updateEventSettingsMutation.isPending
-              ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )
-              : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
+            {updateEventSettingsMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
             Save Changes
           </Button>
         )}
@@ -582,7 +564,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {starterTemplates.map(template => (
+                      {starterTemplates.map((template) => (
                         <TableRow key={template.id}>
                           <TableCell className="font-mono text-[10px] text-muted-foreground">
                             {template.id}
@@ -648,8 +630,8 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 <div className="flex flex-wrap gap-3">
                   <Button
                     disabled={
-                      event.currentRound !== 0
-                      || startSwissMatchesMutation.isPending
+                      event.currentRound !== 0 ||
+                      startSwissMatchesMutation.isPending
                     }
                     onClick={() => startSwissMatchesMutation.mutate()}
                     variant="secondary"
@@ -676,13 +658,11 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     }}
                     variant="destructive"
                   >
-                    {cleanupMatchesMutation.isPending
-                      ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        )
-                      : (
-                          <Trash2 className="mr-2 h-4 w-4" />
-                        )}
+                    {cleanupMatchesMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="mr-2 h-4 w-4" />
+                    )}
                     Clean Up Group Phase
                   </Button>
                 </div>
@@ -720,13 +700,11 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     }}
                     variant="destructive"
                   >
-                    {cleanupMatchesMutation.isPending
-                      ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        )
-                      : (
-                          <Trash2 className="mr-2 h-4 w-4" />
-                        )}
+                    {cleanupMatchesMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="mr-2 h-4 w-4" />
+                    )}
                     Clean Up Tournament matches
                   </Button>
                 </div>
@@ -762,8 +740,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                               ? new Date(teamAutoLockTime)
                               : undefined
                           }
-                          onSelect={d =>
-                            d && setTeamAutoLockTime(d.toISOString())}
+                          onSelect={(d) =>
+                            d && setTeamAutoLockTime(d.toISOString())
+                          }
                         />
                         <div className="border-t p-3">
                           <Input
@@ -775,16 +754,13 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                             }
                             onChange={(e) => {
                               const val = e.target.value;
-                              if (!val)
-                                return;
+                              if (!val) return;
                               const parts = val.split(":");
-                              if (parts.length !== 2)
-                                return;
+                              if (parts.length !== 2) return;
 
                               const h = Number.parseInt(parts[0], 10);
                               const m = Number.parseInt(parts[1], 10);
-                              if (Number.isNaN(h) || Number.isNaN(m))
-                                return;
+                              if (Number.isNaN(h) || Number.isNaN(m)) return;
 
                               const current = teamAutoLockTime
                                 ? new Date(teamAutoLockTime)
@@ -804,7 +780,8 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     onClick={() =>
                       setTeamsLockDateMutation.mutate(
                         new Date(teamAutoLockTime).getTime(),
-                      )}
+                      )
+                    }
                   >
                     Save
                   </Button>
@@ -832,33 +809,36 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   <Label>Event Name</Label>
                   <Input
                     value={pendingSettings.name || ""}
-                    onChange={e =>
+                    onChange={(e) =>
                       setPendingSettings({
                         ...pendingSettings,
                         name: e.target.value,
-                      })}
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Location</Label>
                   <Input
                     value={pendingSettings.location || ""}
-                    onChange={e =>
+                    onChange={(e) =>
                       setPendingSettings({
                         ...pendingSettings,
                         location: e.target.value,
-                      })}
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label>Description (Markdown)</Label>
                   <Textarea
                     value={pendingSettings.description || ""}
-                    onChange={e =>
+                    onChange={(e) =>
                       setPendingSettings({
                         ...pendingSettings,
                         description: e.target.value,
-                      })}
+                      })
+                    }
                     className="min-h-[100px]"
                   />
                 </div>
@@ -877,11 +857,12 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                           )
                         : ""
                     }
-                    onChange={e =>
+                    onChange={(e) =>
                       setPendingSettings({
                         ...pendingSettings,
                         startDate: e.target.value as any,
-                      })}
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -896,11 +877,12 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                           )
                         : ""
                     }
-                    onChange={e =>
+                    onChange={(e) =>
                       setPendingSettings({
                         ...pendingSettings,
                         endDate: e.target.value as any,
-                      })}
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -921,11 +903,12 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   <Input
                     type="number"
                     value={pendingSettings.minTeamSize || 0}
-                    onChange={e =>
+                    onChange={(e) =>
                       setPendingSettings({
                         ...pendingSettings,
                         minTeamSize: Number.parseInt(e.target.value),
-                      })}
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -933,11 +916,12 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   <Input
                     type="number"
                     value={pendingSettings.maxTeamSize || 0}
-                    onChange={e =>
+                    onChange={(e) =>
                       setPendingSettings({
                         ...pendingSettings,
                         maxTeamSize: Number.parseInt(e.target.value),
-                      })}
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -952,11 +936,12 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     <Switch
                       id="canCreateTeam"
                       checked={pendingSettings.canCreateTeam || false}
-                      onCheckedChange={v =>
+                      onCheckedChange={(v) =>
                         setPendingSettings({
                           ...pendingSettings,
                           canCreateTeam: v,
-                        })}
+                        })
+                      }
                     />
                   </div>
                   <div className="flex items-center justify-between rounded-lg border p-3">
@@ -966,11 +951,12 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     <Switch
                       id="processQueue"
                       checked={pendingSettings.processQueue || false}
-                      onCheckedChange={v =>
+                      onCheckedChange={(v) =>
                         setPendingSettings({
                           ...pendingSettings,
                           processQueue: v,
-                        })}
+                        })
+                      }
                     />
                   </div>
                   <div className="flex items-center justify-between rounded-lg border p-3">
@@ -980,8 +966,9 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     <Switch
                       id="isPrivate"
                       checked={pendingSettings.isPrivate || false}
-                      onCheckedChange={v =>
-                        setPendingSettings({ ...pendingSettings, isPrivate: v })}
+                      onCheckedChange={(v) =>
+                        setPendingSettings({ ...pendingSettings, isPrivate: v })
+                      }
                     />
                   </div>
                 </div>
@@ -1002,11 +989,12 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   <Label>Monorepo URL</Label>
                   <Input
                     value={pendingSettings.monorepoUrl || ""}
-                    onChange={e =>
+                    onChange={(e) =>
                       setPendingSettings({
                         ...pendingSettings,
                         monorepoUrl: e.target.value,
-                      })}
+                      })
+                    }
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -1014,22 +1002,24 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                     <Label>Monorepo Version</Label>
                     <Input
                       value={pendingSettings.monorepoVersion || ""}
-                      onChange={e =>
+                      onChange={(e) =>
                         setPendingSettings({
                           ...pendingSettings,
                           monorepoVersion: e.target.value,
-                        })}
+                        })
+                      }
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Base Path</Label>
                     <Input
                       value={pendingSettings.basePath || ""}
-                      onChange={e =>
+                      onChange={(e) =>
                         setPendingSettings({
                           ...pendingSettings,
                           basePath: e.target.value,
-                        })}
+                        })
+                      }
                     />
                   </div>
                 </div>
@@ -1038,33 +1028,36 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   <Label>Game Server Image</Label>
                   <Input
                     value={pendingSettings.gameServerDockerImage || ""}
-                    onChange={e =>
+                    onChange={(e) =>
                       setPendingSettings({
                         ...pendingSettings,
                         gameServerDockerImage: e.target.value,
-                      })}
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Bot Image (default)</Label>
                   <Input
                     value={pendingSettings.myCoreBotDockerImage || ""}
-                    onChange={e =>
+                    onChange={(e) =>
                       setPendingSettings({
                         ...pendingSettings,
                         myCoreBotDockerImage: e.target.value,
-                      })}
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Visualizer Image</Label>
                   <Input
                     value={pendingSettings.visualizerDockerImage || ""}
-                    onChange={e =>
+                    onChange={(e) =>
                       setPendingSettings({
                         ...pendingSettings,
                         visualizerDockerImage: e.target.value,
-                      })}
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -1085,11 +1078,12 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 <Label>GitHub Organization</Label>
                 <Input
                   value={pendingSettings.githubOrg || ""}
-                  onChange={e =>
+                  onChange={(e) =>
                     setPendingSettings({
                       ...pendingSettings,
                       githubOrg: e.target.value,
-                    })}
+                    })
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -1097,11 +1091,12 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 <Input
                   type="password"
                   placeholder="Enter new token to update (leave blank to keep current)"
-                  onChange={e =>
+                  onChange={(e) =>
                     setPendingSettings({
                       ...pendingSettings,
                       githubOrgSecret: e.target.value,
-                    })}
+                    })
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -1112,26 +1107,26 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() =>
-                        setIsGameConfigExpanded(!isGameConfigExpanded)}
+                        setIsGameConfigExpanded(!isGameConfigExpanded)
+                      }
                     >
-                      {isGameConfigExpanded
-                        ? (
-                            <Minimize2 className="mr-2 h-4 w-4" />
-                          )
-                        : (
-                            <Maximize2 className="mr-2 h-4 w-4" />
-                          )}
+                      {isGameConfigExpanded ? (
+                        <Minimize2 className="mr-2 h-4 w-4" />
+                      ) : (
+                        <Maximize2 className="mr-2 h-4 w-4" />
+                      )}
                       {isGameConfigExpanded ? "Minimize" : "Expand"}
                     </Button>
                   </div>
                 </div>
                 <Textarea
                   value={pendingSettings.gameConfig || ""}
-                  onChange={e =>
+                  onChange={(e) =>
                     setPendingSettings({
                       ...pendingSettings,
                       gameConfig: e.target.value,
-                    })}
+                    })
+                  }
                   className={cn(
                     "font-mono text-xs transition-all duration-200",
                     isGameConfigExpanded ? "min-h-[1200px]" : "min-h-[200px]",
@@ -1146,26 +1141,26 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() =>
-                        setIsServerConfigExpanded(!isServerConfigExpanded)}
+                        setIsServerConfigExpanded(!isServerConfigExpanded)
+                      }
                     >
-                      {isServerConfigExpanded
-                        ? (
-                            <Minimize2 className="mr-2 h-4 w-4" />
-                          )
-                        : (
-                            <Maximize2 className="mr-2 h-4 w-4" />
-                          )}
+                      {isServerConfigExpanded ? (
+                        <Minimize2 className="mr-2 h-4 w-4" />
+                      ) : (
+                        <Maximize2 className="mr-2 h-4 w-4" />
+                      )}
                       {isServerConfigExpanded ? "Minimize" : "Expand"}
                     </Button>
                   </div>
                 </div>
                 <Textarea
                   value={pendingSettings.serverConfig || ""}
-                  onChange={e =>
+                  onChange={(e) =>
                     setPendingSettings({
                       ...pendingSettings,
                       serverConfig: e.target.value,
-                    })}
+                    })
+                  }
                   className={cn(
                     "font-mono text-xs transition-all duration-200",
                     isServerConfigExpanded ? "min-h-[1200px]" : "min-h-[200px]",
@@ -1195,7 +1190,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                         placeholder="Search by name or username..."
                         className="pl-9"
                         value={userSearchQuery}
-                        onChange={e => setUserSearchQuery(e.target.value)}
+                        onChange={(e) => setUserSearchQuery(e.target.value)}
                       />
                     </div>
                   </div>
@@ -1204,7 +1199,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 {searchResults.length > 0 && (
                   <div className="absolute z-10 mt-1 w-full max-w-md animate-in rounded-md border bg-popover text-popover-foreground shadow-md zoom-in-95 fade-in">
                     <div className="p-1">
-                      {searchResults.map(user => (
+                      {searchResults.map((user) => (
                         <div
                           key={user.id}
                           className="flex cursor-pointer items-center justify-between rounded-sm p-2 transition-colors hover:bg-accent"
@@ -1226,8 +1221,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                                 {user.name}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                @
-                                {user.username}
+                                @{user.username}
                               </p>
                             </div>
                           </div>
@@ -1239,8 +1233,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                 )}
                 {isSearching && (
                   <div className="absolute z-10 mt-1 flex w-full max-w-md items-center justify-center rounded-md border bg-popover p-4 text-center text-sm text-muted-foreground">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {" "}
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
                     Searching...
                   </div>
                 )}
@@ -1251,65 +1244,63 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
                   Current Administrators
                 </h3>
 
-                {isAdminsLoading
-                  ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                      </div>
-                    )
-                  : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>User</TableHead>
-                            <TableHead className="w-[100px] text-right">
-                              Actions
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {admins.map((admin: any) => (
-                            <TableRow key={admin.id}>
-                              <TableCell>
-                                <div className="flex items-center gap-3">
-                                  <Image
-                                    src={admin.profilePicture}
-                                    alt={admin.name}
-                                    className="h-10 w-10 rounded-full border bg-background"
-                                    width={40}
-                                    height={40}
-                                  />
-                                  <div>
-                                    <p className="leading-none font-semibold">
-                                      {admin.name || "Unknown User"}
-                                    </p>
-                                    <p className="mt-1 font-mono text-xs text-muted-foreground">
-                                      @
-                                      {admin.username}
-                                    </p>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                  disabled={
-                                    removeAdminMutation.isPending
-                                    || admins.length <= 1
-                                  }
-                                  onClick={() =>
-                                    removeAdminMutation.mutate(admin.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
+                {isAdminsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead className="w-[100px] text-right">
+                          Actions
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {admins.map((admin: any) => (
+                        <TableRow key={admin.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Image
+                                src={admin.profilePicture}
+                                alt={admin.name}
+                                className="h-10 w-10 rounded-full border bg-background"
+                                width={40}
+                                height={40}
+                              />
+                              <div>
+                                <p className="leading-none font-semibold">
+                                  {admin.name || "Unknown User"}
+                                </p>
+                                <p className="mt-1 font-mono text-xs text-muted-foreground">
+                                  @{admin.username}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              disabled={
+                                removeAdminMutation.isPending ||
+                                admins.length <= 1
+                              }
+                              onClick={() =>
+                                removeAdminMutation.mutate(admin.id)
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </div>
             </CardContent>
           </Card>

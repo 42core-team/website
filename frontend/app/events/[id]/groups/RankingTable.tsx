@@ -4,6 +4,7 @@ import type { Team } from "@/app/actions/team";
 import type { Match } from "@/app/actions/tournament-model";
 import { useRouter } from "next/navigation";
 import { Fragment } from "react";
+import { MatchHistoryBadges } from "@/components/match/MatchHistoryBadges";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -13,7 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 
 interface RankingTableProps {
   teams: Team[];
@@ -45,9 +45,9 @@ export default function RankingTable({
       .sort((a, b) => a.round - b.round)
       .map((m) => {
         if (!m.winner)
-          return { id: m.id, result: "T" };
+          return { id: m.id!, result: "T" };
         return {
-          id: m.id,
+          id: m.id!,
           result: m.winner.id === teamId ? "W" : "L",
         };
       });
@@ -94,29 +94,7 @@ export default function RankingTable({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      {history.map((match, i) => (
-                        <div
-                          key={i}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/events/${eventId}/match/${match.id}`);
-                          }}
-                          className={cn(
-                            "w-6 h-6 rounded flex items-center justify-center text-[11px] shadow-sm cursor-pointer hover:opacity-80 transition-opacity",
-                            match.result === "W" && "bg-emerald-500 text-white",
-                            match.result === "L" && "bg-destructive text-white",
-                            match.result === "T"
-                            && "bg-muted-foreground text-white",
-                          )}
-                        >
-                          {match.result}
-                        </div>
-                      ))}
-                      {history.length === 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          No matches
-                        </span>
-                      )}
+                      <MatchHistoryBadges history={history} eventId={eventId} />
                     </div>
                   </TableCell>
                 </TableRow>

@@ -3,8 +3,8 @@
 import type { Team } from "@/app/actions/team";
 import type { Match } from "@/app/actions/tournament-model";
 import { BarChart3, Network } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTabParam } from "@/hooks/useTabParam";
 import GraphView from "./graphView";
 import RankingTable from "./RankingTable";
 
@@ -23,17 +23,7 @@ export default function GroupPhaseTabs({
   isEventAdmin,
   advancementCount,
 }: GroupPhaseTabsProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const currentTab = searchParams.get("tab") || "graph";
-
-  const onTabChange = (value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", value);
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  };
+  const { currentTab, onTabChange } = useTabParam("graph");
 
   return (
     <Tabs value={currentTab} onValueChange={onTabChange} className="w-full">

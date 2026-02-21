@@ -4,6 +4,8 @@ import type { Team } from "@/app/actions/team";
 import type { Match } from "@/app/actions/tournament-model";
 import { Award, Medal, Trophy } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
+import { MatchHistoryBadges } from "@/components/match/MatchHistoryBadges";
 import {
   Table,
   TableBody,
@@ -33,49 +35,70 @@ export default function BracketRankingTable({
   const shouldReveal
     = isEventAdmin && searchParams.get("adminReveal") === "true";
 
-  const revealedMatches = matches.filter(m => m.isRevealed || shouldReveal);
-  const maxRound = Math.max(...matches.map(m => m.round), 1);
+  const revealedMatches = useMemo(
+    () => matches.filter(m => m.isRevealed || shouldReveal),
+    [matches, shouldReveal],
+  );
+  const maxRound = useMemo(
+    () => Math.max(...matches.map(m => m.round), 1),
+    [matches],
+  );
 
-  const getTeamStats = (teamId: string) => {
-    const teamMatches = revealedMatches.filter(m =>
-      m.teams.some(t => t.id === teamId),
-    );
+  const teamStatsMap = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        highestRound: number;
+        actualRank: number;
+        history: { id: string; result: string }[];
+        hasMatches: boolean;
+      }
+    >();
+    for (const team of teams) {
+      const teamId = team.id;
+      const teamMatches = revealedMatches.filter(m =>
+        m.teams.some(t => t.id === teamId),
+      );
 
-    const highestRound = Math.max(...teamMatches.map(m => m.round), 0);
-    const lastMatch = teamMatches.find(m => m.round === highestRound);
+      const highestRound = Math.max(...teamMatches.map(m => m.round), 0);
+      const lastMatch = teamMatches.find(m => m.round === highestRound);
 
-    const isWinner = lastMatch?.winner?.id === teamId;
-    const hasWinner = !!lastMatch?.winner;
+      const isWinner = lastMatch?.winner?.id === teamId;
+      const hasWinner = !!lastMatch?.winner;
 
-    let actualRank = 0;
-    if (highestRound === maxRound && highestRound > 0) {
-      if (lastMatch?.isPlacementMatch) {
-        actualRank = isWinner ? 3 : hasWinner ? 4 : 3;
+      let actualRank = 0;
+      if (highestRound === maxRound && highestRound > 0) {
+        if (lastMatch?.isPlacementMatch) {
+          actualRank = isWinner ? 3 : hasWinner ? 4 : 3;
+        }
+        else {
+          actualRank = isWinner ? 1 : hasWinner ? 2 : 1;
+        }
       }
       else {
-        actualRank = isWinner ? 1 : hasWinner ? 2 : 1;
+        const effectiveRound = isWinner ? highestRound + 1 : highestRound;
+        actualRank = 2 ** (maxRound - effectiveRound) + 1;
       }
-    }
-    else {
-      const effectiveRound = isWinner ? highestRound + 1 : highestRound;
-      actualRank = 2 ** (maxRound - effectiveRound) + 1;
-    }
 
-    const history = teamMatches
-      .filter(m => m.state === "FINISHED")
-      .sort((a, b) => a.round - b.round)
-      .map(m => ({
-        id: m.id,
-        result: m.winner ? (m.winner.id === teamId ? "W" : "L") : "T",
-      }));
+      const history = teamMatches
+        .filter(m => m.state === "FINISHED")
+        .sort((a, b) => a.round - b.round)
+        .map(m => ({
+          id: m.id!,
+          result: m.winner ? (m.winner.id === teamId ? "W" : "L") : "T",
+        }));
 
-    return {
-      highestRound,
-      actualRank,
-      history,
-      hasMatches: teamMatches.length > 0,
-    };
-  };
+      map.set(teamId, {
+        highestRound,
+        actualRank,
+        history,
+        hasMatches: teamMatches.length > 0,
+      });
+    }
+    return map;
+  }, [revealedMatches, maxRound, teams]);
+
+  const getTeamStats = (teamId: string) => teamStatsMap.get(teamId)!;
 
   const swissRankMap = new Map(
     [...teams]
@@ -178,33 +201,10 @@ export default function BracketRankingTable({
                         <TableCell className="pl-8">{team.name}</TableCell>
                         <TableCell className="pr-6 text-right">
                           <div className="flex justify-end gap-1">
-                            {team.history.map((match, i) => (
-                              <div
-                                key={i}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push(
-                                    `/events/${eventId}/match/${match.id}`,
-                                  );
-                                }}
-                                className={cn(
-                                  "w-6 h-6 rounded flex items-center justify-center text-[11px] shadow-sm cursor-pointer hover:opacity-80 transition-opacity",
-                                  match.result === "W"
-                                  && "bg-emerald-500 text-white",
-                                  match.result === "L"
-                                  && "bg-destructive text-white",
-                                  match.result === "T"
-                                  && "bg-muted-foreground text-white",
-                                )}
-                              >
-                                {match.result}
-                              </div>
-                            ))}
-                            {team.history.length === 0 && (
-                              <span className="text-xs text-muted-foreground">
-                                No matches
-                              </span>
-                            )}
+                            <MatchHistoryBadges
+                              history={team.history}
+                              eventId={eventId}
+                            />
                           </div>
                         </TableCell>
                       </TableRow>
