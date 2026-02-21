@@ -11,7 +11,7 @@ const Field = React.forwardRef<
 Field.displayName = "Field";
 
 const FieldLabel = React.forwardRef<
-  React.ElementRef<typeof Label>,
+  React.ComponentRef<typeof Label>,
   React.ComponentPropsWithoutRef<typeof Label>
 >(({ className, ...props }, ref) => (
   <Label ref={ref} className={cn(className)} {...props} />
@@ -35,8 +35,7 @@ const FieldError = React.forwardRef<
   React.HTMLAttributes<HTMLParagraphElement> & { errors?: any[] }
 >(({ className, errors, children, ...props }, ref) => {
   const error = errors?.[0] || children;
-  if (!error)
-    return null;
+  if (!error) return null;
 
   return (
     <p

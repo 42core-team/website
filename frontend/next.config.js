@@ -5,6 +5,9 @@ const nextConfig = {
   logging: {
     level: "info",
     format: "json",
+    fetches: {
+      fullUrl: true,
+    },
   },
   images: {
     remotePatterns: [
