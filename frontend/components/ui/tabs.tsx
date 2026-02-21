@@ -10,11 +10,11 @@ import { cn } from "@/lib/utils";
 const Tabs = TabsPrimitive.Root;
 
 const tabsListVariants = cva(
-  "inline-flex items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
+  "inline-flex h-auto flex-wrap items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
   {
     variants: {
       variant: {
-        default: "h-9",
+        default: "",
         line: "h-auto gap-6 rounded-none bg-transparent p-0",
       },
     },

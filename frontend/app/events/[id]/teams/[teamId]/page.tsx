@@ -51,11 +51,14 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
   return (
     <div className="space-y-4 py-3">
       <Card className="px-5 py-4">
-        <div className="mb-4 flex flex-col gap-2">
-          <div className="flex items-center gap-4">
-            <BackButton />
-            <h2 className="text-2xl font-bold">
+        <div className="mb-4 flex min-w-0 flex-col gap-2">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="shrink-0">
+              <BackButton />
+            </div>
+            <h2 className="min-w-0 text-2xl font-bold break-words">
               Team
+              {" "}
               {teamInfo.name}
             </h2>
           </div>
