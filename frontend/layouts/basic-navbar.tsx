@@ -75,6 +75,7 @@ export interface NavbarProps extends HTMLAttributes<HTMLElement> {
 export const Navbar = forwardRef<HTMLElement, NavbarProps>(
   ({ className, session, ...props }, ref) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
     const { setIsBasicNavbarMenuOpen } = useNavbar();
@@ -184,7 +185,7 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
             <ThemeSwitch />
             {session?.user?.id
               ? (
-                  <Popover>
+                  <Popover open={isProfileOpen} onOpenChange={setIsProfileOpen}>
                     <PopoverTrigger asChild>
                       <button className="rounded-full outline-none">
                         <Image
@@ -199,13 +200,17 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
                     <PopoverContent align="end" className="w-48 p-2">
                       <button
                         className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                        onClick={() => router.push("/profile")}
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          router.push("/profile");
+                        }}
                       >
                         Profile
                       </button>
                       <button
                         className="w-full rounded-md px-3 py-2 text-left text-sm text-destructive hover:bg-accent hover:text-accent-foreground"
                         onClick={() => {
+                          setIsProfileOpen(false);
                           signOut().then(() => router.push("/"));
                         }}
                       >
