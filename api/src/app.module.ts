@@ -12,6 +12,8 @@ import { DatabaseConfig } from "./DatabaseConfig";
 import { GithubApiModule } from "./github-api/github-api.module";
 import { ScheduleModule } from "@nestjs/schedule";
 import { StatsModule } from "./stats/stats.module";
+import { LoggerModule } from "nestjs-pino";
+import { Request } from "express";
 
 @Module({
   imports: [
@@ -19,6 +21,44 @@ import { StatsModule } from "./stats/stats.module";
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ".env",
+    }),
+    LoggerModule.forRoot({
+      pinoHttp: {
+        autoLogging: true,
+        transport:
+          process.env.NODE_ENV !== "production"
+            ? {
+                target: "pino-pretty",
+                options: {
+                  singleLine: true,
+                  colorize: true,
+                  ignore: "pid,hostname",
+                  messageFormat: "[{context}] {msg}",
+                },
+              }
+            : undefined,
+        customProps: (req: Request) => {
+          const customReq = req as Request & { user?: { id: string } };
+          const user = customReq.user;
+          return {
+            userId: user?.id,
+          };
+        },
+        serializers: {
+          req: (req) => {
+            return {
+              id: req.id,
+              method: req.method,
+              url: req.url,
+            };
+          },
+          res: (res) => {
+            return {
+              statusCode: res.statusCode,
+            };
+          },
+        },
+      },
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
