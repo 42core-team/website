@@ -244,12 +244,7 @@ export default function GraphView({
         panOnDrag={true}
         proOptions={{ hideAttribution: true }}
       >
-        <Background
-          color="currentColor"
-          className="opacity-10"
-          gap={20}
-          variant={undefined}
-        />
+        <Background color="currentColor" className="opacity-10" gap={20} />
       </ReactFlow>
     </div>
   );

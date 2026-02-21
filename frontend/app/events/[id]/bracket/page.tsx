@@ -1,12 +1,12 @@
-import type { Match } from "@/app/actions/tournament-model";
 import { isActionError } from "@/app/actions/errors";
 import { isEventAdmin } from "@/app/actions/event";
+import { getTeamsForEventTable } from "@/app/actions/team";
 import {
   getTournamentMatches,
   getTournamentTeamCount,
 } from "@/app/actions/tournament";
 import Actions from "@/app/events/[id]/bracket/actions";
-import GraphView from "@/app/events/[id]/bracket/graphView";
+import BracketTabs from "@/app/events/[id]/bracket/BracketTabs";
 
 export const metadata = {
   title: "Tournament Bracket",
@@ -26,11 +26,11 @@ export default async function page({
     throw new Error("Failed to verify admin status");
   }
   const isAdminView = (await searchParams).adminReveal === "true";
-  const serializedMatches: Match[] = await getTournamentMatches(
-    eventId,
-    isAdminView,
-  );
-  const teamCount = await getTournamentTeamCount(eventId);
+  const [serializedMatches, teamCount, teams] = await Promise.all([
+    getTournamentMatches(eventId, isAdminView),
+    getTournamentTeamCount(eventId),
+    getTeamsForEventTable(eventId, undefined, "score", "desc", isAdminView),
+  ]);
 
   return (
     <div className="flex flex-col gap-4 md:gap-8">
@@ -51,13 +51,13 @@ export default async function page({
         )}
       </div>
 
-      <div className="relative h-[60vh] min-h-[400px] overflow-hidden rounded-xl border bg-card/50 text-card-foreground shadow-sm md:h-[75vh] md:min-h-[600px] md:rounded-2xl">
-        <GraphView
-          matches={serializedMatches}
-          teamCount={teamCount}
-          isEventAdmin={eventAdmin}
-        />
-      </div>
+      <BracketTabs
+        eventId={eventId}
+        matches={serializedMatches}
+        teams={teams}
+        isEventAdmin={eventAdmin}
+        teamCount={teamCount}
+      />
     </div>
   );
 }

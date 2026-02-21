@@ -23,44 +23,18 @@ This repository is a monorepo containing multiple services. Please follow these 
 ### `api/` & `github-service/` (NestJS)
 
 - **Build:** `pnpm build` (Runs `nest build`)
-- **Lint:** `pnpm lint` (Runs `eslint`)
 - **Format:** `pnpm format` (Runs `prettier`)
 - **Run Dev:** `pnpm start:dev`
-- **Test:** `pnpm test` (Runs `jest`)
-- **Run Single Test:**
-
-  ```bash
-  # Run a specific test file
-  npx jest src/path/to/file.spec.ts
-
-  # Run a specific test case by name
-  pnpm test -- -t "should do something"
-  ```
 
 ### `frontend/` (Next.js)
 
 - **Build:** `pnpm build` (Runs `next build`)
 - **Dev:** `pnpm dev`
-- **Lint:** `pnpm lint`
-- **Run Single Test:** (Assuming standard Jest/Vitest setup if present, otherwise rely on linting/build)
-  ```bash
-  pnpm test -- path/to/file
-  ```
 
 ### `k8s-service/` (Go)
 
 - **Build:** `make build` (compiles to `bin/server`)
 - **Run:** `make run`
-- **Test:** `make test` (Runs `go test -v ./...`)
-- **Run Single Test:**
-
-  ```bash
-  # Run tests in a specific package
-  go test -v ./internal/package_name
-
-  # Run a specific test function
-  go test -v ./internal/package_name -run TestName
-  ```
 
 ## 2. Code Style & Conventions
 
