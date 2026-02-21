@@ -102,4 +102,3 @@ export class UpdateEventSettingsDto {
   @IsString()
   serverConfig?: string;
 }
-
