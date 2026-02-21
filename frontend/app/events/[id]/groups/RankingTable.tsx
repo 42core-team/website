@@ -45,8 +45,11 @@ export default function RankingTable({
       .sort((a, b) => a.round - b.round)
       .map((m) => {
         if (!m.winner)
-          return "T"; // Tie (not really possible in currently implemented swiss but good for safety)
-        return m.winner.id === teamId ? "W" : "L";
+          return { id: m.id, result: "T" };
+        return {
+          id: m.id,
+          result: m.winner.id === teamId ? "W" : "L",
+        };
       });
   };
 
@@ -91,17 +94,22 @@ export default function RankingTable({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      {history.map((result, i) => (
+                      {history.map((match, i) => (
                         <div
                           key={i}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/events/${eventId}/match/${match.id}`);
+                          }}
                           className={cn(
-                            "w-6 h-6 rounded flex items-center justify-center text-[11px] shadow-sm",
-                            result === "W" && "bg-emerald-500 text-white",
-                            result === "L" && "bg-destructive text-white",
-                            result === "T" && "bg-muted-foreground text-white",
+                            "w-6 h-6 rounded flex items-center justify-center text-[11px] shadow-sm cursor-pointer hover:opacity-80 transition-opacity",
+                            match.result === "W" && "bg-emerald-500 text-white",
+                            match.result === "L" && "bg-destructive text-white",
+                            match.result === "T"
+                            && "bg-muted-foreground text-white",
                           )}
                         >
-                          {result}
+                          {match.result}
                         </div>
                       ))}
                       {history.length === 0 && (

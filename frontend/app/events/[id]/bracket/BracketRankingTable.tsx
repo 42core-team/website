@@ -64,7 +64,10 @@ export default function BracketRankingTable({
     const history = teamMatches
       .filter(m => m.state === "FINISHED")
       .sort((a, b) => a.round - b.round)
-      .map(m => (m.winner ? (m.winner.id === teamId ? "W" : "L") : "T"));
+      .map(m => ({
+        id: m.id,
+        result: m.winner ? (m.winner.id === teamId ? "W" : "L") : "T",
+      }));
 
     return {
       highestRound,
@@ -175,18 +178,26 @@ export default function BracketRankingTable({
                         <TableCell className="pl-8">{team.name}</TableCell>
                         <TableCell className="pr-6 text-right">
                           <div className="flex justify-end gap-1">
-                            {team.history.map((result, i) => (
+                            {team.history.map((match, i) => (
                               <div
                                 key={i}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(
+                                    `/events/${eventId}/match/${match.id}`,
+                                  );
+                                }}
                                 className={cn(
-                                  "w-6 h-6 rounded flex items-center justify-center text-[11px] shadow-sm",
-                                  result === "W" && "bg-emerald-500 text-white",
-                                  result === "L" && "bg-destructive text-white",
-                                  result === "T"
+                                  "w-6 h-6 rounded flex items-center justify-center text-[11px] shadow-sm cursor-pointer hover:opacity-80 transition-opacity",
+                                  match.result === "W"
+                                  && "bg-emerald-500 text-white",
+                                  match.result === "L"
+                                  && "bg-destructive text-white",
+                                  match.result === "T"
                                   && "bg-muted-foreground text-white",
                                 )}
                               >
-                                {result}
+                                {match.result}
                               </div>
                             ))}
                             {team.history.length === 0 && (
