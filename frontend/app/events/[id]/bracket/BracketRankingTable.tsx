@@ -65,9 +65,17 @@ export default function BracketRankingTable({
     return { highestRound, actualRank, hasMatches: teamMatches.length > 0 };
   };
 
+  const sortedBySwiss = [...teams].sort((a, b) => {
+    if (b.score !== a.score)
+      return b.score - a.score;
+    return b.buchholzPoints - a.buchholzPoints;
+  });
+  const swissRankMap = new Map(sortedBySwiss.map((t, i) => [t.id, i + 1]));
+
   const teamsWithStats = teams
     .map(team => ({
       ...team,
+      swissRank: swissRankMap.get(team.id),
       ...getTeamStats(team.id),
     }))
     .filter(team => team.hasMatches);
@@ -91,7 +99,7 @@ export default function BracketRankingTable({
               </TableHead>
               <TableHead className="font-bold">Team Name</TableHead>
               <TableHead className="hidden text-center font-bold sm:table-cell">
-                Swiss Score
+                Swiss Rank
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -148,7 +156,8 @@ export default function BracketRankingTable({
                     </Link>
                   </TableCell>
                   <TableCell className="hidden pr-6 text-center font-mono text-muted-foreground sm:table-cell">
-                    {(team.score ?? 0).toFixed(1)}
+                    #
+                    {team.swissRank}
                   </TableCell>
                 </TableRow>
               );
