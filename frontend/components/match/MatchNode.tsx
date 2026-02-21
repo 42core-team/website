@@ -14,6 +14,7 @@ interface MatchNodeData {
   onClick?: (match: Match) => void;
   showTargetHandle?: boolean;
   showSourceHandle?: boolean;
+  hideScore?: boolean;
 }
 
 interface MatchNodeProps {
@@ -70,6 +71,7 @@ function MatchNode({ data }: MatchNodeProps) {
     onClick,
     showTargetHandle = false,
     showSourceHandle = false,
+    hideScore = false,
   } = data;
   const styles = getMatchStateStyles(match.state);
   const icon = getMatchStateIcon(match.state);
@@ -178,7 +180,8 @@ function MatchNode({ data }: MatchNodeProps) {
                           <span className="ml-1 text-green-600">👑</span>
                         )}
                       </div>
-                      {match.state === MatchState.FINISHED
+                      {!hideScore
+                        && match.state === MatchState.FINISHED
                         && team.score !== undefined && (
                         <span className="ml-2 text-xs">
                           {(match.results || []).find(
