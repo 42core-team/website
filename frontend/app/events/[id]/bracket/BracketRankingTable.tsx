@@ -5,6 +5,7 @@ import type { Match } from "@/app/actions/tournament-model";
 import { Award, Medal, Trophy } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
+import { MatchState } from "@/app/actions/tournament-model";
 import { MatchHistoryBadges } from "@/components/match/MatchHistoryBadges";
 import {
   Table,
@@ -81,7 +82,7 @@ export default function BracketRankingTable({
       }
 
       const history = teamMatches
-        .filter(m => m.state === "FINISHED")
+        .filter(m => m.state === MatchState.FINISHED)
         .sort((a, b) => a.round - b.round)
         .map(m => ({
           id: m.id!,
@@ -158,6 +159,20 @@ export default function BracketRankingTable({
                     const isFinalist = rank === 2;
                     const isSemi = rank === 3;
 
+                    let rankIcon;
+                    if (isWinner) {
+                      rankIcon = <Trophy className="h-6 w-6 text-yellow-500" />;
+                    }
+                    else if (isFinalist) {
+                      rankIcon = <Medal className="h-6 w-6 text-slate-400" />;
+                    }
+                    else if (isSemi) {
+                      rankIcon = <Award className="h-6 w-6 text-amber-700" />;
+                    }
+                    else {
+                      rankIcon = <span className="font-mono font-bold">{rank}</span>;
+                    }
+
                     return (
                       <TableRow
                         key={team.id}
@@ -178,21 +193,7 @@ export default function BracketRankingTable({
                       >
                         <TableCell className="text-center">
                           <div className="flex justify-center">
-                            {isWinner
-                              ? (
-                                  <Trophy className="h-6 w-6 text-yellow-500" />
-                                )
-                              : isFinalist
-                                ? (
-                                    <Medal className="h-6 w-6 text-slate-400" />
-                                  )
-                                : isSemi
-                                  ? (
-                                      <Award className="h-6 w-6 text-amber-700" />
-                                    )
-                                  : (
-                                      <span className="font-mono font-bold">{rank}</span>
-                                    )}
+                            {rankIcon}
                           </div>
                         </TableCell>
                         <TableCell className="text-center text-muted-foreground">
