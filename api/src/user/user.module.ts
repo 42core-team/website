@@ -21,4 +21,4 @@ import { UserEventsController } from "./user.events.controller";
   providers: [UserService, SocialAccountService],
   exports: [UserService, SocialAccountService],
 })
-export class UserModule { }
+export class UserModule {}

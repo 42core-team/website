@@ -10,6 +10,7 @@ import {
   Put,
   Query,
   UseGuards,
+  Logger,
 } from "@nestjs/common";
 import { UserId } from "../guards/UserGuard";
 import { TeamService } from "./team.service";
@@ -31,6 +32,8 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 @Controller("team")
 export class TeamController {
+  private readonly logger = new Logger(TeamController.name);
+
   constructor(
     private readonly teamService: TeamService,
     private readonly userService: UserService,
@@ -89,6 +92,14 @@ export class TeamController {
         "A team with this name already exists for this event.",
       );
 
+    this.logger.log({
+      action: "attempt_create_team",
+      userId,
+      eventId,
+      teamName: createTeamDto.name,
+      starterTemplateId: createTeamDto.starterTemplateId,
+    });
+
     return this.teamService.createTeam(
       createTeamDto.name,
       userId,
@@ -100,6 +111,11 @@ export class TeamController {
   @UseGuards(JwtAuthGuard, MyTeamGuards, TeamNotLockedGuard)
   @Put(`event/:${EVENT_ID_PARAM}/leave`)
   async leaveTeam(@UserId() userId: string, @Team() team: TeamEntity) {
+    this.logger.log({
+      action: "attempt_leave_team",
+      userId,
+      teamId: team.id,
+    });
     return this.teamService.leaveTeam(team.id, userId);
   }
 
@@ -171,6 +187,14 @@ export class TeamController {
         "This user is already invited to this team.",
       );
 
+    this.logger.log({
+      action: "attempt_send_team_invite",
+      inviterId: userId,
+      inviteeId: inviteUserDto.userToInviteId,
+      teamId: team.id,
+      eventId,
+    });
+
     return this.userService.addTeamInvite(
       inviteUserDto.userToInviteId,
       team.id,
@@ -219,6 +243,13 @@ export class TeamController {
     if (await this.teamService.isTeamFull(teamId))
       throw new BadRequestException("This team is full.");
 
+    this.logger.log({
+      action: "attempt_accept_team_invite",
+      userId,
+      teamId,
+      eventId,
+    });
+
     return this.teamService.acceptTeamInvite(userId, teamId);
   }
 
@@ -229,26 +260,44 @@ export class TeamController {
     if (!(await this.teamService.isUserInvitedToTeam(userId, teamId)))
       throw new BadRequestException("You are not invited to this team.");
 
+    this.logger.log({
+      action: "attempt_decline_team_invite",
+      userId,
+      teamId,
+    });
+
     return this.teamService.declineTeamInvite(userId, teamId);
   }
 
   @UseGuards(JwtAuthGuard, MyTeamGuards)
   @Put(`event/:${EVENT_ID_PARAM}/queue/join`)
-  async joinQueue(@Team() team: TeamEntity) {
+  async joinQueue(@Team() team: TeamEntity, @UserId() userId: string) {
     if (team.inQueue)
       throw new BadRequestException("You are already in the queue.");
 
     if (!(await this.eventService.hasEventStartedForTeam(team.id)))
       throw new BadRequestException("The event has not started yet.");
 
+    this.logger.log({
+      action: "attempt_join_queue",
+      teamId: team.id,
+      userId,
+    });
+
     return this.teamService.joinQueue(team.id);
   }
 
   @UseGuards(JwtAuthGuard, MyTeamGuards)
   @Put(`event/:${EVENT_ID_PARAM}/queue/leave`)
-  async leaveQueue(@Team() team: TeamEntity) {
+  async leaveQueue(@Team() team: TeamEntity, @UserId() userId: string) {
     if (!team.inQueue)
       throw new BadRequestException("You are not in the queue.");
+
+    this.logger.log({
+      action: "attempt_leave_queue",
+      teamId: team.id,
+      userId,
+    });
 
     return this.teamService.leaveQueue(team.id);
   }

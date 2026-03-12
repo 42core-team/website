@@ -6,6 +6,7 @@ import {
   Query,
   UnauthorizedException,
   UseGuards,
+  Logger,
 } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { UserId } from "../guards/UserGuard";
@@ -13,6 +14,8 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 @Controller("user")
 export class UserController {
+  private readonly logger = new Logger(UserController.name);
+
   constructor(private readonly userService: UserService) {}
 
   @UseGuards(JwtAuthGuard)
@@ -36,6 +39,8 @@ export class UserController {
     if (sanitizedQuery.length > 100) {
       throw new BadRequestException("Search query is too long");
     }
+
+    this.logger.log({ action: "search_users", userId, query: sanitizedQuery });
 
     return this.userService.searchUsers(sanitizedQuery);
   }
