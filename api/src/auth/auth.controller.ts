@@ -119,19 +119,8 @@ export class AuthController {
       return res.redirect(redirectUrl);
     } catch (e) {
       if (e instanceof BadRequestException) {
-        this.logger.error(
-          `Error in FortyTwo callback: ${e.message}`,
-          e.stack || String(e),
-        );
         throw e;
       }
-
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      const errorStack = e instanceof Error ? e.stack || String(e) : String(e);
-      this.logger.error(
-        `Error in FortyTwo callback: ${errorMessage}`,
-        errorStack,
-      );
 
       throw new BadRequestException(
         e instanceof Error
