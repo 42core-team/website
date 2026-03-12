@@ -130,7 +130,7 @@ export default function QueueState(props: {
           : (
               <>
                 <p className="text-lg">
-                  Team:
+                  {"Team: "}
                   {props.team.name}
                 </p>
                 <p
@@ -175,7 +175,7 @@ export default function QueueState(props: {
             )}
       </div>
 
-      <div className="mt-8 w-full max-w-2xl">
+      <div className="mt-8">
         <h2 className="mb-4 text-xl font-semibold">Past Matches</h2>
         <QueueMatchesList eventId={props.eventId} matches={queueMatches} />
       </div>

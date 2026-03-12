@@ -61,6 +61,27 @@ h6[id]::before {
   visibility: hidden;
 }
 
+/* Code syntax highlighting — Shiki dual-theme switching via .dark class.
+   rehype-pretty-code sets --shiki-light / --shiki-dark as inline CSS custom
+   properties on every token. These rules resolve which variable is active. */
+[data-rehype-pretty-code-figure] pre {
+  background-color: var(--muted);
+  color: var(--shiki-light);
+}
+
+[data-rehype-pretty-code-figure] span {
+  color: var(--shiki-light);
+}
+
+.dark [data-rehype-pretty-code-figure] pre {
+  background-color: var(--shiki-dark-bg);
+  color: var(--shiki-dark);
+}
+
+.dark [data-rehype-pretty-code-figure] span {
+  color: var(--shiki-dark);
+}
+
 /* Search highlighting */
 mark {
   background-color: #fef3c7;

@@ -11,7 +11,7 @@ const Field = React.forwardRef<
 Field.displayName = "Field";
 
 const FieldLabel = React.forwardRef<
-  React.ElementRef<typeof Label>,
+  React.ComponentRef<typeof Label>,
   React.ComponentPropsWithoutRef<typeof Label>
 >(({ className, ...props }, ref) => (
   <Label ref={ref} className={cn(className)} {...props} />

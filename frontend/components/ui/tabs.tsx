@@ -10,11 +10,11 @@ import { cn } from "@/lib/utils";
 const Tabs = TabsPrimitive.Root;
 
 const tabsListVariants = cva(
-  "inline-flex items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
+  "inline-flex h-auto flex-wrap items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
   {
     variants: {
       variant: {
-        default: "h-9",
+        default: "",
         line: "h-auto gap-6 rounded-none bg-transparent p-0",
       },
     },
@@ -25,7 +25,7 @@ const tabsListVariants = cva(
 );
 
 const TabsList = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.List>,
+  React.ComponentRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
   & VariantProps<typeof tabsListVariants>
 >(({ className, variant, ...props }, ref) => (
@@ -54,7 +54,7 @@ const tabsTriggerVariants = cva(
 );
 
 const TabsTrigger = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Trigger>,
+  React.ComponentRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
   & VariantProps<typeof tabsTriggerVariants>
 >(({ className, variant, ...props }, ref) => (
@@ -67,7 +67,7 @@ const TabsTrigger = React.forwardRef<
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
 
 const TabsContent = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Content>,
+  React.ComponentRef<typeof TabsPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.Content

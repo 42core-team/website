@@ -36,7 +36,7 @@ export default function QueueMatchesList(props: {
             {/* Match Meta */}
             <div
               className={cn(
-                "px-4 py-3 sm:w-40 bg-muted/10 flex flex-row sm:flex-col items-center sm:items-start justify-between sm:justify-center gap-2",
+                "px-4 py-3 shrink-0 sm:w-40 bg-muted/10 flex flex-row sm:flex-col items-center sm:items-start justify-between sm:justify-center gap-2",
                 !isInsideCard
                 && "bg-muted/20 border-b sm:border-b-0 sm:border-r",
               )}
@@ -81,8 +81,8 @@ export default function QueueMatchesList(props: {
             </div>
 
             {/* Match Content */}
-            <div className="flex flex-1 items-center justify-center p-6">
-              <div className="flex w-full max-w-2xl items-center justify-center gap-4 sm:gap-12">
+            <div className="flex min-w-0 flex-1 items-center justify-center p-4 sm:p-6">
+              <div className="flex w-full max-w-4xl min-w-0 items-center justify-center gap-4 sm:gap-12">
                 {/* Team 1 */}
                 <div className="flex min-w-0 flex-1 flex-col items-end gap-1">
                   {match.teams[0]
@@ -195,7 +195,7 @@ export default function QueueMatchesList(props: {
             {/* Replay */}
             <div
               className={cn(
-                "flex items-center justify-center px-6 sm:w-40 pb-4 sm:pb-0",
+                "flex items-center justify-center shrink-0 px-6 sm:w-40 pb-4 sm:pb-0",
                 !isInsideCard && "sm:border-l border-border/40",
               )}
             >

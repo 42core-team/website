@@ -432,7 +432,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
         onValueChange={handleTabChange}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
+        <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="operation">Operation</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>

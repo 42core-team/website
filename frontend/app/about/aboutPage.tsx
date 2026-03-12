@@ -36,7 +36,7 @@ const team: TeamMember[] = [
     name: "Emil Ebert",
     role: "Head of Web Systems",
     imgSrc: "/team/eebert.png",
-    linkUrl: "https://www.linkedin.com/in/emil-ebert/",
+    linkUrl: "https://coregame.sh/rr",
     linkType: "linkedin",
   },
   {
@@ -237,7 +237,7 @@ export default function AboutPageClient() {
                         href={m.linkUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="absolute right-2.5 bottom-2.5 rounded-full bg-primary p-2 text-primary-foreground transition-transform hover:scale-110"
+                        className="no-icon absolute right-2.5 bottom-2.5 rounded-full bg-primary p-2 text-primary-foreground transition-transform hover:scale-110"
                         aria-label={`${m.name} profile link`}
                       >
                         {m.linkType === "github"

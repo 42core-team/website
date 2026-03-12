@@ -142,7 +142,12 @@ export async function getWikiPageWithVersion(
       .use(remarkParse)
       .use(remarkGfm)
       .use(remarkRehype)
-      .use(rehypePrettyCode)
+      .use(rehypePrettyCode, {
+        theme: {
+          dark: "github-dark",
+          light: "github-light",
+        },
+      })
       .use(rehypeStringify)
       .process(content);
 
