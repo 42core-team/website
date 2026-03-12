@@ -5,24 +5,24 @@ import type { Match } from "@/app/actions/tournament-model";
 import { BarChart3, Network } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTabParam } from "@/hooks/useTabParam";
+import BracketRankingTable from "./BracketRankingTable";
 import GraphView from "./graphView";
-import RankingTable from "./RankingTable";
 
-interface GroupPhaseTabsProps {
+interface BracketTabsProps {
   eventId: string;
   matches: Match[];
   teams: Team[];
   isEventAdmin: boolean;
-  advancementCount: number;
+  teamCount: number;
 }
 
-export default function GroupPhaseTabs({
+export default function BracketTabs({
   eventId,
   matches,
   teams,
   isEventAdmin,
-  advancementCount,
-}: GroupPhaseTabsProps) {
+  teamCount,
+}: BracketTabsProps) {
   const { currentTab, onTabChange } = useTabParam("graph");
 
   return (
@@ -42,19 +42,21 @@ export default function GroupPhaseTabs({
 
       <TabsContent value="graph" className="mt-0">
         <div className="relative h-[60vh] min-h-[400px] overflow-hidden rounded-xl border bg-card/50 text-card-foreground shadow-sm md:h-[75vh] md:min-h-[600px] md:rounded-2xl">
-          <GraphView matches={matches} isEventAdmin={isEventAdmin} />
+          <GraphView
+            matches={matches}
+            teamCount={teamCount}
+            isEventAdmin={isEventAdmin}
+          />
         </div>
       </TabsContent>
 
       <TabsContent value="ranking" className="mt-0">
-        <div className="overflow-hidden rounded-xl border bg-card/50 px-2 py-1 text-card-foreground shadow-sm md:rounded-2xl">
-          <RankingTable
-            teams={teams}
-            matches={matches}
-            eventId={eventId}
-            advancementCount={advancementCount}
-          />
-        </div>
+        <BracketRankingTable
+          teams={teams}
+          matches={matches}
+          eventId={eventId}
+          isEventAdmin={isEventAdmin}
+        />
       </TabsContent>
     </Tabs>
   );

@@ -17,8 +17,7 @@ import {
 
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { isActionError } from "@/app/actions/errors";
 import {
@@ -68,6 +67,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useTabParam } from "@/hooks/useTabParam";
 import { cn } from "@/lib/utils";
 import { StarterTemplatesManagement } from "./components/StarterTemplatesManagement";
 
@@ -78,16 +78,7 @@ interface DashboardPageProps {
 export function DashboardPage({ eventId }: DashboardPageProps) {
   const session = useSession();
   const queryClient = useQueryClient();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const currentTab = searchParams.get("tab") || "overview";
-
-  const handleTabChange = (value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", value);
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  };
+  const { currentTab, onTabChange: handleTabChange } = useTabParam("overview");
 
   const [teamAutoLockTime, setTeamAutoLockTime] = useState<string>("");
   const [userSearchQuery, setUserSearchQuery] = useState("");
