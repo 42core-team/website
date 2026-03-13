@@ -23,10 +23,10 @@ export default async function OAuthCallback({ params }: OAuthCallbackProps) {
   return (
     <Suspense
       fallback={(
-        <div className="flex justify-center items-center min-h-lvh">
+        <div className="flex min-h-lvh items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-frontend">Loading OAuth handler...</p>
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
+            <p className="text-muted-frontend mt-4">Loading OAuth handler...</p>
           </div>
         </div>
       )}

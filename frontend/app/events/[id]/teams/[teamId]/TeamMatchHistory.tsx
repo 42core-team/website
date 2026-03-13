@@ -1,12 +1,12 @@
 "use client";
 
 import type { Match } from "@/app/actions/tournament-model";
+import { History } from "lucide-react";
 import React from "react";
 import { MatchPhase } from "@/app/actions/tournament-model";
 import QueueMatchesList from "@/components/QueueMatchesList";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { History } from "lucide-react";
 
 interface TeamMatchHistoryProps {
   eventId: string;
@@ -28,7 +28,7 @@ export default function TeamMatchHistory({
         </div>
       </CardHeader>
       <Tabs defaultValue="all" className="w-full">
-        <div className="px-4 py-3 border-b">
+        <div className="border-b px-4 py-3">
           <TabsList>
             <TabsTrigger value="all">All Matches</TabsTrigger>
             <TabsTrigger value={MatchPhase.QUEUE}>Queue</TabsTrigger>
@@ -43,21 +43,21 @@ export default function TeamMatchHistory({
         <TabsContent value={MatchPhase.QUEUE} className="mt-0">
           <QueueMatchesList
             eventId={eventId}
-            matches={matches.filter((m) => m.phase === MatchPhase.QUEUE)}
+            matches={matches.filter(m => m.phase === MatchPhase.QUEUE)}
             isInsideCard
           />
         </TabsContent>
         <TabsContent value={MatchPhase.SWISS} className="mt-0">
           <QueueMatchesList
             eventId={eventId}
-            matches={matches.filter((m) => m.phase === MatchPhase.SWISS)}
+            matches={matches.filter(m => m.phase === MatchPhase.SWISS)}
             isInsideCard
           />
         </TabsContent>
         <TabsContent value={MatchPhase.ELIMINATION} className="mt-0">
           <QueueMatchesList
             eventId={eventId}
-            matches={matches.filter((m) => m.phase === MatchPhase.ELIMINATION)}
+            matches={matches.filter(m => m.phase === MatchPhase.ELIMINATION)}
             isInsideCard
           />
         </TabsContent>

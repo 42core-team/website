@@ -33,10 +33,10 @@ export function User({ name, description, avatarProps, className }: UserProps) {
           {avatarProps?.fallback || (name ? name[0] : "?")}
         </AvatarFallback>
       </Avatar>
-      <div className="flex flex-col ml-4 min-w-0">
-        {name && <span className="font-medium truncate">{name}</span>}
+      <div className="ml-4 flex min-w-0 flex-col">
+        {name && <span className="truncate font-medium">{name}</span>}
         {description && (
-          <span className="text-muted-foreground text-sm truncate">
+          <span className="truncate text-sm text-muted-foreground">
             {description}
           </span>
         )}

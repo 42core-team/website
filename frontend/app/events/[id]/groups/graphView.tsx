@@ -6,22 +6,28 @@ import { useEffect } from "react";
 import ReactFlow, { Background, useNodesState } from "reactflow";
 import { MatchState } from "@/app/actions/tournament-model";
 import { MatchNode } from "@/components/match";
-import { Switch } from "@/components/ui/switch";
 import "reactflow/dist/style.css";
 
 // Custom node types for ReactFlow
+function RoundNode({ data }: { data: { label: string } }) {
+  return (
+    <div className="flex h-full w-full items-center justify-center rounded-xl border border-border/50 bg-card/90 px-4 text-sm font-bold tracking-tight text-foreground uppercase shadow-sm backdrop-blur-md">
+      {data.label}
+    </div>
+  );
+}
+
 const nodeTypes = {
   matchNode: MatchNode,
+  roundNode: RoundNode,
 };
 
 export default function GraphView({
   matches,
-  eventAdmin,
-  isAdminView,
+  isEventAdmin,
 }: {
   matches: Match[];
-  eventAdmin: boolean;
-  isAdminView: boolean;
+  isEventAdmin: boolean;
 }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
 
@@ -29,11 +35,13 @@ export default function GraphView({
   const eventId = useParams().id as string;
 
   useEffect(() => {
-    if (!matches || matches.length === 0) return;
+    if (!matches || matches.length === 0)
+      return;
 
     const matchesByRound = matches.reduce(
       (acc, match) => {
-        if (!acc[match.round]) acc[match.round] = [];
+        if (!acc[match.round])
+          acc[match.round] = [];
         acc[match.round].push(match);
         return acc;
       },
@@ -46,11 +54,11 @@ export default function GraphView({
 
     const newNodes: Node[] = [];
 
-    const COLUMN_WIDTH = 300;
+    const COLUMN_WIDTH = 320;
     const ROW_HEIGHT = 130;
     const PADDING = 20;
-    const MATCH_WIDTH = 250;
-    const MATCH_HEIGHT = 80;
+    const MATCH_WIDTH = 280;
+    const MATCH_HEIGHT = 100;
 
     rounds.forEach((round, roundIndex) => {
       const roundMatches = matchesByRound[round];
@@ -58,6 +66,7 @@ export default function GraphView({
       // Add round header
       newNodes.push({
         id: `round-${round}`,
+        type: "roundNode",
         position: {
           x: roundIndex * COLUMN_WIDTH + PADDING,
           y: PADDING,
@@ -67,13 +76,7 @@ export default function GraphView({
         },
         style: {
           width: COLUMN_WIDTH - PADDING * 2,
-          height: 40,
-          textAlign: "center",
-          fontWeight: "bold",
-          padding: "10px",
-          backgroundColor: "#f1f5f9",
-          border: "2px solid #cbd5e1",
-          borderRadius: "8px",
+          height: 60,
         },
         draggable: false,
         selectable: false,
@@ -81,11 +84,11 @@ export default function GraphView({
 
       // Add match nodes
       roundMatches.forEach((match, matchIndex) => {
-        const xPos =
-          roundIndex * COLUMN_WIDTH +
-          PADDING +
-          (COLUMN_WIDTH - MATCH_WIDTH - PADDING * 2) / 2;
-        const yPos = (matchIndex + 1) * ROW_HEIGHT + PADDING + 20; // +60 for header space
+        const xPos
+          = roundIndex * COLUMN_WIDTH
+            + PADDING
+            + (COLUMN_WIDTH - MATCH_WIDTH - PADDING * 2) / 2;
+        const yPos = (matchIndex + 1) * ROW_HEIGHT + PADDING + 20;
 
         newNodes.push({
           id: match.id ?? `match-${round}-${matchIndex}`,
@@ -97,10 +100,11 @@ export default function GraphView({
             height: MATCH_HEIGHT,
             onClick: (clickedMatch: Match) => {
               if (
-                (match.state === MatchState.FINISHED || eventAdmin) &&
-                clickedMatch.id
-              )
+                (match.state === MatchState.FINISHED || isEventAdmin)
+                && clickedMatch.id
+              ) {
                 router.push(`/events/${eventId}/match/${clickedMatch.id}`);
+              }
             },
           },
         });
@@ -108,36 +112,37 @@ export default function GraphView({
     });
 
     setNodes(newNodes);
-  }, [matches]);
+  }, [matches, isEventAdmin, eventId, router]);
 
   return (
-    <div className="w-full h-[80vh]">
-      {eventAdmin && (
-        <div className="flex items-center mb-2 mt-2 gap-4">
-          Toggle admin view
-          <Switch
-            onCheckedChange={(value) => {
-              const params = new URLSearchParams(window.location.search);
-              params.set("adminReveal", value ? "true" : "false");
-              router.replace(`?${params.toString()}`);
-            }}
-            defaultChecked={isAdminView}
-          />
-        </div>
-      )}
+    <div className="h-full w-full">
       <ReactFlow
         nodes={nodes}
         onNodesChange={onNodesChange}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        fitViewOptions={{
+          padding: 0.15,
+          minZoom: 0.2,
+          maxZoom: 1,
+        }}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={true}
         minZoom={0.1}
-        maxZoom={2}
+        maxZoom={1.5}
+        zoomOnScroll={true}
+        panOnScroll={false}
+        zoomOnPinch={true}
+        panOnDrag={true}
+        proOptions={{ hideAttribution: true }}
       >
-        <Background color="#f0f0f0" gap={16} />
+        <Background
+          color="currentColor"
+          className="opacity-10"
+          gap={20}
+          variant={undefined}
+        />
       </ReactFlow>
     </div>
   );

@@ -24,8 +24,8 @@ export default async function EventLayout({
   if (!userId) {
     return (
       <div className="container mx-auto max-w-7xl px-6 py-12">
-        <div className="text-center p-8 shadow-xs">
-          <h2 className="text-2xl font-semibold  mb-2">
+        <div className="p-8 text-center shadow-xs">
+          <h2 className="mb-2 text-2xl  font-semibold">
             Authentication Required
           </h2>
           <p className="text-gray-300">Please sign in to view this event</p>
@@ -50,7 +50,7 @@ export default async function EventLayout({
   }
 
   return (
-    <div className="relative flex flex-col min-h-lvh">
+    <div className="relative flex min-h-lvh flex-col">
       {userId && (
         <EventInfoNotice userId={userId} startDate={event.startDate} />
       )}
@@ -60,7 +60,7 @@ export default async function EventLayout({
         isUserRegistered={isUserRegistered}
         isEventAdmin={isEventAdminState}
       />
-      <main className="container mx-auto max-w-7xl px-6 grow">{children}</main>
+      <main className="container mx-auto max-w-7xl grow px-6">{children}</main>
     </div>
   );
 }

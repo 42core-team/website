@@ -2,7 +2,6 @@
 
 import type { ServerActionResponse } from "@/app/actions/errors";
 import axiosInstance, { handleError } from "@/app/actions/axios";
-import { isActionError } from "@/app/actions/errors";
 
 export interface Event {
   id: string;
@@ -31,6 +30,14 @@ export interface Event {
   serverConfig?: string;
   isPrivate: boolean;
   githubOrgSecret?: string;
+  starterTemplates?: EventStarterTemplate[];
+}
+
+export interface EventStarterTemplate {
+  id: string;
+  name: string;
+  basePath: string;
+  myCoreBotDockerImage: string;
 }
 
 export async function getEventById(
@@ -170,7 +177,9 @@ export async function updateEventSettings(
 
 export async function getEventAdmins(
   eventId: string,
-): Promise<ServerActionResponse<{ id: string; username: string; name: string }[]>> {
+): Promise<
+  ServerActionResponse<{ id: string; username: string; name: string }[]>
+> {
   return await handleError(axiosInstance.get(`event/${eventId}/admins`));
 }
 
@@ -178,14 +187,18 @@ export async function addEventAdmin(
   eventId: string,
   userId: string,
 ): Promise<ServerActionResponse<void>> {
-  return await handleError(axiosInstance.post(`event/${eventId}/admins/${userId}`));
+  return await handleError(
+    axiosInstance.post(`event/${eventId}/admins/${userId}`),
+  );
 }
 
 export async function removeEventAdmin(
   eventId: string,
   userId: string,
 ): Promise<ServerActionResponse<void>> {
-  return await handleError(axiosInstance.delete(`event/${eventId}/admins/${userId}`));
+  return await handleError(
+    axiosInstance.delete(`event/${eventId}/admins/${userId}`),
+  );
 }
 
 export async function getMyEvents(): Promise<Event[]> {
@@ -195,4 +208,38 @@ export async function getMyEvents(): Promise<Event[]> {
   catch {
     return [];
   }
+}
+
+export async function getStarterTemplates(
+  eventId: string,
+): Promise<ServerActionResponse<EventStarterTemplate[]>> {
+  return await handleError(axiosInstance.get(`event/${eventId}/templates`));
+}
+
+export async function createStarterTemplate(
+  eventId: string,
+  data: { name: string; basePath: string; myCoreBotDockerImage: string },
+): Promise<ServerActionResponse<EventStarterTemplate>> {
+  return await handleError(
+    axiosInstance.post(`event/${eventId}/templates`, data),
+  );
+}
+
+export async function updateStarterTemplate(
+  eventId: string,
+  templateId: string,
+  data: { name?: string; basePath?: string; myCoreBotDockerImage?: string },
+): Promise<ServerActionResponse<EventStarterTemplate>> {
+  return await handleError(
+    axiosInstance.put(`event/${eventId}/templates/${templateId}`, data),
+  );
+}
+
+export async function deleteStarterTemplate(
+  eventId: string,
+  templateId: string,
+): Promise<ServerActionResponse<void>> {
+  return await handleError(
+    axiosInstance.delete(`event/${eventId}/templates/${templateId}`),
+  );
 }

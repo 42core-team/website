@@ -148,9 +148,9 @@ export default async function WikiPage({ params }: WikiPageProps) {
             currentVersion={version}
             pageContent={parentPage.content}
           >
-            <article className="prose prose-lg dark:prose-invert max-w-none">
-              <div className="bg-warning-50 border border-warning-200 rounded-lg p-4 mb-6">
-                <h3 className="text-warning-800 font-semibold mb-2">
+            <article className="prose prose-lg max-w-none dark:prose-invert">
+              <div className="bg-warning-50 border-warning-200 mb-6 rounded-lg border p-4">
+                <h3 className="text-warning-800 mb-2 font-semibold">
                   Image File Accessed
                 </h3>
                 <p className="text-warning-700">
@@ -164,17 +164,17 @@ export default async function WikiPage({ params }: WikiPageProps) {
               </div>
 
               <header className="mb-8">
-                <h1 className="text-4xl font-bold text-foreground mb-2">
+                <h1 className="mb-2 text-4xl font-bold text-foreground">
                   {parentPage.title}
                 </h1>
-                <div className="text-sm text-muted-foreground flex items-center gap-4">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <span>
                     Last updated:
                     {" "}
                     {parentPage.lastModified.toLocaleDateString()}
                   </span>
                   {version !== defaultVersion && (
-                    <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded text-xs font-medium">
+                    <span className="rounded bg-primary-100 px-2 py-1 text-xs font-medium text-primary-700">
                       {version}
                     </span>
                   )}
@@ -208,9 +208,9 @@ export default async function WikiPage({ params }: WikiPageProps) {
           currentVersion={version}
           pageContent={homePage.content}
         >
-          <article className="prose prose-lg dark:prose-invert max-w-none">
-            <div className="bg-warning-50 border border-warning-200 rounded-lg p-4 mb-6">
-              <h3 className="text-warning-800 font-semibold mb-2">
+          <article className="prose prose-lg max-w-none dark:prose-invert">
+            <div className="bg-warning-50 border-warning-200 mb-6 rounded-lg border p-4">
+              <h3 className="text-warning-800 mb-2 font-semibold">
                 Content Not Available
               </h3>
               <p className="text-warning-700">
@@ -227,17 +227,17 @@ export default async function WikiPage({ params }: WikiPageProps) {
             </div>
 
             <header className="mb-8">
-              <h1 className="text-4xl font-bold text-foreground mb-2">
+              <h1 className="mb-2 text-4xl font-bold text-foreground">
                 {homePage.title}
               </h1>
-              <div className="text-sm text-muted-foreground flex items-center gap-4">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span>
                   Last updated:
                   {" "}
                   {homePage.lastModified.toLocaleDateString()}
                 </span>
                 {version !== defaultVersion && (
-                  <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded text-xs font-medium">
+                  <span className="rounded bg-primary-100 px-2 py-1 text-xs font-medium text-primary-700">
                     {version}
                   </span>
                 )}
@@ -266,18 +266,18 @@ export default async function WikiPage({ params }: WikiPageProps) {
       currentVersion={version}
       pageContent={page.content}
     >
-      <article className="prose prose-lg dark:prose-invert max-w-none">
+      <article className="prose prose-lg max-w-none dark:prose-invert">
         <header className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">
+          <h1 className="mb-2 text-4xl font-bold text-foreground">
             {page.title}
           </h1>
-          <div className="text-sm text-muted-foreground flex items-center gap-4">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span>
               Last updated:
               {page.lastModified.toLocaleDateString()}
             </span>
             {version !== defaultVersion && (
-              <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded text-xs font-medium">
+              <span className="rounded bg-primary-100 px-2 py-1 text-xs font-medium text-primary-700">
                 {version}
               </span>
             )}

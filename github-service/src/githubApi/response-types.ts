@@ -200,7 +200,7 @@ export interface GitHubIssue {
     eyes: number;
   };
   timeline_url: string;
-  performed_via_github_app: any | null;
+  performed_via_github_app: unknown | null;
   state_reason: string | null;
 }
 

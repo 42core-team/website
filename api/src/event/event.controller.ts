@@ -10,6 +10,7 @@ import {
   Put,
   UnauthorizedException,
   UseGuards,
+  Logger,
 } from "@nestjs/common";
 import { EventService } from "./event.service";
 import { TeamService } from "../team/team.service";
@@ -17,16 +18,20 @@ import { UserService } from "../user/user.service";
 import { CreateEventDto } from "./dtos/createEventDto";
 import { SetLockTeamsDateDto } from "./dtos/setLockTeamsDateDto";
 import { UpdateEventSettingsDto } from "./dtos/updateEventSettingsDto";
+import { CreateEventStarterTemplateDto } from "./dtos/createEventStarterTemplateDto";
+import { UpdateEventStarterTemplateDto } from "./dtos/updateEventStarterTemplateDto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { UserId } from "../guards/UserGuard";
 
 @Controller("event")
 export class EventController {
+  private readonly logger = new Logger(EventController.name);
+
   constructor(
     private readonly eventService: EventService,
     private readonly teamService: TeamService,
     private readonly userService: UserService,
-  ) { }
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Get("my")
@@ -47,6 +52,14 @@ export class EventController {
   @Get(":id/version")
   async getEventVersion(@Param("id", new ParseUUIDPipe()) id: string) {
     return await this.eventService.getEventVersion(id);
+  }
+
+  @Get(":id/templates/:templateId/version")
+  async getStarterTemplateVersion(
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Param("templateId", new ParseUUIDPipe()) templateId: string,
+  ) {
+    return await this.eventService.getTemplateVersion(id, templateId);
   }
 
   @Get(":id/game-config")
@@ -80,6 +93,12 @@ export class EventController {
       throw new UnauthorizedException(
         "You are not authorized to create events.",
       );
+
+    this.logger.log({
+      action: "attempt_create_event",
+      userId,
+      eventName: createEventDto.name,
+    });
 
     return this.eventService.createEvent(
       userId,
@@ -155,6 +174,8 @@ export class EventController {
       throw new BadRequestException("Event has not started yet.");
     }
 
+    this.logger.log({ action: "attempt_join_event", userId, eventId });
+
     return this.userService.joinEvent(userId, eventId);
   }
 
@@ -168,6 +189,8 @@ export class EventController {
       throw new UnauthorizedException(
         "You are not authorized to lock this event.",
       );
+
+    this.logger.log({ action: "attempt_lock_event", userId, eventId });
 
     return this.eventService.lockEvent(eventId);
   }
@@ -183,6 +206,8 @@ export class EventController {
         "You are not authorized to unlock teams for this event.",
       );
 
+    this.logger.log({ action: "attempt_unlock_event", userId, eventId });
+
     return this.eventService.unlockEvent(eventId);
   }
 
@@ -197,6 +222,13 @@ export class EventController {
       throw new UnauthorizedException(
         "You are not authorized to lock teams for this event.",
       );
+
+    this.logger.log({
+      action: "attempt_set_lock_teams_date",
+      userId,
+      eventId,
+      repoLockDate: body.repoLockDate,
+    });
 
     if (!body.repoLockDate)
       return this.eventService.setTeamsLockedDate(eventId, null);
@@ -217,6 +249,12 @@ export class EventController {
       throw new UnauthorizedException(
         "You are not authorized to update settings for this event.",
       );
+
+    this.logger.log({
+      action: "attempt_update_event_settings",
+      userId,
+      eventId,
+    });
 
     return this.eventService.updateEventSettings(eventId, body);
   }
@@ -243,6 +281,13 @@ export class EventController {
     if (!(await this.eventService.isEventAdmin(eventId, userId))) {
       throw new UnauthorizedException("You are not an admin of this event");
     }
+
+    this.logger.log({
+      action: "attempt_add_event_admin",
+      userId,
+      eventId,
+      newAdminId,
+    });
     return this.eventService.addEventAdmin(eventId, newAdminId);
   }
 
@@ -256,6 +301,85 @@ export class EventController {
     if (!(await this.eventService.isEventAdmin(eventId, userId))) {
       throw new UnauthorizedException("You are not an admin of this event");
     }
+
+    this.logger.log({
+      action: "attempt_remove_event_admin",
+      userId,
+      eventId,
+      removedAdminId: adminIdToRemove,
+    });
     return this.eventService.removeEventAdmin(eventId, adminIdToRemove);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(":id/templates")
+  async getStarterTemplates(@Param("id", new ParseUUIDPipe()) eventId: string) {
+    return this.eventService.getStarterTemplates(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/templates")
+  async createStarterTemplate(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+    @Body() body: CreateEventStarterTemplateDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId))) {
+      throw new UnauthorizedException("You are not an admin of this event");
+    }
+
+    this.logger.log({
+      action: "attempt_create_starter_template",
+      userId,
+      eventId,
+      templateName: body.name,
+    });
+    return this.eventService.createStarterTemplate(
+      eventId,
+      body.name,
+      body.basePath,
+      body.myCoreBotDockerImage,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(":id/templates/:templateId")
+  async updateStarterTemplate(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @Param("templateId", new ParseUUIDPipe()) templateId: string,
+    @UserId() userId: string,
+    @Body() body: UpdateEventStarterTemplateDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId))) {
+      throw new UnauthorizedException("You are not an admin of this event");
+    }
+
+    this.logger.log({
+      action: "attempt_update_starter_template",
+      userId,
+      eventId,
+      templateId,
+    });
+    return this.eventService.updateStarterTemplate(eventId, templateId, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(":id/templates/:templateId")
+  async deleteStarterTemplate(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @Param("templateId", new ParseUUIDPipe()) templateId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId))) {
+      throw new UnauthorizedException("You are not an admin of this event");
+    }
+
+    this.logger.log({
+      action: "attempt_delete_starter_template",
+      userId,
+      eventId,
+      templateId,
+    });
+    return this.eventService.deleteStarterTemplate(eventId, templateId);
   }
 }

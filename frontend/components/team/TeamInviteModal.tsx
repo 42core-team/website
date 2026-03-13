@@ -4,11 +4,13 @@ import type {
 
 import { usePlausible } from "next-plausible";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import axiosInstance from "@/app/actions/axios";
+
 import {
   searchUsersForInvite,
 } from "@/app/actions/team";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,8 +22,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import axiosInstance from "@/app/actions/axios";
-import {toast} from "sonner";
 
 interface TeamInviteModalProps {
   isOpen: boolean;
@@ -131,56 +131,56 @@ export function TeamInviteModal({
           <div className="max-h-[300px] overflow-y-auto">
             {isSearching
               ? (
-                <div className="flex justify-center py-4">
-                  <div className="animate-spin h-6 w-6 border-2 border-primary rounded-full border-t-transparent"></div>
-                </div>
-              )
+                  <div className="flex justify-center py-4">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                  </div>
+                )
               : searchQuery.length < 2
                 ? (
-                  <p className="text-muted-foreground text-center py-2">
-                    Type at least 2 characters to search
-                  </p>
-                )
-                : searchResults.length === 0
-                  ? (
-                    <p className="text-muted-foreground text-center py-2">
-                      No users found
+                    <p className="py-2 text-center text-muted-foreground">
+                      Type at least 2 characters to search
                     </p>
                   )
+                : searchResults.length === 0
+                  ? (
+                      <p className="py-2 text-center text-muted-foreground">
+                        No users found
+                      </p>
+                    )
                   : (
-                    searchResults.map(user => (
-                      <div
-                        key={user.id}
-                        className="flex justify-between items-center p-2 border-b last:border-0"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Avatar>
-                            <AvatarImage
-                              src={user.profilePicture}
-                              alt={user.name || "User"}
-                            />
-                            <AvatarFallback>
-                              {(user.name || "User").substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{user.name}</p>
-                            <p className="text-muted-foreground text-sm">
-                              {user.username}
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          disabled={user.isInvited}
-                          isLoading={isInviting[user.id]}
-                          onClick={() => handleInviteUser(user.id)}
+                      searchResults.map(user => (
+                        <div
+                          key={user.id}
+                          className="flex items-center justify-between border-b p-2 last:border-0"
                         >
-                          {user.isInvited ? "Invited" : "Invite"}
-                        </Button>
-                      </div>
-                    ))
-                  )}
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarImage
+                                src={user.profilePicture}
+                                alt={user.name || "User"}
+                              />
+                              <AvatarFallback>
+                                {(user.name || "User").substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{user.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {user.username}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            disabled={user.isInvited}
+                            isLoading={isInviting[user.id]}
+                            onClick={() => handleInviteUser(user.id)}
+                          >
+                            {user.isInvited ? "Invited" : "Invite"}
+                          </Button>
+                        </div>
+                      ))
+                    )}
           </div>
         </div>
         <DialogFooter>

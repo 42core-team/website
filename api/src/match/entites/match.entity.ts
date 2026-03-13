@@ -38,7 +38,7 @@ export class MatchEntity {
   round: number;
 
   @ManyToOne(() => TeamEntity)
-  winner: TeamEntity;
+  winner: TeamEntity | null;
 
   @Column({ type: "enum", enum: MatchPhase, default: MatchPhase.SWISS })
   phase: MatchPhase;

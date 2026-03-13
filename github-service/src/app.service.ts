@@ -74,7 +74,7 @@ export class AppService {
     githubId: string,
     encryptedSecret: string,
     actionName: string,
-    context: Record<string, any>,
+    context: Record<string, unknown>,
     action: (
       username: string,
       repositoryApi: RepositoryApi,
@@ -190,7 +190,9 @@ export class AppService {
       "Adding user to repository",
       { repositoryName, username, githubOrg },
       async (user, repositoryApi, userApi) => {
-        const githubAccessToken = this.decryptSecret(encryptedGithubAccessToken);
+        const githubAccessToken = this.decryptSecret(
+          encryptedGithubAccessToken,
+        );
         await repositoryApi.addCollaborator(
           githubOrg,
           repositoryName,
@@ -220,11 +222,7 @@ export class AppService {
       "Removing user from repository",
       { repositoryName, username, githubOrg },
       async (user, repositoryApi) => {
-        await repositoryApi.removeCollaborator(
-          githubOrg,
-          repositoryName,
-          user,
-        );
+        await repositoryApi.removeCollaborator(githubOrg, repositoryName, user);
       },
     );
   }
@@ -280,6 +278,7 @@ export class AppService {
     gameConfig: string,
     serverConfig: string,
     apiBaseUrl: string,
+    starterTemplateId?: string,
   ) {
     this.logger.log(
       `Creating team repository ${JSON.stringify({
@@ -327,6 +326,7 @@ export class AppService {
               gameConfig,
               serverConfig,
               apiBaseUrl,
+              starterTemplateId,
             );
           })(),
         ]);
@@ -355,10 +355,9 @@ export class AppService {
         teamId: teamId,
       });
 
-
       await Promise.all(
         githubUsers.map(async (user) => {
-          let { username } = user;
+          const { username } = user;
           const { githubAccessToken, githubId } = user;
           this.logger.log(
             `Adding user ${username} to repository ${name} in org ${githubOrg}`,

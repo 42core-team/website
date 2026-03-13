@@ -17,7 +17,8 @@ export default function TeamsSearchBar({
   useEffect(() => {
     const handler = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value) params.set("q", value);
+      if (value)
+        params.set("q", value);
       else params.delete("q");
       router.replace(`${pathname}?${params.toString()}`);
     }, 400); // 400ms debounce
@@ -27,12 +28,12 @@ export default function TeamsSearchBar({
 
   return (
     <div className="relative w-full sm:max-w-xs">
-      <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-500" />
+      <SearchIcon className="text-foreground-500 absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
       <Input
         className="w-full pl-10"
         placeholder="Search teams..."
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={e => setValue(e.target.value)}
       />
     </div>
   );

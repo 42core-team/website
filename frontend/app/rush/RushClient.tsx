@@ -15,12 +15,12 @@ export default function RushClient() {
   }, []);
 
   return (
-    <div className="container mx-auto py-4 px-4">
+    <div className="container mx-auto px-4 py-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="text-center mb-8"
+        className="mb-8 text-center"
       >
         <div className="flex flex-row items-center justify-center gap-4">
           <h1 className={title()}>Rush Subject</h1>
@@ -30,10 +30,10 @@ export default function RushClient() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3, delay: 0.8 }}
-            className="bg-primary text-white p-2 rounded-full shadow-lg hover:bg-primary/80 transition-colors flex items-center gap-2"
+            className="flex items-center gap-2 rounded-full bg-primary p-2 text-white shadow-lg transition-colors hover:bg-primary/80"
             aria-label="Download PDF"
           >
-            <DownloadIcon className="w-5 h-5" />
+            <DownloadIcon className="h-5 w-5" />
           </motion.a>
         </div>
       </motion.div>
@@ -43,12 +43,12 @@ export default function RushClient() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="w-full bg-black rounded-lg overflow-hidden shadow-xl"
+          className="w-full overflow-hidden rounded-lg bg-black shadow-xl"
           style={{ height: "75vh" }}
         >
           <iframe
             src={pdfUrl}
-            className="w-full h-full"
+            className="h-full w-full"
             title="CORE Rush Guide"
           />
         </motion.div>

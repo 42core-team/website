@@ -12,6 +12,8 @@ import {
 import { EventEntity } from "../../event/entities/event.entity";
 import { UserEntity } from "../../user/entities/user.entity";
 import { MatchEntity } from "../../match/entites/match.entity";
+import { EventStarterTemplateEntity } from "../../event/entities/event-starter-template.entity";
+import { Exclude } from "class-transformer";
 
 @Entity("teams")
 export class TeamEntity {
@@ -27,7 +29,7 @@ export class TeamEntity {
   @Column({ nullable: true })
   repo: string;
 
-  @Column({nullable: true, type: "timestamp" })
+  @Column({ nullable: true, type: "timestamp" })
   startedRepoCreationAt: Date | null;
 
   @Column({ default: 0 })
@@ -42,8 +44,12 @@ export class TeamEntity {
   @Column({ default: false })
   inQueue: boolean;
 
+  @Exclude()
   @ManyToOne(() => EventEntity, (event) => event.teams)
   event: EventEntity;
+
+  @ManyToOne(() => EventStarterTemplateEntity, { nullable: true })
+  starterTemplate: EventStarterTemplateEntity;
 
   @JoinTable({ name: "teams_users" })
   @ManyToMany(() => UserEntity, (user) => user.teams)

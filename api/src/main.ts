@@ -1,16 +1,22 @@
-import { NestFactory, Reflector } from "@nestjs/core";
+import { NestFactory, Reflector, HttpAdapterHost } from "@nestjs/core";
+import { Logger } from "nestjs-pino";
 import { AppModule } from "./app.module";
 import { ClassSerializerInterceptor, ValidationPipe } from "@nestjs/common";
 import { TypeormExceptionFilter } from "./common/TypeormExceptionFilter";
+import { AllExceptionsFilter } from "./common/AllExceptionsFilter";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-import { MicroserviceOptions, Transport } from "@nestjs/microservices";
+import {
+  MicroserviceOptions,
+  RmqOptions,
+  Transport,
+} from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
 import * as cookieParser from "cookie-parser";
 
-export const getRabbitmqConfig: any = (
+export const getRabbitmqConfig = (
   configService: ConfigService,
   queue: string,
-) => {
+): RmqOptions => {
   return {
     transport: Transport.RMQ,
     options: {
@@ -26,11 +32,17 @@ export const getRabbitmqConfig: any = (
 };
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(Logger));
   const configService = app.get(ConfigService);
+  const httpAdapterHost = app.get(HttpAdapterHost);
+
   app.useGlobalPipes(new ValidationPipe());
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-  app.useGlobalFilters(new TypeormExceptionFilter());
+  app.useGlobalFilters(
+    new AllExceptionsFilter(httpAdapterHost),
+    new TypeormExceptionFilter(),
+  );
   app.use(cookieParser());
   app.enableCors({
     origin: configService.getOrThrow<string>("CORS_ORIGIN"),

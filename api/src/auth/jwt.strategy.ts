@@ -22,7 +22,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: (req: Request) => {
         if (!req) return null;
-        const cookies: any = (req as any).cookies;
+        const cookies = (req as Request & { cookies: Record<string, string> })
+          .cookies;
         if (!cookies) return null;
         return cookies[cookieName] || null;
       },

@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from "@nestjs/common";
+import { Controller, Get } from "@nestjs/common";
 import { MatchService } from "../match/match.service";
 import { Cron } from "@nestjs/schedule";
 

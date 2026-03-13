@@ -4,6 +4,7 @@ import {
   Get,
   Logger,
   Param,
+  ParseBoolPipe,
   ParseUUIDPipe,
   Put,
   Query,
@@ -13,7 +14,7 @@ import {
 import { MatchService } from "./match.service";
 import { EventService } from "../event/event.service";
 import { UserId } from "../guards/UserGuard";
-import { MatchEntity } from "./entites/match.entity";
+import { MatchEntity, MatchPhase } from "./entites/match.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 @Controller("match")
@@ -23,19 +24,20 @@ export class MatchController {
     private readonly eventService: EventService,
   ) {}
 
-  private logger = new Logger("MatchController");
+  private readonly logger = new Logger(MatchController.name);
 
   @UseGuards(JwtAuthGuard)
   @Get("swiss/:eventId")
   getSwissMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
     @UserId() userId: string,
-    @Query("adminRevealQuery") adminRevealQuery: boolean,
+    @Query("adminRevealQuery", new ParseBoolPipe({ optional: true }))
+    adminRevealQuery: boolean | undefined,
   ) {
     return this.matchService.getSwissMatches(
       eventId,
       userId,
-      Boolean(adminRevealQuery),
+      adminRevealQuery ?? false,
     );
   }
 
@@ -54,6 +56,8 @@ export class MatchController {
       throw new BadRequestException("swiss matches have already started");
     }
 
+    this.logger.log({ action: "attempt_start_swiss_matches", userId, eventId });
+
     return await this.matchService.createNextSwissMatches(eventId);
   }
 
@@ -67,6 +71,13 @@ export class MatchController {
       throw new UnauthorizedException(
         "You are not authorized to lock this event.",
       );
+
+    this.logger.log({
+      action: "attempt_start_tournament_matches",
+      userId,
+      eventId,
+    });
+
     return this.matchService.createNextTournamentMatches(eventId);
   }
 
@@ -80,12 +91,13 @@ export class MatchController {
   getTournamentMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
     @UserId() userId: string,
-    @Query("adminRevealQuery") adminRevealQuery: boolean,
+    @Query("adminRevealQuery", new ParseBoolPipe({ optional: true }))
+    adminRevealQuery: boolean | undefined,
   ) {
     return this.matchService.getTournamentMatches(
       eventId,
       userId,
-      adminRevealQuery,
+      adminRevealQuery ?? false,
     );
   }
 
@@ -151,6 +163,8 @@ export class MatchController {
         "You are not authorized to reveal this match.",
       );
 
+    this.logger.log({ action: "attempt_reveal_match", userId, matchId });
+
     return this.matchService.revealMatch(matchId);
   }
 
@@ -166,14 +180,62 @@ export class MatchController {
         "You are not authorized to reveal matches for this event.",
       );
 
-    return this.matchService.revealAllMatchesInPhase(eventId, phase as any);
+    this.logger.log({
+      action: "attempt_reveal_all_matches",
+      userId,
+      eventId,
+      phase,
+    });
+
+    return this.matchService.revealAllMatchesInPhase(
+      eventId,
+      phase as MatchPhase,
+    );
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Put("cleanup-all/:eventId/:phase")
+  async cleanupMatches(
+    @Param("eventId", ParseUUIDPipe) eventId: string,
+    @Param("phase") phase: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to cleanup matches for this event.",
+      );
+
+    this.logger.log({
+      action: "attempt_cleanup_matches",
+      userId,
+      eventId,
+      phase,
+    });
+
+    return this.matchService.cleanupMatchesInPhase(
+      eventId,
+      phase as MatchPhase,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get(":matchId")
   async getMatchById(
     @Param("matchId", ParseUUIDPipe) matchId: string,
+    @UserId() userId: string,
+    @Query("adminRevealQuery", new ParseBoolPipe({ optional: true }))
+    adminRevealQuery: boolean | undefined,
   ): Promise<MatchEntity> {
-    return await this.matchService.getMatchById(matchId);
+    return await this.matchService.getMatchById(
+      matchId,
+      {
+        teams: {
+          event: true,
+        },
+      },
+      userId,
+      adminRevealQuery ?? false,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

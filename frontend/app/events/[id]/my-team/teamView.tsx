@@ -58,7 +58,7 @@ export default function TeamView({ eventId, canCreateTeam }: TeamViewProps) {
 
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto mb-8 mt-3">
+      <div className="mx-auto mt-3 mb-8 max-w-4xl">
         <Spinner />
       </div>
     );
@@ -66,7 +66,7 @@ export default function TeamView({ eventId, canCreateTeam }: TeamViewProps) {
 
   if (isError) {
     return (
-      <div className="max-w-4xl mx-auto mb-8 mt-3">
+      <div className="mx-auto mt-3 mb-8 max-w-4xl">
         <Alert variant="destructive">
           <AlertCircleIcon />
           <AlertTitle>Something went wrong</AlertTitle>
@@ -80,7 +80,7 @@ export default function TeamView({ eventId, canCreateTeam }: TeamViewProps) {
 
   if (!team && !canCreateTeam) {
     return (
-      <div className="max-w-4xl mx-auto mb-8 mt-3">
+      <div className="mx-auto mt-3 mb-8 max-w-4xl">
         <Alert variant="destructive">
           <AlertCircleIcon />
           <AlertTitle>Team creation closed</AlertTitle>
@@ -94,16 +94,18 @@ export default function TeamView({ eventId, canCreateTeam }: TeamViewProps) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto mb-8 mt-3">
-      {team ? (
-        <TeamInfoDisplay team={team} teamMembers={teamMembers} />
-      ) : (
-        <>
-          <TeamCreationForm />
-          <div className="mb-5"></div>
-          <TeamInvitesDisplay pendingInvites={pendingInvites} />
-        </>
-      )}
+    <div className="mx-auto mt-3 mb-8 max-w-4xl">
+      {team
+        ? (
+            <TeamInfoDisplay team={team} teamMembers={teamMembers} />
+          )
+        : (
+            <>
+              <TeamCreationForm />
+              <div className="mb-5"></div>
+              <TeamInvitesDisplay pendingInvites={pendingInvites} />
+            </>
+          )}
     </div>
   );
 }

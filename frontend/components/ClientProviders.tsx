@@ -1,9 +1,9 @@
 "use client";
 import { SessionProvider } from "next-auth/react";
 import React from "react";
+import { Toaster } from "@/components/ui/sonner";
 import { NavbarProvider } from "@/contexts/NavbarContext";
 import { ThemeProvider } from "./theme-provider";
-import { Toaster } from "@/components/ui/sonner";
 
 interface ClientProvidersProps {
   children: React.ReactNode;
@@ -19,7 +19,7 @@ export default function ClientProviders({ children }: ClientProvidersProps) {
     >
       <SessionProvider>
         <NavbarProvider>{children}</NavbarProvider>
-        <Toaster/>
+        <Toaster />
       </SessionProvider>
     </ThemeProvider>
   );

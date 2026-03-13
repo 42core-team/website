@@ -6,11 +6,11 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import axiosInstance from "@/app/actions/axios";
 import { isActionError } from "@/app/actions/errors";
-import { leaveTeam, hasEventStarted } from "@/app/actions/team";
 import { getEventGithubOrg } from "@/app/actions/event";
-import { TeamInfoSection } from "@/components/team";
+import { hasEventStarted, leaveTeam } from "@/app/actions/team";
 import { getMatchesForTeam } from "@/app/actions/tournament";
 import TeamMatchHistory from "@/app/events/[id]/teams/[teamId]/TeamMatchHistory";
+import { TeamInfoSection } from "@/components/team";
 
 interface TeamInfoDisplayProps {
   team: Team;
@@ -122,7 +122,8 @@ export default function TeamInfoDisplay({
         }),
       ]);
       return true;
-    } catch {
+    }
+    catch {
       return false;
     }
   }
@@ -134,11 +135,11 @@ export default function TeamInfoDisplay({
   return (
     <>
       {errorMessage && (
-        <div className="bg-danger-50 border border-danger-200 text-destructive-800 px-4 py-3 rounded mb-4">
+        <div className="bg-danger-50 border-danger-200 text-destructive-800 mb-4 rounded border px-4 py-3">
           {errorMessage}
         </div>
       )}
-      <div className="py-3 space-y-4">
+      <div className="space-y-4 py-3">
         <TeamInfoSection
           myTeam={team}
           onLeaveTeam={handleLeaveTeam}

@@ -88,5 +88,4 @@ export class CreateEventDto {
   @ApiProperty()
   @IsBoolean()
   isPrivate: boolean;
-
 }

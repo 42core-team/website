@@ -56,7 +56,7 @@ export function VersionSelector({
       <div className="lg:hidden">
         <Select value={currentVersion} onValueChange={handleVersionChange}>
           <SelectTrigger className="my-2 flex items-center justify-center">
-            <FileText className="size-4 mr-1" />
+            <FileText className="mr-1 size-4" />
           </SelectTrigger>
           <SelectContent align="end">
             {versions.map(version => (

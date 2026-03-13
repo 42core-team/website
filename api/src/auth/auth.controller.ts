@@ -6,7 +6,9 @@ import {
   Req,
   Res,
   UseGuards,
+  Logger,
 } from "@nestjs/common";
+import { UserEntity } from "../user/entities/user.entity";
 import { AuthGuard } from "@nestjs/passport";
 import { Request, Response } from "express";
 import { AuthService } from "./auth.service";
@@ -20,24 +22,33 @@ import { SocialPlatform } from "../user/entities/social-account.entity";
 
 @Controller("auth")
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly auth: AuthService,
     private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly socialAccountService: SocialAccountService,
-  ) { }
+  ) {}
 
   @Get("/github/callback")
   @UseGuards(AuthGuard("github"))
   githubCallback(@Req() req: Request, @Res() res: Response) {
-    const user: any = (req as any).user;
+    const user = req.user as UserEntity;
+    this.logger.log({ action: "github_login", userId: user.id });
+
     const token = this.auth.signToken(user);
     const redirectUrl = this.configService.getOrThrow<string>(
       "OAUTH_SUCCESS_REDIRECT_URL",
     );
     if (redirectUrl) {
-      const cookieName = this.configService.get<string>("AUTH_COOKIE_NAME") || "token";
-      const cookieDomain = this.configService.get<string>("AUTH_COOKIE_DOMAIN") || (this.configService.get("NODE_ENV") === "development" ? "localhost" : ".coregame.sh");
+      const cookieName =
+        this.configService.get<string>("AUTH_COOKIE_NAME") || "token";
+      const cookieDomain =
+        this.configService.get<string>("AUTH_COOKIE_DOMAIN") ||
+        (this.configService.get("NODE_ENV") === "development"
+          ? "localhost"
+          : ".coregame.sh");
       res.cookie(cookieName, token, {
         httpOnly: true,
         secure: true,
@@ -99,19 +110,20 @@ export class AuthController {
         username: request.user.fortyTwoAccount.username,
       });
 
+      this.logger.log({ action: "fortytwo_link", userId });
+
       const redirectUrl = this.configService.getOrThrow<string>(
         "OAUTH_42_SUCCESS_REDIRECT_URL",
       );
 
       return res.redirect(redirectUrl);
     } catch (e) {
-      // Use a more detailed log, and preserve specific error messages for BadRequestException
-      console.error("Error in FortyTwo callback:", e);
       if (e instanceof BadRequestException) {
         throw e;
       }
+
       throw new BadRequestException(
-        e && typeof e.message === "string"
+        e instanceof Error
           ? `Invalid state parameter: ${e.message}`
           : "Invalid state parameter.",
       );
@@ -121,7 +133,7 @@ export class AuthController {
   @Get("/me")
   @UseGuards(JwtAuthGuard)
   me(@Req() req: Request) {
-    const user: any = (req as any).user;
+    const user = req.user as UserEntity;
     return this.userService.getUserById(user.id);
   }
 }

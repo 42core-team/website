@@ -23,8 +23,8 @@ export default async function CreateEventPage() {
   }
 
   return (
-    <div className="container mx-auto py-3 max-w-3xl min-h-lvh">
-      <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-6 mb-8">
+    <div className="container mx-auto min-h-lvh max-w-3xl py-3">
+      <div className="mb-8 flex flex-col items-center justify-center gap-4 py-8 md:py-6">
         <h1 className={title()}>Create New Event</h1>
       </div>
 

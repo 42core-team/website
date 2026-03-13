@@ -101,7 +101,7 @@ export default function SocialAccountsDisplay() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[100px]">
+      <div className="flex min-h-[100px] items-center justify-center">
         <div className="text-muted-foreground">Loading social accounts...</div>
       </div>
     );
@@ -124,10 +124,10 @@ export default function SocialAccountsDisplay() {
                 {socialAccounts.map(account => (
                   <div
                     key={account.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
+                    className="flex items-center justify-between rounded-lg border p-3"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-8 h-8 text-2xl">
+                      <div className="flex h-8 w-8 items-center justify-center text-2xl">
                         {getPlatformIcon(account.platform)}
                       </div>
                       <div>
@@ -155,9 +155,9 @@ export default function SocialAccountsDisplay() {
 
         {!get42Account() && (
           <div className="border-t pt-4">
-            <div className="flex items-center justify-between p-3 border rounded-lg border-dashed">
+            <div className="flex items-center justify-between rounded-lg border border-dashed p-3">
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-8 h-8 text-2xl">
+                <div className="flex h-8 w-8 items-center justify-center text-2xl">
                   {getPlatformIcon(OAUTH_PROVIDERS.FORTY_TWO)}
                 </div>
                 <div>
@@ -206,17 +206,17 @@ export default function SocialAccountsDisplay() {
         )}
 
         {message && message.type === "error" && (
-          <div className="p-4 bg-danger-50 border border-danger-200 rounded-lg dark:bg-danger-100/10">
+          <div className="bg-danger-50 border-danger-200 dark:bg-danger-100/10 rounded-lg border p-4">
             <div className="flex items-start gap-3">
-              <span className="text-destructive text-lg shrink-0 mt-0.5">⚠️</span>
-              <div className="flex-1 min-w-0">
+              <span className="mt-0.5 shrink-0 text-lg text-destructive">⚠️</span>
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-destructive">
                   Connection Failed
                 </p>
-                <p className="text-xs text-destructive-600 mt-1 wrap-break-word">
+                <p className="text-destructive-600 mt-1 text-xs wrap-break-word">
                   {message.text}
                 </p>
-                <div className="flex gap-2 mt-3">
+                <div className="mt-3 flex gap-2">
                   <Button
                     size="sm"
                     color="danger"

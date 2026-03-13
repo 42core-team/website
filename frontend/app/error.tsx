@@ -14,15 +14,15 @@ import {
 
 export default function Error({ error }: { error: Error }) {
   return (
-    <div className="flex w-full pt-40 items-center justify-center p-6">
-      <Card className="max-w-lg w-full shadow-lg">
+    <div className="flex w-full items-center justify-center p-6 pt-40">
+      <Card className="w-full max-w-lg shadow-lg">
         <CardHeader className="flex flex-col items-center gap-2">
           <CardTitle className="text-4xl font-bold text-destructive">
             Something went wrong
           </CardTitle>
           <CardDescription>An unexpected error occurred.</CardDescription>
         </CardHeader>
-        <CardContent className="text-center space-y-4">
+        <CardContent className="space-y-4 text-center">
           <p>
             <strong>Error message:</strong>
             {" "}
@@ -61,11 +61,11 @@ export default function Error({ error }: { error: Error }) {
                 + `- Browser: ${navigator.userAgent}\n`
                 + `- OS: \n`
                 + `- Device: \n`
-                  + `- Time (UTC): ${new Date()
-                    .toISOString()
-                    .replace("T", " ")
-                    .replace("Z", " UTC")}\n\n`
-                    + `Additional context:\n`,
+                + `- Time (UTC): ${new Date()
+                  .toISOString()
+                  .replace("T", " ")
+                  .replace("Z", " UTC")}\n\n`
+                  + `Additional context:\n`,
               );
               window.open(
                 `${base}?labels=bug&title=${title}&body=${body}`,

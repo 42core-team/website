@@ -60,6 +60,15 @@ export async function revealAllMatches(
   );
 }
 
+export async function cleanupAllMatches(
+  eventId: string,
+  phase: string,
+): Promise<ServerActionResponse<void>> {
+  return handleError(
+    axiosInstance.put<void>(`/match/cleanup-all/${eventId}/${phase}`),
+  );
+}
+
 export async function getMatchById(
   matchId: string,
 ): Promise<ServerActionResponse<Match>> {

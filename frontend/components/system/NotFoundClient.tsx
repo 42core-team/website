@@ -13,8 +13,8 @@ import {
 
 export default function NotFoundClient() {
   return (
-    <div className="flex w-full pt-40 items-center justify-center p-6">
-      <Card className="max-w-lg w-full shadow-lg">
+    <div className="flex w-full items-center justify-center p-6 pt-40">
+      <Card className="w-full max-w-lg shadow-lg">
         <CardHeader className="flex flex-col items-center gap-3">
           <CardTitle className="text-5xl font-bold text-destructive">
             404
@@ -23,7 +23,7 @@ export default function NotFoundClient() {
             Page Not Found
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-center gap-2">
+        <CardContent className="gap-2 text-center">
           <p>Oops! The page you are looking for doesn't exist.</p>
           <p>
             You can check

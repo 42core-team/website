@@ -25,7 +25,7 @@ export class GithubOAuthStrategy extends PassportStrategy(
     accessToken: string,
     refreshToken: string,
     profile: Profile,
-    done: (err: any, user?: any) => void,
+    done: (err: Error | null, user?: unknown) => void,
   ) {
     try {
       const githubId = profile.id;

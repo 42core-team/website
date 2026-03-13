@@ -1,13 +1,13 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
-import { MicroserviceOptions, Transport } from "@nestjs/microservices";
+import { MicroserviceOptions, Transport, RmqOptions } from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
 import { Logger } from "@nestjs/common";
 
-export const getRabbitmqConfig: any = (
+export const getRabbitmqConfig = (
   configService: ConfigService,
   queue: string,
-) => {
+): RmqOptions => {
   return {
     transport: Transport.RMQ,
     options: {

@@ -5,7 +5,7 @@ import { EventPattern } from "@nestjs/microservices";
 @Controller()
 export class AppController {
   private readonly logger = new Logger(AppController.name);
-  constructor(private readonly appService: AppService) { }
+  constructor(private readonly appService: AppService) {}
 
   @EventPattern("remove_write_permissions")
   async handleRemoveWritePermissions(data: {
@@ -149,6 +149,7 @@ export class AppController {
     basePath: string;
     gameConfig: string;
     serverConfig: string;
+    starterTemplateId?: string;
     apiBaseUrl: string;
   }) {
     const safeData = {
@@ -164,6 +165,7 @@ export class AppController {
       basePath: data.basePath,
       gameConfig: data.gameConfig.slice(0, 50),
       serverConfig: data.serverConfig.slice(0, 50),
+      starterTemplateId: data.starterTemplateId,
       apiBaseUrl: data.apiBaseUrl,
     };
     this.logger.log(
@@ -185,6 +187,7 @@ export class AppController {
       data.gameConfig,
       data.serverConfig,
       data.apiBaseUrl,
+      data.starterTemplateId,
     );
   }
 }

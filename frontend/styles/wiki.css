@@ -113,35 +113,33 @@
   color: #dc2626 !important;
 }
 
-/* Dark mode support for callouts */
-@media (prefers-color-scheme: dark) {
-  .wiki-content .callout {
-    background: rgba(255, 255, 255, 0.05) !important;
-  }
+/* Dark mode support for callouts — uses .dark class to match the app's theme system */
+.dark .wiki-content .callout {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
 
-  .wiki-content .callout-warning {
-    background: rgba(245, 158, 11, 0.15) !important;
-  }
+.dark .wiki-content .callout-warning {
+  background: rgba(245, 158, 11, 0.15) !important;
+}
 
-  .wiki-content .callout-info {
-    background: rgba(59, 130, 246, 0.15) !important;
-  }
+.dark .wiki-content .callout-info {
+  background: rgba(59, 130, 246, 0.15) !important;
+}
 
-  .wiki-content .callout-note {
-    background: rgba(107, 114, 128, 0.15) !important;
-  }
+.dark .wiki-content .callout-note {
+  background: rgba(107, 114, 128, 0.15) !important;
+}
 
-  .wiki-content .callout-tip {
-    background: rgba(16, 185, 129, 0.15) !important;
-  }
+.dark .wiki-content .callout-tip {
+  background: rgba(16, 185, 129, 0.15) !important;
+}
 
-  .wiki-content .callout-important {
-    background: rgba(139, 92, 246, 0.15) !important;
-  }
+.dark .wiki-content .callout-important {
+  background: rgba(139, 92, 246, 0.15) !important;
+}
 
-  .wiki-content .callout-caution {
-    background: rgba(239, 68, 68, 0.15) !important;
-  }
+.dark .wiki-content .callout-caution {
+  background: rgba(239, 68, 68, 0.15) !important;
 }
 
 /* Wiki content styles */
@@ -150,23 +148,23 @@
 }
 
 .wiki-content h1 {
-  @apply text-3xl font-bold mt-8 mb-4 text-foreground border-b  pb-2;
+  @apply text-3xl font-bold mt-8 mb-4 border-b pb-2;
 }
 
 .wiki-content h2 {
-  @apply text-2xl font-semibold mt-6 mb-3 text-foreground;
+  @apply text-2xl font-semibold mt-6 mb-3;
 }
 
 .wiki-content h3 {
-  @apply text-xl font-semibold mt-4 mb-2 text-foreground;
+  @apply text-xl font-semibold mt-4 mb-2;
 }
 
 .wiki-content h4 {
-  @apply text-lg font-semibold mt-3 mb-2 text-foreground;
+  @apply text-lg font-semibold mt-3 mb-2;
 }
 
 .wiki-content p {
-  @apply mb-4 leading-relaxed text-foreground;
+  @apply mb-4 leading-relaxed;
 }
 
 .wiki-content ul,
@@ -191,7 +189,7 @@
 }
 
 .wiki-content code {
-  @apply px-2 py-1 rounded text-sm font-mono text-foreground;
+  @apply px-2 py-1 rounded text-sm font-mono;
 }
 
 .wiki-content pre {
@@ -199,7 +197,7 @@
 }
 
 .wiki-content pre code {
-  @apply bg-transparent p-0;
+  @apply p-0;
 }
 
 .wiki-content blockquote {
@@ -207,12 +205,12 @@
 }
 
 .wiki-content table {
-  @apply w-full border-collapse border  mb-4;
+  @apply w-full border-collapse border mb-4;
 }
 
 .wiki-content th,
 .wiki-content td {
-  @apply border  px-4 py-2 text-left;
+  @apply border px-4 py-2 text-left;
 }
 
 .wiki-content th {
@@ -263,4 +261,3 @@
 .wiki-content h6:hover .heading-anchor::before {
   @apply opacity-100;
 }
-

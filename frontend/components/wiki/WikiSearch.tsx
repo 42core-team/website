@@ -144,62 +144,62 @@ export function WikiSearch({
         >
           {isLoading
             ? (
-              <div className="p-4 text-center text-muted-foreground">
-                Searching...
-              </div>
-            )
-            : results.length > 0
-              ? (
-                <div className="p-2">
-                  {results.map((result) => {
-                    const { page } = result;
-                    const href = `/wiki/${currentVersion}/${page.slug.join("/")}`;
-                    return (
-                      <Link
-                        prefetch={false}
-                        key={page.slug.join("/")}
-                        href={href}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleResultClick(result);
-                        }}
-                        className="hover:bg-default-100 focus:bg-default-200 block cursor-pointer rounded-md p-3 transition-colors focus:outline-none"
-                        role="option"
-                        aria-selected={false}
-                      >
-                        <div className="text-sm font-medium">{page.title}</div>
-                        <div
-                          className="mt-1 line-clamp-2 text-xs text-muted-foreground"
-                          dangerouslySetInnerHTML={{
-                            __html: result.highlightedSnippet,
-                          }}
-                        />
-                        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>
-                            /
-                            {page.slug.join("/")}
-                          </span>
-                          {page.version && page.version !== "latest" && (
-                            <span className="bg-primary-100 text-primary-700 rounded px-1 py-0.5 text-xs">
-                              {page.version}
-                            </span>
-                          )}
-                          <span className="text-muted-foreground">
-                            {result.matchType === "title"
-                              ? "Found in title"
-                              : "Found in content"}
-                          </span>
-                        </div>
-                      </Link>
-                    );
-                  })}
+                <div className="p-4 text-center text-muted-foreground">
+                  Searching...
                 </div>
               )
+            : results.length > 0
+              ? (
+                  <div className="p-2">
+                    {results.map((result) => {
+                      const { page } = result;
+                      const href = `/wiki/${currentVersion}/${page.slug.join("/")}`;
+                      return (
+                        <Link
+                          prefetch={false}
+                          key={page.slug.join("/")}
+                          href={href}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleResultClick(result);
+                          }}
+                          className="block cursor-pointer rounded-md p-3 transition-colors hover:bg-default-100 focus:bg-default-200 focus:outline-none"
+                          role="option"
+                          aria-selected={false}
+                        >
+                          <div className="text-sm font-medium">{page.title}</div>
+                          <div
+                            className="mt-1 line-clamp-2 text-xs text-muted-foreground"
+                            dangerouslySetInnerHTML={{
+                              __html: result.highlightedSnippet,
+                            }}
+                          />
+                          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>
+                              /
+                              {page.slug.join("/")}
+                            </span>
+                            {page.version && page.version !== "latest" && (
+                              <span className="rounded bg-primary-100 px-1 py-0.5 text-xs text-primary-700">
+                                {page.version}
+                              </span>
+                            )}
+                            <span className="text-muted-foreground">
+                              {result.matchType === "title"
+                                ? "Found in title"
+                                : "Found in content"}
+                            </span>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )
               : (
-                <div className="p-4 text-center text-muted-foreground">
-                  No results found
-                </div>
-              )}
+                  <div className="p-4 text-center text-muted-foreground">
+                    No results found
+                  </div>
+                )}
         </div>
       )}
     </div>

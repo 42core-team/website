@@ -14,6 +14,7 @@ import {
 } from "../../user/entities/user.entity";
 import { TeamEntity } from "../../team/entities/team.entity";
 import { Exclude } from "class-transformer";
+import { EventStarterTemplateEntity } from "./event-starter-template.entity";
 
 @Entity("events")
 export class EventEntity {
@@ -115,4 +116,9 @@ export class EventEntity {
     },
   )
   permissions: UserEventPermissionEntity[];
+
+  @OneToMany(() => EventStarterTemplateEntity, (template) => template.event, {
+    cascade: true,
+  })
+  starterTemplates: EventStarterTemplateEntity[];
 }

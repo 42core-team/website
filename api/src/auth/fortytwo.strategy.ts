@@ -32,8 +32,8 @@ export class FortyTwoOAuthStrategy extends PassportStrategy(Strategy, "42") {
   async validate(
     accessToken: string,
     refreshToken: string,
-    _params: any,
-    done: (err: any, user?: any) => void,
+    _params: unknown,
+    done: (err: Error | null, user?: unknown) => void,
   ) {
     try {
       const res = await fetch("https://api.intra.42.fr/v2/me", {

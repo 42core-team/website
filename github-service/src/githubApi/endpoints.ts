@@ -156,7 +156,7 @@ export class RepositoryApi {
     try {
       await this.client.get(`repos/${owner}/${repo}/collaborators/${username}`);
       return true;
-    } catch (error) {
+    } catch {
       // 404 means the user is not a collaborator
       return false;
     }

@@ -235,8 +235,12 @@ export default function CreateEventForm() {
         return null;
 
       const [gameRes, serverRes] = await Promise.all([
-        fetch(`https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${monorepoVersion}/${basePath}/configs/game.config.json`),
-        fetch(`https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${monorepoVersion}/${basePath}/configs/server.config.json`),
+        fetch(
+          `https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${monorepoVersion}/${basePath}/configs/game.config.json`,
+        ),
+        fetch(
+          `https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${monorepoVersion}/${basePath}/configs/server.config.json`,
+        ),
       ]);
 
       if (gameRes.ok) {
@@ -339,17 +343,17 @@ export default function CreateEventForm() {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="w-full justify-center items-center space-y-4"
+        className="w-full items-center justify-center space-y-4"
       >
         {error && (
-          <div className="p-3 bg-red-100 text-red-800 rounded-md mb-6">
+          <div className="mb-6 rounded-md bg-red-100 p-3 text-red-800">
             {error}
           </div>
         )}
 
-        <div className="w-full max-w-4xl mx-auto flex flex-col gap-8 px-4 md:px-6 mb-16">
-          <Card className="w-full p-6 flex flex-col gap-4">
-            <h2 className="text-xl font-semibold mb-4">Event Details</h2>
+        <div className="mx-auto mb-16 flex w-full max-w-4xl flex-col gap-8 px-4 md:px-6">
+          <Card className="flex w-full flex-col gap-4 p-6">
+            <h2 className="mb-4 text-xl font-semibold">Event Details</h2>
             <div className="flex flex-col gap-4">
               <FormField
                 control={form.control}
@@ -397,7 +401,7 @@ export default function CreateEventForm() {
                 )}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="startDate"
@@ -416,11 +420,11 @@ export default function CreateEventForm() {
                             >
                               {field.value
                                 ? (
-                                  format(field.value, "PPP p")
-                                )
+                                    format(field.value, "PPP p")
+                                  )
                                 : (
-                                  <span>Pick a date and time</span>
-                                )}
+                                    <span>Pick a date and time</span>
+                                  )}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
@@ -434,7 +438,7 @@ export default function CreateEventForm() {
                               date < new Date(new Date().setHours(0, 0, 0, 0))}
                             initialFocus
                           />
-                          <div className="p-3 border-t">
+                          <div className="border-t p-3">
                             <Input
                               type="time"
                               value={
@@ -479,11 +483,11 @@ export default function CreateEventForm() {
                             >
                               {field.value
                                 ? (
-                                  format(field.value, "PPP p")
-                                )
+                                    format(field.value, "PPP p")
+                                  )
                                 : (
-                                  <span>Pick a date and time</span>
-                                )}
+                                    <span>Pick a date and time</span>
+                                  )}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
@@ -497,7 +501,7 @@ export default function CreateEventForm() {
                               date < new Date(new Date().setHours(0, 0, 0, 0))}
                             autoFocus
                           />
-                          <div className="p-3 border-t">
+                          <div className="border-t p-3">
                             <Input
                               type="time"
                               value={
@@ -548,9 +552,9 @@ export default function CreateEventForm() {
             </div>
           </Card>
 
-          <Card className="w-full p-6 flex flex-col gap-4">
+          <Card className="flex w-full flex-col gap-4 p-6">
             <h2 className="text-xl font-semibold">Team Settings</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+            <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="minTeamSize"
@@ -596,9 +600,9 @@ export default function CreateEventForm() {
           </Card>
 
           <Card className="w-full p-6">
-            <h2 className="text-xl font-semibold mb-4">GitHub Integration</h2>
+            <h2 className="mb-4 text-xl font-semibold">GitHub Integration</h2>
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="githubOrg"
@@ -622,7 +626,7 @@ export default function CreateEventForm() {
                         <div className="flex items-center gap-1">
                           <span>GitHub Organization Secret *</span>
                           <span
-                            className="cursor-pointer hover:text-muted-foreground text-xs"
+                            className="cursor-pointer text-xs hover:text-muted-foreground"
                             title="The token needs the following permissions: Administration (Repository creation, deletion, settings, teams, and collaborators) and Contents (Repository contents, commits, branches, downloads, releases, and merges)."
                           >
                             &#9432;
@@ -648,11 +652,11 @@ export default function CreateEventForm() {
           </Card>
 
           <Card className="w-full p-6">
-            <h2 className="text-xl font-semibold mb-4">
+            <h2 className="mb-4 text-xl font-semibold">
               Version Configuration
             </h2>
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+              <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="monorepoUrl"
@@ -700,13 +704,11 @@ export default function CreateEventForm() {
                     <FormItem>
                       <FormLabel>Base Path *</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="bots/softcore"
-                          {...field}
-                        />
+                        <Input placeholder="bots/softcore" {...field} />
                       </FormControl>
                       <FormDescription>
-                        Path in the monorepo where the game logic is located (e.g., bots/softcore)
+                        Path in the monorepo where the game logic is located
+                        (e.g., bots/softcore)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -727,14 +729,17 @@ export default function CreateEventForm() {
                             {...field}
                           />
                           {isFetchingConfig && (
-                            <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
-                              <span className="text-xs font-medium">Fetching default configs...</span>
+                            <div className="absolute inset-0 flex items-center justify-center bg-white/50">
+                              <span className="text-xs font-medium">
+                                Fetching default configs...
+                              </span>
                             </div>
                           )}
                         </div>
                       </FormControl>
                       <FormDescription>
-                        Configuration for the game server. Will be auto-filled if found in the monorepo.
+                        Configuration for the game server. Will be auto-filled
+                        if found in the monorepo.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -751,26 +756,29 @@ export default function CreateEventForm() {
                         <div className="relative">
                           <Textarea
                             placeholder='{
-	"replayFolderPaths": [
-		"/workspace/replays",
-		"/workspaces/monorepo",
-		"/workspaces/monorepo/visualizer/public/replays",
-		"./replays"
-	],
-	"timeoutTicks": 30000,
+  "replayFolderPaths": [
+    "/workspace/replays",
+    "/workspaces/monorepo",
+    "/workspaces/monorepo/visualizer/public/replays",
+    "./replays"
+  ],
+  "timeoutTicks": 30000,
   ...'
                             className="min-h-[200px] font-mono text-sm"
                             {...field}
                           />
                           {isFetchingConfig && (
-                            <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
-                              <span className="text-xs font-medium">Fetching default configs...</span>
+                            <div className="absolute inset-0 flex items-center justify-center bg-white/50">
+                              <span className="text-xs font-medium">
+                                Fetching default configs...
+                              </span>
                             </div>
                           )}
                         </div>
                       </FormControl>
                       <FormDescription>
-                        ServerConfig. Will be auto-filled if found in the monorepo.
+                        ServerConfig. Will be auto-filled if found in the
+                        monorepo.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -779,7 +787,9 @@ export default function CreateEventForm() {
               </div>
 
               {tagFetchError && (
-                <div className="text-sm text-red-600">{(tagFetchError as Error).message}</div>
+                <div className="text-sm text-red-600">
+                  {(tagFetchError as Error).message}
+                </div>
               )}
               {isLoadingTags && (
                 <div className="text-xs text-muted-foreground">
@@ -788,12 +798,12 @@ export default function CreateEventForm() {
               )}
             </div>
 
-            <h3 className="text-lg font-semibold my-4">
+            <h3 className="my-4 text-lg font-semibold">
               Docker Images Configuration
             </h3>
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
                   <FormField
                     control={form.control}
                     name="gameServerDockerImage"
@@ -830,7 +840,7 @@ export default function CreateEventForm() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
                   <FormField
                     control={form.control}
                     name="myCoreBotDockerImage"
@@ -867,7 +877,7 @@ export default function CreateEventForm() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
                   <FormField
                     control={form.control}
                     name="visualizerDockerImage"

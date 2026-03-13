@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function ImpressumPage() {
   return (
     <div className="container mx-auto max-w-4xl px-8 py-12">
-      <div className="prose prose-lg dark:prose-invert max-w-none prose">
+      <div className="prose prose-lg max-w-none dark:prose-invert">
         <h1>Impressum</h1>
         <h2>Angaben gemäß § 5 DDG</h2>
         <p>

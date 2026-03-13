@@ -11,12 +11,9 @@ import { useEffect, useMemo, useState } from "react";
 import GlobalStats from "@/components/GlobalStats";
 import { GithubIcon, WikiIcon } from "@/components/icons";
 import { CoreLogoWhite } from "@/components/social";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -72,11 +69,11 @@ export default function HomePageClient(props: {
 
   return (
     <div>
-      <section className="flex flex-col items-center justify-center mb-15">
+      <section className="mb-15 flex flex-col items-center justify-center">
         {/* Foreground (logo + text + links) */}
-        <div className="flex flex-col text-center justify-center w-full mb-25">
-          <CoreLogoWhite className="mx-auto w-[30%] h-auto" />
-          <h1 className="mx-auto text-balance text-2xl font-bold block mt-2 max-w-2xl">
+        <div className="mb-25 flex w-full flex-col justify-center text-center">
+          <CoreLogoWhite className="mx-auto h-auto w-[30%]" />
+          <h1 className="mx-auto mt-2 block max-w-2xl text-2xl font-bold text-balance">
             Imagine a game contest that brings people
             from around the world together for fun and learning.
           </h1>
@@ -99,40 +96,67 @@ export default function HomePageClient(props: {
             </Button>
           </div>
           {props.currentLiveEvent && timeLeftMs > 0 && (
-            <Card className="mt-6 mx-auto max-w-sm">
-              <CardHeader className="flex flex-row justify-between items-center gap-3">
-                <CardTitle className="text-lg font-semibold">
-                  {props.currentLiveEvent.name}
-                </CardTitle>
-                <CardDescription className="space-x-2">
-                  <Badge>Live</Badge>
-                  <Badge>
-                    Ends in
-                    {" "}
-                    {formatTimeLeft(timeLeftMs)}
-                  </Badge>
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button asChild>
-                  <Link href={`/events/${props.currentLiveEvent.id}`}>
-                    View event
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <Link href={`/events/${props.currentLiveEvent.id}`} className="group mx-auto mt-6 block w-full max-w-lg rounded-xl focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none md:mt-8">
+                <Card className="relative h-full w-full overflow-hidden border-white/10 bg-background/60 shadow-2xl backdrop-blur-xl transition-all duration-300 group-hover:-translate-y-1 group-hover:border-primary/50 group-hover:bg-background/80 group-hover:shadow-[0_20px_40px_-15px_rgba(var(--primary),0.3)] group-active:translate-y-0 group-active:scale-[0.98]">
+                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50 transition-opacity group-hover:opacity-100" />
+                  <CardHeader className="flex flex-row items-center justify-between pb-6">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute top-0 left-0 inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75"></span>
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive"></span>
+                        </span>
+                        <span className="text-xs font-semibold tracking-widest text-destructive uppercase">
+                          Live
+                        </span>
+                      </div>
+                      <CardTitle className="text-xl font-bold tracking-tight text-foreground transition-colors group-hover:text-primary md:text-2xl">
+                        {props.currentLiveEvent.name}
+                      </CardTitle>
+                    </div>
+                    <div className="flex items-center gap-4 border-l border-border/50 pl-4 transition-colors group-hover:border-primary/30">
+                      <div className="flex flex-col items-end gap-1 text-right">
+                        <span className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase transition-colors group-hover:text-primary/70">Closing in</span>
+                        <span className="font-mono text-base font-bold text-foreground tabular-nums transition-colors group-hover:text-primary">
+                          {formatTimeLeft(timeLeftMs)}
+                        </span>
+                      </div>
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary shadow-sm transition-all group-hover:scale-105 group-hover:bg-primary/20 group-hover:text-primary">
+                        <svg
+                          className="h-5 w-5"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </Link>
+            </motion.div>
           )}
         </div>
 
         {/* Visualizer Embed under the logo */}
-        <div className="w-full flex justify-center">
-          <div className="w-full max-w-6xl px-4 mx-auto">
-            <div className="w-full aspect-video overflow-hidden flex items-center justify-center rounded-2xl">
+        <div className="flex w-full justify-center">
+          <div className="mx-auto w-full max-w-6xl px-4">
+            <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl">
               {isMounted && (
                 <iframe
                   key={visualizerUrl}
                   src={visualizerUrl}
-                  className="min-w-full min-h-full"
+                  className="min-h-full min-w-full"
                   allow="autoplay; fullscreen"
                   loading="lazy"
                   referrerPolicy="no-referrer"
@@ -151,7 +175,7 @@ export default function HomePageClient(props: {
       {/* Global Stats Section */}
       <GlobalStats initialStats={props.initialStats} />
 
-      <section className="flex flex-col items-center justify-center gap-16 min-h-lvh">
+      <section className="flex min-h-lvh flex-col items-center justify-center gap-16">
         <motion.div
           className="flex flex-col gap-32"
           initial={{ opacity: 0 }}
@@ -225,13 +249,13 @@ export default function HomePageClient(props: {
           ].map(character => (
             <motion.div
               key={character.alt}
-              className="flex flex-col items-center min-h-lvh justify-center relative"
+              className="relative flex min-h-lvh flex-col items-center justify-center"
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: false, margin: "-100px" }}
               transition={{ duration: 1.2 }}
             >
-              <div className="absolute z-10 left-1/2 -translate-x-1/2 w-[50vw]">
+              <div className="absolute left-1/2 z-10 w-[50vw] -translate-x-1/2">
                 {character.content}
               </div>
               <motion.div

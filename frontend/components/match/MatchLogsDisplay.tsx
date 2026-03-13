@@ -101,7 +101,7 @@ export default function MatchLogsDisplay({ logs }: MatchLogsDisplayProps) {
 
   return (
     <div className="w-full space-y-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <h2 className="text-2xl font-bold">Match Logs</h2>
         <div className="w-1/3">
           <Input
@@ -131,7 +131,7 @@ export default function MatchLogsDisplay({ logs }: MatchLogsDisplayProps) {
               className="overflow-y-auto"
               style={{ maxHeight: "calc(100vh - 300px)" }}
             >
-              <pre className="whitespace-pre-wrap p-4 rounded-md">
+              <pre className="rounded-md p-4 whitespace-pre-wrap">
                 {getFilteredLogs(log.logs).map((line, index) => (
                   <div key={index}>
                     {parseAnsiColorCodes(line).map((part, partIndex) => (

@@ -20,7 +20,7 @@ function ProfileContent() {
 
   if (status === "loading") {
     return (
-      <div className="flex justify-center items-center min-h-[200px]">
+      <div className="flex min-h-[200px] items-center justify-center">
         <div className="text-muted-foreground">Loading...</div>
       </div>
     );
@@ -30,7 +30,7 @@ function ProfileContent() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="mx-auto max-w-2xl space-y-6">
         <div className="text-center">
           <h1 className={title()}>Profile</h1>
           <p className="mt-4 text-lg text-muted-foreground">
@@ -66,7 +66,7 @@ export default function ProfileClient() {
   return (
     <Suspense
       fallback={(
-        <div className="flex justify-center items-center min-h-[200px]">
+        <div className="flex min-h-[200px] items-center justify-center">
           <div className="text-muted-foreground">Loading...</div>
         </div>
       )}
