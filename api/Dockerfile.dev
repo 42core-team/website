@@ -1,0 +1,15 @@
+FROM node:25-alpine
+RUN npm install -g pnpm
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+
+EXPOSE 4000
+
+ENV NODE_OPTIONS="--max-old-space-size=1536"
+
+CMD ["sh", "-c", "pnpm run migration:run-local && pnpm run start:dev"]
