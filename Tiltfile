@@ -176,7 +176,7 @@ k8s_resource('k8s-service',
 
 docker_build('frontend', './frontend',
     dockerfile = './frontend/Dockerfile.dev',
-    ignore     = ['helm', '.next', '.env*', '*.md', 'content'],
+    ignore     = ['helm', '.next', '.env*'],
     live_update = [
         sync('./frontend/app',        '/app/app'),
         sync('./frontend/components', '/app/components'),
@@ -188,6 +188,7 @@ docker_build('frontend', './frontend',
         sync('./frontend/contexts',   '/app/contexts'),
         sync('./frontend/config',     '/app/config'),
         sync('./frontend/public',     '/app/public'),
+        sync('./frontend/content',    '/app/content'),
         run(
             'cd /app && pnpm install --frozen-lockfile',
             trigger = ['./frontend/package.json', './frontend/pnpm-lock.yaml'],
