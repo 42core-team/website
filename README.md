@@ -15,68 +15,57 @@ This project consists of multiple microservices:
 
 ## Quick Start
 
-### Option 1: DevContainer (slower in execution but easier)
+### Prerequisites
 
-The easiest way to get started is using the provided DevContainer:
+* **Docker** (running)
+* **k3d** — [k3d.io](https://k3d.io/stable/#installation)
+* **Tilt** — [docs.tilt.dev/install.html](https://docs.tilt.dev/install.html)
+* **Helm** — [helm.sh/docs/intro/install](https://helm.sh/docs/intro/install)
+* **kubectl** — [kubernetes.io/docs/tasks/tools](https://kubernetes.io/docs/tasks/tools)
 
-1. Open the project in VS Code
-2. Install the "Dev Containers" extension
-3. Press `Ctrl+Shift+P` → "Dev Containers: Reopen in Container"
-4. Wait for the container to build and start
-
-The DevContainer includes all necessary tools and services pre-configured.
-
-### Option 2: Manual Setup (faster but more complex)
-
-If you prefer to install everything locally:
-
-#### Prerequisites
-
-* **Node.js 18+** with pnpm
-* **Go 1.25+**
-* **PostgreSQL** (or use Docker Compose)
-* **RabbitMQ** (or use Docker Compose)
-* **Kubernetes cluster** (for game execution)
-* **S3-compatible storage** (for replay storage)
-
-#### Quick Infrastructure Setup
-
-For PostgreSQL and RabbitMQ, you can use the provided Docker Compose:
-
+On macOS you can install all at once:
 ```bash
-cd .devcontainer && docker compose up -d postgres rabbitmq
+brew install k3d helm kubectl && brew install tilt-dev/tap/tilt
 ```
 
-This starts:
+### Start
 
-* **PostgreSQL** on `localhost:5432` (user: `postgres`, password: `postgres`, db: `postgres`)
-* **RabbitMQ** on `localhost:5672` (management UI: `http://localhost:15672`, user: `guest`, password: `guest`)
+```bash
+make dev
+```
 
-The default environment variables in each service are configured to work with these settings.
+This will:
+1. Create a local k3d cluster (or start it if it already exists)
+2. Guide you through setting up OAuth credentials in `.env.tilt`
+3. Launch Tilt, which builds and deploys all services into the cluster
 
-#### Basic Setup (Website Only)
+Once running, services are available at:
 
-For basic website functionality:
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:3000 |
+| API | http://localhost:4000 |
+| RabbitMQ UI | http://localhost:15672 (guest / guest) |
+| SeaweedFS S3 | http://localhost:9000 |
+| PostgreSQL | localhost:5432 (postgres / postgres) |
 
-1. **Start infrastructure** (PostgreSQL + RabbitMQ)
-2. **Configure Frontend** - See [frontend/README.md](frontend/README.md)
-3. **Configure API** - See [api/README.md](api/README.md)
-4. **Start services:** - See individual READMEs for details
+### OAuth Setup
 
-#### Full Setup (All Features)
+On first run, `make dev` will ask for OAuth credentials and save them to `.env.tilt` (gitignored).
+You need at least a **GitHub OAuth App**:
 
-For complete functionality including GitHub integration and game execution:
+* Create one at: https://github.com/settings/developers → "New OAuth App"
+* Homepage URL: `http://localhost:3000`
+* Callback URL: `http://localhost:4000/auth/github/callback`
 
-1. **Start PostgreSQL**
-2. **Start RabbitMQ**
-3. **Set up Kubernetes cluster** (recommended: [kind](https://kind.sigs.k8s.io/))
-4. **Configure S3 storage** for replay storage
-5. **Configure all services:**
-   * [Frontend](frontend/README.md) - Web interface
-   * [API Service](api/README.md) - Main backend
-   * [GitHub Service](github-service/README.md) - Repository management
-   * [K8s Service](k8s-service/README.md) - Game execution
-6. **Start all services**
+42 Network OAuth is optional.
+
+### Other commands
+
+```bash
+make stop    # Stop the cluster (preserves data)
+make clean   # Delete the cluster entirely
+```
 
 ## Service Dependencies
 
@@ -94,7 +83,7 @@ For complete functionality including GitHub integration and game execution:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test locally using the DevContainer or manual setup
+4. Test locally using `make dev`
 5. Submit a pull request
 
 ## Support
