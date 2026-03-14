@@ -69,13 +69,13 @@ k8s_yaml([
     'local-setup/infra/seaweedfs-config.yaml',
     'local-setup/infra/seaweedfs.yaml',
     'local-setup/infra/seaweedfs-init.yaml',
+    'local-setup/infra/s3-proxy.yaml',
 ])
 
 # Attach the s3 credentials ConfigMap to the seaweedfs workload so Tilt
 # applies it before the pod starts (and re-applies it on changes).
 k8s_resource('seaweedfs',
     port_forwards = [
-        '9000:8333',  # S3 API    — http://localhost:9000
         '9001:9333',  # Master UI — http://localhost:9001
         '9002:8888',  # Filer UI  — http://localhost:9002
     ],
@@ -87,6 +87,15 @@ k8s_resource('seaweedfs',
 # Attach the CORS/policy ConfigMap to the init Job.
 k8s_resource('seaweedfs-init',
     objects       = ['seaweedfs-cors-configs:ConfigMap:' + NAMESPACE],
+    resource_deps = ['seaweedfs'],
+    labels        = ['infra'],
+)
+
+# nginx proxy in front of SeaweedFS S3 — adds Access-Control-Allow-Private-Network: true
+# so browsers on public HTTPS origins (e.g. the visualizer) can fetch from localhost:9000.
+k8s_resource('s3-proxy',
+    port_forwards = ['9000:80'],  # S3 API — http://localhost:9000
+    objects       = ['s3-proxy-config:ConfigMap:' + NAMESPACE],
     resource_deps = ['seaweedfs'],
     labels        = ['infra'],
 )

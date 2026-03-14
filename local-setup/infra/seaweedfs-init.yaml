@@ -36,7 +36,8 @@ data:
         {
           "AllowedOrigins": [
             "https://visualizer.coregame.sh",
-            "https://dev.visualizer.coregame.sh"
+            "https://dev.visualizer.coregame.sh",
+            "http://localhost:3000"
           ],
           "AllowedMethods": ["GET", "HEAD"],
           "AllowedHeaders": ["*"],
