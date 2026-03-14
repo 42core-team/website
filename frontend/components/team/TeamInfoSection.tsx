@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { toggleAllowChallenges } from "@/app/actions/team";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import TeamInviteModal from "./TeamInviteModal";
 
@@ -44,9 +47,19 @@ export function TeamInfoSection({
   const [isOpen, setIsOpen] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+  const [allowChallenges, setAllowChallenges] = useState(myTeam.allowChallenges);
 
   const getRepoUrl = () => {
     return `https://github.com/${githubOrg}/${myTeam.repo}`;
+  };
+
+  const handleToggleAllowChallenges = async () => {
+    const previous = allowChallenges;
+    setAllowChallenges(!previous);
+    const result = await toggleAllowChallenges(eventId);
+    if (result && "error" in result) {
+      setAllowChallenges(previous);
+    }
   };
 
   const handleConfirmLeave = async () => {
@@ -114,6 +127,14 @@ export function TeamInfoSection({
             <p className="font-medium">
               {new Date(myTeam.updatedAt || "").toLocaleDateString()}
             </p>
+          </div>
+          <div className="flex items-center space-x-2 pt-2">
+            <Switch
+              id="allow-challenges"
+              checked={allowChallenges}
+              onCheckedChange={handleToggleAllowChallenges}
+            />
+            <Label htmlFor="allow-challenges">Allow others to challenge our team</Label>
           </div>
         </div>
 

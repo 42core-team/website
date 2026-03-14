@@ -20,6 +20,7 @@ export interface Team {
   createdAt?: Date;
   updatedAt?: Date;
   membersCount?: number;
+  allowChallenges: boolean;
 }
 
 export interface TeamMember {
@@ -80,6 +81,7 @@ export async function getTeamById(teamId: string): Promise<Team | null> {
         createdAt: team.createdAt,
         inQueue: team.inQueue,
         updatedAt: team.updatedAt,
+        allowChallenges: team.allowChallenges,
       }
     : null;
 }
@@ -107,6 +109,7 @@ export async function getMyEventTeam(eventId: string): Promise<Team | null> {
     inQueue: team.inQueue,
     createdAt: team.createdAt,
     updatedAt: team.updatedAt,
+    allowChallenges: team.allowChallenges,
   };
 }
 
@@ -241,5 +244,18 @@ export async function getTeamsForEventTable(
     queueScore: team.queueScore ?? 0,
     createdAt: team.createdAt,
     updatedAt: team.updatedAt,
+    allowChallenges: team.allowChallenges,
   }));
+}
+
+export async function toggleAllowChallenges(eventId: string): Promise<ServerActionResponse<void>> {
+  return await handleError(
+    axiosInstance.put(`team/event/${eventId}/allowChallenges/toggle`),
+  );
+}
+
+export async function challengeTeam(eventId: string, targetTeamId: string): Promise<ServerActionResponse<void>> {
+  return await handleError(
+    axiosInstance.post(`team/event/${eventId}/challenge/${targetTeamId}`),
+  );
 }
