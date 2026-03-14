@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: seaweedfs-cors-configs
+  namespace: core-local
+data:
+  core-replays-policy.json: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "Public GET",
+          "Effect": "Allow",
+          "Principal": "*",
+          "Action": "s3:GetObject",
+          "Resource": "arn:aws:s3:::core-replays/*"
+        }
+      ]
+    }
+  core-files-policy.json: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "Public GET",
+          "Effect": "Allow",
+          "Principal": "*",
+          "Action": "s3:GetObject",
+          "Resource": "arn:aws:s3:::core-files/*"
+        }
+      ]
+    }
+  core-replays-cors.json: |
+    {
+      "CORSRules": [
+        {
+          "AllowedOrigins": [
+            "https://visualizer.coregame.sh",
+            "https://dev.visualizer.coregame.sh"
+          ],
+          "AllowedMethods": ["GET", "HEAD"],
+          "AllowedHeaders": ["*"],
+          "ExposeHeaders": ["ETag"]
+        }
+      ]
+    }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seaweedfs-init
+  namespace: core-local
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: init
+          image: amazon/aws-cli:latest
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              value: core
+            - name: AWS_SECRET_ACCESS_KEY
+              value: coresecret
+            - name: AWS_DEFAULT_REGION
+              value: local
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              ENDPOINT=http://seaweedfs:8333
+
+              echo "Waiting for SeaweedFS S3..."
+              until aws --endpoint-url "$ENDPOINT" s3 ls > /dev/null 2>&1; do
+                sleep 3
+              done
+              echo "SeaweedFS is ready."
+
+              aws --endpoint-url "$ENDPOINT" s3 mb s3://core-replays --region local 2>/dev/null || echo "core-replays already exists"
+              aws --endpoint-url "$ENDPOINT" s3 mb s3://core-files   --region local 2>/dev/null || echo "core-files already exists"
+
+              aws --endpoint-url "$ENDPOINT" s3api put-bucket-policy \
+                --bucket core-replays \
+                --policy file:///cors/core-replays-policy.json
+
+              aws --endpoint-url "$ENDPOINT" s3api put-bucket-policy \
+                --bucket core-files \
+                --policy file:///cors/core-files-policy.json
+
+              aws --endpoint-url "$ENDPOINT" s3api put-bucket-cors \
+                --bucket core-replays \
+                --cors-configuration file:///cors/core-replays-cors.json
+
+              echo "SeaweedFS init complete."
+          volumeMounts:
+            - name: cors-configs
+              mountPath: /cors
+      volumes:
+        - name: cors-configs
+          configMap:
+            name: seaweedfs-cors-configs

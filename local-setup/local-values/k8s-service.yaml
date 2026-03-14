@@ -1,0 +1,30 @@
+image:
+  repository: k8s-service
+  tag: local
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+fullnameOverride: "k8s-service"
+
+ingress:
+  enabled: false
+
+env:
+  ADDR: ":9000"
+  NAMESPACE: core-local
+  S3_ENDPOINT: "http://seaweedfs:8333"
+  S3_REGION: local
+  S3_BUCKET: core-replays
+
+secrets:
+  RABBITMQ: "amqp://guest:guest@rabbitmq:5672/"
+  RABBITMQ_HTTP: "http://guest:guest@rabbitmq:15672"
+  S3_ACCESS_KEY_ID: core
+  S3_SECRET_ACCESS_KEY: coresecret
+
+livenessProbe:
+  enabled: false
+
+readinessProbe:
+  enabled: false

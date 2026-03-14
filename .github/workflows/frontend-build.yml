@@ -161,6 +161,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_BACKEND_PUBLIC_URL=${{ vars.NEXT_PUBLIC_BACKEND_PUBLIC_URL }}
             NEXT_PUBLIC_VISUALIZER_URL=${{ vars.NEXT_PUBLIC_VISUALIZER_URL }}
+            NEXT_PUBLIC_S3_REPLAYS_BUCKET_URL=${{ vars.NEXT_PUBLIC_S3_REPLAYS_BUCKET_URL }}
             CURRENT_BRANCH=${{ github.ref_name }}
           secrets: |
             NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}

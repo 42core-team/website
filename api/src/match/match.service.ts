@@ -366,7 +366,7 @@ export class MatchService {
     match.state = MatchState.IN_PROGRESS;
     await this.matchRepository.save(match);
 
-    if (this.configService.get<string>("NODE_ENV") === "development") {
+    if (this.configService.get<boolean>("RANDOM_GAME_RESULTS") === true) {
       const botIdMapping: Record<string, string> = {};
       match.teams.forEach((team) => {
         botIdMapping[team.id] = team.id;
