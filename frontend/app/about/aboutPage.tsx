@@ -36,7 +36,7 @@ const team: TeamMember[] = [
     name: "Emil Ebert",
     role: "Head of Web Systems",
     imgSrc: "/team/eebert.png",
-    linkUrl: "https://coregame.sh/rr",
+    linkUrl: "https://www.linkedin.com/in/emil-ebert/",
     linkType: "linkedin",
   },
   {
