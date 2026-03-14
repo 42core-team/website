@@ -21,7 +21,7 @@ import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations"
 import { MatchService } from "../match/match.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { LockKeys } from "../constants";
-import { MatchEntity, MatchPhase } from "../match/entites/match.entity";
+import { MatchEntity, MatchPhase, MatchState } from "../match/entites/match.entity";
 
 @Injectable()
 export class TeamService {
@@ -587,6 +587,28 @@ export class TeamService {
 
   async setQueueScore(teamId: string, score: number) {
     return this.teamRepository.update(teamId, { queueScore: score });
+  }
+
+  async getTeamsEligibleForMatchmaking(eventId: string): Promise<TeamEntity[]> {
+    return this.teamRepository
+      .createQueryBuilder("team")
+      .where("team.eventId = :eventId", { eventId })
+      .andWhere("team.repo IS NOT NULL")
+      .andWhere("(team.inQueue = true OR team.allowChallenges = true)")
+      .andWhere((qb) => {
+        const subQuery = qb
+          .subQuery()
+          .select("match.id")
+          .from(MatchEntity, "match")
+          .innerJoin("match.teams", "innerTeam")
+          .where("innerTeam.id = team.id")
+          .andWhere("match.state = :inProgress", {
+            inProgress: MatchState.IN_PROGRESS,
+          })
+          .getQuery();
+        return "NOT EXISTS " + subQuery;
+      })
+      .getMany();
   }
 
   async getTeamsInQueue(eventId: string): Promise<TeamEntity[]> {
