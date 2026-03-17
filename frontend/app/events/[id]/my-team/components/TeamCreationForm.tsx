@@ -49,6 +49,8 @@ export default function TeamCreationForm() {
     },
   });
 
+  const effectiveTemplateId = selectedTemplateId || templates[0]?.id || "";
+
   function handleTeamNameChange(name: string) {
     setNewTeamName(name);
     const validation = validateTeamName(name);
@@ -63,13 +65,13 @@ export default function TeamCreationForm() {
       }
 
       // If templates exist, require selection
-      if (templates.length > 0 && !selectedTemplateId) {
+      if (templates.length > 0 && !effectiveTemplateId) {
         throw new Error("Please select a starter template.");
       }
 
       await axiosInstance.post(`team/event/${eventId}/create`, {
         name: newTeamName,
-        starterTemplateId: selectedTemplateId || undefined,
+        starterTemplateId: effectiveTemplateId,
       });
     },
     onMutate: () => {
@@ -234,7 +236,7 @@ export default function TeamCreationForm() {
                     Starter Template
                   </Label>
                   <Select
-                    value={selectedTemplateId}
+                    value={effectiveTemplateId}
                     onValueChange={setSelectedTemplateId}
                   >
                     <SelectTrigger className="mt-1">
@@ -264,7 +266,7 @@ export default function TeamCreationForm() {
                 disabled={
                   !newTeamName
                   || !!validationError
-                  || (templates.length > 0 && !selectedTemplateId)
+                  || (templates.length > 0 && !effectiveTemplateId)
                   || isLoading
                   || createTeamMutation.isPending
                 }
