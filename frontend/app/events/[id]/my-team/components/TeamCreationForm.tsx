@@ -1,6 +1,6 @@
 "use client";
 import type { AxiosError } from "axios";
-import type { FormEvent } from "react";
+import type { SyntheticEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Info, Loader2, Terminal } from "lucide-react";
 import { usePlausible } from "next-plausible";
@@ -118,7 +118,7 @@ export default function TeamCreationForm() {
     await createTeamMutation.mutateAsync();
   }
 
-  function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: SyntheticEvent) {
     e.preventDefault();
     handleCreateTeam();
   }
@@ -177,12 +177,12 @@ export default function TeamCreationForm() {
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="h-3.5 w-3.5 flex-shrink-0 cursor-help" />
+                        <Info className="h-3.5 w-3.5 shrink-0 cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent
                         side="top"
                         align="center"
-                        className="max-w-[250px] text-xs"
+                        className="max-w-62.5 text-xs"
                       >
                         <p>
                           Templates are fixed once selected. However, you can

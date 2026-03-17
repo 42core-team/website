@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { SyntheticEvent } from "react";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -52,7 +52,7 @@ export default function QueueMatchesControls({
   }, []);
 
   const apply = useCallback(
-    (e?: FormEvent) => {
+    (e?: SyntheticEvent) => {
       e?.preventDefault();
 
       const params = new URLSearchParams(searchParams?.toString() ?? "");
