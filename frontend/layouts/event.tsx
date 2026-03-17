@@ -6,6 +6,7 @@ import {
   isEventAdmin,
   isUserRegisteredForEvent,
 } from "@/app/actions/event";
+import { getMyEventTeam } from "@/app/actions/team";
 import { authOptions } from "@/app/utils/authOptions";
 import EventInfoNotice from "@/components/event-info-notice";
 import EventNavbar from "@/components/event-navbar";
@@ -40,6 +41,7 @@ export default async function EventLayout({
 
   const isEventAdminState = await isEventAdmin(eventId);
   const isUserRegistered = await isUserRegisteredForEvent(eventId);
+  const myTeam = await getMyEventTeam(eventId);
 
   if (isActionError(isEventAdminState) || isActionError(isUserRegistered)) {
     throw new Error("Error: Unable to fetch event details");
@@ -58,6 +60,7 @@ export default async function EventLayout({
         event={event}
         eventId={eventId}
         isUserRegistered={isUserRegistered}
+        hasTeam={!!myTeam}
         isEventAdmin={isEventAdminState}
       />
       <main className="container mx-auto max-w-7xl grow px-6">{children}</main>
