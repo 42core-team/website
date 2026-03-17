@@ -200,7 +200,7 @@ export default function TeamCreationForm() {
               <h2 className="text-xl font-bold">Team Details</h2>
             </div>
 
-            <div className="space-y-6">
+            <form onSubmit={e => { e.preventDefault(); handleCreateTeam(); }} className="space-y-6">
               <div className="space-y-2">
                 <Label
                   htmlFor="team-name"
@@ -252,9 +252,9 @@ export default function TeamCreationForm() {
               )}
 
               <Button
+                type="submit"
                 className="w-full shadow-lg shadow-primary/20"
                 size="lg"
-                onClick={handleCreateTeam}
                 disabled={
                   !newTeamName
                   || !!validationError
@@ -271,7 +271,7 @@ export default function TeamCreationForm() {
                       "Create My Team"
                     )}
               </Button>
-            </div>
+            </form>
           </div>
         </div>
       </div>
