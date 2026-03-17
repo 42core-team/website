@@ -147,7 +147,7 @@ export default function QueueState(props: {
                   ? (
                       <div className="flex flex-col items-center justify-center gap-2">
                         <p className="text-sm">
-                          Queue Count:
+                          {"Queue Count: "}
                           {queueState.queueCount}
                         </p>
                         <Button
