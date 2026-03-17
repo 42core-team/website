@@ -1,5 +1,6 @@
 "use client";
 import type { AxiosError } from "axios";
+import type { FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Info, Loader2, Terminal } from "lucide-react";
 import { usePlausible } from "next-plausible";
@@ -117,6 +118,11 @@ export default function TeamCreationForm() {
     await createTeamMutation.mutateAsync();
   }
 
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    handleCreateTeam();
+  }
+
   return (
     <Card className="mx-auto max-w-4xl overflow-hidden shadow-xl">
       <div className="flex flex-col md:flex-row">
@@ -200,7 +206,7 @@ export default function TeamCreationForm() {
               <h2 className="text-xl font-bold">Team Details</h2>
             </div>
 
-            <form onSubmit={e => { e.preventDefault(); handleCreateTeam(); }} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label
                   htmlFor="team-name"
