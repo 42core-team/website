@@ -14,6 +14,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
   constructor(private readonly httpAdapterHost: HttpAdapterHost) {}
 
+  private getHttpExceptionMessage(exception: HttpException): string {
+    const response = exception.getResponse();
+    if (typeof response === "string") return response;
+    if (typeof response === "object" && response !== null && "message" in response) {
+      const msg = (response as { message: unknown }).message;
+      return Array.isArray(msg) ? msg.join(", ") : String(msg);
+    }
+    return exception.message;
+  }
+
   catch(exception: unknown, host: ArgumentsHost): void {
     if (host.getType() !== "http") {
       return;
@@ -33,7 +43,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       path: httpAdapter.getRequestUrl(ctx.getRequest()),
       message:
         exception instanceof HttpException
-          ? exception.message
+          ? this.getHttpExceptionMessage(exception)
           : "Internal server error",
     };
 
@@ -45,8 +55,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     } else {
       // 4xx errors
-      if (exception instanceof Error) {
-        this.logger.warn(`HTTP Exception: ${exception.message}`);
+      if (exception instanceof HttpException) {
+        this.logger.warn(`HTTP Exception: ${this.getHttpExceptionMessage(exception)}`);
       } else {
         this.logger.warn(`HTTP Exception: ${exception}`);
       }

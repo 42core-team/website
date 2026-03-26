@@ -49,7 +49,7 @@ export default function TeamCreationForm() {
     },
   });
 
-  const effectiveTemplateId = selectedTemplateId || templates[0]?.id || "";
+  const effectiveTemplateId = selectedTemplateId || templates[0]?.id || undefined;
 
   function handleTeamNameChange(name: string) {
     setNewTeamName(name);
