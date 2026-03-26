@@ -66,7 +66,7 @@
     "@nestjs/cli": "^11.0.16",
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "^11.1.17",
-    "@swc/cli": "^0.7.10",
+    "@swc/cli": "^0.8.0",
     "@swc/core": "^1.15.21",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
@@ -88,7 +88,7 @@
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.2",
     "typescript-eslint": "^8.57.2"
   },
   "jest": {
