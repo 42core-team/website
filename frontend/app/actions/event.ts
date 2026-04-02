@@ -91,9 +91,8 @@ export async function getParticipantsCountForEvent(
 }
 
 // Join a user to an event
-export async function joinEvent(eventId: string): Promise<boolean> {
-  await axiosInstance.put(`event/${eventId}/join`);
-  return true;
+export async function joinEvent(eventId: string): Promise<ServerActionResponse<boolean>> {
+  return await handleError(axiosInstance.put(`event/${eventId}/join`));
 }
 
 // Interface for creating events
@@ -241,5 +240,45 @@ export async function deleteStarterTemplate(
 ): Promise<ServerActionResponse<void>> {
   return await handleError(
     axiosInstance.delete(`event/${eventId}/templates/${templateId}`),
+  );
+}
+
+export interface WhitelistEntry {
+  id: string;
+  username: string;
+  platform: "GITHUB" | "FORTYTWO";
+  createdAt: string;
+}
+
+export async function getEventWhitelist(
+  eventId: string,
+): Promise<ServerActionResponse<WhitelistEntry[]>> {
+  return await handleError(axiosInstance.get(`event/${eventId}/whitelist`));
+}
+
+export async function addToWhitelist(
+  eventId: string,
+  entries: { username: string; platform: "GITHUB" | "FORTYTWO" }[],
+): Promise<ServerActionResponse<WhitelistEntry[]>> {
+  return await handleError(
+    axiosInstance.post(`event/${eventId}/whitelist`, { entries }),
+  );
+}
+
+export async function removeFromWhitelist(
+  eventId: string,
+  whitelistId: string,
+): Promise<ServerActionResponse<void>> {
+  return await handleError(
+    axiosInstance.delete(`event/${eventId}/whitelist/${whitelistId}`),
+  );
+}
+
+export async function bulkRemoveFromWhitelist(
+  eventId: string,
+  ids: string[],
+): Promise<ServerActionResponse<void>> {
+  return await handleError(
+    axiosInstance.post(`event/${eventId}/whitelist/bulk-delete`, { ids }),
   );
 }

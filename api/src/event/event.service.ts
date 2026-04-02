@@ -10,8 +10,10 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { EventEntity } from "./entities/event.entity";
 import { EventStarterTemplateEntity } from "./entities/event-starter-template.entity";
+import { EventWhitelistEntity } from "./entities/event-whitelist.entity";
 import {
   DataSource,
+  In,
   IsNull,
   LessThanOrEqual,
   MoreThanOrEqual,
@@ -29,6 +31,7 @@ import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations"
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { EventVersionDto } from "./dtos/eventVersionDto";
 import { LockKeys } from "../constants";
+import { WhitelistPlatform } from "./entities/event-whitelist.entity";
 
 @Injectable()
 export class EventService {
@@ -39,6 +42,8 @@ export class EventService {
     private readonly permissionRepository: Repository<UserEventPermissionEntity>,
     @InjectRepository(EventStarterTemplateEntity)
     private readonly templateRepository: Repository<EventStarterTemplateEntity>,
+    @InjectRepository(EventWhitelistEntity)
+    private readonly whitelistRepository: Repository<EventWhitelistEntity>,
     private readonly configService: ConfigService,
     @Inject(forwardRef(() => TeamService))
     private readonly teamService: TeamService,
@@ -665,5 +670,144 @@ export class EventService {
       id: eventId,
       canCreateTeam: true,
     });
+  }
+
+  async getWhitelist(eventId: string): Promise<EventWhitelistEntity[]> {
+    return this.whitelistRepository.find({
+      where: { event: { id: eventId } },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  async addToWhitelist(
+    eventId: string,
+    entries: { username: string; platform: WhitelistPlatform }[],
+  ): Promise<EventWhitelistEntity[]> {
+    const event = await this.getEventById(eventId);
+    const normalizedEntries = entries.map((entry) => ({
+      username: entry.username.toLowerCase(),
+      platform: entry.platform,
+    }));
+
+    const uniqueInputEntries = [
+      ...new Map(
+        normalizedEntries.map((e) => [`${e.username}:${e.platform}`, e]),
+      ).values(),
+    ];
+
+    const existingEntries = await this.whitelistRepository.find({
+      where: {
+        event: { id: eventId },
+      },
+    });
+
+    const existingSet = new Set(
+      existingEntries.map((e) => `${e.username}:${e.platform}`),
+    );
+
+    const newEntries = uniqueInputEntries.filter(
+      (entry) => !existingSet.has(`${entry.username}:${entry.platform}`),
+    );
+
+    if (newEntries.length === 0) {
+      return [];
+    }
+
+    const whitelistEntries = newEntries.map((entry) =>
+      this.whitelistRepository.create({
+        event,
+        username: entry.username,
+        platform: entry.platform,
+      }),
+    );
+
+    return this.whitelistRepository.save(whitelistEntries);
+  }
+
+  async removeFromWhitelist(
+    eventId: string,
+    whitelistId: string,
+  ): Promise<void> {
+    await this.whitelistRepository.delete({
+      id: whitelistId,
+      event: { id: eventId },
+    });
+  }
+
+  async bulkRemoveFromWhitelist(
+    eventId: string,
+    ids: string[],
+  ): Promise<void> {
+    await this.whitelistRepository.delete({
+      id: In(ids),
+      event: { id: eventId },
+    });
+  }
+
+  async hasWhitelist(eventId: string): Promise<boolean> {
+    return this.whitelistRepository.existsBy({
+      event: { id: eventId },
+    });
+  }
+
+  async isUserWhitelisted(
+    eventId: string,
+    githubUsername: string,
+    fortyTwoUsername: string | null,
+  ): Promise<boolean> {
+    const conditions: { username: string; platform: WhitelistPlatform }[] = [
+      { username: githubUsername.toLowerCase(), platform: WhitelistPlatform.GITHUB },
+    ];
+
+    if (fortyTwoUsername) {
+      conditions.push({
+        username: fortyTwoUsername.toLowerCase(),
+        platform: WhitelistPlatform.FORTYTWO,
+      });
+    }
+
+    return this.whitelistRepository.existsBy({
+      event: { id: eventId },
+      ...conditions.reduce(
+        (acc, cond, idx) => {
+          if (idx === 0) {
+            return { username: cond.username, platform: cond.platform };
+          }
+          return acc;
+        },
+        {} as { username?: string; platform?: WhitelistPlatform },
+      ),
+    });
+  }
+
+  async isUserWhitelistedForEvent(
+    eventId: string,
+    githubUsername: string,
+    fortyTwoUsername: string | null,
+  ): Promise<boolean> {
+    const hasWhitelist = await this.hasWhitelist(eventId);
+    if (!hasWhitelist) {
+      return true;
+    }
+
+    const queryBuilder = this.whitelistRepository
+      .createQueryBuilder("whitelist")
+      .where("whitelist.eventId = :eventId", { eventId })
+      .andWhere(
+        "(whitelist.username = :githubUsername AND whitelist.platform = :githubPlatform)",
+        { githubUsername: githubUsername.toLowerCase(), githubPlatform: WhitelistPlatform.GITHUB },
+      );
+
+    if (fortyTwoUsername) {
+      queryBuilder.orWhere(
+        "(whitelist.username = :fortyTwoUsername AND whitelist.platform = :fortyTwoPlatform)",
+        {
+          fortyTwoUsername: fortyTwoUsername.toLowerCase(),
+          fortyTwoPlatform: WhitelistPlatform.FORTYTWO,
+        },
+      );
+    }
+
+    return queryBuilder.getExists();
   }
 }

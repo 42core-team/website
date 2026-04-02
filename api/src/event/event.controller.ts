@@ -20,6 +20,7 @@ import { SetLockTeamsDateDto } from "./dtos/setLockTeamsDateDto";
 import { UpdateEventSettingsDto } from "./dtos/updateEventSettingsDto";
 import { CreateEventStarterTemplateDto } from "./dtos/createEventStarterTemplateDto";
 import { UpdateEventStarterTemplateDto } from "./dtos/updateEventStarterTemplateDto";
+import { AddToWhitelistDto, BulkDeleteWhitelistDto } from "./dtos/whitelistDto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { UserId } from "../guards/UserGuard";
 
@@ -167,6 +168,28 @@ export class EventController {
       throw new BadRequestException(
         "User is already registered for this event.",
       );
+    }
+
+    const event = await this.eventService.getEventById(eventId);
+
+    if (event.isPrivate) {
+      const user = await this.userService.getUserById(userId);
+      const socialAccounts = user.socialAccounts || [];
+      const fortyTwoAccount = socialAccounts.find(
+        (sa) => sa.platform === "42",
+      );
+
+      const isWhitelisted = await this.eventService.isUserWhitelistedForEvent(
+        eventId,
+        user.username,
+        fortyTwoAccount?.username || null,
+      );
+
+      if (!isWhitelisted) {
+        throw new UnauthorizedException(
+          "You are not whitelisted for this private event.",
+        );
+      }
     }
 
     this.logger.log({ action: "attempt_join_event", userId, eventId });
@@ -376,5 +399,80 @@ export class EventController {
       templateId,
     });
     return this.eventService.deleteStarterTemplate(eventId, templateId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(":id/whitelist")
+  async getWhitelist(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId))) {
+      throw new UnauthorizedException("You are not an admin of this event");
+    }
+    return this.eventService.getWhitelist(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/whitelist")
+  async addToWhitelist(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+    @Body() body: AddToWhitelistDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId))) {
+      throw new UnauthorizedException("You are not an admin of this event");
+    }
+
+    this.logger.log({
+      action: "attempt_add_to_whitelist",
+      userId,
+      eventId,
+      entriesCount: body.entries.length,
+    });
+
+    return this.eventService.addToWhitelist(eventId, body.entries);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(":id/whitelist/:whitelistId")
+  async removeFromWhitelist(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @Param("whitelistId", new ParseUUIDPipe()) whitelistId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId))) {
+      throw new UnauthorizedException("You are not an admin of this event");
+    }
+
+    this.logger.log({
+      action: "attempt_remove_from_whitelist",
+      userId,
+      eventId,
+      whitelistId,
+    });
+
+    return this.eventService.removeFromWhitelist(eventId, whitelistId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/whitelist/bulk-delete")
+  async bulkRemoveFromWhitelist(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+    @Body() body: BulkDeleteWhitelistDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId))) {
+      throw new UnauthorizedException("You are not an admin of this event");
+    }
+
+    this.logger.log({
+      action: "attempt_bulk_remove_from_whitelist",
+      userId,
+      eventId,
+      idsCount: body.ids.length,
+    });
+
+    return this.eventService.bulkRemoveFromWhitelist(eventId, body.ids);
   }
 }
