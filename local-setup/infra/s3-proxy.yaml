@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: s3-proxy-config
+  namespace: core-local
+data:
+  default.conf: |
+    server {
+        listen 80;
+
+        location / {
+            # Browsers (Chrome PNA policy) require Access-Control-Allow-Private-Network: true
+            # on the OPTIONS preflight before they allow a public HTTPS origin to fetch
+            # from a loopback address.  SeaweedFS does not emit this header, so we handle
+            # the preflight here and pass all other requests straight through.
+            if ($request_method = 'OPTIONS') {
+                add_header 'Access-Control-Allow-Origin'          '$http_origin';
+                add_header 'Access-Control-Allow-Methods'         'GET, HEAD, OPTIONS';
+                add_header 'Access-Control-Allow-Headers'         '*';
+                add_header 'Access-Control-Expose-Headers'        'ETag';
+                add_header 'Access-Control-Allow-Private-Network' 'true';
+                add_header 'Access-Control-Max-Age'               '86400';
+                return 204;
+            }
+
+            proxy_pass       http://seaweedfs:8333;
+            proxy_set_header Host $host;
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s3-proxy
+  namespace: core-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: s3-proxy
+  template:
+    metadata:
+      labels:
+        app: s3-proxy
+    spec:
+      containers:
+        - name: s3-proxy
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            tcpSocket:
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/conf.d
+      volumes:
+        - name: config
+          configMap:
+            name: s3-proxy-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: s3-proxy
+  namespace: core-local
+spec:
+  selector:
+    app: s3-proxy
+  ports:
+    - port: 80
+      targetPort: 80

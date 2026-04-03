@@ -39,7 +39,10 @@ export const RabbitMQLive = Layer.scoped(
             cause: e,
           }),
       }),
-      (conn) => Effect.promise(() => conn.close()).pipe(Effect.ignore),
+      (conn) =>
+        Effect.promise(() => conn.close()).pipe(
+          Effect.tap(() => Effect.logInfo("RabbitMQ connection closed")),
+        ),
     ).pipe(Effect.tap(() => Effect.logInfo("RabbitMQ connection established")));
 
     const channel: Channel = yield* Effect.acquireRelease(
@@ -79,12 +82,19 @@ export const RabbitMQLive = Layer.scoped(
                   if (!msg) return;
 
                   Runtime.runFork(runtime)(
-                    Effect.catchAll(handler(msg), (err) =>
-                      Effect.log(
-                        `ERROR: Message handling failed: ${String(err)}`,
-                      ),
-                    ).pipe(
+                    handler(msg).pipe(
                       Effect.tap(() => Effect.sync(() => channel.ack(msg))),
+                      Effect.catchAll((err) =>
+                        Effect.gen(function* () {
+                          const payload = msg.content.toString("utf8");
+                          yield* Effect.logError(
+                            `Message handling failed: ${String(err)} | payload=${payload}`,
+                          );
+                          yield* Effect.sync(() =>
+                            channel.nack(msg, false, false),
+                          );
+                        }),
+                      ),
                     ),
                   );
                 },
@@ -110,10 +120,7 @@ export const RabbitMQLive = Layer.scoped(
     });
   }).pipe(
     Effect.retry(
-      Schedule.intersect(
-        Schedule.exponential(1000, 2),
-        Schedule.recurs(5)
-      ),
+      Schedule.intersect(Schedule.exponential(1000, 2), Schedule.recurs(5)),
     ),
   ),
 );

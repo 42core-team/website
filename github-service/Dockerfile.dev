@@ -1,0 +1,17 @@
+FROM node:25-alpine
+RUN npm install -g pnpm
+RUN apk add --no-cache git
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+
+RUN git config --global user.name "corethegame" && \
+    git config --global user.email "core@paulgrossmann.de"
+
+EXPOSE 3000
+
+CMD ["pnpm", "run", "start:dev"]

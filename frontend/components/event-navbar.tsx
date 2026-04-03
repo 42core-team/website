@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 interface EventNavbarProps {
   eventId: string;
   isUserRegistered?: boolean;
+  hasTeam?: boolean;
   isEventAdmin?: boolean;
   event: Event;
 }
@@ -30,6 +31,7 @@ interface EventNavbarProps {
 export default function EventNavbar({
   eventId,
   isUserRegistered = false,
+  hasTeam = false,
   isEventAdmin = false,
   event,
 }: Readonly<EventNavbarProps>) {
@@ -45,7 +47,7 @@ export default function EventNavbar({
     if (isUserRegistered) {
       items.push({ name: "My Team", path: `/events/${eventId}/my-team` });
 
-      if (hasStarted) {
+      if (hasStarted && hasTeam) {
         items.push({ name: "Queue", path: `/events/${eventId}/queue` });
       }
     }
@@ -63,7 +65,7 @@ export default function EventNavbar({
     }
 
     return items;
-  }, [eventId, isUserRegistered, isEventAdmin, hasStarted]);
+  }, [eventId, isUserRegistered, hasTeam, isEventAdmin, hasStarted]);
 
   return (
     <div className="flex items-center justify-start py-4 pl-12 md:justify-center md:pl-0">

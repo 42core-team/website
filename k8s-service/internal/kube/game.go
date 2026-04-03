@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -152,7 +153,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 		botContainers = append(botContainers, corev1.Container{
 			Name:            containerName,
 			Image:           bot.Image,
-			ImagePullPolicy: corev1.PullAlways,
+			ImagePullPolicy: imagePullPolicy(bot.Image),
 			Command: []string{
 				"sh", "-c", fmt.Sprintf("cd /shared-data/repo/my-core-bot && make && ./bot %s", *bot.RndID),
 			},
@@ -196,9 +197,10 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 	gameEnv = append(gameEnv, playerNameEnvs...)
 
 	mainContainer := corev1.Container{
-		Name:  "game",
-		Image: game.Image,
-		Args:  botIDs,
+		Name:            "game",
+		Image:           game.Image,
+		ImagePullPolicy: imagePullPolicy(game.Image),
+		Args:            botIDs,
 		Env:   gameEnv,
 		SecurityContext: &corev1.SecurityContext{
 			//RunAsUser: &serverRunAsUser,
@@ -319,6 +321,21 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 
 	c.logger.Infoln("Job to run a game successfully created", "jobName", createdJob.Name)
 	return nil
+}
+
+// imagePullPolicy returns PullAlways for non-release images (i.e. tags that do
+// not start with "v"), so that mutable tags like "dev" or "latest" are always
+// re-pulled. Versioned images (e.g. "v1.2.3") use PullIfNotPresent to benefit
+// from the node-level image cache.
+func imagePullPolicy(image string) corev1.PullPolicy {
+	tag := image
+	if idx := strings.LastIndex(image, ":"); idx != -1 {
+		tag = image[idx+1:]
+	}
+	if strings.HasPrefix(tag, "v") {
+		return corev1.PullIfNotPresent
+	}
+	return corev1.PullAlways
 }
 
 func int32Ptr(i int32) *int32 {

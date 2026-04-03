@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { SyntheticEvent } from "react";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -52,7 +52,7 @@ export default function QueueMatchesControls({
   }, []);
 
   const apply = useCallback(
-    (e?: FormEvent) => {
+    (e?: SyntheticEvent) => {
       e?.preventDefault();
 
       const params = new URLSearchParams(searchParams?.toString() ?? "");
@@ -88,7 +88,7 @@ export default function QueueMatchesControls({
           Bucket interval
         </label>
         <Select value={interval} onValueChange={onChangeInterval}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-45">
             <SelectValue placeholder="Select interval" />
           </SelectTrigger>
           <SelectContent>
@@ -99,7 +99,7 @@ export default function QueueMatchesControls({
         </Select>
       </div>
 
-      <div className="min-w-[280px] flex-1">
+      <div className="min-w-70 flex-1">
         <label className="mb-1 block text-sm font-medium">Date range</label>
         <div className="flex gap-2">
           <Popover>
@@ -127,7 +127,7 @@ export default function QueueMatchesControls({
                 selected={range.start}
                 onSelect={date =>
                   setRange(prev => ({ ...prev, start: date }))}
-                initialFocus
+                autoFocus
               />
               {interval !== "day" && (
                 <div className="border-t p-3">
@@ -173,7 +173,7 @@ export default function QueueMatchesControls({
                 selected={range.end}
                 onSelect={date =>
                   setRange(prev => ({ ...prev, end: date }))}
-                initialFocus
+                autoFocus
               />
               {interval !== "day" && (
                 <div className="border-t p-3">

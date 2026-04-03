@@ -82,6 +82,7 @@ export default function EventsTable({ events }: Readonly<{ events: Event[] }>) {
                       {event.minTeamSize}
                       {" "}
                       -
+                      {" "}
                       {event.maxTeamSize}
                       {" "}
                       members
