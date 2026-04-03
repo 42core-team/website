@@ -46,8 +46,10 @@ type MockGitRepo = {
   api: SimpleGit;
 };
 
-const normalize = (p: string): string => path.posix.normalize(p.replace("\\", "/"));
-const makeGitFailureKey = (cwd: string, method: GitMethod) => `${normalize(cwd)}::${method}`;
+const normalize = (p: string): string =>
+  path.posix.normalize(p.replace("\\", "/"));
+const makeGitFailureKey = (cwd: string, method: GitMethod) =>
+  `${normalize(cwd)}::${method}`;
 
 const gitRepos = new Map<string, MockGitRepo>();
 const gitFailures = new Map<string, Error>();
@@ -74,7 +76,11 @@ const createMockGitRepo = (cwd: string): MockGitRepo => {
   };
 
   const api = {
-    clone: async (repoUrl: string, localPath: string, options: Array<string>) => {
+    clone: async (
+      repoUrl: string,
+      localPath: string,
+      options: Array<string>,
+    ) => {
       calls.clone.push([repoUrl, localPath, ...options]);
       await failIfConfigured("clone");
       return api;
@@ -151,7 +157,11 @@ class MockFileSystem {
     return this.files.get(normalize(filePath));
   }
 
-  setFailure(op: "stat" | "readFile" | "writeFileString" | "remove" | "makeDirectory", p: string, error: Error): void {
+  setFailure(
+    op: "stat" | "readFile" | "writeFileString" | "remove" | "makeDirectory",
+    p: string,
+    error: Error,
+  ): void {
     this.failures.set(`${op}:${normalize(p)}`, error);
   }
 
@@ -247,7 +257,9 @@ const getRepoUtilsModule = async (): Promise<RepoUtilsModule> => {
 
 const runWithRepoUtils = async <A>(
   fs: MockFileSystem,
-  program: (repoUtils: RepoUtilsService) => Effect.Effect<A, unknown, FileSystem.FileSystem>,
+  program: (
+    repoUtils: RepoUtilsService,
+  ) => Effect.Effect<A, unknown, FileSystem.FileSystem>,
 ): Promise<A> => {
   const mod = await getRepoUtilsModule();
   const layer = Layer.provide(
@@ -309,7 +321,7 @@ describe("RepoUtilsLive.cloneMonoRepo", () => {
     );
     fs.setFile(
       `${repoRoot}/my-core-bot/src/main.c`,
-      "const char* TEAM = \"YOUR TEAM NAME HERE\";\n",
+      'const char* TEAM = "YOUR TEAM NAME HERE";\n',
     );
     fs.setFile(
       `${repoRoot}/scripts/check_update_configs.sh`,
@@ -330,8 +342,8 @@ describe("RepoUtilsLive.cloneMonoRepo", () => {
         eventId: "event-123",
         teamName: "Ninjas",
         basePath,
-        gameConfig: "{\"mode\":\"duel\"}",
-        serverConfig: "{\"tickRate\":60}",
+        gameConfig: '{"mode":"duel"}',
+        serverConfig: '{"tickRate":60}',
         apiBaseUrl: "https://api.example.com",
         starterTemplateId: "template-42",
       }),
@@ -349,7 +361,9 @@ describe("RepoUtilsLive.cloneMonoRepo", () => {
         "--depth=1",
       ],
     ]);
-    expect(monoRepoGit.calls.raw).toEqual([["sparse-checkout", "set", basePath]]);
+    expect(monoRepoGit.calls.raw).toEqual([
+      ["sparse-checkout", "set", basePath],
+    ]);
 
     const teamRepoGit = getGitRepo(path.join(tempFolderPath, basePath));
     expect(teamRepoGit.calls.init).toHaveLength(1);
@@ -357,14 +371,21 @@ describe("RepoUtilsLive.cloneMonoRepo", () => {
     expect(fs.getFile(`${repoRoot}/.coreignore`)).toBeUndefined();
     expect(fs.getFile(`${repoRoot}/.gitignore`)).toBe("dist\nnode_modules\n");
 
-    const compose = fs.getFile(`${repoRoot}/.devcontainer/docker-compose.yml`) ?? "";
+    const compose =
+      fs.getFile(`${repoRoot}/.devcontainer/docker-compose.yml`) ?? "";
     expect(compose).toContain("image: ghcr.io/acme/my-core-bot:v2");
     expect(compose).toContain("image: ghcr.io/acme/visualizer:v2");
     expect(compose).toContain("image: keep-me:latest");
 
-    expect(fs.getFile(`${repoRoot}/my-core-bot/src/main.c`)).toContain("Ninjas");
-    expect(fs.getFile(`${repoRoot}/configs/game.config.json`)).toBe("{\"mode\":\"duel\"}");
-    expect(fs.getFile(`${repoRoot}/configs/server.config.json`)).toBe("{\"tickRate\":60}");
+    expect(fs.getFile(`${repoRoot}/my-core-bot/src/main.c`)).toContain(
+      "Ninjas",
+    );
+    expect(fs.getFile(`${repoRoot}/configs/game.config.json`)).toBe(
+      '{"mode":"duel"}',
+    );
+    expect(fs.getFile(`${repoRoot}/configs/server.config.json`)).toBe(
+      '{"tickRate":60}',
+    );
     expect(fs.getFile(`${repoRoot}/scripts/check_update_configs.sh`)).toBe(
       "curl https://api.example.com/event/event-123\n",
     );
@@ -406,7 +427,10 @@ describe("RepoUtilsLive.cloneMonoRepo", () => {
     const basePath = "template";
     const repoRoot = `${tempFolderPath}/${basePath}`;
 
-    fs.setFile(`${repoRoot}/scripts/check_update_configs.sh`, "curl [[event_url]]\n");
+    fs.setFile(
+      `${repoRoot}/scripts/check_update_configs.sh`,
+      "curl [[event_url]]\n",
+    );
     fs.setFailure(
       "writeFileString",
       `${repoRoot}/scripts/check_update_configs.sh`,
@@ -429,7 +453,9 @@ describe("RepoUtilsLive.cloneMonoRepo", () => {
           apiBaseUrl: "https://api.example.com",
         }),
       ),
-    ).rejects.toThrow(`Failed to write ${repoRoot}/scripts/check_update_configs.sh`);
+    ).rejects.toThrow(
+      `Failed to write ${repoRoot}/scripts/check_update_configs.sh`,
+    );
   });
 });
 
@@ -439,7 +465,10 @@ describe("RepoUtilsLive.pushToTeamRepo", () => {
     const tempFolderPath = "/tmp/push-work";
     const basePath = "starter-template";
     const repoRoot = `${tempFolderPath}/${basePath}`;
-    fs.setFile(`${repoRoot}/README.md`, "git clone your-repo-url\ncd my-core-bot\n");
+    fs.setFile(
+      `${repoRoot}/README.md`,
+      "git clone your-repo-url\ncd my-core-bot\n",
+    );
 
     const { default: simpleGit } = await import("simple-git");
     const gitRepo = simpleGit(repoRoot) as SimpleGit;
@@ -479,9 +508,15 @@ describe("RepoUtilsLive.pushToTeamRepo", () => {
     const tempFolderPath = "/tmp/push-fail";
     const basePath = "starter-template";
     const repoRoot = `${tempFolderPath}/${basePath}`;
-    fs.setFile(`${repoRoot}/README.md`, "git clone your-repo-url\ncd my-core-bot\n");
+    fs.setFile(
+      `${repoRoot}/README.md`,
+      "git clone your-repo-url\ncd my-core-bot\n",
+    );
 
-    gitFailures.set(makeGitFailureKey(repoRoot, "push"), new Error("push rejected"));
+    gitFailures.set(
+      makeGitFailureKey(repoRoot, "push"),
+      new Error("push rejected"),
+    );
     const { default: simpleGit } = await import("simple-git");
     const gitRepo = simpleGit(repoRoot) as SimpleGit;
 
@@ -502,4 +537,3 @@ describe("RepoUtilsLive.pushToTeamRepo", () => {
     ).rejects.toThrow("git push");
   });
 });
-

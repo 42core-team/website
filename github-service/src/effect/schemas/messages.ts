@@ -32,26 +32,20 @@ export const RemoveWritePermissions = createMessage(
   },
 );
 
-export const AddWritePermissions = createMessage(
-  "add_write_permissions",
-  {
-    ...repoInfoFields,
-    username: Schema.String,
-    githubId: Schema.String,
-  },
-);
+export const AddWritePermissions = createMessage("add_write_permissions", {
+  ...repoInfoFields,
+  username: Schema.String,
+  githubId: Schema.String,
+});
 
-export const AddUserToRepository = createMessage(
-  "add_user_to_repository",
-  {
-    repositoryName: Schema.String,
-    githubOrg: Schema.String,
-    encryptedSecret: Schema.String,
-    githubAccessToken: Schema.optional(Schema.String),
-    username: Schema.String,
-    githubId: Schema.String,
-  },
-);
+export const AddUserToRepository = createMessage("add_user_to_repository", {
+  repositoryName: Schema.String,
+  githubOrg: Schema.String,
+  encryptedSecret: Schema.String,
+  githubAccessToken: Schema.optional(Schema.String),
+  username: Schema.String,
+  githubId: Schema.String,
+});
 
 export const RemoveUserFromRepository = createMessage(
   "remove_user_from_repository",
@@ -64,36 +58,30 @@ export const RemoveUserFromRepository = createMessage(
   },
 );
 
-export const DeleteRepository = createMessage(
-  "delete_repository",
-  {
-    repositoryName: Schema.String,
-    githubOrg: Schema.String,
-    encryptedSecret: Schema.String,
-  },
-);
+export const DeleteRepository = createMessage("delete_repository", {
+  repositoryName: Schema.String,
+  githubOrg: Schema.String,
+  encryptedSecret: Schema.String,
+});
 
-export const CreateTeamRepository = createMessage(
-  "create_team_repository",
-  {
-    name: Schema.String,
-    teamName: Schema.String,
-    githubUsers: Schema.Array(GitHubUser),
-    githubOrg: Schema.String,
-    encryptedSecret: Schema.String,
-    teamId: Schema.String,
-    monoRepoUrl: Schema.String,
-    monoRepoVersion: Schema.String,
-    myCoreBotDockerImage: Schema.String,
-    visualizerDockerImage: Schema.String,
-    eventId: Schema.String,
-    basePath: Schema.String,
-    gameConfig: Schema.String,
-    serverConfig: Schema.String,
-    starterTemplateId: Schema.optional(Schema.String),
-    apiBaseUrl: Schema.String,
-  },
-);
+export const CreateTeamRepository = createMessage("create_team_repository", {
+  name: Schema.String,
+  teamName: Schema.String,
+  githubUsers: Schema.Array(GitHubUser),
+  githubOrg: Schema.String,
+  encryptedSecret: Schema.String,
+  teamId: Schema.String,
+  monoRepoUrl: Schema.String,
+  monoRepoVersion: Schema.String,
+  myCoreBotDockerImage: Schema.String,
+  visualizerDockerImage: Schema.String,
+  eventId: Schema.String,
+  basePath: Schema.String,
+  gameConfig: Schema.String,
+  serverConfig: Schema.String,
+  starterTemplateId: Schema.optional(Schema.String),
+  apiBaseUrl: Schema.String,
+});
 
 export const InboundMessage = Schema.Union(
   RemoveWritePermissions,
@@ -116,7 +104,9 @@ export type AddUserToRepositoryMessage = Schema.Schema.Type<
 export type RemoveUserFromRepositoryMessage = Schema.Schema.Type<
   typeof RemoveUserFromRepository
 >;
-export type DeleteRepositoryMessage = Schema.Schema.Type<typeof DeleteRepository>;
+export type DeleteRepositoryMessage = Schema.Schema.Type<
+  typeof DeleteRepository
+>;
 export type CreateTeamRepositoryMessage = Schema.Schema.Type<
   typeof CreateTeamRepository
 >;
@@ -130,9 +120,7 @@ type MessageForPattern<P extends InboundPattern> = Extract<
 >;
 
 export type MessageHandlers<A, E, R> = {
-  [P in InboundPattern]: (
-    msg: MessageForPattern<P>,
-  ) => Effect.Effect<A, E, R>;
+  [P in InboundPattern]: (msg: MessageForPattern<P>) => Effect.Effect<A, E, R>;
 };
 
 export const matchMessage = <A, E, R>(

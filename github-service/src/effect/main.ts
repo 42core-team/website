@@ -21,7 +21,9 @@ const consumer = Effect.scoped(
     const mq = yield* RabbitMQ;
     yield* mq.consume((msg) =>
       handleMessage(msg).pipe(
-        Effect.catchAll((err) => Effect.logError(`Unhandled error: ${String(err)}`)),
+        Effect.catchAll((err) =>
+          Effect.logError(`Unhandled error: ${String(err)}`),
+        ),
       ),
     );
 

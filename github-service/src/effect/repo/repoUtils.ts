@@ -43,7 +43,6 @@ export interface RepoUtils {
 
 export const RepoUtils = Context.GenericTag<RepoUtils>("RepoUtils");
 
-
 const COREIGNORE_FILE = ".coreignore";
 
 const tryGit = <A>(
@@ -123,8 +122,8 @@ const initRepo = (
   }).pipe(
     Effect.withSpan("initRepo", {
       attributes: { "temp.folder": tempFolderPath, "base.path": basePath },
-    })
-  )
+    }),
+  );
 
 const updateGitignoreFromCoreignore = (
   fs: FileSystem.FileSystem,
@@ -335,94 +334,90 @@ const updateReadmeRepoUrl = (
 
 export const RepoUtilsLive = Layer.effect(
   RepoUtils,
-  Effect.map(
-    FileSystem.FileSystem,
-    (fs) =>
-      ({
-        cloneMonoRepo: (opts) =>
-          Effect.gen(function* () {
-            yield* Effect.log(
-              `Cloning mono repo ${opts.monoRepoUrl} to ${opts.tempFolderPath}`,
-            );
-            const gitMono = simpleGit(opts.tempFolderPath);
+  Effect.map(FileSystem.FileSystem, (fs) => ({
+    cloneMonoRepo: (opts) =>
+      Effect.gen(function* () {
+        yield* Effect.log(
+          `Cloning mono repo ${opts.monoRepoUrl} to ${opts.tempFolderPath}`,
+        );
+        const gitMono = simpleGit(opts.tempFolderPath);
 
-            yield* tryGit("git clone", () =>
-              gitMono.clone(opts.monoRepoUrl, "./", [
-                "--filter=blob:none",
-                "--sparse",
-                "--branch",
-                opts.monoRepoVersion,
-                "--depth=1",
-              ]),
-            );
+        yield* tryGit("git clone", () =>
+          gitMono.clone(opts.monoRepoUrl, "./", [
+            "--filter=blob:none",
+            "--sparse",
+            "--branch",
+            opts.monoRepoVersion,
+            "--depth=1",
+          ]),
+        );
 
-            yield* tryGit("sparse-checkout", () =>
-              gitMono.raw(["sparse-checkout", "set", opts.basePath]),
-            );
+        yield* tryGit("sparse-checkout", () =>
+          gitMono.raw(["sparse-checkout", "set", opts.basePath]),
+        );
 
-            const repoRoot = path.join(opts.tempFolderPath, opts.basePath);
-            const [gitRepo] = yield* Effect.all(
-              [
-                initRepo(fs, opts.tempFolderPath, opts.basePath),
-                updateGitignoreFromCoreignore(fs, repoRoot),
-                updateDevcontainerDockerCompose(
-                  fs,
-                  repoRoot,
-                  opts.myCoreBotDockerImage,
-                  opts.visualizerDockerImage,
-                ),
-                updateTeamName(fs, repoRoot, opts.teamName),
-                writeJsonConfig(
-                  fs,
-                  repoRoot,
-                  "game.config.json",
-                  opts.gameConfig,
-                  "game",
-                ),
-                writeJsonConfig(
-                  fs,
-                  repoRoot,
-                  "server.config.json",
-                  opts.serverConfig,
-                  "server",
-                ),
-                updateConfigsUrls(
-                  fs,
-                  repoRoot,
-                  opts.eventId,
-                  opts.apiBaseUrl,
-                  opts.starterTemplateId,
-                ),
-              ],
-              { concurrency: "unbounded" },
-            );
-            return gitRepo;
-          }).pipe(Effect.withSpan("cloneMonoRepo", { attributes: opts })),
-
-        pushToTeamRepo: (opts) =>
-          Effect.gen(function* () {
-            const repoRoot = path.join(opts.tempFolderPath, opts.basePath);
-            yield* updateReadmeRepoUrl(
+        const repoRoot = path.join(opts.tempFolderPath, opts.basePath);
+        const [gitRepo] = yield* Effect.all(
+          [
+            initRepo(fs, opts.tempFolderPath, opts.basePath),
+            updateGitignoreFromCoreignore(fs, repoRoot),
+            updateDevcontainerDockerCompose(
               fs,
               repoRoot,
-              opts.teamRepo.name,
-              opts.teamRepo.ssh_url,
-            );
+              opts.myCoreBotDockerImage,
+              opts.visualizerDockerImage,
+            ),
+            updateTeamName(fs, repoRoot, opts.teamName),
+            writeJsonConfig(
+              fs,
+              repoRoot,
+              "game.config.json",
+              opts.gameConfig,
+              "game",
+            ),
+            writeJsonConfig(
+              fs,
+              repoRoot,
+              "server.config.json",
+              opts.serverConfig,
+              "server",
+            ),
+            updateConfigsUrls(
+              fs,
+              repoRoot,
+              opts.eventId,
+              opts.apiBaseUrl,
+              opts.starterTemplateId,
+            ),
+          ],
+          { concurrency: "unbounded" },
+        );
+        return gitRepo;
+      }).pipe(Effect.withSpan("cloneMonoRepo", { attributes: opts })),
 
-            const authUrl = opts.teamRepo.clone_url.replace(
-              "https://",
-              `https://${opts.decryptedGithubAccessToken}@`,
-            );
-            yield* tryGit("git push", () =>
-              opts.gitRepo
-                .addRemote("team-repo", authUrl)
-                .then(() => opts.gitRepo.add("."))
-                .then(() => opts.gitRepo.commit("Initial commit"))
-                .then(() => opts.gitRepo.branch(["-M", "main"]))
-                .then(() => opts.gitRepo.push("team-repo", "main", ["-u"])),
-            );
-            yield* Effect.log(`Pushed to team-repo ${opts.teamRepo.clone_url}`);
-          }).pipe(Effect.withSpan("pushToTeamRepo", { attributes: opts })),
-      })
-  ),
+    pushToTeamRepo: (opts) =>
+      Effect.gen(function* () {
+        const repoRoot = path.join(opts.tempFolderPath, opts.basePath);
+        yield* updateReadmeRepoUrl(
+          fs,
+          repoRoot,
+          opts.teamRepo.name,
+          opts.teamRepo.ssh_url,
+        );
+
+        const authUrl = opts.teamRepo.clone_url.replace(
+          "https://",
+          `https://${opts.decryptedGithubAccessToken}@`,
+        );
+        yield* tryGit("git push", () =>
+          opts.gitRepo
+            .addRemote("team-repo", authUrl)
+            .then(() => opts.gitRepo.add("."))
+            .then(() => opts.gitRepo.commit("Initial commit"))
+            .then(() => opts.gitRepo.branch(["-M", "main"]))
+            .then(() => opts.gitRepo.push("team-repo", "main", ["-u"])),
+        );
+        yield* Effect.log(`Pushed to team-repo ${opts.teamRepo.clone_url}`);
+      }).pipe(Effect.withSpan("pushToTeamRepo", { attributes: opts })),
+  })),
 );

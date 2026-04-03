@@ -9,4 +9,4 @@ export const ServiceConfigConfig = Config.all({
     Config.withDefault("github-service-results"),
   ),
   API_SECRET_ENCRYPTION_KEY: Config.nonEmptyString("API_SECRET_ENCRYPTION_KEY"),
-})
+});
