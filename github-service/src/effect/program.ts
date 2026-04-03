@@ -1,4 +1,4 @@
-import { Effect, Data, Schedule } from "effect";
+import { Effect, Data } from "effect";
 import { FileSystem, HttpClient } from "@effect/platform";
 import type { ConsumeMessage } from "amqplib";
 import {
