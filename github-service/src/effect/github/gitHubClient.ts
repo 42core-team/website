@@ -301,11 +301,7 @@ export class GitHubClient implements GitHubApi {
           (inv) => (inv.repository?.full_name ?? "").toLowerCase() === full,
         );
         if (!match)
-          return Effect.void as unknown as Effect.Effect<
-            void,
-            GitHubError,
-            HttpClient.HttpClient
-          >;
+          return Effect.void
         return this.requestJson<void>(
           `user/repository_invitations/${match.id}`,
           { method: "PATCH" },
