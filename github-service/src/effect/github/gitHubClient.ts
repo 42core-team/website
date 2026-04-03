@@ -1,7 +1,6 @@
 import { Effect, Schema, Duration, Data, Context, Layer, Option } from "effect";
 import { HttpClient, HttpClientRequest, HttpBody, Headers } from "@effect/platform";
 
-// Error types (Effect Data.TaggedError)
 export class GitHubError extends Data.TaggedError("GitHubError")<{
   message: string;
   status?: number;
@@ -18,7 +17,6 @@ export class GitHubNotFoundError extends Data.TaggedError("GitHubNotFoundError")
   status?: number;
 }> {}
 
-// Config for the client (derive TS type from schema)
 export const GitHubConfigSchema = Schema.Struct({
   baseUrl: Schema.String,
   token: Schema.String,
@@ -27,7 +25,6 @@ export const GitHubConfigSchema = Schema.Struct({
 });
 export type GitHubConfig = Schema.Schema.Type<typeof GitHubConfigSchema>;
 
-// Public interface for DI
 export type GitHubErrors = GitHubError | GitHubRateLimitError | GitHubNotFoundError;
 
 export interface GitHubApi {
@@ -38,7 +35,6 @@ export interface GitHubApi {
   deleteRepository(githubOrg: string, repositoryName: string): Effect.Effect<void, GitHubErrors, HttpClient.HttpClient>;
   createRepo(org: string, opts: { name: string; private: boolean }): Effect.Effect<{ name: string; ssh_url: string; clone_url: string }, GitHubErrors, HttpClient.HttpClient>;
   getUserById(githubId: string): Effect.Effect<{ login: string; name: string | null }, GitHubErrors, HttpClient.HttpClient>;
-  // Accept an invitation to a repository for the CURRENT token (user token expected)
   acceptRepositoryInvitationByRepo(githubOrg: string, repositoryName: string): Effect.Effect<void, GitHubErrors, HttpClient.HttpClient>;
 }
 
@@ -143,7 +139,6 @@ export class GitHubClient implements GitHubApi {
     return withRetries(run);
   }
 
-  // High-level GitHub operations
   addWritePermission(repoOwner: string, repoName: string, username: string) {
     return this.requestJson<void>(`repos/${repoOwner}/${repoName}/collaborators/${username}`, {
       method: "PUT",
@@ -179,7 +174,6 @@ export class GitHubClient implements GitHubApi {
     });
   }
 
-  // List invitations for the authenticated user and accept the one for org/repo
   acceptRepositoryInvitationByRepo(githubOrg: string, repositoryName: string) {
     type Invitation = { id: number; repository?: { full_name?: string } };
     return this.requestJson<Invitation[]>(`user/repository_invitations`, { method: "GET" }).pipe(
@@ -193,14 +187,12 @@ export class GitHubClient implements GitHubApi {
   }
 }
 
-// Effect-Style DI: a factory capable of producing GitHubApi instances for a given token
 export interface GitHubFactory {
   readonly make: (token: string) => GitHubApi;
 }
 
 export const GitHubFactory = Context.GenericTag<GitHubFactory>("GitHubFactory");
 
-// A simple Live layer that builds clients with default HttpClient and static config
 export const GitHubFactoryLive = (
   base: { baseUrl?: string; userAgent?: string; maxRetries?: number } = {}
 ) =>
