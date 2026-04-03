@@ -38,7 +38,7 @@ type RepoUtilsService = {
   }) => Effect.Effect<void, unknown, FileSystem.FileSystem>;
 };
 
-type RepoUtilsModule = typeof import("../../../src/effect/repo/repoUtils");
+type RepoUtilsModule = typeof import("../../../effect/repo/repoUtils");
 
 type MockGitRepo = {
   cwd: string;
@@ -240,7 +240,7 @@ let repoUtilsModule: RepoUtilsModule | null = null;
 
 const getRepoUtilsModule = async (): Promise<RepoUtilsModule> => {
   if (!repoUtilsModule) {
-    repoUtilsModule = await import("../../../src/effect/repo/repoUtils");
+    repoUtilsModule = await import("../../../effect/repo/repoUtils");
   }
   return repoUtilsModule;
 };
@@ -260,7 +260,12 @@ const runWithRepoUtils = async <A>(
     return yield* program(repoUtils);
   });
 
-  return Effect.runPromise(effectProgram.pipe(Effect.provide(layer)));
+  return Effect.runPromise(
+    effectProgram.pipe(
+      Effect.provide(layer),
+      Effect.provideService(FileSystem.FileSystem, fs.asService()),
+    ),
+  );
 };
 
 const getGitRepo = (cwd: string): MockGitRepo => {
