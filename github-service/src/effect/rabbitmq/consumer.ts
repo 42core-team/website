@@ -22,6 +22,11 @@ export interface RabbitMQ {
   ) => Effect.Effect<void, RabbitMQError>;
 }
 
+const retrySchedule = Schedule.intersect(
+  Schedule.exponential(1000, 2),
+  Schedule.recurs(5),
+);
+
 export const RabbitMQ = Context.GenericTag<RabbitMQ>("RabbitMQ");
 
 export const RabbitMQLive = Layer.scoped(
@@ -111,16 +116,20 @@ export const RabbitMQLive = Layer.scoped(
             JSON.stringify({ pattern, data }),
             "utf8",
           );
-          yield* Effect.sync(() =>
+          const sent = yield* Effect.sync(() =>
             channel.sendToQueue(cfg.resultsQueue, payload, {
               persistent: true,
             }),
           );
-        }),
+          if (!sent) {
+            yield* Effect.fail(
+              new RabbitMQError({
+                message: "Channel buffer full, message not sent",
+                cause: undefined,
+              }),
+            );
+          }
+        }).pipe(Effect.retry(retrySchedule)),
     });
-  }).pipe(
-    Effect.retry(
-      Schedule.intersect(Schedule.exponential(1000, 2), Schedule.recurs(5)),
-    ),
-  ),
+  }).pipe(Effect.retry(retrySchedule)),
 );
