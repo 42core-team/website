@@ -1,6 +1,6 @@
 import { Effect, Data } from "effect";
 import { FileSystem, HttpClient } from "@effect/platform";
-import type { ConsumeMessage } from "amqplib";
+import type { AMQPConsumeMessage as ConsumeMessage } from "@effect-messaging/amqp/AMQPConsumeMessage";
 import {
   matchMessage,
   InboundMessage,
@@ -218,6 +218,16 @@ const handleAddWritePermissions = (msg: AddWritePermissionsMessage) => {
           username: d.username,
         }),
     },
+  ).pipe(
+    Effect.withSpan("github.action.add_write_permissions", {
+      attributes: {
+        pattern: "add_write_permissions",
+        repoOwner: d.repoOwner,
+        repoName: d.repoName,
+        username: d.username,
+        githubId: d.githubId,
+      },
+    }),
   );
 };
 
@@ -251,6 +261,16 @@ const handleRemoveWritePermissions = (msg: RemoveWritePermissionsMessage) => {
           username: d.username,
         }),
     },
+  ).pipe(
+    Effect.withSpan("github.action.remove_write_permissions", {
+      attributes: {
+        pattern: "remove_write_permissions",
+        repoOwner: d.repoOwner,
+        repoName: d.repoName,
+        username: d.username,
+        githubId: d.githubId,
+      },
+    }),
   );
 };
 
@@ -283,7 +303,17 @@ const handleAddUserToRepository = (msg: AddUserToRepositoryMessage) => {
       repositoryName: d.repositoryName,
       username: d.username,
     });
-  });
+  }).pipe(
+    Effect.withSpan("github.action.add_user_to_repository", {
+      attributes: {
+        pattern: "add_user_to_repository",
+        githubOrg: d.githubOrg,
+        repositoryName: d.repositoryName,
+        username: d.username,
+        githubId: d.githubId,
+      },
+    }),
+  );
 };
 
 const handleRemoveUserFromRepository = (
@@ -318,6 +348,16 @@ const handleRemoveUserFromRepository = (
           username: d.username,
         }),
     },
+  ).pipe(
+    Effect.withSpan("github.action.remove_user_from_repository", {
+      attributes: {
+        pattern: "remove_user_from_repository",
+        githubOrg: d.githubOrg,
+        repositoryName: d.repositoryName,
+        username: d.username,
+        githubId: d.githubId,
+      },
+    }),
   );
 };
 
@@ -348,7 +388,15 @@ const handleDeleteRepository = (msg: DeleteRepositoryMessage) => {
           }),
       },
     );
-  });
+  }).pipe(
+    Effect.withSpan("github.action.delete_repository", {
+      attributes: {
+        pattern: "delete_repository",
+        githubOrg: d.githubOrg,
+        repositoryName: d.repositoryName,
+      },
+    }),
+  );
 };
 
 const acceptInvitationIfToken = (
@@ -514,7 +562,17 @@ const handleCreateTeamRepository = (msg: CreateTeamRepositoryMessage) =>
     yield* Effect.log(
       `Created team repository ${JSON.stringify({ name: repoName, githubOrg: d.githubOrg, teamId: d.teamId })}`,
     );
-  });
+  }).pipe(
+    Effect.withSpan("github.action.create_team_repository", {
+      attributes: {
+        pattern: "create_team_repository",
+        githubOrg: msg.data.githubOrg,
+        teamId: msg.data.teamId,
+        teamName: msg.data.teamName,
+        repositoryName: msg.data.name,
+      },
+    }),
+  );
 
 export const handleMessage = (msg: ConsumeMessage) =>
   Effect.gen(function* () {
