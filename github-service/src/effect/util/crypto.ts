@@ -9,11 +9,17 @@ export class DecryptError extends Error {
 }
 
 export const decryptSecret = (encryptedSecret: string, key: string) =>
-  Effect.sync(() => {
-    const bytes = CryptoJS.AES.decrypt(encryptedSecret, key);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    if (!decrypted) {
-      throw new DecryptError();
-    }
-    return decrypted;
+  Effect.try({
+    try: () => {
+      const bytes = CryptoJS.AES.decrypt(encryptedSecret, key);
+      const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+      if (!decrypted) {
+        throw new DecryptError();
+      }
+      return decrypted;
+    },
+    catch: (error) =>
+      new DecryptError(
+        error instanceof Error ? error.message : "Failed to decrypt secret",
+      ),
   });
