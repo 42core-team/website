@@ -39,7 +39,7 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../local-setup/infra/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -54,7 +54,7 @@ services:
       - "3200:3200"
       - "4318:4318"
     volumes:
-      - ./tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - ../local-setup/infra/observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
     networks:
       - development-network
 
@@ -68,7 +68,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../local-setup/infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       - prometheus
       - tempo
