@@ -215,8 +215,7 @@ export class GitHubClient implements GitHubApi {
           if (e instanceof GitHubRateLimitError && e.resetAt) {
             const wait = Math.max(0, e.resetAt - Date.now()) + 1000;
             return Effect.sleep(Duration.millis(wait)).pipe(
-              Effect.andThen(eff),
-              Effect.flatMap(() => withRetries(eff)),
+              Effect.andThen(withRetries(eff)),
             );
           }
           return Effect.fail(e);
