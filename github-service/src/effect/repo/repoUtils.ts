@@ -418,6 +418,16 @@ export const RepoUtilsLive = Layer.effect(
             .then(() => opts.gitRepo.push("team-repo", "main", ["-u"])),
         );
         yield* Effect.log(`Pushed to team-repo ${opts.teamRepo.clone_url}`);
-      }).pipe(Effect.withSpan("pushToTeamRepo", { attributes: opts })),
+      }).pipe(
+        Effect.withSpan("pushToTeamRepo", {
+          attributes: {
+            "team.repo.name": opts.teamRepo.name,
+            "team.repo.clone_url": opts.teamRepo.clone_url,
+            "team.repo.ssh_url": opts.teamRepo.ssh_url,
+            "team.repo": opts.teamRepo,
+            "team.git.repo": opts.gitRepo,
+          },
+        }),
+      ),
   })),
 );
