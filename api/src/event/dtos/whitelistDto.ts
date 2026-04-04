@@ -1,4 +1,4 @@
-import { IsArray, IsEnum, IsString, ValidateNested } from "class-validator";
+import { ArrayNotEmpty, IsArray, IsEnum, IsString, IsUUID, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
 import { WhitelistPlatform } from "../entities/event-whitelist.entity";
 
@@ -12,6 +12,7 @@ export class WhitelistEntryDto {
 
 export class AddToWhitelistDto {
   @IsArray()
+  @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => WhitelistEntryDto)
   entries: WhitelistEntryDto[];
@@ -19,6 +20,7 @@ export class AddToWhitelistDto {
 
 export class BulkDeleteWhitelistDto {
   @IsArray()
-  @IsString({ each: true })
+  @ArrayNotEmpty()
+  @IsUUID("4", { each: true })
   ids: string[];
 }

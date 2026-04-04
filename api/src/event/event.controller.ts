@@ -23,6 +23,7 @@ import { UpdateEventStarterTemplateDto } from "./dtos/updateEventStarterTemplate
 import { AddToWhitelistDto, BulkDeleteWhitelistDto } from "./dtos/whitelistDto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { UserId } from "../guards/UserGuard";
+import { SocialPlatform } from "src/user/entities/social-account.entity";
 
 @Controller("event")
 export class EventController {
@@ -173,13 +174,13 @@ export class EventController {
     const event = await this.eventService.getEventById(eventId);
 
     if (event.isPrivate) {
-      const user = await this.userService.getUserById(userId);
+      const user = await this.userService.getUserWithSocialAccounts(userId);
       const socialAccounts = user.socialAccounts || [];
       const fortyTwoAccount = socialAccounts.find(
-        (sa) => sa.platform === "42",
+        (sa) => sa.platform === SocialPlatform.FORTYTWO,
       );
 
-      const isWhitelisted = await this.eventService.isUserWhitelistedForEvent(
+      const isWhitelisted = await this.eventService.isUserWhitelisted(
         eventId,
         user.username,
         fortyTwoAccount?.username || null,

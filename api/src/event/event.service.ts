@@ -597,17 +597,16 @@ export class EventService {
 
   async removeEventAdmin(eventId: string, userId: string) {
     await this.dataSource.transaction(async (manager) => {
-      // Re-query admin permissions with a row-level lock (FOR UPDATE)
-      const admins = await manager.find(UserEventPermissionEntity, {
-        where: {
-          event: { id: eventId },
-          role: PermissionRole.ADMIN,
-        },
-        relations: {
-          user: true,
-        },
-        lock: { mode: "pessimistic_write" },
-      });
+      // Re-query admin permissions with a row-level lock (FOR UPDATE).
+      // manager.find() with relations produces a LEFT JOIN which PostgreSQL
+      // rejects with FOR UPDATE, so use a query builder with INNER JOIN instead.
+      const admins = await manager
+        .createQueryBuilder(UserEventPermissionEntity, "perm")
+        .innerJoinAndSelect("perm.user", "user")
+        .where("perm.eventId = :eventId", { eventId })
+        .andWhere("perm.role = :role", { role: PermissionRole.ADMIN })
+        .setLock("pessimistic_write")
+        .getMany();
 
       const permissionToRemove = admins.find((p) => p.user.id === userId);
 
@@ -766,48 +765,12 @@ export class EventService {
       });
     }
 
-    return this.whitelistRepository.existsBy({
-      event: { id: eventId },
-      ...conditions.reduce(
-        (acc, cond, idx) => {
-          if (idx === 0) {
-            return { username: cond.username, platform: cond.platform };
-          }
-          return acc;
-        },
-        {} as { username?: string; platform?: WhitelistPlatform },
-      ),
-    });
-  }
-
-  async isUserWhitelistedForEvent(
-    eventId: string,
-    githubUsername: string,
-    fortyTwoUsername: string | null,
-  ): Promise<boolean> {
-    const hasWhitelist = await this.hasWhitelist(eventId);
-    if (!hasWhitelist) {
-      return true;
-    }
-
-    const queryBuilder = this.whitelistRepository
-      .createQueryBuilder("whitelist")
-      .where("whitelist.eventId = :eventId", { eventId })
-      .andWhere(
-        "(whitelist.username = :githubUsername AND whitelist.platform = :githubPlatform)",
-        { githubUsername: githubUsername.toLowerCase(), githubPlatform: WhitelistPlatform.GITHUB },
-      );
-
-    if (fortyTwoUsername) {
-      queryBuilder.orWhere(
-        "(whitelist.username = :fortyTwoUsername AND whitelist.platform = :fortyTwoPlatform)",
-        {
-          fortyTwoUsername: fortyTwoUsername.toLowerCase(),
-          fortyTwoPlatform: WhitelistPlatform.FORTYTWO,
-        },
-      );
-    }
-
-    return queryBuilder.getExists();
+    return this.whitelistRepository.existsBy(
+      conditions.map((cond) => ({
+        event: { id: eventId },
+        username: cond.username,
+        platform: cond.platform,
+      })),
+    );
   }
 }

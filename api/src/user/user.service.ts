@@ -113,6 +113,12 @@ export class UserService {
   getUserById(userId: string) {
     return this.userRepository.findOneOrFail({
       where: { id: userId },
+    });
+  }
+
+  getUserWithSocialAccounts(userId: string) {
+    return this.userRepository.findOneOrFail({
+      where: { id: userId },
       relations: ["socialAccounts"],
     });
   }

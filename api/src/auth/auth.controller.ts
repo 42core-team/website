@@ -134,6 +134,6 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   me(@Req() req: Request) {
     const user = req.user as UserEntity;
-    return this.userService.getUserById(user.id);
+    return this.userService.getUserWithSocialAccounts(user.id);
   }
 }

@@ -19,7 +19,7 @@ export class EventWhitelistEntity {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ type: "enum", enum: WhitelistPlatform })
+  @Column({ type: "text" })
   platform: WhitelistPlatform;
 
   @Column()
@@ -27,6 +27,7 @@ export class EventWhitelistEntity {
 
   @ManyToOne(() => EventEntity, {
     onDelete: "CASCADE",
+    nullable: false,
   })
   event: EventEntity;
 
