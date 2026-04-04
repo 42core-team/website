@@ -300,8 +300,7 @@ export class GitHubClient implements GitHubApi {
         const match = (invitations ?? []).find(
           (inv) => (inv.repository?.full_name ?? "").toLowerCase() === full,
         );
-        if (!match)
-          return Effect.void
+        if (!match) return Effect.void;
         return this.requestJson<void>(
           `user/repository_invitations/${match.id}`,
           { method: "PATCH" },
