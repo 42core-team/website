@@ -452,7 +452,7 @@ const createAndPushRepo = (
               (e) =>
                 Effect.log(`Failed to cleanup repo after error: ${String(e)}`),
             );
-            return repoName;
+            return yield* Effect.fail(error);
           }),
         ),
       ),
@@ -470,7 +470,7 @@ const addCollaborators = (
           `Adding user ${user.username} to repository ${repoName} in org ${d.githubOrg}`,
         );
 
-        executeGitHubAction({
+        yield* executeGitHubAction({
           username: user.username,
           githubId: user.githubId,
           encryptedSecret: d.encryptedSecret,
