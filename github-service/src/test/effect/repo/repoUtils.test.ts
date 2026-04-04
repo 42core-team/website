@@ -47,7 +47,7 @@ type MockGitRepo = {
 };
 
 const normalize = (p: string): string =>
-  path.posix.normalize(p.replace("\\", "/"));
+  path.posix.normalize(p.replaceAll("\\", "/"));
 const makeGitFailureKey = (cwd: string, method: GitMethod) =>
   `${normalize(cwd)}::${method}`;
 
