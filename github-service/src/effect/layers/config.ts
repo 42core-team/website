@@ -1,7 +1,7 @@
 import { Config } from "effect";
 
 export const ServiceConfigConfig = Config.all({
-  rabbitmqUrl: Config.string("RABBITMQ_URL"),
+  rabbitmqUrl: Config.nonEmptyString("RABBITMQ_URL"),
   queue: Config.string("GITHUB_QUEUE").pipe(
     Config.withDefault("github_service"),
   ),
