@@ -1,14 +1,12 @@
-import { Effect, Context, Layer, Data, Runtime, Schedule } from "effect";
-import amqplib, {
-  type Channel,
-  type ChannelModel,
-  type ConsumeMessage,
-} from "amqplib";
+import { Effect, Context, Layer, Data, Schedule, Stream } from "effect";
+import * as AMQPChannel from "@effect-messaging/amqp/AMQPChannel";
+import * as AMQPConnection from "@effect-messaging/amqp/AMQPConnection";
+import type { AMQPConsumeMessage as ConsumeMessage } from "@effect-messaging/amqp/AMQPConsumeMessage";
 import { ServiceConfigConfig } from "../layers/config";
 
 export class RabbitMQError extends Data.TaggedError("RabbitMQError")<{
   message: string;
-  cause: unknown;
+  cause?: unknown;
 }> {}
 
 export interface RabbitMQ {
@@ -27,6 +25,9 @@ const retrySchedule = Schedule.intersect(
   Schedule.recurs(5),
 );
 
+const reconnectSchedule = Schedule.exponential(1000, 2);
+const connectionTimeout = "20 seconds";
+
 export const RabbitMQ = Context.GenericTag<RabbitMQ>("RabbitMQ");
 
 export const RabbitMQLive = Layer.scoped(
@@ -35,79 +36,84 @@ export const RabbitMQLive = Layer.scoped(
     const cfg = yield* ServiceConfigConfig;
     yield* Effect.logInfo("Trying to connect to RabbitMQ");
 
-    const connection: ChannelModel = yield* Effect.acquireRelease(
-      Effect.tryPromise({
-        try: () => amqplib.connect(cfg.rabbitmqUrl),
-        catch: (e) =>
+    const connection = yield* AMQPConnection.make(cfg.rabbitmqUrl, {
+      connectionTimeout,
+      waitConnectionTimeout: connectionTimeout,
+      retryConnectionSchedule: reconnectSchedule,
+    }).pipe(
+      Effect.mapError(
+        (e) =>
           new RabbitMQError({
-            message: "Failed to connect to RabbitMQ",
+            message: `Failed to connect to RabbitMQ: ${e.reason}`,
             cause: e,
           }),
-      }),
-      (conn) =>
-        Effect.promise(() => conn.close()).pipe(
-          Effect.tap(() => Effect.logInfo("RabbitMQ connection closed")),
-        ),
-    ).pipe(Effect.tap(() => Effect.logInfo("RabbitMQ connection established")));
-
-    const channel: Channel = yield* Effect.acquireRelease(
-      Effect.tryPromise({
-        try: () => connection.createChannel(),
-        catch: (e) =>
-          new RabbitMQError({ message: "Failed to create channel", cause: e }),
-      }),
-      (chan) => Effect.promise(() => chan.close()).pipe(Effect.ignore),
-    ).pipe(Effect.tap(() => Effect.logInfo("RabbitMQ channel created")));
-
-    yield* Effect.tryPromise({
-      try: () =>
-        channel.assertQueue(cfg.queue, {
-          durable: true,
-          arguments: { "x-queue-type": "quorum" },
-        }),
-      catch: (e) =>
-        new RabbitMQError({ message: "Failed to assert queue", cause: e }),
-    }).pipe(
-      Effect.tap(() =>
-        Effect.logInfo(`RabbitMQ queue '${cfg.queue}' asserted`),
       ),
+      Effect.tap(() => Effect.logInfo("RabbitMQ connection established")),
     );
+
+    const channel = yield* AMQPChannel.make({
+      waitChannelTimeout: connectionTimeout,
+      retryConnectionSchedule: reconnectSchedule,
+      retryConsumptionSchedule: reconnectSchedule,
+    }).pipe(
+      Effect.provideService(AMQPConnection.AMQPConnection, connection),
+      Effect.mapError(
+        (e) =>
+          new RabbitMQError({
+            message: `Failed to create RabbitMQ channel: ${e.reason}`,
+            cause: e,
+          }),
+      ),
+      Effect.tap(() => Effect.logInfo("RabbitMQ channel created")),
+    );
+
+    yield* channel
+      .assertQueue(cfg.queue, {
+        durable: true,
+        arguments: { "x-queue-type": "quorum" },
+      })
+      .pipe(
+        Effect.mapError(
+          (e) =>
+            new RabbitMQError({
+              message: `Failed to assert queue '${cfg.queue}': ${e.reason}`,
+              cause: e,
+            }),
+        ),
+        Effect.tap(() =>
+          Effect.logInfo(`RabbitMQ queue '${cfg.queue}' asserted`),
+        ),
+      );
 
     return RabbitMQ.of({
       consume: <E, R>(
         handler: (msg: ConsumeMessage) => Effect.Effect<void, E, R>,
       ): Effect.Effect<void, RabbitMQError, R> =>
         Effect.gen(function* () {
-          const runtime = yield* Effect.runtime<R>();
-          yield* Effect.tryPromise({
-            try: () =>
-              channel.consume(
-                cfg.queue,
-                (msg) => {
-                  if (!msg) return;
-
-                  Runtime.runFork(runtime)(
-                    handler(msg).pipe(
-                      Effect.tap(() => Effect.sync(() => channel.ack(msg))),
-                      Effect.catchAll((err) =>
-                        Effect.gen(function* () {
-                          const payload = msg.content.toString("utf8");
-                          yield* Effect.logError(
-                            `Message handling failed: ${String(err)} | payload=${payload}`,
-                          );
-                          yield* Effect.sync(() =>
-                            channel.nack(msg, false, false),
-                          );
-                        }),
-                      ),
-                    ),
+          const stream = yield* channel.consume(cfg.queue);
+          yield* Stream.runForEach(stream, (msg) =>
+            handler(msg).pipe(
+              Effect.tap(() => channel.ack(msg)),
+              Effect.catchAll((err) =>
+                Effect.gen(function* () {
+                  const payload = msg.content.toString("utf8");
+                  yield* Effect.logError(
+                    `Message handling failed: ${String(err)} | payload=${payload}`,
                   );
-                },
-                { noAck: false },
+                  yield* channel.nack(msg, false, false);
+                }),
               ),
-            catch: (e) =>
-              new RabbitMQError({ message: "Failed to consume", cause: e }),
-          });
+            ),
+          ).pipe(
+            Effect.mapError(
+              (e) =>
+                new RabbitMQError({
+                  message: `RabbitMQ consume failed: ${e.reason}`,
+                  cause: e,
+                }),
+            ),
+            Effect.retry(reconnectSchedule),
+          );
         }),
 
       publish: (pattern, data): Effect.Effect<void, RabbitMQError> =>
@@ -116,11 +122,19 @@ export const RabbitMQLive = Layer.scoped(
             JSON.stringify({ pattern, data }),
             "utf8",
           );
-          const sent = yield* Effect.sync(() =>
-            channel.sendToQueue(cfg.resultsQueue, payload, {
+          const sent = yield* channel
+            .sendToQueue(cfg.resultsQueue, payload, {
               persistent: true,
-            }),
-          );
+            })
+            .pipe(
+              Effect.mapError(
+                (e) =>
+                  new RabbitMQError({
+                    message: `Failed to publish to '${cfg.resultsQueue}': ${e.reason}`,
+                    cause: e,
+                  }),
+              ),
+            );
           if (!sent) {
             yield* Effect.fail(
               new RabbitMQError({
@@ -131,5 +145,5 @@ export const RabbitMQLive = Layer.scoped(
           }
         }).pipe(Effect.retry(retrySchedule)),
     });
-  }).pipe(Effect.retry(retrySchedule)),
+  }).pipe(Effect.retry(reconnectSchedule)),
 );
