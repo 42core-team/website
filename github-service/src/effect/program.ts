@@ -257,35 +257,19 @@ const handleRemoveWritePermissions = (msg: RemoveWritePermissionsMessage) => {
 const handleAddUserToRepository = (msg: AddUserToRepositoryMessage) => {
   const d = msg.data;
   return Effect.gen(function* () {
-    yield* Effect.matchEffect(
-      executeGitHubAction({
+    yield* executeGitHubAction({
+      username: d.username,
+      githubId: d.githubId,
+      encryptedSecret: d.encryptedSecret,
+      actionName: "Adding user to repository",
+      context: {
+        repositoryName: d.repositoryName,
         username: d.username,
-        githubId: d.githubId,
-        encryptedSecret: d.encryptedSecret,
-        actionName: "Adding user to repository",
-        context: {
-          repositoryName: d.repositoryName,
-          username: d.username,
-          githubOrg: d.githubOrg,
-        },
-        action: (user, gh) =>
-          gh.addUserToRepository(d.githubOrg, d.repositoryName, user),
-      }),
-      {
-        onFailure: (e) =>
-          fail("add_user_to_repository", e, {
-            githubOrg: d.githubOrg,
-            repositoryName: d.repositoryName,
-            username: d.username,
-          }),
-        onSuccess: () =>
-          ok("add_user_to_repository", {
-            githubOrg: d.githubOrg,
-            repositoryName: d.repositoryName,
-            username: d.username,
-          }),
+        githubOrg: d.githubOrg,
       },
-    );
+      action: (user, gh) =>
+        gh.addUserToRepository(d.githubOrg, d.repositoryName, user),
+    });
 
     yield* acceptInvitationIfToken(
       d.githubAccessToken,
@@ -293,6 +277,12 @@ const handleAddUserToRepository = (msg: AddUserToRepositoryMessage) => {
       d.repositoryName,
       d.username,
     );
+
+    yield* ok("add_user_to_repository", {
+      githubOrg: d.githubOrg,
+      repositoryName: d.repositoryName,
+      username: d.username,
+    });
   });
 };
 

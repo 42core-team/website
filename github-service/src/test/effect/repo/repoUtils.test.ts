@@ -402,7 +402,7 @@ describe("RepoUtilsLive.cloneMonoRepo", () => {
       new Error("clone failed"),
     );
 
-    await expect(
+    expect(
       runWithRepoUtils(fs, (repoUtils) =>
         repoUtils.cloneMonoRepo({
           monoRepoUrl: "https://github.com/acme/mono.git",
