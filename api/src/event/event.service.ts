@@ -683,10 +683,12 @@ export class EventService {
     entries: { username: string; platform: WhitelistPlatform }[],
   ): Promise<EventWhitelistEntity[]> {
     const event = await this.getEventById(eventId);
-    const normalizedEntries = entries.map((entry) => ({
-      username: entry.username.toLowerCase(),
-      platform: entry.platform,
-    }));
+    const normalizedEntries = entries
+      .map((entry) => ({
+        username: entry.username.trim().toLowerCase(),
+        platform: entry.platform,
+      }))
+      .filter((entry) => entry.username.length > 0);
 
     const toKey = (e: { username: string; platform: WhitelistPlatform }) =>
       `${e.username}:${e.platform}`;
@@ -767,12 +769,12 @@ export class EventService {
     }
 
     const conditions: { username: string; platform: WhitelistPlatform }[] = [
-      { username: githubUsername.toLowerCase(), platform: WhitelistPlatform.GITHUB },
+      { username: githubUsername.trim().toLowerCase(), platform: WhitelistPlatform.GITHUB },
     ];
 
     if (fortyTwoUsername) {
       conditions.push({
-        username: fortyTwoUsername.toLowerCase(),
+        username: fortyTwoUsername.trim().toLowerCase(),
         platform: WhitelistPlatform.FORTYTWO,
       });
     }
