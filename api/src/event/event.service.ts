@@ -763,6 +763,10 @@ export class EventService {
     githubUsername: string,
     fortyTwoUsername: string | null,
   ): Promise<boolean> {
+    if (!(await this.hasWhitelist(eventId))) {
+      return true;
+    }
+
     const conditions: { username: string; platform: WhitelistPlatform }[] = [
       { username: githubUsername.toLowerCase(), platform: WhitelistPlatform.GITHUB },
     ];

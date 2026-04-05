@@ -398,7 +398,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     <div className="container mx-auto flex min-h-lvh flex-col gap-6 py-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">
-          Event Dashboard:
+          {"Event Dashboard: "}
           {event.name}
         </h1>
         {hasChanges && (
