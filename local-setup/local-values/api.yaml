@@ -27,7 +27,7 @@ env:
   AUTH_COOKIE_NAME: localtoken
   AUTH_COOKIE_DOMAIN: localhost
   CALLBACK_GITHUB_URL: http://localhost:4000/auth/github/callback
-  OAUTH_GITHUB_SUCCESS_REDIRECT_URL: http://localhost:3000/auth/sso
+  OAUTH_SUCCESS_REDIRECT_URL: http://localhost:3000/auth/sso
   OAUTH_42_SUCCESS_REDIRECT_URL: http://localhost:3000/profile
   FORTYTWO_CALLBACK_URL: http://localhost:4000/auth/42/callback
   RANDOM_GAME_RESULTS: false

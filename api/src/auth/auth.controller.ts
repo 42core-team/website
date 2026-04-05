@@ -39,7 +39,7 @@ export class AuthController {
 
     const token = this.auth.signToken(user);
     const redirectUrl = this.configService.getOrThrow<string>(
-      "OAUTH_GITHUB_SUCCESS_REDIRECT_URL",
+      "OAUTH_SUCCESS_REDIRECT_URL",
     );
     if (redirectUrl) {
       const cookieName =
