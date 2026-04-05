@@ -75,6 +75,11 @@ async function fetchAllReleases() {
   }
   catch (err) {
     console.error("Failed to fetch releases:", err?.message || err);
+    // If the file already exists, don't fail the build
+    if (fs.existsSync(OUT_FILE)) {
+      console.log(`Using existing ${path.relative(process.cwd(), OUT_FILE)}`);
+      process.exit(0);
+    }
     process.exit(1);
   }
 })();
