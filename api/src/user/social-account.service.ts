@@ -1,19 +1,25 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { QueryFailedError, Repository } from "typeorm";
 import {
   SocialAccountEntity,
+  SOCIAL_ACCOUNT_PLATFORM_USER_ID_UNIQUE_CONSTRAINT,
   SocialPlatform,
 } from "./entities/social-account.entity";
-import { UserEntity } from "./entities/user.entity";
+
+const POSTGRES_UNIQUE_VIOLATION_CODE = "23505";
+const SOCIAL_ACCOUNT_ALREADY_LINKED_MESSAGE =
+  "This social account is already linked to another user";
 
 @Injectable()
 export class SocialAccountService {
   constructor(
     @InjectRepository(SocialAccountEntity)
     private socialAccountRepository: Repository<SocialAccountEntity>,
-    @InjectRepository(UserEntity)
-    private userRepository: Repository<UserEntity>,
   ) {}
 
   async unlinkSocialAccount(
@@ -52,6 +58,17 @@ export class SocialAccountService {
     username: string;
     platformUserId: string;
   }): Promise<SocialAccountEntity> {
+    const linkedAccount = await this.socialAccountRepository.findOne({
+      where: {
+        platform: params.platform,
+        platformUserId: params.platformUserId,
+      },
+    });
+
+    if (linkedAccount && linkedAccount.userId !== params.userId) {
+      throw new ConflictException(SOCIAL_ACCOUNT_ALREADY_LINKED_MESSAGE);
+    }
+
     const existing = await this.socialAccountRepository.findOne({
       where: { userId: params.userId, platform: params.platform },
     });
@@ -59,7 +76,7 @@ export class SocialAccountService {
     if (existing) {
       existing.username = params.username;
       existing.platformUserId = params.platformUserId;
-      return this.socialAccountRepository.save(existing);
+      return this.saveSocialAccount(existing);
     }
 
     const entity = this.socialAccountRepository.create({
@@ -68,6 +85,36 @@ export class SocialAccountService {
       username: params.username,
       platformUserId: params.platformUserId,
     });
-    return this.socialAccountRepository.save(entity);
+    return this.saveSocialAccount(entity);
+  }
+
+  private async saveSocialAccount(
+    entity: SocialAccountEntity,
+  ): Promise<SocialAccountEntity> {
+    try {
+      return await this.socialAccountRepository.save(entity);
+    } catch (error) {
+      if (this.isDuplicatePlatformAccountError(error)) {
+        throw new ConflictException(SOCIAL_ACCOUNT_ALREADY_LINKED_MESSAGE);
+      }
+
+      throw error;
+    }
+  }
+
+  private isDuplicatePlatformAccountError(error: unknown): boolean {
+    if (!(error instanceof QueryFailedError)) {
+      return false;
+    }
+
+    const driverError = error.driverError as
+      | { code?: string; constraint?: string }
+      | undefined;
+
+    return (
+      driverError?.code === POSTGRES_UNIQUE_VIOLATION_CODE &&
+      driverError.constraint ===
+        SOCIAL_ACCOUNT_PLATFORM_USER_ID_UNIQUE_CONSTRAINT
+    );
   }
 }
