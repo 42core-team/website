@@ -1,12 +1,12 @@
 "use client";
 
-import type { MatchStats } from "@/app/actions/stats";
+import type { MatchStats } from "@/lib/backend/types/stats";
 import { motion } from "framer-motion";
 import { Flame, Gem, User } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getGlobalStats } from "@/app/actions/stats";
 import AnimatedNumber from "@/components/animatedNumber";
 import { Badge } from "@/components/ui/badge";
+import { browserStatsApi } from "@/lib/backend/browser";
 
 export default function GlobalStats(props: { initialStats: MatchStats }) {
   const [stats, setStats] = useState<MatchStats>(props.initialStats);
@@ -14,7 +14,7 @@ export default function GlobalStats(props: { initialStats: MatchStats }) {
 
   const fetchStats = async () => {
     try {
-      const data = await getGlobalStats();
+      const data = await browserStatsApi.getGlobalStats();
       setStats(data);
       setIsLoading(false);
     }

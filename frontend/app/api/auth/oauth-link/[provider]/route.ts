@@ -1,8 +1,9 @@
 import type { NextRequest } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
-import axiosInstance from "@/app/actions/axios";
 import { authOptions } from "@/app/utils/authOptions";
+import { getBackendErrorMessage } from "@/lib/backend/http/errors";
+import { serverSocialAccountsApi } from "@/lib/backend/server";
 import { OAUTH_PROVIDERS, OAUTH_URLS } from "@/lib/constants/oauth";
 
 interface RouteParams {
@@ -15,7 +16,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const { provider } = await params;
 
-    // Check if user is authenticated
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -30,7 +30,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Validate provider
     const validProviders = Object.values(OAUTH_PROVIDERS);
     if (!validProviders.includes(provider as any)) {
       return NextResponse.json(
@@ -39,12 +38,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Handle provider-specific OAuth flows
     if (provider === OAUTH_PROVIDERS.FORTY_TWO) {
-      return handle42OAuth(code, state, session);
+      return handle42OAuth(code);
     }
 
-    // Add other providers here in the future
     return NextResponse.json(
       { error: `OAuth provider ${provider} not yet implemented` },
       { status: 400 },
@@ -59,9 +56,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-async function handle42OAuth(code: string, _state: string, _session: any) {
+async function handle42OAuth(code: string) {
   try {
-    // Exchange authorization code for access token
     const tokenResponse = await fetch(OAUTH_URLS.FORTY_TWO_TOKEN, {
       method: "POST",
       headers: {
@@ -87,7 +83,6 @@ async function handle42OAuth(code: string, _state: string, _session: any) {
 
     const tokenData = await tokenResponse.json();
 
-    // Get user profile from 42 API
     const profileResponse = await fetch(OAUTH_URLS.FORTY_TWO_PROFILE, {
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
@@ -104,9 +99,8 @@ async function handle42OAuth(code: string, _state: string, _session: any) {
 
     const profile = await profileResponse.json();
 
-    // Link the account via backend API
     try {
-      const linkResult = await axiosInstance.post("/social-accounts/link", {
+      const account = await serverSocialAccountsApi.linkSocialAccount({
         platform: OAUTH_PROVIDERS.FORTY_TWO,
         username: profile.login,
         platformUserId: profile.id.toString(),
@@ -114,7 +108,7 @@ async function handle42OAuth(code: string, _state: string, _session: any) {
 
       return NextResponse.json({
         success: true,
-        account: linkResult.data,
+        account,
         profile: {
           login: profile.login,
           displayName: profile.displayname,
@@ -122,11 +116,11 @@ async function handle42OAuth(code: string, _state: string, _session: any) {
         },
       });
     }
-    catch (linkError: any) {
+    catch (linkError) {
       console.error("Account linking failed:", linkError);
       return NextResponse.json(
         {
-          error: linkError.response?.data?.message || "Failed to link account",
+          error: getBackendErrorMessage(linkError, "Failed to link account"),
         },
         { status: 400 },
       );

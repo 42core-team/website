@@ -1,18 +1,17 @@
 "use client";
-import type { Team } from "@/app/actions/team";
-import type { QueueState as QueueStateType } from "@/app/actions/team.model";
-import type { Match } from "@/app/actions/tournament-model";
+import type { QueueState as QueueStateType, Team } from "@/lib/backend/types/team";
+import type { Match } from "@/lib/backend/types/tournament";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, LogIn, LogOut, Swords, Users } from "lucide-react";
 import { usePlausible } from "next-plausible";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { MatchState } from "@/app/actions/tournament-model";
 import QueueMatchesList from "@/components/QueueMatchesList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import { MatchState } from "@/lib/backend/types/tournament";
 import {
   joinQueue,
   leaveQueue,

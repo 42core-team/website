@@ -1,7 +1,7 @@
 "use client";
 
-import type { Team } from "@/app/actions/team";
-import type { Match } from "@/app/actions/tournament-model";
+import type { Team } from "@/lib/backend/types/team";
+import type { Match } from "@/lib/backend/types/tournament";
 import { useRouter } from "next/navigation";
 import { Fragment } from "react";
 import { MatchHistoryBadges } from "@/components/match/MatchHistoryBadges";

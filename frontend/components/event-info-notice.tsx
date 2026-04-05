@@ -1,28 +1,20 @@
 "use client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { joinEvent } from "@/app/actions/event";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useEventAccess } from "@/contexts/EventAccessContext";
+import { browserEventsApi } from "@/lib/backend/browser";
 
-interface EventJoinNoticeProps {
-  userId: string;
-  startDate: string;
-  eventId: string;
-  isPrivate: boolean;
-  isUserRegistered: boolean;
-}
-
-export default function EventInfoNotice({
-  userId: _userId,
-  startDate,
-  eventId,
-  isPrivate,
-  isUserRegistered,
-}: Readonly<EventJoinNoticeProps>) {
-  const router = useRouter();
+export default function EventInfoNotice() {
   const queryClient = useQueryClient();
+  const {
+    eventId,
+    isPrivate,
+    isUserRegistered,
+    setEventAccess,
+    startDate,
+  } = useEventAccess();
   const [now, setNow] = useState<Date>(new Date());
   const startsAt = new Date(startDate);
   const hasStarted = startsAt <= now;
@@ -39,9 +31,9 @@ export default function EventInfoNotice({
     const timeLeftMs = startsAt.getTime() - now.getTime();
     if (!didRefreshRef.current && timeLeftMs <= 0) {
       didRefreshRef.current = true;
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["event", eventId] });
     }
-  }, [now, startsAt, router]);
+  }, [eventId, now, queryClient, startsAt]);
 
   const formatTimeLeft = (ms: number) => {
     const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -57,11 +49,11 @@ export default function EventInfoNotice({
   const timeLeftMs = startsAt.getTime() - now.getTime();
 
   const joinEventMutation = useMutation({
-    mutationFn: () => joinEvent(eventId),
+    mutationFn: () => browserEventsApi.joinEvent(eventId),
     onSuccess: () => {
+      setEventAccess({ isUserRegistered: true });
       queryClient.invalidateQueries({ queryKey: ["event", eventId] });
-      queryClient.invalidateQueries({ queryKey: ["myTeam", eventId] });
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["event", eventId, "my-team"] });
     },
   });
 

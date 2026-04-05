@@ -1,6 +1,6 @@
 "use client";
 
-import type { Team, TeamMember } from "@/app/actions/team";
+import type { Team, TeamMember } from "@/lib/backend/types/team";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircleIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";

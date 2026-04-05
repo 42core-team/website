@@ -1,11 +1,11 @@
 "use client";
 
-import type { Match } from "@/app/actions/tournament-model";
+import type { Match } from "@/lib/backend/types/tournament";
 import { motion } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
 import { memo } from "react";
 import { Handle, Position } from "reactflow";
-import { MatchState } from "@/app/actions/tournament-model";
+import { MatchState } from "@/lib/backend/types/tournament";
 
 interface MatchNodeData {
   match: Match;

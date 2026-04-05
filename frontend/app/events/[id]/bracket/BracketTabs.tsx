@@ -1,7 +1,7 @@
 "use client";
 
-import type { Team } from "@/app/actions/team";
-import type { Match } from "@/app/actions/tournament-model";
+import type { Team } from "@/lib/backend/types/team";
+import type { Match } from "@/lib/backend/types/tournament";
 import { BarChart3, Network } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTabParam } from "@/hooks/useTabParam";

@@ -1,12 +1,12 @@
 "use client";
 
-import type { Match } from "@/app/actions/tournament-model";
+import type { Match } from "@/lib/backend/types/tournament";
 import { History } from "lucide-react";
 import React from "react";
-import { MatchPhase } from "@/app/actions/tournament-model";
 import QueueMatchesList from "@/components/QueueMatchesList";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MatchPhase } from "@/lib/backend/types/tournament";
 
 interface TeamMatchHistoryProps {
   eventId: string;

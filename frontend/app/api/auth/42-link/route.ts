@@ -1,13 +1,13 @@
 import type { NextRequest } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
-import axiosInstance from "@/app/actions/axios";
 import { authOptions } from "@/app/utils/authOptions";
+import { getBackendErrorMessage } from "@/lib/backend/http/errors";
+import { serverSocialAccountsApi } from "@/lib/backend/server";
 import { OAUTH_PROVIDERS, OAUTH_URLS } from "@/lib/constants/oauth";
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if user is authenticated
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -22,7 +22,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Exchange authorization code for access token
     const tokenResponse = await fetch(OAUTH_URLS.FORTY_TWO_TOKEN, {
       method: "POST",
       headers: {
@@ -48,7 +47,6 @@ export async function POST(request: NextRequest) {
 
     const tokenData = await tokenResponse.json();
 
-    // Get user profile from 42 API
     const profileResponse = await fetch(OAUTH_URLS.FORTY_TWO_PROFILE, {
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
@@ -65,9 +63,8 @@ export async function POST(request: NextRequest) {
 
     const profile = await profileResponse.json();
 
-    // Link the account via backend API
     try {
-      const linkResult = await axiosInstance.post("/social-accounts/link", {
+      const account = await serverSocialAccountsApi.linkSocialAccount({
         platform: OAUTH_PROVIDERS.FORTY_TWO,
         username: profile.login,
         platformUserId: profile.id.toString(),
@@ -75,7 +72,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        account: linkResult.data,
+        account,
         profile: {
           login: profile.login,
           displayName: profile.displayname,
@@ -83,11 +80,11 @@ export async function POST(request: NextRequest) {
         },
       });
     }
-    catch (linkError: any) {
+    catch (linkError) {
       console.error("Account linking failed:", linkError);
       return NextResponse.json(
         {
-          error: linkError.response?.data?.message || "Failed to link account",
+          error: getBackendErrorMessage(linkError, "Failed to link account"),
         },
         { status: 400 },
       );

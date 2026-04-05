@@ -8,8 +8,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { isActionError } from "@/app/actions/errors";
-import { createEvent } from "@/app/actions/event";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -31,6 +29,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 
 import { Textarea } from "@/components/ui/textarea";
+import { browserEventsApi } from "@/lib/backend/browser";
+import { getBackendErrorMessage } from "@/lib/backend/http/errors";
 import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
@@ -299,7 +299,7 @@ export default function CreateEventForm() {
         throw new Error(validationError);
       }
 
-      const result = await createEvent({
+      return await browserEventsApi.createEvent({
         name: values.name.trim(),
         description: values.description?.trim() || "",
         githubOrg: values.githubOrg,
@@ -319,18 +319,12 @@ export default function CreateEventForm() {
         serverConfig: values.serverConfig,
         isPrivate: values.isPrivate,
       });
-
-      if (isActionError(result)) {
-        throw new Error(result.error);
-      }
-
-      return result;
     },
     onSuccess: (result) => {
       router.push(`/events/${result.id}`);
     },
-    onError: (error: any) => {
-      setError(error.message);
+    onError: (error) => {
+      setError(getBackendErrorMessage(error));
     },
   });
 

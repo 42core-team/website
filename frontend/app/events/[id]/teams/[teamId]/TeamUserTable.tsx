@@ -1,6 +1,6 @@
 "use client";
 
-import type { TeamMember } from "@/app/actions/team";
+import type { TeamMember } from "@/lib/backend/types/team";
 import Image from "next/image";
 import Link from "next/link";
 import CoreLogo from "@/components/CoreLogo";

@@ -1,6 +1,6 @@
 "use client";
 
-import type { MatchLogs } from "@/app/actions/tournament-model";
+import type { MatchLogs } from "@/lib/backend/types/tournament";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

@@ -1,9 +1,9 @@
-import type { Match } from "@/app/actions/tournament-model";
+import type { Match } from "@/lib/backend/types/tournament";
 import Link from "next/link";
-import { MatchPhase, MatchState } from "@/app/actions/tournament-model";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { MatchPhase, MatchState } from "@/lib/backend/types/tournament";
 import { cn } from "@/lib/utils";
 
 export default function QueueMatchesList(props: {

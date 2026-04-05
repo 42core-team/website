@@ -10,6 +10,7 @@ import { getMyEventTeam } from "@/app/actions/team";
 import { authOptions } from "@/app/utils/authOptions";
 import EventInfoNotice from "@/components/event-info-notice";
 import EventNavbar from "@/components/event-navbar";
+import { EventAccessProvider } from "@/contexts/EventAccessContext";
 
 export default async function EventLayout({
   children,
@@ -52,24 +53,21 @@ export default async function EventLayout({
   }
 
   return (
-    <div className="relative flex min-h-lvh flex-col">
-      {userId && (
-        <EventInfoNotice
-          userId={userId}
-          startDate={event.startDate}
-          eventId={eventId}
-          isPrivate={event.isPrivate}
-          isUserRegistered={isUserRegistered}
-        />
-      )}
-      <EventNavbar
-        event={event}
-        eventId={eventId}
-        isUserRegistered={isUserRegistered}
-        hasTeam={!!myTeam}
-        isEventAdmin={isEventAdminState}
-      />
-      <main className="container mx-auto max-w-7xl grow px-6">{children}</main>
-    </div>
+    <EventAccessProvider
+      initialState={{
+        eventId,
+        startDate: event.startDate,
+        isPrivate: event.isPrivate,
+        isUserRegistered,
+        hasTeam: !!myTeam,
+        isEventAdmin: isEventAdminState,
+      }}
+    >
+      <div className="relative flex min-h-lvh flex-col">
+        {userId && <EventInfoNotice />}
+        <EventNavbar event={event} eventId={eventId} />
+        <main className="container mx-auto max-w-7xl grow px-6">{children}</main>
+      </div>
+    </EventAccessProvider>
   );
 }

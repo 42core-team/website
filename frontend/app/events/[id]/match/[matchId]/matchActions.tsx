@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { revealMatch } from "@/app/actions/tournament";
 import { Button } from "@/components/ui/button";
+import { browserTournamentApi } from "@/lib/backend/browser";
 
 export default function MatchActions(props: {
   matchId: string;
@@ -16,10 +16,11 @@ export default function MatchActions(props: {
       <Button
         onClick={() => {
           setLoading(true);
-          revealMatch(props.matchId).finally(() => {
-            setLoading(false);
-            setRevealed(true);
-          });
+          browserTournamentApi.revealMatch(props.matchId)
+            .then(() => setRevealed(true))
+            .finally(() => {
+              setLoading(false);
+            });
         }}
         disabled={loading || revealed}
       >

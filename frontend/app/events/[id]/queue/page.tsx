@@ -5,13 +5,11 @@ import {
   QueryClient,
 } from "@tanstack/react-query";
 import { AlertCircleIcon } from "lucide-react";
-import { getMyEventTeam } from "@/app/actions/team";
 import QueueState from "@/app/events/[id]/queue/queueState";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { serverTeamsApi } from "@/lib/backend/server";
 import {
-  queueMatchesQueryFn,
   queueMatchesQueryKey,
-  queueStateQueryFn,
   queueStateQueryKey,
 } from "./queries";
 
@@ -28,7 +26,7 @@ export default async function EventQueuePage({
 }) {
   const { id } = await params;
 
-  const myTeam = await getMyEventTeam(id);
+  const myTeam = await serverTeamsApi.getMyEventTeam(id);
 
   if (!myTeam) {
     return (
@@ -51,20 +49,15 @@ export default async function EventQueuePage({
 
   const queryClient = new QueryClient();
 
-  const queueState = await queryClient.fetchQuery({
-    queryKey: queueStateQueryKey(id),
-    queryFn: () => queueStateQueryFn(id),
-  });
+  const queueState = await serverTeamsApi.getQueueState(id);
+  queryClient.setQueryData(queueStateQueryKey(id), queueState);
 
-  const queueMatches = await queryClient.fetchQuery({
-    queryKey: queueMatchesQueryKey(id),
-    queryFn: () => queueMatchesQueryFn(id),
-  });
-
+  const queueMatches = await serverTeamsApi.getQueueMatches(id);
   const sortedQueueMatches = queueMatches.map(match => ({
     ...match,
-    teams: match.teams.sort((a, _b) => (a.id === myTeam.id ? -1 : 1)),
+    teams: [...match.teams].sort((a, _b) => (a.id === myTeam.id ? -1 : 1)),
   }));
+  queryClient.setQueryData(queueMatchesQueryKey(id), sortedQueueMatches);
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

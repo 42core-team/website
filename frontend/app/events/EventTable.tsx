@@ -1,6 +1,6 @@
 "use client";
 
-import type { Event } from "@/app/actions/event";
+import type { Event } from "@/lib/backend/types/event";
 import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";

@@ -1,15 +1,10 @@
 import type {
   UserSearchResult,
-} from "@/app/actions/team";
+} from "@/lib/backend/types/team";
 
 import { usePlausible } from "next-plausible";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import axiosInstance from "@/app/actions/axios";
-
-import {
-  searchUsersForInvite,
-} from "@/app/actions/team";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { browserTeamsApi } from "@/lib/backend/browser";
 
 interface TeamInviteModalProps {
   isOpen: boolean;
@@ -47,7 +43,7 @@ export function TeamInviteModal({
   useEffect(() => {
     if (debouncedQuery.length >= 2) {
       setIsSearching(true);
-      searchUsersForInvite(eventId, debouncedQuery)
+      browserTeamsApi.searchUsersForInvite(eventId, debouncedQuery)
         .then(results => setSearchResults(results))
         .catch(error => console.error("Error searching users:", error))
         .finally(() => setIsSearching(false));
@@ -62,7 +58,7 @@ export function TeamInviteModal({
     plausible("invite_team_member");
     setIsInviting(prev => ({ ...prev, [userId]: true }));
     try {
-      await axiosInstance.post(`team/event/${eventId}/sendInvite`, {
+      await browserTeamsApi.sendTeamInvite(eventId, {
         userToInviteId: userId,
       });
 

@@ -1,6 +1,6 @@
 "use client";
-import type { Event } from "@/app/actions/event";
-import type { MatchStats } from "@/app/actions/stats";
+import type { Event } from "@/lib/backend/types/event";
+import type { MatchStats } from "@/lib/backend/types/stats";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
 

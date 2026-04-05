@@ -1,11 +1,11 @@
 "use client";
 import type { Edge, Node } from "reactflow";
-import type { Match } from "@/app/actions/tournament-model";
+import type { Match } from "@/lib/backend/types/tournament";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import ReactFlow, { Background, useEdgesState, useNodesState } from "reactflow";
-import { MatchState } from "@/app/actions/tournament-model";
 import { MatchNode } from "@/components/match";
+import { MatchState } from "@/lib/backend/types/tournament";
 import "reactflow/dist/style.css";
 
 const MATCH_WIDTH = 200;

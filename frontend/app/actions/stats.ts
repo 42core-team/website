@@ -1,32 +1,16 @@
-import axiosInstance from "@/app/actions/axios";
+import type {
+  MatchStats as BackendMatchStats,
+  QueueMatchesTimeBucket as BackendQueueMatchesTimeBucket,
+} from "@/lib/backend/types/stats";
 
-export interface MatchStats {
-  actionsExecuted?: string;
-  damageDeposits?: string;
-  gempilesDestroyed?: string;
-  damageTotal?: string;
-  gemsGained?: string;
-  damageWalls?: string;
-  damageCores?: string;
-  unitsSpawned?: string;
-  tilesTraveled?: string;
-  damageSelf?: string;
-  damageUnits?: string;
-  wallsDestroyed?: string;
-  gemsTransferred?: string;
-  unitsDestroyed?: string;
-  coresDestroyed?: string;
-  damageOpponent?: string;
-}
+import { serverStatsApi } from "@/lib/backend/server";
+import "server-only";
+
+export interface MatchStats extends BackendMatchStats {}
+export interface QueueMatchesTimeBucket extends BackendQueueMatchesTimeBucket {}
 
 export async function getGlobalStats(): Promise<MatchStats> {
-  return (await axiosInstance.get<MatchStats>("stats/global")).data;
-}
-
-// New: queue matches time series
-export interface QueueMatchesTimeBucket {
-  bucket: string; // ISO timestamp of bucket start
-  count: number;
+  return await serverStatsApi.getGlobalStats();
 }
 
 export async function getQueueMatchesTimeSeries(
@@ -35,15 +19,10 @@ export async function getQueueMatchesTimeSeries(
   startISO?: string,
   endISO?: string,
 ): Promise<QueueMatchesTimeBucket[]> {
-  const params = new URLSearchParams({ interval });
-  if (startISO)
-    params.set("start", startISO);
-  if (endISO)
-    params.set("end", endISO);
-
-  return (
-    await axiosInstance.get<QueueMatchesTimeBucket[]>(
-      `match/queue/${eventId}/timeseries?${params.toString()}`,
-    )
-  ).data;
+  return await serverStatsApi.getQueueMatchesTimeSeries(
+    eventId,
+    interval,
+    startISO,
+    endISO,
+  );
 }
