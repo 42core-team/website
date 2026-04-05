@@ -226,6 +226,8 @@
 /* Wiki content styles */
 .wiki-content {
   @apply text-foreground;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .wiki-content h1 {
@@ -271,6 +273,7 @@
 
 .wiki-content code {
   @apply px-2 py-1 rounded text-sm font-mono;
+  overflow-wrap: break-word;
 }
 
 .wiki-content pre {
@@ -287,6 +290,8 @@
 
 .wiki-content table {
   @apply w-full border-collapse border mb-4;
+  display: block;
+  overflow-x: auto;
 }
 
 .wiki-content th,

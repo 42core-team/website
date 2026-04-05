@@ -96,6 +96,7 @@ export function WikiLayout({
       const href = (e.currentTarget as HTMLAnchorElement).getAttribute("href");
       const targetId = href?.startsWith("#") ? href.slice(1) : null;
       if (targetId) {
+        history.replaceState(null, "", `#${targetId}`);
         const target = document.getElementById(targetId);
         if (target) {
           scrollToWikiHeading(target);
@@ -236,7 +237,7 @@ export function WikiLayout({
   }, [router]);
 
   return (
-    <div className="relative flex min-h-[calc(100vh-var(--navbar-height))]">
+    <div className="relative flex h-[calc(100vh-var(--navbar-height))] overflow-hidden">
       <div
         className={cn(
           "fixed inset-0 z-40 bg-background/50 transition-opacity duration-300 lg:hidden",
@@ -248,7 +249,7 @@ export function WikiLayout({
       <aside
         ref={sidebarRef}
         className={cn(
-          "fixed top-(--navbar-height) left-0 z-50 h-[calc(100vh-var(--navbar-height))] w-(--sidebar-width) overflow-x-hidden overflow-y-auto border-r bg-background transition-transform duration-300 ease-in-out lg:sticky lg:z-0 lg:translate-x-0 lg:self-start",
+          "fixed top-(--navbar-height) left-0 z-50 h-[calc(100vh-var(--navbar-height))] w-(--sidebar-width) overflow-x-hidden overflow-y-auto overscroll-contain border-r bg-background transition-transform duration-300 ease-in-out lg:static lg:z-0 lg:translate-x-0 lg:shrink-0",
           isMobileNavOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -261,10 +262,10 @@ export function WikiLayout({
         />
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header
           className={cn(
-            "sticky top-(--navbar-height) z-40 border-b bg-background/95 py-4 shadow-sm backdrop-blur transition-opacity duration-300 supports-backdrop-filter:bg-background/60 sm:p-4",
+            "shrink-0 z-40 border-b bg-background/95 py-4 shadow-sm backdrop-blur transition-opacity duration-300 supports-backdrop-filter:bg-background/60 sm:p-4",
             isBasicNavbarMenuOpen
               ? "pointer-events-none opacity-0 lg:pointer-events-auto lg:opacity-100"
               : "opacity-100",
@@ -293,7 +294,7 @@ export function WikiLayout({
           </div>
         </header>
 
-        <main className="main-wiki-content flex-1 p-4 sm:p-6">
+        <main className="main-wiki-content min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 sm:p-6">
           <div className="mx-auto max-w-4xl" style={{ viewTransitionName: "wiki-content" }}>{children}</div>
         </main>
       </div>
