@@ -10,7 +10,6 @@ import {
   bulkRemoveFromWhitelist,
   getEventWhitelist,
   removeFromWhitelist,
-  WhitelistPlatform,
 } from "@/app/actions/event";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +50,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { WhitelistPlatform } from "@/lib/constants/whitelist";
 
 interface WhitelistManagementProps {
   eventId: string;

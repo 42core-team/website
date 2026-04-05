@@ -1,6 +1,8 @@
 "use server";
 
 import type { ServerActionResponse } from "@/app/actions/errors";
+import type { WhitelistPlatform } from "@/lib/constants/whitelist";
+
 import axiosInstance, { handleError } from "@/app/actions/axios";
 
 export interface Event {
@@ -241,11 +243,6 @@ export async function deleteStarterTemplate(
   return await handleError(
     axiosInstance.delete(`event/${eventId}/templates/${templateId}`),
   );
-}
-
-export enum WhitelistPlatform {
-  GITHUB = "GITHUB",
-  FORTYTWO = "FORTYTWO",
 }
 
 export interface WhitelistEntry {
