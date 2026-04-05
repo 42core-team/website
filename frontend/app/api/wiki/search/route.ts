@@ -1,11 +1,11 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { searchWikiPages } from "@/lib/markdown";
+import { searchWikiPages } from "@/lib/wiki";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q");
-  const version = searchParams.get("version"); // Don't default to 'latest', let the search function handle it
+  const version = searchParams.get("version");
 
   if (!query) {
     return NextResponse.json([]);

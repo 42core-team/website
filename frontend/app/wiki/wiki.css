@@ -1,0 +1,354 @@
+::view-transition-old(wiki-content) {
+  animation: wiki-fade-out 160ms ease-out;
+}
+
+::view-transition-new(wiki-content) {
+  animation: wiki-fade-in 200ms ease-in;
+}
+
+@keyframes wiki-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes wiki-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+[data-wiki-shell="true"] {
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 6%, transparent), transparent 32rem),
+    radial-gradient(circle at top right, color-mix(in oklab, var(--foreground) 3%, transparent), transparent 26rem),
+    linear-gradient(180deg, color-mix(in oklab, var(--background) 86%, white 14%), var(--background));
+}
+
+.dark [data-wiki-shell="true"] {
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 10%, transparent), transparent 30rem),
+    radial-gradient(circle at top right, color-mix(in oklab, white 6%, transparent), transparent 24rem),
+    linear-gradient(180deg, color-mix(in oklab, var(--background) 94%, black 6%), var(--background));
+}
+
+[data-wiki-sidebar="true"] {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--background) 92%, white 8%),
+    color-mix(in oklab, var(--background) 98%, black 2%)
+  );
+  border-color: color-mix(in oklab, var(--border) 88%, transparent);
+  box-shadow: inset -1px 0 0 color-mix(in oklab, var(--border) 65%, transparent);
+}
+
+.dark [data-wiki-sidebar="true"] {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--background) 94%, white 6%),
+    color-mix(in oklab, var(--background) 98%, black 2%)
+  );
+}
+
+[data-wiki-toolbar="true"] {
+  background: color-mix(in oklab, var(--background) 78%, transparent);
+  border-color: color-mix(in oklab, var(--border) 70%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+[data-wiki-search-results="true"] mark,
+.wiki-content mark {
+  background: color-mix(in oklab, #fbbf24 32%, var(--background));
+  color: color-mix(in oklab, #92400e 82%, var(--foreground));
+  border-radius: var(--radius-sm);
+  padding: 0 0.2em;
+  font-weight: 600;
+}
+
+.dark [data-wiki-search-results="true"] mark,
+.dark .wiki-content mark {
+  background: color-mix(in oklab, #d97706 34%, var(--background));
+  color: #fde68a;
+}
+
+.wiki-content {
+  color: var(--foreground);
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.wiki-content :where(h1, h2, h3, h4, h5, h6) {
+  scroll-margin-top: 5.75rem;
+  letter-spacing: -0.025em;
+}
+
+.wiki-content :where(h1) {
+  font-size: clamp(1.45rem, 2.25vw, 2rem);
+  line-height: 1.15;
+}
+
+.wiki-content :where(h2) {
+  position: relative;
+  margin-top: 2.8rem;
+  padding-top: 1.1rem;
+}
+
+.wiki-content :where(h2)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: color-mix(in oklab, var(--border) 75%, transparent);
+}
+
+.wiki-content > :first-child:is(h2) {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.wiki-content > :first-child:is(h2)::before {
+  content: none;
+}
+
+.wiki-content :where(hr + h2) {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.wiki-content :where(hr + h2)::before {
+  content: none;
+}
+
+.wiki-content :where(h3) {
+  margin-top: 2rem;
+}
+
+.wiki-content :where(p, li) {
+  line-height: 1.75;
+}
+
+.wiki-content :where(code) {
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  background: color-mix(in oklab, var(--muted) 82%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 0.15rem 0.45rem;
+  font-size: 0.88em;
+  font-weight: 500;
+}
+
+.wiki-content :where(pre) {
+  border-radius: var(--radius);
+}
+
+.wiki-content :where(pre code) {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+}
+
+.wiki-content :where(table) {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid color-mix(in oklab, var(--border) 85%, transparent);
+  border-radius: var(--radius);
+}
+
+.wiki-content :where(th) {
+  background: color-mix(in oklab, var(--muted) 70%, transparent);
+  font-weight: 600;
+}
+
+.wiki-content :where(th, td) {
+  min-width: 10rem;
+  border-color: color-mix(in oklab, var(--border) 78%, transparent);
+}
+
+.wiki-content :where(img) {
+  width: auto;
+  max-width: 100%;
+  border: 1px solid color-mix(in oklab, var(--border) 78%, transparent);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 55px -45px rgba(15, 23, 42, 0.45);
+}
+
+.wiki-content :where(blockquote:not(.callout *)) {
+  border-left-color: color-mix(in oklab, var(--foreground) 12%, transparent);
+  font-style: normal;
+}
+
+.wiki-content .heading-anchor {
+  display: inline-block;
+  color: inherit;
+  position: relative;
+  text-decoration: none;
+  padding-left: 1.15em;
+  margin-left: -1.15em;
+}
+
+.wiki-content .heading-anchor::before {
+  content: "#";
+  position: absolute;
+  left: 0;
+  color: var(--muted-foreground);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.wiki-content :where(h1, h2, h3, h4, h5, h6):hover .heading-anchor::before {
+  opacity: 1;
+}
+
+.wiki-content .heading-anchor:focus-visible::before {
+  opacity: 1;
+}
+
+.wiki-content .callout {
+  margin: 1.5rem 0;
+  border: 1px solid color-mix(in oklab, var(--border) 85%, transparent);
+  border-left-width: 0.45rem;
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  background: color-mix(in oklab, var(--muted) 70%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, white 45%, transparent);
+}
+
+.wiki-content .callout-header {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.45rem;
+  font-weight: 700;
+}
+
+.wiki-content .callout-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.wiki-content .callout-content > :first-child {
+  margin-top: 0;
+}
+
+.wiki-content .callout-content > :last-child {
+  margin-bottom: 0;
+}
+
+.wiki-content .callout-warning {
+  border-left-color: #f59e0b;
+  background: color-mix(in oklab, #f59e0b 12%, var(--background));
+}
+
+.wiki-content .callout-info {
+  border-left-color: #3b82f6;
+  background: color-mix(in oklab, #3b82f6 12%, var(--background));
+}
+
+.wiki-content .callout-note {
+  border-left-color: #64748b;
+  background: color-mix(in oklab, #64748b 11%, var(--background));
+}
+
+.wiki-content .callout-tip {
+  border-left-color: #10b981;
+  background: color-mix(in oklab, #10b981 12%, var(--background));
+}
+
+.wiki-content .callout-important {
+  border-left-color: #8b5cf6;
+  background: color-mix(in oklab, #8b5cf6 12%, var(--background));
+}
+
+.wiki-content .callout-caution {
+  border-left-color: #ef4444;
+  background: color-mix(in oklab, #ef4444 12%, var(--background));
+}
+
+.wiki-content .rehype-code-group {
+  display: grid;
+  gap: 0;
+  margin: 1.75rem 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--background) 86%, transparent);
+  box-shadow: 0 22px 60px -48px rgba(15, 23, 42, 0.55);
+}
+
+.wiki-content .rcg-tab-container {
+  display: flex;
+  overflow-x: auto;
+  padding: 0.35rem;
+  gap: 0.35rem;
+  background: color-mix(in oklab, var(--muted) 68%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 78%, transparent);
+}
+
+.wiki-content .rcg-tab {
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.9rem;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.wiki-content .rcg-tab:hover {
+  color: var(--foreground);
+  background: color-mix(in oklab, var(--background) 70%, transparent);
+}
+
+.wiki-content .rcg-tab.active {
+  color: var(--foreground);
+  background: color-mix(in oklab, var(--background) 88%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--border) 78%, transparent);
+}
+
+.wiki-content .rcg-tab:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.wiki-content .rcg-block {
+  display: none;
+}
+
+.wiki-content .rcg-block.active {
+  display: block;
+}
+
+.wiki-content .rcg-block :where([data-rehype-pretty-code-figure], pre) {
+  margin: 0;
+  border-radius: 0;
+  border: none;
+}
+
+@media (max-width: 1023px) {
+  [data-wiki-shell="true"] {
+    background:
+      radial-gradient(circle at top center, color-mix(in oklab, var(--primary) 8%, transparent), transparent 24rem),
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 88%, white 12%), var(--background));
+  }
+}

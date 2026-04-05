@@ -2,7 +2,7 @@
   background-color: #fef3c7;
   color: #92400e;
   transition: all 0.3s ease;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 :global(.dark) .wikiHighlightTemp {

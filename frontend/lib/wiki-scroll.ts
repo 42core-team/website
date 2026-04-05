@@ -3,22 +3,42 @@
  * scroll container. We scroll the container directly (instead of using
  * `scrollIntoView`) so the window / outer page never scrolls.
  */
-export function scrollToWikiHeading(element: HTMLElement) {
-  const container = document.querySelector(".main-wiki-content");
+export function getWikiScrollContainer() {
+  return document.querySelector("[data-wiki-scroll-container='true']") as HTMLElement | null;
+}
+
+interface ScrollWikiElementOptions {
+  block?: "start" | "center";
+}
+
+export function scrollWikiElementIntoView(
+  element: HTMLElement,
+  options: ScrollWikiElementOptions = {},
+) {
+  const container = getWikiScrollContainer();
   if (!container)
     return;
 
-  // element.offsetTop is relative to its offsetParent, which may not be the
-  // scroll container.  Use getBoundingClientRect for both and derive the
-  // position within the container's scrollable area.
+  const { block = "start" } = options;
   const containerRect = container.getBoundingClientRect();
   const elementRect = element.getBoundingClientRect();
+  const relativeTop = container.scrollTop + (elementRect.top - containerRect.top);
 
-  const targetScroll
-    = container.scrollTop + (elementRect.top - containerRect.top);
+  let targetScroll = relativeTop;
+
+  if (block === "center") {
+    targetScroll = relativeTop - ((container.clientHeight - elementRect.height) / 2);
+  }
+
+  const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+  const clampedTarget = Math.min(Math.max(0, targetScroll), maxScrollTop);
 
   container.scrollTo({
-    top: targetScroll,
+    top: clampedTarget,
     behavior: "smooth",
   });
+}
+
+export function scrollToWikiHeading(element: HTMLElement) {
+  scrollWikiElementIntoView(element);
 }
