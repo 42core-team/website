@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
+import rehypeCodeGroup from "rehype-code-group";
 import rehypePrettyCode from "rehype-pretty-code";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
@@ -148,11 +149,17 @@ export async function getWikiPageWithVersion(
           light: "github-light",
         },
       })
+      .use(rehypeCodeGroup, {})
       .use(rehypeStringify)
       .process(content);
 
     // Post-process the HTML to add IDs to headings and handle callouts
     let htmlContent = processedContent.toString();
+
+    // Strip the <head> element injected by rehype-code-group (it contains
+    // built-in styles and a DOMContentLoaded script that don't work inside our
+    // Next.js SPA; we provide our own CSS and client-side JS instead).
+    htmlContent = htmlContent.replace(/<head>[\s\S]*?<\/head>/, "");
 
     // Transform GitHub-style callouts (> [!TYPE])
     htmlContent = htmlContent.replace(

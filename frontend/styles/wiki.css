@@ -142,6 +142,87 @@
   background: rgba(239, 68, 68, 0.15) !important;
 }
 
+/* ── Tabbed code groups (rehype-code-group) ────────────────────────────── */
+.wiki-content .rehype-code-group {
+  margin-bottom: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  /* Override plugin default grid gap */
+  display: grid;
+  gap: 0;
+}
+
+.wiki-content .rcg-tab-container {
+  display: flex;
+  overflow-x: auto;
+  background: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.wiki-content .rcg-tab {
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.wiki-content .rcg-tab:hover {
+  color: var(--foreground);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.wiki-content .rcg-tab.active {
+  color: var(--foreground);
+  border-bottom-color: var(--primary);
+  /* Override plugin default bold */
+  font-weight: 600;
+}
+
+.wiki-content .rcg-tab:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+  border-radius: 2px;
+}
+
+/* Panels — plugin uses display:none + .active for visibility */
+.wiki-content .rcg-block {
+  display: none;
+  overflow-x: auto;
+}
+
+.wiki-content .rcg-block.active {
+  display: block;
+}
+
+/* Strip margins / border-radius from code blocks nested inside tabs so they
+   sit flush against the tab container. */
+.wiki-content .rcg-block [data-rehype-pretty-code-figure] {
+  margin: 0 !important;
+}
+
+.wiki-content .rcg-block pre {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+/* Dark-mode hover tweak */
+.dark .wiki-content .rcg-tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
 /* Wiki content styles */
 .wiki-content {
   @apply text-foreground;

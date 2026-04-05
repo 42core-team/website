@@ -3,13 +3,15 @@
 import type { WikiNavItem, WikiVersion } from "@/lib/markdown";
 import { Menu } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavbar } from "@/contexts/NavbarContext";
 import { cn } from "@/lib/utils";
 import { VersionSelector } from "./VersionSelector";
 import { WikiNavigation } from "./WikiNavigation";
 import { WikiSearch } from "./WikiSearch";
+
+const SIDEBAR_SCROLL_KEY = "wiki-sidebar-scroll";
 
 interface WikiLayoutProps {
   children: React.ReactNode;
@@ -33,6 +35,55 @@ export function WikiLayout({
   const { isBasicNavbarMenuOpen } = useNavbar();
   const sidebarRef = useRef<HTMLElement>(null);
 
+  // Save sidebar scroll position on scroll (debounced)
+  useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar)
+      return;
+
+    let timeoutId: NodeJS.Timeout;
+    const handleScroll = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        try {
+          sessionStorage.setItem(
+            SIDEBAR_SCROLL_KEY,
+            String(sidebar.scrollTop),
+          );
+        }
+        catch {
+          // Ignore sessionStorage errors
+        }
+      }, 100);
+    };
+
+    sidebar.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      sidebar.removeEventListener("scroll", handleScroll);
+      clearTimeout(timeoutId);
+    };
+  }, []);
+
+  // Restore sidebar scroll position before the browser paints.
+  // Because WikiNavigation now initialises its accordion state synchronously
+  // (lazy useState), the DOM heights are already correct on the first render,
+  // so we can set scrollTop immediately in useLayoutEffect – no delay needed.
+  useLayoutEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar)
+      return;
+
+    try {
+      const savedScroll = sessionStorage.getItem(SIDEBAR_SCROLL_KEY);
+      if (savedScroll) {
+        sidebar.scrollTop = Number(savedScroll);
+      }
+    }
+    catch {
+      // Ignore sessionStorage errors
+    }
+  }, []);
+
   useEffect(() => {
     const container = document.querySelector(".main-wiki-content");
     if (!container)
@@ -54,6 +105,93 @@ export function WikiLayout({
     links.forEach(link => link.addEventListener("click", handleClick));
     return () => {
       links.forEach(link => link.removeEventListener("click", handleClick));
+    };
+  }, []);
+
+  // ── Tabbed code-group switching (rehype-code-group) ──────────────────────
+  // The plugin ships its own DOMContentLoaded script, but it doesn't fire in
+  // our Next.js SPA context. We replicate the logic here via event delegation.
+  useEffect(() => {
+    const container = document.querySelector(".main-wiki-content");
+    if (!container)
+      return;
+
+    const activateTab = (tab: HTMLElement) => {
+      const group = tab.closest(".rehype-code-group");
+      if (!group)
+        return;
+
+      const tabs = group.querySelectorAll<HTMLElement>(".rcg-tab");
+      const blocks = group.querySelectorAll<HTMLElement>(".rcg-block");
+      const idx = Array.from(tabs).indexOf(tab);
+      if (idx === -1)
+        return;
+
+      // Deactivate all tabs & panels
+      tabs.forEach((t) => {
+        t.classList.remove("active");
+        t.setAttribute("aria-selected", "false");
+      });
+      blocks.forEach((b) => {
+        b.classList.remove("active");
+        b.setAttribute("hidden", "true");
+      });
+
+      // Activate the selected tab & panel
+      tab.classList.add("active");
+      tab.setAttribute("aria-selected", "true");
+      blocks[idx].classList.add("active");
+      blocks[idx].removeAttribute("hidden");
+    };
+
+    const handleTabClick = (e: MouseEvent) => {
+      const tab = (e.target as HTMLElement).closest(".rcg-tab") as HTMLElement | null;
+      if (tab)
+        activateTab(tab);
+    };
+
+    const handleTabKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.classList.contains("rcg-tab"))
+        return;
+
+      const group = target.closest(".rehype-code-group");
+      if (!group)
+        return;
+
+      const tabs = Array.from(group.querySelectorAll<HTMLElement>(".rcg-tab"));
+      const idx = tabs.indexOf(target);
+      let next: number | null = null;
+
+      switch (e.key) {
+        case "ArrowRight":
+        case "ArrowDown":
+          next = (idx + 1) % tabs.length;
+          break;
+        case "ArrowLeft":
+        case "ArrowUp":
+          next = (idx - 1 + tabs.length) % tabs.length;
+          break;
+        case "Home":
+          next = 0;
+          break;
+        case "End":
+          next = tabs.length - 1;
+          break;
+        default:
+          return;
+      }
+
+      e.preventDefault();
+      tabs[next].focus();
+      activateTab(tabs[next]);
+    };
+
+    container.addEventListener("click", handleTabClick as EventListener);
+    container.addEventListener("keydown", handleTabKeyDown as EventListener);
+    return () => {
+      container.removeEventListener("click", handleTabClick as EventListener);
+      container.removeEventListener("keydown", handleTabKeyDown as EventListener);
     };
   }, []);
 

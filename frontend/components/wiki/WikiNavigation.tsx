@@ -1,3 +1,5 @@
+"use client";
+
 import type { WikiNavItem } from "@/lib/markdown";
 import Link from "next/link";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -10,6 +12,7 @@ import {
 
 const INDENT_BASE = 8; // px
 const INDENT_STEP = 10; // px per depth level
+const NAV_ACCORDION_KEY = "wiki-nav-accordion-closed";
 
 interface TocItem {
   id: string;
@@ -36,6 +39,51 @@ export function WikiNavigation({
   const [activeId, setActiveId] = useState<string>("");
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track which accordions the user has explicitly closed (default: all open).
+  // Initialised synchronously from sessionStorage so the first render already
+  // has the correct open/closed state (avoids a visible flash / layout shift).
+  const [closedAccordions, setClosedAccordions] = useState<Set<string>>(
+    () => {
+      if (typeof window === "undefined")
+        return new Set();
+      try {
+        const stored = sessionStorage.getItem(NAV_ACCORDION_KEY);
+        if (stored)
+          return new Set(JSON.parse(stored));
+      }
+      catch {
+        // Ignore sessionStorage errors
+      }
+      return new Set();
+    },
+  );
+
+  // Handle accordion open/close and persist to sessionStorage
+  const handleAccordionChange = useCallback(
+    (itemPath: string, value: string) => {
+      setClosedAccordions((prev) => {
+        const next = new Set(prev);
+        if (!value) {
+          next.add(itemPath);
+        }
+        else {
+          next.delete(itemPath);
+        }
+        try {
+          sessionStorage.setItem(
+            NAV_ACCORDION_KEY,
+            JSON.stringify([...next]),
+          );
+        }
+        catch {
+          // Ignore sessionStorage errors
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   // Parse table of contents from page content
   useEffect(() => {
@@ -239,7 +287,8 @@ export function WikiNavigation({
           key={uniqueKey}
           type="single"
           collapsible
-          defaultValue={itemPath} // open by default
+          value={closedAccordions.has(itemPath) ? "" : itemPath}
+          onValueChange={val => handleAccordionChange(itemPath, val)}
           className="px-0"
         >
           <AccordionItem value={itemPath} className="border-none">
