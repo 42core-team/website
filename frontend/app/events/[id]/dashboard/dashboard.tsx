@@ -1,7 +1,7 @@
 "use client";
 
-import type { Event } from "@/app/actions/event";
-import type { UserSearchResult } from "@/app/actions/user";
+import type { Event, EventSettingsUpdate } from "@/lib/backend/types/event";
+import type { UserSearchResult } from "@/lib/backend/types/user";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
@@ -17,29 +17,8 @@ import {
 
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { isActionError } from "@/app/actions/errors";
-import {
-  addEventAdmin,
-  getEventAdmins,
-  getEventById,
-  getParticipantsCountForEvent,
-  getStarterTemplates,
-  getTeamsCountForEvent,
-  isEventAdmin,
-  removeEventAdmin,
-  setEventTeamsLockDate,
-  updateEventSettings,
-} from "@/app/actions/event";
-import { lockEvent, unlockEvent } from "@/app/actions/team";
-import {
-  cleanupAllMatches,
-  revealAllMatches,
-  startSwissMatches,
-  startTournamentMatches,
-} from "@/app/actions/tournament";
-import { searchUsers } from "@/app/actions/user";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -68,6 +47,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useTabParam } from "@/hooks/useTabParam";
+import {
+  browserEventsApi,
+  browserTeamsApi,
+  browserTournamentApi,
+  browserUsersApi,
+} from "@/lib/backend/browser";
+import { getBackendErrorMessage } from "@/lib/backend/http/errors";
 import { cn } from "@/lib/utils";
 import { StarterTemplatesManagement } from "./components/StarterTemplatesManagement";
 
@@ -86,19 +72,19 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [isGameConfigExpanded, setIsGameConfigExpanded] = useState(false);
   const [isServerConfigExpanded, setIsServerConfigExpanded] = useState(false);
+  const searchRequestIdRef = useRef(0);
 
   // Local state for event settings
   const [pendingSettings, setPendingSettings] = useState<Partial<Event>>({});
 
-  const { data: event, isLoading: isEventLoading } = useQuery<Event>({
+  const {
+    data: event,
+    error: eventError,
+    isError: isEventError,
+    isLoading: isEventLoading,
+  } = useQuery<Event>({
     queryKey: ["event", eventId],
-    queryFn: async () => {
-      const eventData = await getEventById(eventId);
-      if (isActionError(eventData)) {
-        throw new Error(eventData.error);
-      }
-      return eventData;
-    },
+    queryFn: () => browserEventsApi.getEventById(eventId),
   });
 
   useEffect(() => {
@@ -107,54 +93,54 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     }
   }, [event]);
 
-  const { data: teamsCount = 0, isLoading: isTeamsLoading } = useQuery<number>({
+  const {
+    data: teamsCount = 0,
+    error: teamsCountError,
+    isError: isTeamsError,
+    isLoading: isTeamsLoading,
+  } = useQuery<number>({
     queryKey: ["event", eventId, "teams-count"],
-    queryFn: async () => await getTeamsCountForEvent(eventId),
+    queryFn: () => browserEventsApi.getTeamsCountForEvent(eventId),
   });
 
-  const { data: participantsCount = 0, isLoading: isParticipantsLoading }
+  const {
+    data: participantsCount = 0,
+    error: participantsCountError,
+    isError: isParticipantsError,
+    isLoading: isParticipantsLoading,
+  }
     = useQuery<number>({
       queryKey: ["event", eventId, "participants-count"],
-      queryFn: async () => await getParticipantsCountForEvent(eventId),
+      queryFn: () => browserEventsApi.getParticipantsCountForEvent(eventId),
     });
 
-  const { data: isAdmin = false, isLoading: isAdminLoading }
+  const {
+    data: isAdmin,
+    error: isAdminError,
+    isError: isAdminQueryError,
+    isLoading: isAdminLoading,
+  }
     = useQuery<boolean>({
       queryKey: ["event", eventId, "is-admin"],
-      queryFn: async () => {
-        const adminCheck = await isEventAdmin(eventId);
-        if (isActionError(adminCheck)) {
-          return false;
-        }
-        return adminCheck;
-      },
-      enabled: session.status !== "loading",
+      queryFn: () => browserEventsApi.isEventAdmin(eventId),
+      enabled: session.status === "authenticated",
+      retry: false,
     });
 
   const { data: admins = [], isLoading: isAdminsLoading } = useQuery({
     queryKey: ["event", eventId, "admins"],
-    queryFn: async () => {
-      const result = await getEventAdmins(eventId);
-      if (isActionError(result))
-        throw new Error(result.error);
-      return result;
-    },
+    queryFn: () => browserEventsApi.getEventAdmins(eventId),
     enabled: isAdmin,
   });
 
   const { data: starterTemplates = [] } = useQuery({
     queryKey: ["event", eventId, "templates"],
-    queryFn: async () => {
-      const result = await getStarterTemplates(eventId);
-      if (isActionError(result))
-        throw new Error(result.error);
-      return result;
-    },
+    queryFn: () => browserEventsApi.getStarterTemplates(eventId),
     enabled: !!eventId,
   });
 
   const lockEventMutation = useMutation({
-    mutationFn: async () => await lockEvent(eventId),
+    mutationFn: () => browserTeamsApi.lockEvent(eventId),
     onSuccess: async () => {
       toast.success("Team repositories locked.");
       await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
@@ -165,7 +151,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   });
 
   const unlockEventMutation = useMutation({
-    mutationFn: async () => await unlockEvent(eventId),
+    mutationFn: () => browserTeamsApi.unlockEvent(eventId),
     onSuccess: async () => {
       toast.success("Team repositories unlocked.");
       await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
@@ -176,7 +162,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   });
 
   const startSwissMatchesMutation = useMutation({
-    mutationFn: async () => await startSwissMatches(eventId),
+    mutationFn: () => browserTournamentApi.startSwissMatches(eventId),
     onSuccess: async () => {
       toast.success("Started group phase.");
       await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
@@ -187,7 +173,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   });
 
   const startTournamentMatchesMutation = useMutation({
-    mutationFn: async () => await startTournamentMatches(eventId),
+    mutationFn: () => browserTournamentApi.startTournamentMatches(eventId),
     onSuccess: async () => {
       toast.success("Started tournament phase.");
       await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
@@ -198,47 +184,30 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   });
 
   const revealMatchesMutation = useMutation({
-    mutationFn: async (phase: string) => {
-      const result = await revealAllMatches(eventId, phase);
-      if (isActionError(result)) {
-        throw new Error(result.error);
-      }
-      return result;
-    },
+    mutationFn: (phase: string) => browserTournamentApi.revealAllMatches(eventId, phase),
     onSuccess: async () => {
       toast.success("Matches revealed.");
       await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
     },
-    onError: (e: any) => {
-      toast.error(e.message || "Failed to reveal matches.");
+    onError: (error) => {
+      toast.error(getBackendErrorMessage(error, "Failed to reveal matches."));
     },
   });
 
   const cleanupMatchesMutation = useMutation({
-    mutationFn: async (phase: string) => {
-      const result = await cleanupAllMatches(eventId, phase);
-      if (isActionError(result)) {
-        throw new Error(result.error);
-      }
-      return result;
-    },
+    mutationFn: (phase: string) => browserTournamentApi.cleanupAllMatches(eventId, phase),
     onSuccess: async () => {
       toast.success("Matches cleaned up.");
       await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
     },
-    onError: (e: any) => {
-      toast.error(e.message || "Failed to cleanup matches.");
+    onError: (error) => {
+      toast.error(getBackendErrorMessage(error, "Failed to cleanup matches."));
     },
   });
 
   const setTeamsLockDateMutation = useMutation({
-    mutationFn: async (lockDate: number | null) => {
-      const result = await setEventTeamsLockDate(eventId, lockDate);
-      if (isActionError(result)) {
-        throw new Error(result.error);
-      }
-      return result;
-    },
+    mutationFn: (lockDate: number | null) =>
+      browserEventsApi.setEventTeamsLockDate(eventId, lockDate),
     onSuccess: async () => {
       toast.success("Team auto lock date updated.");
       await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
@@ -249,48 +218,36 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   });
 
   const updateEventSettingsMutation = useMutation({
-    mutationFn: async (settings: any) => {
-      const result = await updateEventSettings(eventId, settings);
-      if (isActionError(result)) {
-        throw new Error(result.error);
-      }
-      return result;
-    },
+    mutationFn: (settings: EventSettingsUpdate) =>
+      browserEventsApi.updateEventSettings(eventId, settings),
     onSuccess: async () => {
       toast.success("Event settings updated.");
       await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
     },
-    onError: (e: any) => {
-      toast.error(e.message || "Failed to update event settings.");
+    onError: (error) => {
+      toast.error(getBackendErrorMessage(error, "Failed to update event settings."));
     },
   });
 
   const addAdminMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const result = await addEventAdmin(eventId, userId);
-      if (isActionError(result))
-        throw new Error(result.error);
-      return result;
-    },
+    mutationFn: (userId: string) => browserEventsApi.addEventAdmin(eventId, userId),
     onSuccess: () => {
       toast.success("Admin added.");
       queryClient.invalidateQueries({ queryKey: ["event", eventId, "admins"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: error => toast.error(getBackendErrorMessage(error)),
   });
 
   const removeAdminMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const result = await removeEventAdmin(eventId, userId);
-      if (isActionError(result))
-        throw new Error(result.error);
-      return result;
-    },
-    onSuccess: () => {
+    mutationFn: (userId: string) => browserEventsApi.removeEventAdmin(eventId, userId),
+    onSuccess: async () => {
       toast.success("Admin removed.");
-      queryClient.invalidateQueries({ queryKey: ["event", eventId, "admins"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["event", eventId, "admins"] }),
+        queryClient.invalidateQueries({ queryKey: ["event", eventId, "is-admin"] }),
+      ]);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: error => toast.error(getBackendErrorMessage(error)),
   });
 
   useEffect(() => {
@@ -302,21 +259,39 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   }, [event?.repoLockDate]);
 
   useEffect(() => {
+    const currentRequestId = ++searchRequestIdRef.current;
     const delayDebounceFn = setTimeout(async () => {
-      if (userSearchQuery.length > 2) {
-        setIsSearching(true);
-        const result = await searchUsers(userSearchQuery);
-        if (!isActionError(result)) {
-          setSearchResults(result);
+      if (userSearchQuery.length <= 2) {
+        if (currentRequestId === searchRequestIdRef.current) {
+          setSearchResults([]);
+          setIsSearching(false);
         }
-        setIsSearching(false);
+        return;
       }
-      else {
-        setSearchResults([]);
+
+      setIsSearching(true);
+      try {
+        const results = await browserUsersApi.searchUsers(userSearchQuery);
+        if (currentRequestId === searchRequestIdRef.current) {
+          setSearchResults(results);
+        }
+      }
+      catch {
+        if (currentRequestId === searchRequestIdRef.current) {
+          setSearchResults([]);
+        }
+      }
+      finally {
+        if (currentRequestId === searchRequestIdRef.current) {
+          setIsSearching(false);
+        }
       }
     }, 300);
 
-    return () => clearTimeout(delayDebounceFn);
+    return () => {
+      clearTimeout(delayDebounceFn);
+      searchRequestIdRef.current += 1;
+    };
   }, [userSearchQuery]);
 
   const handleSaveSettings = () => {
@@ -371,9 +346,24 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   };
 
   const isLoading
-    = isEventLoading || isTeamsLoading || isParticipantsLoading || isAdminLoading;
+    = session.status === "loading"
+      || isEventLoading
+      || isTeamsLoading
+      || isParticipantsLoading
+      || isAdminLoading;
 
-  if (isLoading || !event) {
+  const dashboardError
+    = isEventError
+      ? eventError
+      : isAdminQueryError
+        ? isAdminError
+        : isTeamsError
+          ? teamsCountError
+          : isParticipantsError
+            ? participantsCountError
+            : null;
+
+  if (isLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         Loading dashboard...
@@ -381,7 +371,15 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     );
   }
 
-  if (!isAdmin) {
+  if (dashboardError || !event) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        {getBackendErrorMessage(dashboardError, "Failed to load dashboard.")}
+      </div>
+    );
+  }
+
+  if (session.status !== "authenticated" || !isAdmin) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         You are not authorized to access this dashboard.

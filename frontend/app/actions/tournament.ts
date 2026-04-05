@@ -1,102 +1,97 @@
 "use server";
 
 import type { ServerActionResponse } from "@/app/actions/errors";
-import type { Match, MatchLogs } from "@/app/actions/tournament-model";
-import axiosInstance, { handleError } from "@/app/actions/axios";
+import type {
+  Match as BackendMatch,
+  MatchLogs as BackendMatchLogs,
+} from "@/lib/backend/types/tournament";
+import { toActionError } from "@/lib/backend/http/errors";
+import { serverTournamentApi } from "@/lib/backend/server";
 
 export async function getSwissMatches(eventId: string, adminReveal: boolean) {
-  const params = new URLSearchParams();
-  if (adminReveal) {
-    params.append("adminRevealQuery", "true");
-  }
-  return (await axiosInstance.get(`/match/swiss/${eventId}`, { params }))
-    .data as Match[];
+  return await serverTournamentApi.getSwissMatches(eventId, adminReveal);
 }
 
 export async function startSwissMatches(eventId: string) {
-  return (await axiosInstance.put(`/match/swiss/${eventId}`)).data;
+  return await serverTournamentApi.startSwissMatches(eventId);
 }
 
 export async function startTournamentMatches(eventId: string) {
-  return (await axiosInstance.put(`/match/tournament/${eventId}`)).data;
+  return await serverTournamentApi.startTournamentMatches(eventId);
 }
 
 export async function getTournamentTeamCount(eventId: string) {
-  return (
-    await axiosInstance.get<number>(`/match/tournament/${eventId}/teamCount`)
-  ).data;
+  return await serverTournamentApi.getTournamentTeamCount(eventId);
 }
 
 export async function getTournamentMatches(
   eventId: string,
   adminReveal: boolean,
 ) {
-  const params = new URLSearchParams();
-  if (adminReveal) {
-    params.append("adminRevealQuery", "true");
-  }
-  return (await axiosInstance.get(`/match/tournament/${eventId}`, { params }))
-    .data as Match[];
+  return await serverTournamentApi.getTournamentMatches(eventId, adminReveal);
 }
 
 export async function getLogsOfMatch(
   matchId: string,
-): Promise<ServerActionResponse<MatchLogs>> {
-  return handleError(axiosInstance.get<MatchLogs>(`/match/logs/${matchId}`));
+): Promise<ServerActionResponse<BackendMatchLogs>> {
+  try {
+    return await serverTournamentApi.getLogsOfMatch(matchId);
+  }
+  catch (error) {
+    return toActionError(error);
+  }
 }
 
 export async function revealMatch(
   matchId: string,
-): Promise<ServerActionResponse<Match>> {
-  return handleError(axiosInstance.put<Match>(`/match/reveal/${matchId}`));
+): Promise<ServerActionResponse<BackendMatch>> {
+  try {
+    return await serverTournamentApi.revealMatch(matchId);
+  }
+  catch (error) {
+    return toActionError(error);
+  }
 }
 
 export async function revealAllMatches(
   eventId: string,
   phase: string,
 ): Promise<ServerActionResponse<void>> {
-  return handleError(
-    axiosInstance.put<void>(`/match/reveal-all/${eventId}/${phase}`),
-  );
+  try {
+    await serverTournamentApi.revealAllMatches(eventId, phase);
+    return undefined;
+  }
+  catch (error) {
+    return toActionError(error);
+  }
 }
 
 export async function cleanupAllMatches(
   eventId: string,
   phase: string,
 ): Promise<ServerActionResponse<void>> {
-  return handleError(
-    axiosInstance.put<void>(`/match/cleanup-all/${eventId}/${phase}`),
-  );
+  try {
+    await serverTournamentApi.cleanupAllMatches(eventId, phase);
+    return undefined;
+  }
+  catch (error) {
+    return toActionError(error);
+  }
 }
 
 export async function getMatchById(
   matchId: string,
-): Promise<ServerActionResponse<Match>> {
-  return handleError(axiosInstance.get<Match>(`/match/${matchId}`));
+): Promise<ServerActionResponse<BackendMatch>> {
+  try {
+    return await serverTournamentApi.getMatchById(matchId);
+  }
+  catch (error) {
+    return toActionError(error);
+  }
 }
 
-export async function getMatchesForTeam(teamId: string): Promise<Match[]> {
-  return (await axiosInstance.get(`/match/team/${teamId}`)).data;
+export async function getMatchesForTeam(
+  teamId: string,
+): Promise<BackendMatch[]> {
+  return await serverTournamentApi.getMatchesForTeam(teamId);
 }
-
-// Functions:
-// General:
-// - Increase round!!!!!!!!!
-// -- subfunctions for: increase swiss round, increase elimination round, change phases,
-// - Get current round
-// - Get max rounds
-//
-//
-// Swiss:
-//
-// Bracket:
-// Consistent function for initial team bracket assignment
-//
-
-// Client side:
-// Swiss:
-// - Always Render Labels (Round number)
-//
-// Bracket:
-// - Render Tree function (variable based on single / double elimination)
-// - Display progression based on winners of initial state

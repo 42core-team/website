@@ -1,15 +1,11 @@
 "use client";
-import type { AxiosError } from "axios";
 import type { SyntheticEvent } from "react";
+import type { EventStarterTemplate } from "@/lib/backend/types/event";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Info, Loader2, Terminal } from "lucide-react";
 import { usePlausible } from "next-plausible";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import axiosInstance from "@/app/actions/axios";
-import { isActionError } from "@/app/actions/errors";
-
-import { getStarterTemplates } from "@/app/actions/event";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,6 +23,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useEventAccess } from "@/contexts/EventAccessContext";
+import { browserEventsApi, browserTeamsApi } from "@/lib/backend/browser";
+import { BackendError, getBackendErrorMessage } from "@/lib/backend/http/errors";
 import { validateTeamName } from "@/lib/utils/validation";
 
 export default function TeamCreationForm() {
@@ -38,15 +37,11 @@ export default function TeamCreationForm() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const eventId = useParams().id as string;
   const queryClient = useQueryClient();
+  const { setEventAccess } = useEventAccess();
 
-  const { data: templates = [], isLoading } = useQuery({
+  const { data: templates = [], isLoading } = useQuery<EventStarterTemplate[]>({
     queryKey: ["event", eventId, "templates"],
-    queryFn: async () => {
-      const result = await getStarterTemplates(eventId);
-      if (isActionError(result))
-        throw new Error(result.error);
-      return result;
-    },
+    queryFn: () => browserEventsApi.getStarterTemplates(eventId),
   });
 
   const effectiveTemplateId = selectedTemplateId || templates[0]?.id || undefined;
@@ -69,7 +64,7 @@ export default function TeamCreationForm() {
         throw new Error("Please select a starter template.");
       }
 
-      await axiosInstance.post(`team/event/${eventId}/create`, {
+      await browserTeamsApi.createTeam(eventId, {
         name: newTeamName,
         starterTemplateId: effectiveTemplateId,
       });
@@ -80,6 +75,7 @@ export default function TeamCreationForm() {
       setValidationError(null);
     },
     onSuccess: async () => {
+      setEventAccess({ hasTeam: true });
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["event", eventId, "my-team"],
@@ -89,30 +85,20 @@ export default function TeamCreationForm() {
         }),
       ]);
     },
-    onError: (error: AxiosError) => {
-      if (error.response?.status === 400) {
-        // Handle specific 400 errors if needed, or generic message
-        if (
-          typeof error.response.data === "object"
-          && (error.response.data as any).message
-        ) {
-          setErrorMessage((error.response.data as any).message);
-          return;
-        }
+    onError: (error) => {
+      if (error instanceof BackendError && error.status === 400) {
         setErrorMessage(
-          "A team with this name already exists. Please choose a different name.",
+          error.message || "A team with this name already exists. Please choose a different name.",
         );
         return;
       }
 
-      if (error.message && !error.message.startsWith("An unexpected")) {
-        setErrorMessage(error.message);
-      }
-      else {
-        setErrorMessage(
+      setErrorMessage(
+        getBackendErrorMessage(
+          error,
           "An unexpected error occurred while creating the team.",
-        );
-      }
+        ),
+      );
     },
   });
 

@@ -1,19 +1,12 @@
 "use client";
 
-import type { EventStarterTemplate } from "@/app/actions/event";
+import type { EventStarterTemplate } from "@/lib/backend/types/event";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Loader2, Pencil, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import * as z from "zod";
-import { isActionError } from "@/app/actions/errors";
-import {
-  createStarterTemplate,
-  deleteStarterTemplate,
-  getStarterTemplates,
-  updateStarterTemplate,
-} from "@/app/actions/event";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,6 +24,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { browserEventsApi } from "@/lib/backend/browser";
+import { getBackendErrorMessage } from "@/lib/backend/http/errors";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -51,12 +46,7 @@ export function StarterTemplatesManagement({
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["event", eventId, "templates"],
-    queryFn: async () => {
-      const result = await getStarterTemplates(eventId);
-      if (isActionError(result))
-        throw new Error(result.error);
-      return result;
-    },
+    queryFn: () => browserEventsApi.getStarterTemplates(eventId),
   });
 
   const createMutation = useMutation({
@@ -64,19 +54,14 @@ export function StarterTemplatesManagement({
       name: string;
       basePath: string;
       myCoreBotDockerImage: string;
-    }) => {
-      const result = await createStarterTemplate(eventId, data);
-      if (isActionError(result))
-        throw new Error(result.error);
-      return result;
-    },
+    }) => await browserEventsApi.createStarterTemplate(eventId, data),
     onSuccess: () => {
       toast.success("Template created");
       queryClient.invalidateQueries({
         queryKey: ["event", eventId, "templates"],
       });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: error => toast.error(getBackendErrorMessage(error)),
   });
 
   const form = useForm({
@@ -101,14 +86,11 @@ export function StarterTemplatesManagement({
       basePath: string;
       myCoreBotDockerImage: string;
     }) => {
-      const result = await updateStarterTemplate(eventId, data.id, {
+      return await browserEventsApi.updateStarterTemplate(eventId, data.id, {
         name: data.name,
         basePath: data.basePath,
         myCoreBotDockerImage: data.myCoreBotDockerImage,
       });
-      if (isActionError(result))
-        throw new Error(result.error);
-      return result;
     },
     onSuccess: () => {
       toast.success("Template updated");
@@ -117,23 +99,18 @@ export function StarterTemplatesManagement({
         queryKey: ["event", eventId, "templates"],
       });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: error => toast.error(getBackendErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const result = await deleteStarterTemplate(eventId, id);
-      if (isActionError(result))
-        throw new Error(result.error);
-      return result;
-    },
+    mutationFn: async (id: string) => await browserEventsApi.deleteStarterTemplate(eventId, id),
     onSuccess: () => {
       toast.success("Template deleted");
       queryClient.invalidateQueries({
         queryKey: ["event", eventId, "templates"],
       });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: error => toast.error(getBackendErrorMessage(error)),
   });
 
   return (

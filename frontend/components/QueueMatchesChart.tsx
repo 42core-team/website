@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChartData, ChartDataset, ChartOptions, ScriptableContext } from "chart.js";
-import type { QueueMatchesTimeBucket } from "@/app/actions/stats";
+import type { QueueMatchesTimeBucket } from "@/lib/backend/types/stats";
 import {
   BarElement,
   CategoryScale,

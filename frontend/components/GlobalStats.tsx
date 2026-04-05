@@ -1,12 +1,12 @@
 "use client";
 
-import type { MatchStats } from "@/app/actions/stats";
+import type { MatchStats } from "@/lib/backend/types/stats";
 import { motion } from "framer-motion";
 import { Flame, Gem, User } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getGlobalStats } from "@/app/actions/stats";
 import AnimatedNumber from "@/components/animatedNumber";
 import { Badge } from "@/components/ui/badge";
+import { browserStatsApi } from "@/lib/backend/browser";
 
 export default function GlobalStats(props: { initialStats: MatchStats }) {
   const [stats, setStats] = useState<MatchStats>(props.initialStats);
@@ -14,12 +14,14 @@ export default function GlobalStats(props: { initialStats: MatchStats }) {
 
   const fetchStats = async () => {
     try {
-      const data = await getGlobalStats();
+      const data = await browserStatsApi.getGlobalStats();
       setStats(data);
-      setIsLoading(false);
     }
     catch (error) {
       console.error("Error fetching global stats:", error);
+    }
+    finally {
+      setIsLoading(false);
     }
   };
 
@@ -34,7 +36,7 @@ export default function GlobalStats(props: { initialStats: MatchStats }) {
   const statCards = [
     {
       title: "Total Damage",
-      value: Number.parseInt(stats.damageTotal || "0"),
+      value: stats.damageTotal || 0,
       icon: Flame,
       description: "Total damage dealt across all matches",
       color: "from-red-800 to-red-950",
@@ -42,7 +44,7 @@ export default function GlobalStats(props: { initialStats: MatchStats }) {
     },
     {
       title: "Gems Gained",
-      value: Number.parseInt(stats.gemsGained || "0"),
+      value: stats.gemsGained || 0,
       icon: Gem,
       description: "Total gems collected in all matches",
       color: "from-blue-800 to-blue-950",
@@ -50,7 +52,7 @@ export default function GlobalStats(props: { initialStats: MatchStats }) {
     },
     {
       title: "Units Spawned",
-      value: Number.parseInt(stats.unitsSpawned || "0"),
+      value: stats.unitsSpawned || 0,
       icon: User,
       description: "Total units created in all matches",
       color: "from-green-800 to-green-950",

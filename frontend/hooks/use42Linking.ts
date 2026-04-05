@@ -1,6 +1,6 @@
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getFortyTwoAuthUrl } from "@/app/actions/social-accounts";
+import { browserSocialAccountsApi } from "@/lib/backend/browser";
 import { OAUTH_CONFIG } from "@/lib/constants/oauth";
 
 /**
@@ -48,7 +48,7 @@ export function use42Linking(onSuccess?: () => void): Use42LinkingReturn {
     setTimeout(async () => {
       try {
         // Ask backend for the 42 auth URL (which includes the encrypted user id in state)
-        const authUrl = await getFortyTwoAuthUrl();
+        const authUrl = await browserSocialAccountsApi.getFortyTwoAuthUrl();
 
         if (!authUrl) {
           throw new Error("No auth URL returned from backend");

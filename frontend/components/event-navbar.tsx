@@ -1,5 +1,5 @@
 "use client";
-import type { Event } from "@/app/actions/event";
+import type { Event } from "@/lib/backend/types/event";
 import { Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -18,24 +18,20 @@ import {
   NavigationMenuList,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
+import { useEventAccess } from "@/contexts/EventAccessContext";
 import { cn } from "@/lib/utils";
 
 interface EventNavbarProps {
   eventId: string;
-  isUserRegistered?: boolean;
-  hasTeam?: boolean;
-  isEventAdmin?: boolean;
   event: Event;
 }
 
 export default function EventNavbar({
   eventId,
-  isUserRegistered = false,
-  hasTeam = false,
-  isEventAdmin = false,
   event,
 }: Readonly<EventNavbarProps>) {
   const pathname = usePathname();
+  const { hasTeam, isEventAdmin, isUserRegistered } = useEventAccess();
   const hasStarted = Date.now() >= new Date(event.startDate).getTime();
 
   const navItems = useMemo(() => {

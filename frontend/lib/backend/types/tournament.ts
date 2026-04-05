@@ -10,6 +10,23 @@ export enum MatchState {
   FINISHED = "FINISHED",
 }
 
+export interface MatchTeam {
+  id: string;
+  name: string;
+  score: number;
+  queueScore: number;
+  deletedAt?: string | null;
+}
+
+export interface MatchResult {
+  team: {
+    id: string;
+    name: string;
+    deletedAt?: string | null;
+  };
+  score: number;
+}
+
 export interface Match {
   id?: string;
   round: number;
@@ -19,28 +36,9 @@ export interface Match {
   updatedAt: string;
   isRevealed: boolean;
   isPlacementMatch?: boolean;
-  teams: {
-    id: string;
-    name: string;
-    score: number;
-    queueScore: number;
-    deletedAt?: string | null;
-  }[];
-  winner?: {
-    id: string;
-    name: string;
-    score: number;
-    queueScore: number;
-    deletedAt?: string | null;
-  };
-  results: {
-    team: {
-      id: string;
-      name: string;
-      deletedAt?: string | null;
-    };
-    score: number;
-  }[];
+  teams: MatchTeam[];
+  winner?: MatchTeam;
+  results: MatchResult[];
 }
 
 export type MatchLogs = {

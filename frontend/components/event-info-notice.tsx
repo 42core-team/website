@@ -1,29 +1,23 @@
 "use client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { joinEvent } from "@/app/actions/event";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useEventAccess } from "@/contexts/EventAccessContext";
+import { browserEventsApi } from "@/lib/backend/browser";
+import { getBackendErrorMessage } from "@/lib/backend/http/errors";
 
-interface EventJoinNoticeProps {
-  userId: string;
-  startDate: string;
-  eventId: string;
-  isPrivate: boolean;
-  isUserRegistered: boolean;
-}
-
-export default function EventInfoNotice({
-  userId: _userId,
-  startDate,
-  eventId,
-  isPrivate,
-  isUserRegistered,
-}: Readonly<EventJoinNoticeProps>) {
-  const router = useRouter();
+export default function EventInfoNotice() {
   const queryClient = useQueryClient();
+  const {
+    eventId,
+    isPrivate,
+    isUserRegistered,
+    setEventAccess,
+    startDate,
+  } = useEventAccess();
   const [now, setNow] = useState<Date>(new Date());
+  const [joinError, setJoinError] = useState<string | null>(null);
   const startsAt = new Date(startDate);
   const hasStarted = startsAt <= now;
   const didRefreshRef = useRef(false);
@@ -39,9 +33,9 @@ export default function EventInfoNotice({
     const timeLeftMs = startsAt.getTime() - now.getTime();
     if (!didRefreshRef.current && timeLeftMs <= 0) {
       didRefreshRef.current = true;
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["event", eventId] });
     }
-  }, [now, startsAt, router]);
+  }, [eventId, now, queryClient, startsAt]);
 
   const formatTimeLeft = (ms: number) => {
     const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -57,11 +51,15 @@ export default function EventInfoNotice({
   const timeLeftMs = startsAt.getTime() - now.getTime();
 
   const joinEventMutation = useMutation({
-    mutationFn: () => joinEvent(eventId),
+    mutationFn: () => browserEventsApi.joinEvent(eventId),
     onSuccess: () => {
+      setJoinError(null);
+      setEventAccess({ isUserRegistered: true });
       queryClient.invalidateQueries({ queryKey: ["event", eventId] });
-      queryClient.invalidateQueries({ queryKey: ["myTeam", eventId] });
-      router.refresh();
+      queryClient.invalidateQueries({ queryKey: ["event", eventId, "my-team"] });
+    },
+    onError: (error) => {
+      setJoinError(getBackendErrorMessage(error, "Failed to join event."));
     },
   });
 
@@ -113,7 +111,10 @@ export default function EventInfoNotice({
               </Badge>
             )}
             <Button
-              onClick={() => joinEventMutation.mutate()}
+              onClick={() => {
+                setJoinError(null);
+                joinEventMutation.mutate();
+              }}
               disabled={joinEventMutation.isPending}
               size="sm"
             >
@@ -122,6 +123,11 @@ export default function EventInfoNotice({
           </div>
         </div>
       </div>
+      {joinError && (
+        <div className="container mx-auto max-w-7xl px-6 pb-4 text-sm text-destructive">
+          {joinError}
+        </div>
+      )}
     </div>
   );
 }

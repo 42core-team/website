@@ -1,17 +1,13 @@
 "use client";
 
-import type { SocialAccount } from "@/app/actions/social-accounts";
+import type { SocialAccount } from "@/lib/backend/types/social-accounts";
 import { useSession } from "next-auth/react";
 import { usePlausible } from "next-plausible";
 import { useCallback, useEffect, useState } from "react";
-import {
-  getSocialAccounts,
-
-  unlinkSocialAccount,
-} from "@/app/actions/social-accounts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { use42Linking } from "@/hooks/use42Linking";
+import { browserSocialAccountsApi } from "@/lib/backend/browser";
 import { OAUTH_PROVIDERS } from "@/lib/constants/oauth";
 import {
   getPlatformIcon,
@@ -31,7 +27,7 @@ export default function SocialAccountsDisplay() {
       return;
 
     try {
-      const accounts = await getSocialAccounts();
+      const accounts = await browserSocialAccountsApi.getSocialAccounts();
       setSocialAccounts(accounts);
     }
     catch (error) {
@@ -79,7 +75,7 @@ export default function SocialAccountsDisplay() {
 
     setUnlinkingAccount(platform);
     try {
-      await unlinkSocialAccount(platform);
+      await browserSocialAccountsApi.unlinkSocialAccount(platform);
       setSocialAccounts(accounts =>
         accounts.filter(account => account.platform !== platform),
       );
@@ -144,7 +140,7 @@ export default function SocialAccountsDisplay() {
                       size="sm"
                       color="danger"
                       onClick={() => handleUnlink(account.platform)}
-                      // TODO: isLoading={unlinkingAccount === account.platform}
+                      isLoading={_unlinkingAccount === account.platform}
                     >
                       Unlink
                     </Button>

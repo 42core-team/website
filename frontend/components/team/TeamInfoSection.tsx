@@ -1,4 +1,4 @@
-import type { Team, TeamMember } from "@/app/actions/team";
+import type { Team, TeamMember } from "@/lib/backend/types/team";
 
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import { Plus } from "lucide-react";

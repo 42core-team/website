@@ -1,6 +1,6 @@
 "use client";
 
-import type { Event } from "@/app/actions/event";
+import type { Event } from "@/lib/backend/types/event";
 import EventsTable from "@/app/events/EventTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 

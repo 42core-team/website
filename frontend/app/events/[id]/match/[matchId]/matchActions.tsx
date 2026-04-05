@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { revealMatch } from "@/app/actions/tournament";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { browserTournamentApi } from "@/lib/backend/browser";
+import { getBackendErrorMessage } from "@/lib/backend/http/errors";
 
 export default function MatchActions(props: {
   matchId: string;
@@ -14,12 +16,18 @@ export default function MatchActions(props: {
   return (
     <div className="flex">
       <Button
-        onClick={() => {
+        onClick={async () => {
           setLoading(true);
-          revealMatch(props.matchId).finally(() => {
-            setLoading(false);
+          try {
+            await browserTournamentApi.revealMatch(props.matchId);
             setRevealed(true);
-          });
+          }
+          catch (error) {
+            toast.error(getBackendErrorMessage(error, "Failed to reveal match."));
+          }
+          finally {
+            setLoading(false);
+          }
         }}
         disabled={loading || revealed}
       >

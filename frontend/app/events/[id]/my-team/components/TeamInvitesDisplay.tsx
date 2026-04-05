@@ -1,12 +1,15 @@
 "use client";
-import type { Team } from "@/app/actions/team";
+
+import type { Team } from "@/lib/backend/types/team";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePlausible } from "next-plausible";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useState } from "react";
-import { isActionError } from "@/app/actions/errors";
-import { acceptTeamInvite, declineTeamInvite } from "@/app/actions/team";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEventAccess } from "@/contexts/EventAccessContext";
+import { browserTeamsApi } from "@/lib/backend/browser";
+import { getBackendErrorMessage } from "@/lib/backend/http/errors";
 
 interface TeamInvitesDisplayProps {
   pendingInvites: Team[];
@@ -16,6 +19,7 @@ export default function TeamInvitesDisplay({
   pendingInvites,
 }: TeamInvitesDisplayProps) {
   const plausible = usePlausible();
+  const queryClient = useQueryClient();
 
   const [invites, setInvites] = useState(pendingInvites);
   const [actionStates, setActionStates] = useState<
@@ -29,7 +33,7 @@ export default function TeamInvitesDisplay({
     >
   >({});
   const eventId = useParams().id as string;
-  const router = useRouter();
+  const { setEventAccess } = useEventAccess();
 
   const handleAcceptInvite = async (teamId: string) => {
     plausible("accept_team_invite");
@@ -38,22 +42,29 @@ export default function TeamInvitesDisplay({
       [teamId]: { ...prev[teamId], isAccepting: true, message: undefined },
     }));
 
-    const result = await acceptTeamInvite(eventId, teamId);
-
-    if (isActionError(result)) {
+    try {
+      await browserTeamsApi.acceptTeamInvite(eventId, teamId);
+      setEventAccess({ hasTeam: true });
+      setInvites(prev => prev.filter(invite => invite.id !== teamId));
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["event", eventId, "my-team"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["event", eventId, "pending-invites"],
+        }),
+      ]);
+    }
+    catch (error) {
       setActionStates(prev => ({
         ...prev,
         [teamId]: {
           ...prev[teamId],
           isAccepting: false,
-          message: result.error,
+          message: getBackendErrorMessage(error),
         },
       }));
-      return;
     }
-
-    // Use Next.js router to refresh the page
-    router.refresh();
   };
 
   const handleDeclineInvite = async (teamId: string) => {
@@ -63,19 +74,23 @@ export default function TeamInvitesDisplay({
       [teamId]: { ...prev[teamId], isDeclining: true, message: undefined },
     }));
 
-    const result = await declineTeamInvite(eventId, teamId);
-    if (isActionError(result)) {
+    try {
+      await browserTeamsApi.declineTeamInvite(eventId, teamId);
+      setInvites(prev => prev.filter(invite => invite.id !== teamId));
+      await queryClient.invalidateQueries({
+        queryKey: ["event", eventId, "pending-invites"],
+      });
+    }
+    catch (error) {
       setActionStates(prev => ({
         ...prev,
         [teamId]: {
           ...prev[teamId],
           isDeclining: false,
-          message: result.error,
+          message: getBackendErrorMessage(error),
         },
       }));
-      return;
     }
-    setInvites(prev => prev.filter(invite => invite.id !== teamId));
   };
 
   return (

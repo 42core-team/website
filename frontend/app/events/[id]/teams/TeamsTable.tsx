@@ -1,6 +1,6 @@
 "use client";
 import type { OnChangeFn, SortingState } from "@tanstack/react-table";
-import type { Team } from "@/app/actions/team";
+import type { Team } from "@/lib/backend/types/team";
 import {
   flexRender,
   getCoreRowModel,

@@ -23,6 +23,15 @@ export default antfu({
     "no-debugger": "warn",
     "node/prefer-global/process": "off",
     "no-alert": "warn",
+    "no-restricted-syntax": [
+      "error",
+      {
+        selector:
+          "Program:has(ExpressionStatement[directive='use client']) > ImportDeclaration[source.value=/^@\\/app\\/actions\\//]",
+        message:
+          "Client components must use '@/lib/backend/browser' or '@/lib/backend/types/*' instead of '@/app/actions/*'.",
+      },
+    ],
   },
 }, ...tailwind.configs["flat/recommended"], {
   settings: {

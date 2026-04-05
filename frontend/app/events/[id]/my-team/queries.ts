@@ -1,5 +1,4 @@
-import type { Team, TeamMember } from "@/app/actions/team";
-import axiosInstance from "@/app/actions/axios";
+import { browserTeamsApi } from "@/lib/backend/browser";
 
 export function myTeamQueryKey(eventId: string) {
   return ["event", eventId, "my-team"] as const;
@@ -12,22 +11,17 @@ export function pendingInvitesQueryKey(eventId: string) {
 }
 
 export async function myTeamQueryFn(eventId: string) {
-  const response = await axiosInstance.get<Team | null>(
-    `/team/event/${eventId}/my`,
-  );
-  return response.data;
+  return await browserTeamsApi.getMyEventTeam(eventId);
 }
 
 export async function teamMembersQueryFn(teamId: string | undefined) {
-  const response = await axiosInstance.get<TeamMember[]>(
-    `/team/${teamId}/members`,
-  );
-  return response.data;
+  if (!teamId) {
+    return [];
+  }
+
+  return await browserTeamsApi.getTeamMembers(teamId);
 }
 
 export async function pendingInvitesQueryFn(eventId: string) {
-  const response = await axiosInstance.get<Team[]>(
-    `/team/event/${eventId}/pending`,
-  );
-  return response.data;
+  return await browserTeamsApi.getUserPendingInvites(eventId);
 }

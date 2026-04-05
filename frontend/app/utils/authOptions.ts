@@ -1,46 +1,48 @@
 import type { NextAuthOptions } from "next-auth";
+import type { AuthUserProfile } from "@/lib/backend/types/user";
 import CredentialsProvider from "next-auth/providers/credentials";
-import axiosInstance from "@/app/actions/axios";
+import { serverHttp } from "@/lib/backend/http/server";
 
 const BACKEND_BASE_URL
   = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_PUBLIC_URL;
 
+async function getCurrentUserProfile(): Promise<AuthUserProfile> {
+  return (
+    await serverHttp.get<AuthUserProfile>("/auth/me")
+  ).data;
+}
+
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60,
   },
   jwt: {
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60,
   },
   providers: [
     CredentialsProvider({
       id: "backend",
       name: "Backend",
       credentials: {},
-      async authorize(_credentials, _) {
+      async authorize() {
         try {
           if (!BACKEND_BASE_URL) {
             console.error("Missing BACKEND URL env");
             return null;
           }
 
-          const res = await axiosInstance.get<{
-            id: string;
-            username: string;
-            email: string;
-            profilePicture: string;
-          }>(`/auth/me`);
+          const profile = await getCurrentUserProfile();
 
           return {
-            id: res.data.id,
-            name: res.data.username,
-            email: res.data.email,
-            profilePicture: res.data.profilePicture,
+            id: profile.id,
+            name: profile.username,
+            email: profile.email,
+            profilePicture: profile.profilePicture,
           };
         }
-        catch (e) {
-          console.error("Authorize failed in authOptions authorize:", e);
+        catch (error) {
+          console.error("Authorize failed in authOptions authorize:", error);
           return null;
         }
       },
@@ -60,17 +62,12 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session }) {
       try {
-        const res = await axiosInstance.get<{
-          id: string;
-          username: string;
-          email: string;
-          profilePicture: string;
-        }>(`/auth/me`);
+        const profile = await getCurrentUserProfile();
 
-        session.user.id = res.data.id;
-        session.user.email = res.data.email;
-        session.user.name = res.data.username;
-        session.user.profilePicture = res.data.profilePicture;
+        session.user.id = profile.id;
+        session.user.email = profile.email;
+        session.user.name = profile.username;
+        session.user.profilePicture = profile.profilePicture;
       }
       catch {
         session.user.id = "";

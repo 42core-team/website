@@ -1,75 +1,28 @@
 "use server";
 
-import axiosInstance from "./axios";
+import type {
+  LinkSocialAccountData as BackendLinkSocialAccountData,
+  SocialAccount as BackendSocialAccount,
+} from "@/lib/backend/types/social-accounts";
+import { serverSocialAccountsApi } from "@/lib/backend/server";
 
-export interface SocialAccount {
-  id: string;
-  platform: string;
-  username: string;
-  platformUserId: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface LinkSocialAccountData {
-  platform: string;
-  username: string;
-  platformUserId: string;
-}
+export interface LinkSocialAccountData extends BackendLinkSocialAccountData {}
+export interface SocialAccount extends BackendSocialAccount {}
 
 export async function unlinkSocialAccount(platform: string): Promise<void> {
-  try {
-    await axiosInstance.delete(`/social-accounts/${platform}`);
-  }
-  catch (error: any) {
-    console.error("Error unlinking social account:", error);
-    throw new Error(
-      error.response?.data?.message || "Failed to unlink social account",
-    );
-  }
+  await serverSocialAccountsApi.unlinkSocialAccount(platform);
 }
 
 export async function getSocialAccounts(): Promise<SocialAccount[]> {
-  try {
-    const response = await axiosInstance.get("/social-accounts");
-    return response.data;
-  }
-  catch (error: any) {
-    console.error("Error fetching social accounts:", error);
-    throw new Error(
-      error.response?.data?.message || "Failed to fetch social accounts",
-    );
-  }
+  return await serverSocialAccountsApi.getSocialAccounts();
 }
 
 export async function getSocialAccountByPlatform(
   platform: string,
 ): Promise<SocialAccount | null> {
-  try {
-    const response = await axiosInstance.get(`/social-accounts/${platform}`);
-    return response.data;
-  }
-  catch (error: any) {
-    if (error.response?.status === 404) {
-      return null;
-    }
-    console.error("Error fetching social account:", error);
-    throw new Error(
-      error.response?.data?.message || "Failed to fetch social account",
-    );
-  }
+  return await serverSocialAccountsApi.getSocialAccountByPlatform(platform);
 }
 
 export async function getFortyTwoAuthUrl(): Promise<string> {
-  try {
-    const response = await axiosInstance.get("/auth/42/getUrl");
-    return response.data;
-  }
-  catch (error: any) {
-    console.error("Error fetching 42 auth URL:", error);
-    throw new Error(
-      error.response?.data?.message || "Failed to fetch 42 auth URL",
-    );
-  }
+  return await serverSocialAccountsApi.getFortyTwoAuthUrl();
 }

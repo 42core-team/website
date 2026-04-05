@@ -1,4 +1,3 @@
-import type { Team } from "@/app/actions/team";
 import {
   dehydrate,
   HydrationBoundary,
@@ -9,12 +8,10 @@ import { redirect } from "next/navigation";
 import { isActionError } from "@/app/actions/errors";
 import { getEventById, isUserRegisteredForEvent } from "@/app/actions/event";
 import { authOptions } from "@/app/utils/authOptions";
+import { serverTeamsApi } from "@/lib/backend/server";
 import {
-  myTeamQueryFn,
   myTeamQueryKey,
-  pendingInvitesQueryFn,
   pendingInvitesQueryKey,
-  teamMembersQueryFn,
   teamMembersQueryKey,
 } from "./queries";
 import TeamView from "./teamView";
@@ -48,24 +45,17 @@ export default async function Page({
 
   const queryClient = new QueryClient();
 
-  const team = await queryClient.fetchQuery({
-    queryKey: myTeamQueryKey(eventId),
-    queryFn: () => myTeamQueryFn(eventId),
-  });
-
-  const teamId = (team as Team | null)?.id;
+  const team = await serverTeamsApi.getMyEventTeam(eventId);
+  queryClient.setQueryData(myTeamQueryKey(eventId), team);
+  const teamId = team?.id;
 
   if (teamId) {
-    await queryClient.prefetchQuery({
-      queryKey: teamMembersQueryKey(teamId),
-      queryFn: () => teamMembersQueryFn(teamId),
-    });
+    const teamMembers = await serverTeamsApi.getTeamMembers(teamId);
+    queryClient.setQueryData(teamMembersQueryKey(teamId), teamMembers);
   }
 
-  await queryClient.prefetchQuery({
-    queryKey: pendingInvitesQueryKey(eventId),
-    queryFn: () => pendingInvitesQueryFn(eventId),
-  });
+  const pendingInvites = await serverTeamsApi.getUserPendingInvites(eventId);
+  queryClient.setQueryData(pendingInvitesQueryKey(eventId), pendingInvites);
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

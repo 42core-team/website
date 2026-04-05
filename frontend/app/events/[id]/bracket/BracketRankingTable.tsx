@@ -1,11 +1,10 @@
 "use client";
 
-import type { Team } from "@/app/actions/team";
-import type { Match } from "@/app/actions/tournament-model";
+import type { Team } from "@/lib/backend/types/team";
+import type { Match } from "@/lib/backend/types/tournament";
 import { Award, Medal, Trophy } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
-import { MatchState } from "@/app/actions/tournament-model";
 import { MatchHistoryBadges } from "@/components/match/MatchHistoryBadges";
 import {
   Table,
@@ -15,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { MatchState } from "@/lib/backend/types/tournament";
 import { cn } from "@/lib/utils";
 
 interface RankingTableProps {
