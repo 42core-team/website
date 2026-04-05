@@ -1,4 +1,3 @@
-import type { Team } from "@/lib/backend/types/team";
 import {
   dehydrate,
   HydrationBoundary,
@@ -48,13 +47,7 @@ export default async function Page({
 
   const team = await serverTeamsApi.getMyEventTeam(eventId);
   queryClient.setQueryData(myTeamQueryKey(eventId), team);
-
-  const hydratedTeam = await queryClient.fetchQuery({
-    queryKey: myTeamQueryKey(eventId),
-    queryFn: () => Promise.resolve(team),
-  });
-
-  const teamId = (hydratedTeam as Team | null)?.id;
+  const teamId = team?.id;
 
   if (teamId) {
     const teamMembers = await serverTeamsApi.getTeamMembers(teamId);

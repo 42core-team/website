@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useEventAccess } from "@/contexts/EventAccessContext";
 import { browserEventsApi } from "@/lib/backend/browser";
+import { getBackendErrorMessage } from "@/lib/backend/http/errors";
 
 export default function EventInfoNotice() {
   const queryClient = useQueryClient();
@@ -16,6 +17,7 @@ export default function EventInfoNotice() {
     startDate,
   } = useEventAccess();
   const [now, setNow] = useState<Date>(new Date());
+  const [joinError, setJoinError] = useState<string | null>(null);
   const startsAt = new Date(startDate);
   const hasStarted = startsAt <= now;
   const didRefreshRef = useRef(false);
@@ -51,9 +53,13 @@ export default function EventInfoNotice() {
   const joinEventMutation = useMutation({
     mutationFn: () => browserEventsApi.joinEvent(eventId),
     onSuccess: () => {
+      setJoinError(null);
       setEventAccess({ isUserRegistered: true });
       queryClient.invalidateQueries({ queryKey: ["event", eventId] });
       queryClient.invalidateQueries({ queryKey: ["event", eventId, "my-team"] });
+    },
+    onError: (error) => {
+      setJoinError(getBackendErrorMessage(error, "Failed to join event."));
     },
   });
 
@@ -105,7 +111,10 @@ export default function EventInfoNotice() {
               </Badge>
             )}
             <Button
-              onClick={() => joinEventMutation.mutate()}
+              onClick={() => {
+                setJoinError(null);
+                joinEventMutation.mutate();
+              }}
               disabled={joinEventMutation.isPending}
               size="sm"
             >
@@ -114,6 +123,11 @@ export default function EventInfoNotice() {
           </div>
         </div>
       </div>
+      {joinError && (
+        <div className="container mx-auto max-w-7xl px-6 pb-4 text-sm text-destructive">
+          {joinError}
+        </div>
+      )}
     </div>
   );
 }

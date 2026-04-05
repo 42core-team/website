@@ -10,7 +10,36 @@ import type {
 import type { Match } from "./types/tournament";
 import { requestData } from "./http/errors";
 
-function mapTeam(team: any): Team | null {
+interface SocialAccountDto {
+  platform: string;
+  username?: string;
+}
+
+interface TeamDto {
+  id: string;
+  name: string;
+  repo?: string | null;
+  locked?: boolean;
+  score?: number;
+  buchholzPoints?: number;
+  hadBye?: boolean;
+  queueScore?: number;
+  inQueue?: boolean;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+  userCount?: number;
+}
+
+interface TeamMemberDto {
+  id: string;
+  name: string;
+  isEventAdmin: boolean;
+  username: string;
+  profilePicture?: string;
+  socialAccounts?: SocialAccountDto[];
+}
+
+function mapTeam(team: TeamDto | null): Team | null {
   if (!team) {
     return null;
   }
@@ -31,14 +60,14 @@ function mapTeam(team: any): Team | null {
   };
 }
 
-function mapTeamMember(member: any): TeamMember {
+function mapTeamMember(member: TeamMemberDto): TeamMember {
   return {
     id: member.id,
     name: member.name,
     isEventAdmin: member.isEventAdmin,
     username: member.username,
     profilePicture: member.profilePicture,
-    intraUsername: member.socialAccounts?.find((account: any) => account.platform === "42")
+    intraUsername: member.socialAccounts?.find(account => account.platform === "42")
       ?.username,
   };
 }
@@ -64,13 +93,13 @@ export function createTeamsApi(http: AxiosInstance) {
       await requestData(http.post(`team/event/${eventId}/create`, input));
     },
     getTeamById: async (teamId: string) => mapTeam(
-      await requestData(http.get(`team/${teamId}`)),
+      await requestData(http.get<TeamDto | null>(`team/${teamId}`)),
     ),
     hasEventStarted(teamId: string) {
       return requestData(http.get<boolean>(`team/${teamId}/event-started`));
     },
     getMyEventTeam: async (eventId: string) => mapTeam(
-      await requestData(http.get(`team/event/${eventId}/my`)),
+      await requestData(http.get<TeamDto | null>(`team/event/${eventId}/my`)),
     ),
     async lockEvent(eventId: string) {
       await requestData(http.put(`event/${eventId}/lock`));
@@ -82,16 +111,23 @@ export function createTeamsApi(http: AxiosInstance) {
       await requestData(http.put(`team/event/${eventId}/leave`));
     },
     async getTeamMembers(teamId: string) {
-      const members = await requestData<any[]>(http.get(`team/${teamId}/members`));
+      const members = await requestData(
+        http.get<TeamMemberDto[]>(`team/${teamId}/members`),
+      );
       return members.map(mapTeamMember);
     },
     searchUsersForInvite(eventId: string, searchQuery: string) {
-      return requestData<TeamInviteUserSearchResult[]>(
-        http.get(`team/event/${eventId}/searchInviteUsers/${searchQuery}`),
+      return requestData(
+        http.get<TeamInviteUserSearchResult[]>(
+          `team/event/${eventId}/searchInviteUsers/${encodeURIComponent(searchQuery)}`,
+        ),
       );
     },
-    getUserPendingInvites(eventId: string) {
-      return requestData<Team[]>(http.get(`team/event/${eventId}/pending`));
+    async getUserPendingInvites(eventId: string) {
+      const teams = await requestData(
+        http.get<TeamDto[]>(`team/event/${eventId}/pending`),
+      );
+      return teams.map(mapTeam).filter((team): team is Team => team !== null);
     },
     async acceptTeamInvite(eventId: string, teamId: string) {
       await requestData(http.put(`team/event/${eventId}/acceptInvite/${teamId}`));
@@ -118,8 +154,8 @@ export function createTeamsApi(http: AxiosInstance) {
       sortDirection: "asc" | "desc" = "asc",
       adminReveal = false,
     ) {
-      const teams = await requestData<any[]>(
-        http.get(`team/event/${eventId}/`, {
+      const teams = await requestData(
+        http.get<TeamDto[]>(`team/event/${eventId}/`, {
           params: {
             searchName: searchTeamName,
             sortBy: sortColumn,

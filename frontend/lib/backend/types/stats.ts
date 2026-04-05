@@ -1,20 +1,20 @@
 export interface MatchStats {
-  actionsExecuted?: string;
-  damageDeposits?: string;
-  gempilesDestroyed?: string;
-  damageTotal?: string;
-  gemsGained?: string;
-  damageWalls?: string;
-  damageCores?: string;
-  unitsSpawned?: string;
-  tilesTraveled?: string;
-  damageSelf?: string;
-  damageUnits?: string;
-  wallsDestroyed?: string;
-  gemsTransferred?: string;
-  unitsDestroyed?: string;
-  coresDestroyed?: string;
-  damageOpponent?: string;
+  actionsExecuted?: number;
+  damageDeposits?: number;
+  gempilesDestroyed?: number;
+  damageTotal?: number;
+  gemsGained?: number;
+  damageWalls?: number;
+  damageCores?: number;
+  unitsSpawned?: number;
+  tilesTraveled?: number;
+  damageSelf?: number;
+  damageUnits?: number;
+  wallsDestroyed?: number;
+  gemsTransferred?: number;
+  unitsDestroyed?: number;
+  coresDestroyed?: number;
+  damageOpponent?: number;
 }
 
 export interface QueueMatchesTimeBucket {

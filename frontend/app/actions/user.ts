@@ -5,7 +5,7 @@ import type { UserSearchResult as BackendUserSearchResult } from "@/lib/backend/
 import { toActionError } from "@/lib/backend/http/errors";
 import { serverUsersApi } from "@/lib/backend/server";
 
-export interface UserSearchResult extends BackendUserSearchResult {}
+export type UserSearchResult = BackendUserSearchResult;
 
 export async function searchUsers(
   query: string,

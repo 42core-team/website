@@ -8,7 +8,9 @@ import { normalizeBackendError, requestData } from "./http/errors";
 export function createSocialAccountsApi(http: AxiosInstance) {
   return {
     async unlinkSocialAccount(platform: string) {
-      await requestData(http.delete(`/social-accounts/${platform}`));
+      await requestData(
+        http.delete(`/social-accounts/${encodeURIComponent(platform)}`),
+      );
     },
     getSocialAccounts() {
       return requestData(http.get<SocialAccount[]>("/social-accounts"));
@@ -16,7 +18,9 @@ export function createSocialAccountsApi(http: AxiosInstance) {
     async getSocialAccountByPlatform(platform: string) {
       try {
         return await requestData(
-          http.get<SocialAccount>(`/social-accounts/${platform}`),
+          http.get<SocialAccount>(
+            `/social-accounts/${encodeURIComponent(platform)}`,
+          ),
         );
       }
       catch (error) {

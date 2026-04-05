@@ -55,7 +55,16 @@ export default async function EventQueuePage({
   const queueMatches = await serverTeamsApi.getQueueMatches(id);
   const sortedQueueMatches = queueMatches.map(match => ({
     ...match,
-    teams: [...match.teams].sort((a, _b) => (a.id === myTeam.id ? -1 : 1)),
+    teams: [...match.teams].sort((a, b) => {
+      const aRank = a.id === myTeam.id ? 0 : 1;
+      const bRank = b.id === myTeam.id ? 0 : 1;
+
+      if (aRank < bRank)
+        return -1;
+      if (aRank > bRank)
+        return 1;
+      return 0;
+    }),
   }));
   queryClient.setQueryData(queueMatchesQueryKey(id), sortedQueueMatches);
 

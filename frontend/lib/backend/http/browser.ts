@@ -5,7 +5,6 @@ function getBrowserBackendBaseUrl() {
 }
 
 export const browserHttp = axios.create({
-  baseURL: getBrowserBackendBaseUrl(),
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",

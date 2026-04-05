@@ -35,7 +35,7 @@ export interface TeamInviteUserSearchResult {
   isInvited: boolean;
 }
 
-export interface UserSearchResult extends TeamInviteUserSearchResult {}
+export type UserSearchResult = TeamInviteUserSearchResult;
 
 export interface QueueState {
   inQueue: boolean;

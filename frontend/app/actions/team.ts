@@ -52,12 +52,28 @@ export async function getMyEventTeam(eventId: string): Promise<Team | null> {
   return await serverTeamsApi.getMyEventTeam(eventId);
 }
 
-export async function lockEvent(eventId: string) {
-  return await serverTeamsApi.lockEvent(eventId);
+export async function lockEvent(
+  eventId: string,
+): Promise<ServerActionResponse<void>> {
+  try {
+    await serverTeamsApi.lockEvent(eventId);
+    return undefined;
+  }
+  catch (error) {
+    return toActionError(error);
+  }
 }
 
-export async function unlockEvent(eventId: string) {
-  return await serverTeamsApi.unlockEvent(eventId);
+export async function unlockEvent(
+  eventId: string,
+): Promise<ServerActionResponse<void>> {
+  try {
+    await serverTeamsApi.unlockEvent(eventId);
+    return undefined;
+  }
+  catch (error) {
+    return toActionError(error);
+  }
 }
 
 export async function leaveTeam(
@@ -126,7 +142,7 @@ export async function getTeamsForEventTable(
     | undefined = "name",
   sortDirection: "asc" | "desc" = "asc",
   adminReveal = false,
-) {
+): ReturnType<typeof serverTeamsApi.getTeamsForEventTable> {
   return await serverTeamsApi.getTeamsForEventTable(
     eventId,
     searchTeamName,

@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { browserTeamsApi } from "@/lib/backend/browser";
+import { getBackendErrorMessage } from "@/lib/backend/http/errors";
 
 interface TeamInviteModalProps {
   isOpen: boolean;
@@ -68,12 +69,8 @@ export function TeamInviteModal({
         ),
       );
     }
-    catch (error: any) {
-      toast.error(
-        error?.response?.data?.message
-        || error?.message
-        || "Failed to send invite.",
-      );
+    catch (error) {
+      toast.error(getBackendErrorMessage(error, "Failed to send invite."));
     }
     finally {
       setIsInviting(prev => ({ ...prev, [userId]: false }));

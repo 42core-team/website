@@ -17,7 +17,7 @@ import {
 
 import { useSession } from "next-auth/react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -72,11 +72,17 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [isGameConfigExpanded, setIsGameConfigExpanded] = useState(false);
   const [isServerConfigExpanded, setIsServerConfigExpanded] = useState(false);
+  const searchRequestIdRef = useRef(0);
 
   // Local state for event settings
   const [pendingSettings, setPendingSettings] = useState<Partial<Event>>({});
 
-  const { data: event, isLoading: isEventLoading } = useQuery<Event>({
+  const {
+    data: event,
+    error: eventError,
+    isError: isEventError,
+    isLoading: isEventLoading,
+  } = useQuery<Event>({
     queryKey: ["event", eventId],
     queryFn: () => browserEventsApi.getEventById(eventId),
   });
@@ -87,22 +93,38 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     }
   }, [event]);
 
-  const { data: teamsCount = 0, isLoading: isTeamsLoading } = useQuery<number>({
+  const {
+    data: teamsCount = 0,
+    error: teamsCountError,
+    isError: isTeamsError,
+    isLoading: isTeamsLoading,
+  } = useQuery<number>({
     queryKey: ["event", eventId, "teams-count"],
     queryFn: () => browserEventsApi.getTeamsCountForEvent(eventId),
   });
 
-  const { data: participantsCount = 0, isLoading: isParticipantsLoading }
+  const {
+    data: participantsCount = 0,
+    error: participantsCountError,
+    isError: isParticipantsError,
+    isLoading: isParticipantsLoading,
+  }
     = useQuery<number>({
       queryKey: ["event", eventId, "participants-count"],
       queryFn: () => browserEventsApi.getParticipantsCountForEvent(eventId),
     });
 
-  const { data: isAdmin = false, isLoading: isAdminLoading }
+  const {
+    data: isAdmin,
+    error: isAdminError,
+    isError: isAdminQueryError,
+    isLoading: isAdminLoading,
+  }
     = useQuery<boolean>({
       queryKey: ["event", eventId, "is-admin"],
       queryFn: () => browserEventsApi.isEventAdmin(eventId),
-      enabled: session.status !== "loading",
+      enabled: session.status === "authenticated",
+      retry: false,
     });
 
   const { data: admins = [], isLoading: isAdminsLoading } = useQuery({
@@ -218,9 +240,12 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
 
   const removeAdminMutation = useMutation({
     mutationFn: (userId: string) => browserEventsApi.removeEventAdmin(eventId, userId),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Admin removed.");
-      queryClient.invalidateQueries({ queryKey: ["event", eventId, "admins"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["event", eventId, "admins"] }),
+        queryClient.invalidateQueries({ queryKey: ["event", eventId, "is-admin"] }),
+      ]);
     },
     onError: error => toast.error(getBackendErrorMessage(error)),
   });
@@ -234,25 +259,39 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   }, [event?.repoLockDate]);
 
   useEffect(() => {
+    const currentRequestId = ++searchRequestIdRef.current;
     const delayDebounceFn = setTimeout(async () => {
-      if (userSearchQuery.length > 2) {
-        setIsSearching(true);
-        try {
-          setSearchResults(await browserUsersApi.searchUsers(userSearchQuery));
+      if (userSearchQuery.length <= 2) {
+        if (currentRequestId === searchRequestIdRef.current) {
+          setSearchResults([]);
+          setIsSearching(false);
         }
-        catch {
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        const results = await browserUsersApi.searchUsers(userSearchQuery);
+        if (currentRequestId === searchRequestIdRef.current) {
+          setSearchResults(results);
+        }
+      }
+      catch {
+        if (currentRequestId === searchRequestIdRef.current) {
           setSearchResults([]);
         }
-        finally {
+      }
+      finally {
+        if (currentRequestId === searchRequestIdRef.current) {
           setIsSearching(false);
         }
       }
-      else {
-        setSearchResults([]);
-      }
     }, 300);
 
-    return () => clearTimeout(delayDebounceFn);
+    return () => {
+      clearTimeout(delayDebounceFn);
+      searchRequestIdRef.current += 1;
+    };
   }, [userSearchQuery]);
 
   const handleSaveSettings = () => {
@@ -307,9 +346,24 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
   };
 
   const isLoading
-    = isEventLoading || isTeamsLoading || isParticipantsLoading || isAdminLoading;
+    = session.status === "loading"
+      || isEventLoading
+      || isTeamsLoading
+      || isParticipantsLoading
+      || isAdminLoading;
 
-  if (isLoading || !event) {
+  const dashboardError
+    = isEventError
+      ? eventError
+      : isAdminQueryError
+        ? isAdminError
+        : isTeamsError
+          ? teamsCountError
+          : isParticipantsError
+            ? participantsCountError
+            : null;
+
+  if (isLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         Loading dashboard...
@@ -317,7 +371,15 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     );
   }
 
-  if (!isAdmin) {
+  if (dashboardError || !event) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        {getBackendErrorMessage(dashboardError, "Failed to load dashboard.")}
+      </div>
+    );
+  }
+
+  if (session.status !== "authenticated" || !isAdmin) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         You are not authorized to access this dashboard.
