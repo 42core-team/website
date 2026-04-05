@@ -96,8 +96,13 @@ export function WhitelistManagement({ eventId }: WhitelistManagementProps) {
         throw new Error(result.error);
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (_data, whitelistId) => {
       toast.success("User removed from whitelist");
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(whitelistId);
+        return next;
+      });
       queryClient.invalidateQueries({ queryKey: ["event", eventId, "whitelist"] });
     },
     onError: (e: any) => toast.error(e.message),
