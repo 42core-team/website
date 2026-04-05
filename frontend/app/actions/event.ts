@@ -243,10 +243,15 @@ export async function deleteStarterTemplate(
   );
 }
 
+export enum WhitelistPlatform {
+  GITHUB = "GITHUB",
+  FORTYTWO = "FORTYTWO",
+}
+
 export interface WhitelistEntry {
   id: string;
   username: string;
-  platform: "GITHUB" | "FORTYTWO";
+  platform: WhitelistPlatform;
   createdAt: string;
 }
 
@@ -258,7 +263,7 @@ export async function getEventWhitelist(
 
 export async function addToWhitelist(
   eventId: string,
-  entries: { username: string; platform: "GITHUB" | "FORTYTWO" }[],
+  entries: { username: string; platform: WhitelistPlatform }[],
 ): Promise<ServerActionResponse<WhitelistEntry[]>> {
   return await handleError(
     axiosInstance.post(`event/${eventId}/whitelist`, { entries }),

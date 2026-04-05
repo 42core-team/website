@@ -688,10 +688,11 @@ export class EventService {
       platform: entry.platform,
     }));
 
+    const toKey = (e: { username: string; platform: WhitelistPlatform }) =>
+      `${e.username}:${e.platform}`;
+
     const uniqueInputEntries = [
-      ...new Map(
-        normalizedEntries.map((e) => [`${e.username}:${e.platform}`, e]),
-      ).values(),
+      ...new Map(normalizedEntries.map((e) => [toKey(e), e])).values(),
     ];
 
     const existingEntries = await this.whitelistRepository.find({
@@ -700,12 +701,10 @@ export class EventService {
       },
     });
 
-    const existingSet = new Set(
-      existingEntries.map((e) => `${e.username}:${e.platform}`),
-    );
+    const existingSet = new Set(existingEntries.map(toKey));
 
     const newEntries = uniqueInputEntries.filter(
-      (entry) => !existingSet.has(`${entry.username}:${entry.platform}`),
+      (entry) => !existingSet.has(toKey(entry)),
     );
 
     if (newEntries.length === 0) {

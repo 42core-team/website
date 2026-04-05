@@ -10,6 +10,7 @@ import {
   bulkRemoveFromWhitelist,
   getEventWhitelist,
   removeFromWhitelist,
+  WhitelistPlatform,
 } from "@/app/actions/event";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -59,7 +60,7 @@ export function WhitelistManagement({ eventId }: WhitelistManagementProps) {
   const queryClient = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [usernames, setUsernames] = useState("");
-  const [platform, setPlatform] = useState<"GITHUB" | "FORTYTWO">("GITHUB");
+  const [platform, setPlatform] = useState<WhitelistPlatform>(WhitelistPlatform.GITHUB);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { data: whitelist, isLoading, isError } = useQuery({
@@ -75,7 +76,7 @@ export function WhitelistManagement({ eventId }: WhitelistManagementProps) {
   const list = whitelist ?? [];
 
   const addMutation = useMutation({
-    mutationFn: async (entries: { username: string; platform: "GITHUB" | "FORTYTWO" }[]) => {
+    mutationFn: async (entries: { username: string; platform: WhitelistPlatform }[]) => {
       const result = await addToWhitelist(eventId, entries);
       if (isActionError(result))
         throw new Error(result.error);
@@ -141,7 +142,7 @@ export function WhitelistManagement({ eventId }: WhitelistManagementProps) {
     setAddOpen(open);
     if (!open) {
       setUsernames("");
-      setPlatform("GITHUB");
+      setPlatform(WhitelistPlatform.GITHUB);
     }
   };
 
@@ -308,8 +309,8 @@ export function WhitelistManagement({ eventId }: WhitelistManagementProps) {
                                   </TableCell>
                                   <TableCell className="font-mono">{entry.username}</TableCell>
                                   <TableCell>
-                                    <Badge variant={entry.platform === "GITHUB" ? "default" : "secondary"}>
-                                      {entry.platform === "GITHUB" ? "GitHub" : "42"}
+                                    <Badge variant={entry.platform === WhitelistPlatform.GITHUB ? "default" : "secondary"}>
+                                      {entry.platform === WhitelistPlatform.GITHUB ? "GitHub" : "42"}
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="text-right">
@@ -358,13 +359,13 @@ username3`}
           </div>
           <div className="space-y-2">
             <Label htmlFor="platform">Platform</Label>
-            <Select value={platform} onValueChange={(v: "GITHUB" | "FORTYTWO") => setPlatform(v)}>
+            <Select value={platform} onValueChange={(v: WhitelistPlatform) => setPlatform(v)}>
               <SelectTrigger id="platform">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="GITHUB">GitHub</SelectItem>
-                <SelectItem value="FORTYTWO">42 Intra</SelectItem>
+                <SelectItem value={WhitelistPlatform.GITHUB}>GitHub</SelectItem>
+                <SelectItem value={WhitelistPlatform.FORTYTWO}>42 Intra</SelectItem>
               </SelectContent>
             </Select>
           </div>
