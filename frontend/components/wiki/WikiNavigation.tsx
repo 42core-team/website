@@ -9,6 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { scrollToWikiHeading } from "@/lib/wiki-scroll";
 
 const INDENT_BASE = 8; // px
 const INDENT_STEP = 10; // px per depth level
@@ -188,7 +189,7 @@ export function WikiNavigation({
 
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrollToWikiHeading(element);
     }
 
     if (scrollTimeoutRef.current) {

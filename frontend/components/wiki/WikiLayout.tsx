@@ -7,6 +7,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavbar } from "@/contexts/NavbarContext";
 import { cn } from "@/lib/utils";
+import { scrollToWikiHeading } from "@/lib/wiki-scroll";
 import { VersionSelector } from "./VersionSelector";
 import { WikiNavigation } from "./WikiNavigation";
 import { WikiSearch } from "./WikiSearch";
@@ -97,7 +98,7 @@ export function WikiLayout({
       if (targetId) {
         const target = document.getElementById(targetId);
         if (target) {
-          target.scrollIntoView({ behavior: "smooth", block: "start" });
+          scrollToWikiHeading(target);
         }
       }
     };
