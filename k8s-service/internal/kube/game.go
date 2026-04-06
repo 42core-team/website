@@ -90,11 +90,20 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 
 	for _, bot := range game.Bots {
 		volumeName := "shared-data-" + bot.ID.String()
+		tmpVolumeName := "tmp-" + bot.ID.String()
 		initContainerName := "clone-repo-" + bot.ID.String()
 		containerName := "bot-" + bot.ID.String()
 
 		volumes = append(volumes, corev1.Volume{
 			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{
+					SizeLimit: &volumeSizeLimit,
+				},
+			},
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: tmpVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{
 					SizeLimit: &volumeSizeLimit,
@@ -162,6 +171,10 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 					Name:      volumeName,
 					MountPath: "/shared-data",
 				},
+				{
+					Name:      tmpVolumeName,
+					MountPath: "/tmp",
+				},
 			},
 			SecurityContext: &corev1.SecurityContext{
 				RunAsUser:                &botRunAsUser,
@@ -201,7 +214,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 		Image:           game.Image,
 		ImagePullPolicy: imagePullPolicy(game.Image),
 		Args:            botIDs,
-		Env:   gameEnv,
+		Env:             gameEnv,
 		SecurityContext: &corev1.SecurityContext{
 			//RunAsUser: &serverRunAsUser,
 			//RunAsNonRoot:             &runAsNonRootTrue,
