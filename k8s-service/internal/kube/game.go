@@ -90,7 +90,6 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 
 	for _, bot := range game.Bots {
 		volumeName := "shared-data-" + bot.ID.String()
-		tmpVolumeName := "tmp-" + bot.ID.String()
 		initContainerName := "clone-repo-" + bot.ID.String()
 		containerName := "bot-" + bot.ID.String()
 
@@ -102,15 +101,6 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 				},
 			},
 		})
-		volumes = append(volumes, corev1.Volume{
-			Name: tmpVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{
-					SizeLimit: &volumeSizeLimit,
-				},
-			},
-		})
-
 		initContainers = append(initContainers, corev1.Container{
 			Name:  initContainerName,
 			Image: "alpine/git",
@@ -164,16 +154,23 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 			Image:           bot.Image,
 			ImagePullPolicy: imagePullPolicy(bot.Image),
 			Command: []string{
-				"sh", "-c", fmt.Sprintf("cd /shared-data/repo/my-core-bot && make && ./bot %s", *bot.RndID),
+				"sh", "-c", fmt.Sprintf("mkdir -p /shared-data/tmp /shared-data/.cache /shared-data/go/pkg/mod /shared-data/go/build-cache && cd /shared-data/repo/my-core-bot && make && ./bot %s", *bot.RndID),
+			},
+			Env: []corev1.EnvVar{
+				{Name: "HOME", Value: "/shared-data"},
+				{Name: "TMPDIR", Value: "/shared-data/tmp"},
+				{Name: "TMP", Value: "/shared-data/tmp"},
+				{Name: "TEMP", Value: "/shared-data/tmp"},
+				{Name: "XDG_CACHE_HOME", Value: "/shared-data/.cache"},
+				{Name: "GOTMPDIR", Value: "/shared-data/tmp"},
+				{Name: "GOCACHE", Value: "/shared-data/go/build-cache"},
+				{Name: "GOPATH", Value: "/shared-data/go"},
+				{Name: "GOMODCACHE", Value: "/shared-data/go/pkg/mod"},
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      volumeName,
 					MountPath: "/shared-data",
-				},
-				{
-					Name:      tmpVolumeName,
-					MountPath: "/tmp",
 				},
 			},
 			SecurityContext: &corev1.SecurityContext{
