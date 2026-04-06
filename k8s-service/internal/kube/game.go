@@ -164,7 +164,6 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 				{Name: "XDG_CACHE_HOME", Value: "/shared-data/.cache"},
 				{Name: "GOTMPDIR", Value: "/shared-data/tmp"},
 				{Name: "GOCACHE", Value: "/shared-data/go/build-cache"},
-				{Name: "GOPATH", Value: "/shared-data/go"},
 				{Name: "GOMODCACHE", Value: "/shared-data/go/pkg/mod"},
 			},
 			VolumeMounts: []corev1.VolumeMount{
