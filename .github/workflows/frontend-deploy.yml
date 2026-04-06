@@ -7,6 +7,10 @@ on:
         description: "Environment to deploy to"
         required: true
         type: string
+      image_tag:
+        description: "Docker image tag to deploy"
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       environment:
@@ -17,6 +21,10 @@ on:
         options:
           - dev
           - prod
+      image_tag:
+        description: "Docker image tag to deploy (leave empty to deploy latest branch build)"
+        required: false
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.environment }}
@@ -111,13 +119,18 @@ jobs:
         id: config
         run: |
           ENVIRONMENT="${{ inputs.environment }}"
-          SHORT_SHA="${GITHUB_SHA::7}"
-          IMAGE_TAG="sha-${SHORT_SHA}"
           IMAGE_REPO="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
 
           # Sanitize branch name for Kubernetes resources
           BRANCH_NAME="${{ github.ref_name }}"
           SANITIZED_BRANCH=$(echo "${BRANCH_NAME}" | sed 's/[^a-zA-Z0-9._-]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
+
+          # Use provided image tag, or fall back to branch name for manual dispatch
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            IMAGE_TAG="${{ inputs.image_tag }}"
+          else
+            IMAGE_TAG="${SANITIZED_BRANCH}"
+          fi
 
           # Set configuration based on environment
           case "${ENVIRONMENT}" in

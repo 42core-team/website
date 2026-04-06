@@ -1,0 +1,23 @@
+image:
+  repository: github-service
+  tag: local
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+fullnameOverride: "github-service"
+
+serviceAccount:
+  create: false
+
+secrets:
+  RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
+  API_SECRET_ENCRYPTION_KEY: secret-encryption-key
+
+resources:
+  limits:
+    cpu: 8
+    memory: 4Gi
+  requests:
+    cpu: 1
+    memory: 1Gi

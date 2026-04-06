@@ -1,0 +1,56 @@
+image:
+  repository: api
+  tag: local
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+fullnameOverride: "api"
+
+serviceAccount:
+  create: false
+
+ingress:
+  enabled: false
+
+service:
+  type: ClusterIP
+  port: 4000
+
+env:
+  NODE_ENV: development
+  PORT: "4000"
+  DB_SSL_REQUIRED: "false"
+  K8S_SERVICE_URL: "http://k8s-service"
+  API_BASE_URL: "http://localhost:4000"
+  CORS_ORIGIN: "http://localhost:3000"
+  AUTH_COOKIE_NAME: localtoken
+  AUTH_COOKIE_DOMAIN: localhost
+  CALLBACK_GITHUB_URL: http://localhost:4000/auth/github/callback
+  OAUTH_SUCCESS_REDIRECT_URL: http://localhost:3000/auth/sso
+  OAUTH_42_SUCCESS_REDIRECT_URL: http://localhost:3000/profile
+  FORTYTWO_CALLBACK_URL: http://localhost:4000/auth/42/callback
+  RANDOM_GAME_RESULTS: false
+
+secrets:
+  DB_URL: "postgresql://postgres:postgres@postgres:5432/postgres"
+  RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
+  JWT_SECRET: local-dev-jwt-secret
+  API_SECRET_ENCRYPTION_KEY: secret-encryption-key
+  # CLIENT_GITHUB_SECRET and FORTYTWO_CLIENT_SECRET are injected via --set from .env.tilt
+  CLIENT_GITHUB_SECRET: ""
+  FORTYTWO_CLIENT_SECRET: ""
+
+resources:
+  limits:
+    cpu: 8
+    memory: 4Gi
+  requests:
+    cpu: 1
+    memory: 1Gi
+
+livenessProbe:
+  enabled: false
+
+readinessProbe:
+  enabled: false

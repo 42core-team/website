@@ -101,7 +101,7 @@ jobs:
       packages: write
       actions: write
     outputs:
-      short_sha: ${{ steps.short-sha.outputs.short_sha }}
+      image_tag: ${{ steps.image-tag.outputs.image_tag }}
 
     steps:
       - name: Checkout repository
@@ -132,7 +132,14 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr,prefix=pr-
-            type=sha,format=short
+            type=raw,value=build-${{ github.run_number }}-${{ github.run_attempt }}
+
+      - name: Compute image tag
+        id: image-tag
+        run: |
+          IMAGE_TAG="build-${{ github.run_number }}-${{ github.run_attempt }}"
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "Image tag: $IMAGE_TAG"
 
       - name: Build image (PR - no push)
         if: github.event_name == 'pull_request'
@@ -161,21 +168,10 @@ jobs:
           build-args: |
             NEXT_PUBLIC_BACKEND_PUBLIC_URL=${{ vars.NEXT_PUBLIC_BACKEND_PUBLIC_URL }}
             NEXT_PUBLIC_VISUALIZER_URL=${{ vars.NEXT_PUBLIC_VISUALIZER_URL }}
+            NEXT_PUBLIC_S3_REPLAYS_BUCKET_URL=${{ vars.NEXT_PUBLIC_S3_REPLAYS_BUCKET_URL }}
             CURRENT_BRANCH=${{ github.ref_name }}
           secrets: |
             NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
-
-      - name: Extract short SHA for deployment
-        id: short-sha
-        run: |
-          # Extract the short SHA from the tags
-          SHORT_SHA=$(echo "${{ steps.meta.outputs.tags }}" | grep -o '[a-f0-9]\{7\}' | head -1)
-          if [ -z "$SHORT_SHA" ]; then
-            # Fallback to github.sha if short SHA not found
-            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          fi
-          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "Extracted short SHA: $SHORT_SHA"
 
       - name: Output image details
         run: |
@@ -187,7 +183,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
           echo "**Tags:** ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Short SHA:** ${{ steps.short-sha.outputs.short_sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag:** ${{ steps.image-tag.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
           echo "**Event:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           if [ "${{ github.event_name }}" == "pull_request" ]; then
@@ -208,4 +204,5 @@ jobs:
     uses: ./.github/workflows/frontend-deploy.yml
     with:
       environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'prod' || 'dev') }}
+      image_tag: build-${{ github.run_number }}-${{ github.run_attempt }}
     secrets: inherit

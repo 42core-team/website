@@ -96,26 +96,24 @@ export default function TeamInfoDisplay({
       setErrorMessage(error.message);
     },
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["event", eventId, "my-team"],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["team", team?.id, "members"],
-        }),
-      ]);
+      queryClient.removeQueries({
+        queryKey: ["team", team?.id, "members"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["event", eventId, "my-team"],
+      });
     },
   });
 
   async function handleLeaveTeam(): Promise<boolean> {
     try {
       await leaveTeamMutation.mutateAsync();
+      queryClient.removeQueries({
+        queryKey: ["team", team?.id, "members"],
+      });
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["event", eventId, "my-team"],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["team", team?.id, "members"],
         }),
         queryClient.invalidateQueries({
           queryKey: ["event", eventId, "pending-invites"],

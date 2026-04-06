@@ -24,7 +24,7 @@
       display: none;
     }
 
-    text-wrap: nowrap;
+    overflow-wrap: break-word;
   }
 }
 
@@ -43,8 +43,11 @@ body {
   scroll-behavior: smooth;
 }
 
-body[data-scroll-locked] {
-  margin: 0 !important;
+/* Override react-remove-scroll-bar's injected gap compensation —
+   scrollbar-gutter: stable on html already reserves the space. */
+html body[data-scroll-locked] {
+  margin-right: 0 !important;
+  padding-right: 0 !important;
 }
 
 /* Offset for sticky header when jumping to anchors */

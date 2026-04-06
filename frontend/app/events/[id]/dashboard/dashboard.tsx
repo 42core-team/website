@@ -70,6 +70,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useTabParam } from "@/hooks/useTabParam";
 import { cn } from "@/lib/utils";
 import { StarterTemplatesManagement } from "./components/StarterTemplatesManagement";
+import { WhitelistManagement } from "./components/WhitelistManagement";
 
 interface DashboardPageProps {
   eventId: string;
@@ -397,7 +398,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
     <div className="container mx-auto flex min-h-lvh flex-col gap-6 py-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">
-          Event Dashboard:
+          {"Event Dashboard: "}
           {event.name}
         </h1>
         {hasChanges && (
@@ -428,6 +429,7 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
           <TabsTrigger value="operation">Operation</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="admins">Admins</TabsTrigger>
+          <TabsTrigger value="whitelist">Whitelist</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -1304,6 +1306,10 @@ export function DashboardPage({ eventId }: DashboardPageProps) {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="whitelist" className="space-y-6">
+          <WhitelistManagement eventId={eventId} />
         </TabsContent>
       </Tabs>
     </div>

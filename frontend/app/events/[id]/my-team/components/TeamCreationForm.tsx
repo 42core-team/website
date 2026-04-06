@@ -1,5 +1,6 @@
 "use client";
 import type { AxiosError } from "axios";
+import type { SyntheticEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Info, Loader2, Terminal } from "lucide-react";
 import { usePlausible } from "next-plausible";
@@ -48,6 +49,8 @@ export default function TeamCreationForm() {
     },
   });
 
+  const effectiveTemplateId = selectedTemplateId || templates[0]?.id || undefined;
+
   function handleTeamNameChange(name: string) {
     setNewTeamName(name);
     const validation = validateTeamName(name);
@@ -62,13 +65,13 @@ export default function TeamCreationForm() {
       }
 
       // If templates exist, require selection
-      if (templates.length > 0 && !selectedTemplateId) {
+      if (templates.length > 0 && !effectiveTemplateId) {
         throw new Error("Please select a starter template.");
       }
 
       await axiosInstance.post(`team/event/${eventId}/create`, {
         name: newTeamName,
-        starterTemplateId: selectedTemplateId || undefined,
+        starterTemplateId: effectiveTemplateId,
       });
     },
     onMutate: () => {
@@ -115,6 +118,11 @@ export default function TeamCreationForm() {
 
   async function handleCreateTeam() {
     await createTeamMutation.mutateAsync();
+  }
+
+  function handleSubmit(e: SyntheticEvent) {
+    e.preventDefault();
+    handleCreateTeam();
   }
 
   return (
@@ -171,12 +179,12 @@ export default function TeamCreationForm() {
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="h-3.5 w-3.5 flex-shrink-0 cursor-help" />
+                        <Info className="h-3.5 w-3.5 shrink-0 cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent
                         side="top"
                         align="center"
-                        className="max-w-[250px] text-xs"
+                        className="max-w-62.5 text-xs"
                       >
                         <p>
                           Templates are fixed once selected. However, you can
@@ -200,7 +208,7 @@ export default function TeamCreationForm() {
               <h2 className="text-xl font-bold">Team Details</h2>
             </div>
 
-            <div className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label
                   htmlFor="team-name"
@@ -228,7 +236,7 @@ export default function TeamCreationForm() {
                     Starter Template
                   </Label>
                   <Select
-                    value={selectedTemplateId}
+                    value={effectiveTemplateId}
                     onValueChange={setSelectedTemplateId}
                   >
                     <SelectTrigger className="mt-1">
@@ -252,13 +260,13 @@ export default function TeamCreationForm() {
               )}
 
               <Button
+                type="submit"
                 className="w-full shadow-lg shadow-primary/20"
                 size="lg"
-                onClick={handleCreateTeam}
                 disabled={
                   !newTeamName
                   || !!validationError
-                  || (templates.length > 0 && !selectedTemplateId)
+                  || (templates.length > 0 && !effectiveTemplateId)
                   || isLoading
                   || createTeamMutation.isPending
                 }
@@ -271,7 +279,7 @@ export default function TeamCreationForm() {
                       "Create My Team"
                     )}
               </Button>
-            </div>
+            </form>
           </div>
         </div>
       </div>

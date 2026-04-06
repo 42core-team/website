@@ -68,24 +68,12 @@ export default async function EventQueuePage({
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <div className="container mx-auto py-3">
-        <h1 className="mb-8 text-3xl font-bold">Event Queue</h1>
-        <p className="mb-4 text-lg text-muted-foreground">
-          Play against other participants in the queue to test your code.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          If you have any questions, please contact the event organizers.
-        </p>
-
-        <div className="mt-8">
-          <QueueState
-            queueState={queueState}
-            eventId={id}
-            team={myTeam}
-            queueMatches={sortedQueueMatches}
-          />
-        </div>
-      </div>
+      <QueueState
+        queueState={queueState}
+        eventId={id}
+        team={myTeam}
+        queueMatches={sortedQueueMatches}
+      />
     </HydrationBoundary>
   );
 }

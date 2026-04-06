@@ -4,3 +4,5 @@
 api.gen.go
 .env
 .claude
+.env.tilt
+kubeconfig.yaml

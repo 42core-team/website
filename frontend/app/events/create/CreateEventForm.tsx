@@ -436,7 +436,7 @@ export default function CreateEventForm() {
                             onSelect={field.onChange}
                             disabled={date =>
                               date < new Date(new Date().setHours(0, 0, 0, 0))}
-                            initialFocus
+                            autoFocus
                           />
                           <div className="border-t p-3">
                             <Input
@@ -725,7 +725,7 @@ export default function CreateEventForm() {
                         <div className="relative">
                           <Textarea
                             placeholder='{ "rounds": 100, ... }'
-                            className="min-h-[200px] font-mono text-sm"
+                            className="min-h-50 font-mono text-sm"
                             {...field}
                           />
                           {isFetchingConfig && (
@@ -764,7 +764,7 @@ export default function CreateEventForm() {
   ],
   "timeoutTicks": 30000,
   ...'
-                            className="min-h-[200px] font-mono text-sm"
+                            className="min-h-50 font-mono text-sm"
                             {...field}
                           />
                           {isFetchingConfig && (

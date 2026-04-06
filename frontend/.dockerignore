@@ -1,2 +1,10 @@
 # Ignore wiki content since it will be cloned during build
-content/wiki/
+.env
+.env.example
+.claude
+.idea
+.next
+helm/
+node_modules/
+next-env.d.ts
+tsconfig.tsbuildinfo
