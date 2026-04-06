@@ -90,11 +90,20 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 
 	for _, bot := range game.Bots {
 		volumeName := "shared-data-" + bot.ID.String()
+		tmpVolumeName := "tmp-" + bot.ID.String()
 		initContainerName := "clone-repo-" + bot.ID.String()
 		containerName := "bot-" + bot.ID.String()
 
 		volumes = append(volumes, corev1.Volume{
 			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{
+					SizeLimit: &volumeSizeLimit,
+				},
+			},
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: tmpVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{
 					SizeLimit: &volumeSizeLimit,
@@ -110,18 +119,18 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 					echo "Bot ID: '%s'";
 					echo "Bot Name: '%s'";
 					echo '--- Cloning repository (verbose, progress) ---';
-					GIT_TERMINAL_PROMPT=0 git clone --single-branch --depth 1 --verbose --progress '%s' /shared-data/repo;
-					cd /shared-data/repo;
+					GIT_TERMINAL_PROMPT=0 git clone --single-branch --depth 1 --verbose --progress '%s' /shared-data;
+					cd /shared-data;
 					echo '--- Repo content ---';
 					ls -F;
 					echo '--- Repository size ---';
-					du -sh /shared-data/repo;
+					du -sh /shared-data;
 					echo '--- Last commit ---';
 					git --no-pager log -1 --decorate=short --pretty=fuller;
 					echo '--- Diffstat ---';
 					git --no-pager show --stat -1;
 					echo '--- changing permissions ---';
-					chown -R 2000:2000 /shared-data/repo && chmod -R 770 /shared-data/repo;
+					chown -R 2000:2000 /shared-data && chmod -R 770 /shared-data;
 				`, bot.ID.String(), *bot.Name, bot.RepoURL),
 			},
 			VolumeMounts: []corev1.VolumeMount{
@@ -154,22 +163,27 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 			Image:           bot.Image,
 			ImagePullPolicy: imagePullPolicy(bot.Image),
 			Command: []string{
-				"sh", "-c", fmt.Sprintf("mkdir -p /shared-data/tmp /shared-data/.cache /shared-data/go/pkg/mod /shared-data/go/build-cache && cd /shared-data/repo/my-core-bot && make && ./bot %s", *bot.RndID),
+				"sh", "-c", fmt.Sprintf("mkdir -p /shared-data/.cache /tmp/go/pkg/mod /tmp/go/build-cache && cd /shared-data/my-core-bot && make && ./bot %s", *bot.RndID),
 			},
 			Env: []corev1.EnvVar{
 				{Name: "HOME", Value: "/shared-data"},
-				{Name: "TMPDIR", Value: "/shared-data/tmp"},
-				{Name: "TMP", Value: "/shared-data/tmp"},
-				{Name: "TEMP", Value: "/shared-data/tmp"},
+				{Name: "TMPDIR", Value: "/tmp"},
+				{Name: "TMP", Value: "/tmp"},
+				{Name: "TEMP", Value: "/tmp"},
 				{Name: "XDG_CACHE_HOME", Value: "/shared-data/.cache"},
-				{Name: "GOTMPDIR", Value: "/shared-data/tmp"},
-				{Name: "GOCACHE", Value: "/shared-data/go/build-cache"},
-				{Name: "GOMODCACHE", Value: "/shared-data/go/pkg/mod"},
+				{Name: "GOTMPDIR", Value: "/tmp"},
+				{Name: "GOPATH", Value: "/tmp/go"},
+				{Name: "GOCACHE", Value: "/tmp/go/build-cache"},
+				{Name: "GOMODCACHE", Value: "/tmp/go/pkg/mod"},
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      volumeName,
 					MountPath: "/shared-data",
+				},
+				{
+					Name:      tmpVolumeName,
+					MountPath: "/tmp",
 				},
 			},
 			SecurityContext: &corev1.SecurityContext{
