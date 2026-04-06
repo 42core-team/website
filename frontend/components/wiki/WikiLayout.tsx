@@ -1,13 +1,12 @@
 "use client";
 
-import type { WikiNavItem, WikiVersion } from "@/lib/markdown";
+import type { WikiNavItem, WikiTocItem, WikiVersion } from "@/lib/wiki/types";
 import { Menu } from "lucide-react";
-import { useRouter } from "next/navigation";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavbar } from "@/contexts/NavbarContext";
 import { cn } from "@/lib/utils";
-import { scrollToWikiHeading } from "@/lib/wiki-scroll";
+import { useWikiContentInteractions } from "./useWikiContentInteractions";
 import { VersionSelector } from "./VersionSelector";
 import { WikiNavigation } from "./WikiNavigation";
 import { WikiSearch } from "./WikiSearch";
@@ -18,57 +17,53 @@ interface WikiLayoutProps {
   children: React.ReactNode;
   navigation: WikiNavItem[];
   currentSlug: string[];
-  versions?: WikiVersion[];
-  currentVersion?: string;
-  pageContent?: string;
+  currentVersion: string;
+  versions: WikiVersion[];
+  tableOfContents: WikiTocItem[];
 }
 
 export function WikiLayout({
   children,
   navigation,
   currentSlug,
-  versions = [],
-  currentVersion = "latest",
-  pageContent,
+  currentVersion,
+  versions,
+  tableOfContents,
 }: WikiLayoutProps) {
-  const router = useRouter();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const { isBasicNavbarMenuOpen } = useNavbar();
   const sidebarRef = useRef<HTMLElement>(null);
+  const contentRef = useRef<HTMLElement>(null);
 
-  // Save sidebar scroll position on scroll (debounced)
+  useWikiContentInteractions(contentRef);
+
   useEffect(() => {
     const sidebar = sidebarRef.current;
     if (!sidebar)
       return;
 
     let timeoutId: NodeJS.Timeout;
+
     const handleScroll = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         try {
-          sessionStorage.setItem(
-            SIDEBAR_SCROLL_KEY,
-            String(sidebar.scrollTop),
-          );
+          sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(sidebar.scrollTop));
         }
         catch {
-          // Ignore sessionStorage errors
+          // Ignore sessionStorage errors.
         }
-      }, 100);
+      }, 120);
     };
 
     sidebar.addEventListener("scroll", handleScroll, { passive: true });
+
     return () => {
       sidebar.removeEventListener("scroll", handleScroll);
       clearTimeout(timeoutId);
     };
   }, []);
 
-  // Restore sidebar scroll position before the browser paints.
-  // Because WikiNavigation now initialises its accordion state synchronously
-  // (lazy useState), the DOM heights are already correct on the first render,
-  // so we can set scrollTop immediately in useLayoutEffect – no delay needed.
   useLayoutEffect(() => {
     const sidebar = sidebarRef.current;
     if (!sidebar)
@@ -81,166 +76,18 @@ export function WikiLayout({
       }
     }
     catch {
-      // Ignore sessionStorage errors
+      // Ignore sessionStorage errors.
     }
   }, []);
 
-  useEffect(() => {
-    const container = document.querySelector(".main-wiki-content");
-    if (!container)
-      return;
-
-    const links = container.querySelectorAll("a.heading-anchor");
-    const handleClick = (e: Event) => {
-      e.preventDefault();
-      const href = (e.currentTarget as HTMLAnchorElement).getAttribute("href");
-      const targetId = href?.startsWith("#") ? href.slice(1) : null;
-      if (targetId) {
-        history.replaceState(null, "", `#${targetId}`);
-        const target = document.getElementById(targetId);
-        if (target) {
-          scrollToWikiHeading(target);
-        }
-      }
-    };
-
-    links.forEach(link => link.addEventListener("click", handleClick));
-    return () => {
-      links.forEach(link => link.removeEventListener("click", handleClick));
-    };
-  }, []);
-
-  // ── Tabbed code-group switching (rehype-code-group) ──────────────────────
-  // The plugin ships its own DOMContentLoaded script, but it doesn't fire in
-  // our Next.js SPA context. We replicate the logic here via event delegation.
-  useEffect(() => {
-    const container = document.querySelector(".main-wiki-content");
-    if (!container)
-      return;
-
-    const activateTab = (tab: HTMLElement) => {
-      const group = tab.closest(".rehype-code-group");
-      if (!group)
-        return;
-
-      const tabs = group.querySelectorAll<HTMLElement>(".rcg-tab");
-      const blocks = group.querySelectorAll<HTMLElement>(".rcg-block");
-      const idx = Array.from(tabs).indexOf(tab);
-      if (idx === -1)
-        return;
-
-      // Deactivate all tabs & panels
-      tabs.forEach((t) => {
-        t.classList.remove("active");
-        t.setAttribute("aria-selected", "false");
-      });
-      blocks.forEach((b) => {
-        b.classList.remove("active");
-        b.setAttribute("hidden", "true");
-      });
-
-      // Activate the selected tab & panel
-      tab.classList.add("active");
-      tab.setAttribute("aria-selected", "true");
-      blocks[idx].classList.add("active");
-      blocks[idx].removeAttribute("hidden");
-    };
-
-    const handleTabClick = (e: MouseEvent) => {
-      const tab = (e.target as HTMLElement).closest(".rcg-tab") as HTMLElement | null;
-      if (tab)
-        activateTab(tab);
-    };
-
-    const handleTabKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.classList.contains("rcg-tab"))
-        return;
-
-      const group = target.closest(".rehype-code-group");
-      if (!group)
-        return;
-
-      const tabs = Array.from(group.querySelectorAll<HTMLElement>(".rcg-tab"));
-      const idx = tabs.indexOf(target);
-      let next: number | null = null;
-
-      switch (e.key) {
-        case "ArrowRight":
-        case "ArrowDown":
-          next = (idx + 1) % tabs.length;
-          break;
-        case "ArrowLeft":
-        case "ArrowUp":
-          next = (idx - 1 + tabs.length) % tabs.length;
-          break;
-        case "Home":
-          next = 0;
-          break;
-        case "End":
-          next = tabs.length - 1;
-          break;
-        default:
-          return;
-      }
-
-      e.preventDefault();
-      tabs[next].focus();
-      activateTab(tabs[next]);
-    };
-
-    container.addEventListener("click", handleTabClick as EventListener);
-    container.addEventListener("keydown", handleTabKeyDown as EventListener);
-    return () => {
-      container.removeEventListener("click", handleTabClick as EventListener);
-      container.removeEventListener("keydown", handleTabKeyDown as EventListener);
-    };
-  }, []);
-
-  useEffect(() => {
-    const container = document.querySelector(".main-wiki-content");
-    if (!container)
-      return;
-
-    const handleClick = (e: MouseEvent) => {
-      if (
-        e.defaultPrevented
-        || e.metaKey
-        || e.ctrlKey
-        || e.shiftKey
-        || e.altKey
-        || e.button !== 0
-      ) {
-        return;
-      }
-
-      const target = e.target as HTMLElement | null;
-      const anchor = target?.closest("a") as HTMLAnchorElement | null;
-      if (!anchor)
-        return;
-
-      const href = anchor.getAttribute("href") || "";
-      if (!href || href.startsWith("http") || href.startsWith("#"))
-        return;
-
-      if (!href.startsWith("/wiki/"))
-        return;
-
-      e.preventDefault();
-      router.push(href);
-    };
-
-    container.addEventListener("click", handleClick as EventListener);
-    return () => {
-      container.removeEventListener("click", handleClick as EventListener);
-    };
-  }, [router]);
-
   return (
-    <div className="relative flex h-[calc(100vh-var(--navbar-height))] overflow-hidden">
+    <div
+      data-wiki-shell="true"
+      className="relative flex h-[calc(100vh-var(--navbar-height))] overflow-hidden"
+    >
       <div
         className={cn(
-          "fixed inset-0 z-40 bg-background/50 transition-opacity duration-300 lg:hidden",
+          "fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px] transition-opacity duration-300 lg:hidden",
           isMobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
         onClick={() => setIsMobileNavOpen(false)}
@@ -248,8 +95,9 @@ export function WikiLayout({
 
       <aside
         ref={sidebarRef}
+        data-wiki-sidebar="true"
         className={cn(
-          "fixed top-(--navbar-height) left-0 z-50 h-[calc(100vh-var(--navbar-height))] w-(--sidebar-width) overflow-x-hidden overflow-y-auto overscroll-contain border-r bg-background transition-transform duration-300 ease-in-out lg:static lg:z-0 lg:translate-x-0 lg:shrink-0",
+          "fixed top-(--navbar-height) left-0 z-50 h-[calc(100vh-var(--navbar-height))] w-(--sidebar-width) overflow-x-hidden overflow-y-auto overscroll-contain border-r transition-transform duration-300 ease-out lg:static lg:z-0 lg:translate-x-0 lg:shrink-0",
           isMobileNavOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -257,45 +105,57 @@ export function WikiLayout({
           items={navigation}
           currentSlug={currentSlug}
           currentVersion={currentVersion}
-          pageContent={pageContent}
+          tableOfContents={tableOfContents}
           onItemClick={() => setIsMobileNavOpen(false)}
         />
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         <header
+          data-wiki-toolbar="true"
           className={cn(
-            "shrink-0 z-40 border-b bg-background/95 py-4 shadow-sm backdrop-blur transition-opacity duration-300 supports-backdrop-filter:bg-background/60 sm:p-4",
+            "relative z-30 shrink-0 border-b px-4 py-3 transition-opacity duration-300 sm:px-6",
             isBasicNavbarMenuOpen
               ? "pointer-events-none opacity-0 lg:pointer-events-auto lg:opacity-100"
               : "opacity-100",
           )}
         >
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
-              onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+              onClick={() => setIsMobileNavOpen(open => !open)}
               className="lg:hidden"
-              aria-label="Toggle navigation"
+              aria-label="Toggle wiki navigation"
               aria-expanded={isMobileNavOpen}
             >
               <Menu className="size-5" />
             </Button>
-            <div className="max-w-md flex-1">
+
+            <div className="min-w-[14rem] flex-1">
               <WikiSearch currentVersion={currentVersion} />
             </div>
-            {versions.length > 1 && (
+
+            <div className="ml-auto">
               <VersionSelector
                 versions={versions}
                 currentVersion={currentVersion}
               />
-            )}
+            </div>
           </div>
         </header>
 
-        <main className="main-wiki-content min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 sm:p-6">
-          <div className="mx-auto max-w-4xl" style={{ viewTransitionName: "wiki-content" }}>{children}</div>
+        <main
+          ref={contentRef}
+          data-wiki-scroll-container="true"
+          className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 sm:py-6"
+        >
+          <div
+            className="mx-auto w-full max-w-5xl"
+            style={{ viewTransitionName: "wiki-content" }}
+          >
+            {children}
+          </div>
         </main>
       </div>
     </div>

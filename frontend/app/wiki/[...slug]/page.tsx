@@ -1,43 +1,52 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { WikiLayout } from "@/components/wiki/WikiLayout";
 import {
+  buildWikiPath,
   getAvailableVersions,
   getDefaultWikiVersion,
+  getWikiDocumentBySlug,
   getWikiNavigationWithVersion,
-  getWikiPageWithVersion,
-} from "@/lib/markdown";
+  listWikiPageSlugsForVersion,
+  parseWikiRouteSlug,
+} from "@/lib/wiki";
 
 interface WikiPageProps {
   params: Promise<{ slug?: string[] }>;
 }
 
-async function parseSlugForVersion(slug: string[]) {
-  const versions = await getAvailableVersions();
-  const defaultVersion = await getDefaultWikiVersion();
+interface ResolvedWikiPage {
+  document: NonNullable<Awaited<ReturnType<typeof getWikiDocumentBySlug>>>;
+  isFallback: boolean;
+  requestedPath: string[];
+}
 
-  if (slug.length === 0) {
-    return { version: defaultVersion, pagePath: [] };
-  }
-
-  const possibleVersion = slug[0];
-  const isVersion = versions.some(v => v.slug === possibleVersion);
-
-  if (isVersion) {
+async function resolveWikiPage(
+  version: string,
+  pagePath: string[],
+): Promise<ResolvedWikiPage | null> {
+  const document = await getWikiDocumentBySlug(pagePath, version);
+  if (document) {
     return {
-      version: possibleVersion,
-      pagePath: slug.slice(1),
+      document,
+      isFallback: false,
+      requestedPath: pagePath,
     };
   }
 
-  // If user explicitly requests a version that doesn't exist, 404
-  if (slug.length > 0) {
-    notFound();
+  if (pagePath.length === 0) {
+    return null;
+  }
+
+  const homeDocument = await getWikiDocumentBySlug([], version);
+  if (!homeDocument) {
+    return null;
   }
 
   return {
-    version: defaultVersion,
-    pagePath: slug,
+    document: homeDocument,
+    isFallback: true,
+    requestedPath: pagePath,
   };
 }
 
@@ -45,35 +54,49 @@ export async function generateMetadata({
   params,
 }: WikiPageProps): Promise<Metadata> {
   const { slug = [] } = await params;
-  const { version, pagePath } = await parseSlugForVersion(slug);
-  const page = await getWikiPageWithVersion(pagePath, version);
+  const route = await parseWikiRouteSlug(slug);
 
-  if (!page) {
+  if (!route) {
     return {
       title: "Page Not Found | CORE Wiki",
     };
   }
 
-  const versionSuffix = version !== "latest" ? ` (${version})` : "";
-  const url = `/wiki/${version}/${pagePath.join("/")}`;
-  const plainText = page.content.replace(/<[^>]+>/g, "").slice(0, 160);
-  const description = plainText || `Documentation for ${page.title}`;
+  const resolvedPage = await resolveWikiPage(route.version, route.pagePath);
+  if (!resolvedPage) {
+    return {
+      title: "Page Not Found | CORE Wiki",
+    };
+  }
+
+  const defaultVersion = await getDefaultWikiVersion();
+  const canonicalPath = buildWikiPath(route.version, resolvedPage.document.slug);
+  const plainText = resolvedPage.document.html.replace(/<[^>]+>/g, "").slice(0, 160);
+  const description = resolvedPage.isFallback
+    ? `The page ${route.pagePath.join("/")} is not available in ${route.version}. Showing ${resolvedPage.document.title} instead.`
+    : plainText || `Documentation for ${resolvedPage.document.title}`;
+  const versionSuffix = route.version !== defaultVersion
+    ? ` (${route.version})`
+    : "";
+
   return {
-    title: `${page.title}${versionSuffix} | CORE Wiki`,
+    title: `${resolvedPage.document.title}${versionSuffix} | CORE Wiki`,
     description,
+    alternates: resolvedPage.isFallback
+      ? undefined
+      : {
+          canonical: canonicalPath,
+        },
     openGraph: {
-      title: `${page.title}${versionSuffix} | CORE Wiki`,
+      title: `${resolvedPage.document.title}${versionSuffix} | CORE Wiki`,
       description,
-      url,
       type: "article",
+      url: resolvedPage.isFallback ? undefined : canonicalPath,
     },
     twitter: {
       card: "summary",
-      title: `${page.title}${versionSuffix} | CORE Wiki`,
+      title: `${resolvedPage.document.title}${versionSuffix} | CORE Wiki`,
       description,
-    },
-    alternates: {
-      canonical: url,
     },
   };
 }
@@ -83,20 +106,10 @@ export async function generateStaticParams() {
   const params: { slug: string[] }[] = [];
 
   for (const version of versions) {
-    const nav = await getWikiNavigationWithVersion(version.slug);
-    const traverse = (items: any[], _prefix: string[] = []) => {
-      for (const item of items) {
-        if (item.isFile) {
-          params.push({ slug: [version.slug, ...item.slug] });
-        }
-        if (item.children) {
-          traverse(item.children, item.slug);
-        }
-      }
-    };
-    traverse(nav);
-    // also push version root
-    params.push({ slug: [version.slug] });
+    const pageSlugs = await listWikiPageSlugsForVersion(version.slug);
+    for (const pageSlug of pageSlugs) {
+      params.push({ slug: [version.slug, ...pageSlug] });
+    }
   }
 
   return params;
@@ -104,189 +117,89 @@ export async function generateStaticParams() {
 
 export default async function WikiPage({ params }: WikiPageProps) {
   const { slug = [] } = await params;
-  let { version, pagePath } = await parseSlugForVersion(slug);
+  const route = await parseWikiRouteSlug(slug);
 
-  if (pagePath.length === 0) {
-    pagePath = ["README"];
-  }
-
-  let page: any = null;
-  let isImageError = false;
-
-  try {
-    page = await getWikiPageWithVersion(pagePath, version);
-  }
-  catch (error: any) {
-    // Check if this is an image file error
-    if (error.message && error.message.includes("Cannot load image file")) {
-      isImageError = true;
-    }
-    else {
-      throw error; // Re-throw other errors
-    }
-  }
-
-  const [navigation, versions] = await Promise.all([
-    getWikiNavigationWithVersion(version),
-    getAvailableVersions(),
-  ]);
-
-  // Get the default version for comparison
-  const defaultVersion = await getDefaultWikiVersion();
-
-  // If this is an image file error, redirect to parent directory
-  if (isImageError && pagePath.length > 0) {
-    const parentPath = pagePath.slice(0, -1);
-    try {
-      const parentPage = await getWikiPageWithVersion(parentPath, version);
-      if (parentPage) {
-        return (
-          <WikiLayout
-            navigation={navigation}
-            currentSlug={parentPath}
-            versions={versions}
-            currentVersion={version}
-            pageContent={parentPage.content}
-          >
-            <article className="prose prose-lg max-w-none dark:prose-invert">
-              <div className="bg-warning-50 border-warning-200 mb-6 rounded-lg border p-4">
-                <h3 className="text-warning-800 mb-2 font-semibold">
-                  Image File Accessed
-                </h3>
-                <p className="text-warning-700">
-                  You tried to access an image file
-                  {" "}
-                  <code>{pagePath[pagePath.length - 1]}</code>
-                  {" "}
-                  as a page.
-                  Showing the parent page instead.
-                </p>
-              </div>
-
-              <header className="mb-8">
-                <h1 className="mb-2 text-4xl font-bold text-foreground">
-                  {parentPage.title}
-                </h1>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>
-                    Last updated:
-                    {" "}
-                    {parentPage.lastModified.toLocaleDateString()}
-                  </span>
-                  {version !== defaultVersion && (
-                    <span className="rounded bg-primary-100 px-2 py-1 text-xs font-medium text-primary-700">
-                      {version}
-                    </span>
-                  )}
-                </div>
-              </header>
-
-              <div
-                className="wiki-content"
-                dangerouslySetInnerHTML={{ __html: parentPage.content }}
-              />
-            </article>
-          </WikiLayout>
-        );
-      }
-    }
-    catch {
-      // If parent page doesn't exist, fall through to notFound
-    }
-  }
-
-  // If page doesn't exist and we have a specific path, try to fallback
-  if (!page && pagePath.length > 0) {
-    // Try to get the version home page instead
-    const homePage = await getWikiPageWithVersion([], version);
-    if (homePage) {
-      return (
-        <WikiLayout
-          navigation={navigation}
-          currentSlug={[]}
-          versions={versions}
-          currentVersion={version}
-          pageContent={homePage.content}
-        >
-          <article className="prose prose-lg max-w-none dark:prose-invert">
-            <div className="bg-warning-50 border-warning-200 mb-6 rounded-lg border p-4">
-              <h3 className="text-warning-800 mb-2 font-semibold">
-                Content Not Available
-              </h3>
-              <p className="text-warning-700">
-                The page
-                {" "}
-                <code>{pagePath.join("/")}</code>
-                {" "}
-                is not available in
-                {" "}
-                {version === defaultVersion ? "the default version" : version}
-                .
-                Showing the home page for this version instead.
-              </p>
-            </div>
-
-            <header className="mb-8">
-              <h1 className="mb-2 text-4xl font-bold text-foreground">
-                {homePage.title}
-              </h1>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>
-                  Last updated:
-                  {" "}
-                  {homePage.lastModified.toLocaleDateString()}
-                </span>
-                {version !== defaultVersion && (
-                  <span className="rounded bg-primary-100 px-2 py-1 text-xs font-medium text-primary-700">
-                    {version}
-                  </span>
-                )}
-              </div>
-            </header>
-
-            <div
-              className="wiki-content"
-              dangerouslySetInnerHTML={{ __html: homePage.content }}
-            />
-          </article>
-        </WikiLayout>
-      );
-    }
-  }
-
-  if (!page) {
+  if (!route) {
     notFound();
   }
+
+  if (route.redirectPath) {
+    redirect(route.redirectPath);
+  }
+
+  const resolvedPage = await resolveWikiPage(route.version, route.pagePath);
+  if (!resolvedPage) {
+    notFound();
+  }
+
+  const canonicalPath = buildWikiPath(route.version, resolvedPage.document.slug);
+  const requestedPath = buildWikiPath(route.version, route.pagePath);
+  if (!resolvedPage.isFallback && canonicalPath !== requestedPath) {
+    redirect(canonicalPath);
+  }
+
+  const [navigation, versions, defaultVersion] = await Promise.all([
+    getWikiNavigationWithVersion(route.version),
+    getAvailableVersions(),
+    getDefaultWikiVersion(),
+  ]);
 
   return (
     <WikiLayout
       navigation={navigation}
-      currentSlug={pagePath}
+      currentSlug={resolvedPage.document.slug}
       versions={versions}
-      currentVersion={version}
-      pageContent={page.content}
+      currentVersion={route.version}
+      tableOfContents={resolvedPage.document.tableOfContents}
     >
-      <article className="prose prose-lg max-w-none dark:prose-invert">
-        <header className="mb-8">
-          <h1 className="mb-2 text-4xl font-bold text-foreground">
-            {page.title}
-          </h1>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>
-              Last updated:
-              {page.lastModified.toLocaleDateString()}
-            </span>
-            {version !== defaultVersion && (
-              <span className="rounded bg-primary-100 px-2 py-1 text-xs font-medium text-primary-700">
-                {version}
+      <article className="px-1 py-2 sm:px-3 sm:py-4 lg:px-5">
+        {resolvedPage.isFallback && (
+          <div className="mb-6 rounded-md border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 shadow-sm dark:border-amber-400/30 dark:bg-amber-500/12">
+            <div className="mb-1 font-semibold tracking-[0.12em] text-amber-200 uppercase">
+              Warning
+            </div>
+            <div className="text-amber-50/90">
+              The page
+              {" "}
+              <span className="font-semibold text-amber-50">
+                {resolvedPage.requestedPath.join("/")}
+              </span>
+              {" "}
+              is not available in
+              {" "}
+              <span className="font-semibold text-amber-50">
+                {route.version}
+              </span>
+              .
+              {" "}
+              Showing this version&apos;s home page instead.
+            </div>
+          </div>
+        )}
+
+        <header className="mb-8 border-b border-border/60 pb-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl">
+              {resolvedPage.document.title}
+            </h1>
+            {route.version !== defaultVersion && (
+              <span className="rounded-md border border-border/80 bg-background px-3 py-1 text-sm font-medium text-foreground">
+                {route.version}
               </span>
             )}
           </div>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Last updated
+            {" "}
+            <span className="font-medium text-foreground">
+              {resolvedPage.document.lastModified.toLocaleDateString()}
+            </span>
+          </p>
         </header>
 
         <div
-          className="wiki-content"
-          dangerouslySetInnerHTML={{ __html: page.content }}
+          className="wiki-content prose max-w-none prose-zinc dark:prose-invert"
+          dangerouslySetInnerHTML={{ __html: resolvedPage.document.html }}
         />
       </article>
     </WikiLayout>

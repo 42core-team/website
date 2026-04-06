@@ -1,7 +1,7 @@
 "use client";
 
-import type { WikiSearchResult } from "@/lib/markdown";
-
+import type { WikiSearchResult } from "@/lib/wiki/types";
+import { Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
@@ -11,16 +11,20 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import {
+  getWikiScrollContainer,
+  scrollWikiElementIntoView,
+} from "@/lib/wiki-scroll";
 import styles from "./WikiSearch.module.css";
 
 interface WikiSearchProps {
   onResults?: (results: WikiSearchResult[]) => void;
-  currentVersion?: string;
+  currentVersion: string;
 }
 
 export function WikiSearch({
   onResults,
-  currentVersion = "latest",
+  currentVersion,
 }: WikiSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<WikiSearchResult[]>([]);
@@ -30,6 +34,7 @@ export function WikiSearch({
 
   useEffect(() => {
     let aborted = false;
+
     const runSearch = async () => {
       const activeQuery = debouncedQuery.trim();
       if (!activeQuery) {
@@ -37,14 +42,19 @@ export function WikiSearch({
         onResults?.([]);
         return;
       }
+
       setIsLoading(true);
+
       try {
         const response = await fetch(
           `/api/wiki/search?q=${encodeURIComponent(activeQuery)}&version=${encodeURIComponent(currentVersion)}`,
         );
-        if (!response.ok)
+
+        if (!response.ok) {
           throw new Error(`Search failed: ${response.status}`);
-        const searchResults = await response.json();
+        }
+
+        const searchResults = await response.json() as WikiSearchResult[];
         if (!aborted) {
           setResults(searchResults);
           onResults?.(searchResults);
@@ -58,137 +68,120 @@ export function WikiSearch({
         }
       }
       finally {
-        !aborted && setIsLoading(false);
+        if (!aborted) {
+          setIsLoading(false);
+        }
       }
     };
+
     runSearch();
+
     return () => {
       aborted = true;
     };
-  }, [debouncedQuery, onResults, currentVersion]);
+  }, [currentVersion, debouncedQuery, onResults]);
 
-  const handleResultClick = useCallback(
-    (result: WikiSearchResult) => {
-      const { page } = result;
-      const href = `/wiki/${currentVersion}/${page.slug.join("/")}`;
-      const searchSnapshot = query.trim().toLowerCase();
-      setQuery("");
-      router.push(href);
+  const handleResultClick = useCallback((result: WikiSearchResult) => {
+    const href = `/wiki/${currentVersion}/${result.slug.join("/")}`;
+    const searchSnapshot = query.trim().toLowerCase();
 
-      if (result.matchType === "content" && result.snippet && searchSnapshot) {
-        requestAnimationFrame(() => {
+    setQuery("");
+    router.push(href, { scroll: false });
+
+    if (result.matchType !== "content" || !searchSnapshot) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const contentContainer = getWikiScrollContainer();
+        if (!contentContainer)
+          return;
+
+        const elements = contentContainer.querySelectorAll(
+          "p, h1, h2, h3, h4, h5, h6, li, td, th",
+        );
+
+        for (const element of Array.from(elements)) {
+          if (!element.textContent?.toLowerCase().includes(searchSnapshot)) {
+            continue;
+          }
+
+          scrollWikiElementIntoView(element as HTMLElement, {
+            block: "center",
+          });
+          element.classList.add(styles.wikiHighlightTemp);
+
           setTimeout(() => {
-            const contentContainer
-              = document.querySelector(".main-wiki-content");
-            if (!contentContainer)
-              return;
-            const elements = contentContainer.querySelectorAll(
-              "p, h1, h2, h3, h4, h5, h6, li, td, th",
-            );
-            for (const element of Array.from(elements)) {
-              if (element.textContent?.toLowerCase().includes(searchSnapshot)) {
-                element.scrollIntoView({
-                  behavior: "smooth",
-                  block: "center",
-                });
-                element.classList.add(styles.wikiHighlightTemp);
-                setTimeout(() => {
-                  element.classList.remove(styles.wikiHighlightTemp);
-                }, 2000);
-                break;
-              }
-            }
-          }, 600); // shorter delay with rAF pre-step
-        });
-      }
-    },
-    [currentVersion, query, router],
-  );
+            element.classList.remove(styles.wikiHighlightTemp);
+          }, 2000);
+          break;
+        }
+      }, 600);
+    });
+  }, [currentVersion, query, router]);
 
   return (
     <div className="relative" aria-label="Wiki search component">
-      <InputGroup>
+      <InputGroup className="border-border/80 bg-background/80 shadow-sm backdrop-blur">
+        <InputGroupAddon className="pl-4 text-muted-foreground">
+          <Search className="size-4" />
+        </InputGroupAddon>
         <InputGroupInput
           type="text"
           aria-label="Search documentation"
-          placeholder="Search documentation..."
+          placeholder="Search"
           value={query}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setQuery(e.target.value)}
-          className="w-full"
+          onChange={event => setQuery(event.target.value)}
+          className="h-11 text-sm"
         />
-        <InputGroupAddon>
-          <svg
-            className="size-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <title>Search</title>
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-        </InputGroupAddon>
       </InputGroup>
 
       {query && (
         <div
-          className="absolute top-full right-0 left-0 z-20 mt-2 max-h-96 overflow-y-auto rounded-lg border bg-background shadow-lg"
+          data-wiki-search-results="true"
+          className="absolute top-full right-0 left-0 z-30 mt-3 max-h-96 overflow-y-auto rounded-md border border-border/80 bg-background/95 p-2 shadow-[0_25px_70px_-45px_rgba(15,23,42,0.55)] backdrop-blur"
           role="listbox"
           aria-label="Search results"
         >
           {isLoading
             ? (
-                <div className="p-4 text-center text-muted-foreground">
-                  Searching...
+                <div className="px-4 py-5 text-center text-sm text-muted-foreground">
+                  Searching…
                 </div>
               )
             : results.length > 0
               ? (
-                  <div className="p-2">
+                  <div className="space-y-1">
                     {results.map((result) => {
-                      const { page } = result;
-                      const href = `/wiki/${currentVersion}/${page.slug.join("/")}`;
+                      const href = `/wiki/${currentVersion}/${result.slug.join("/")}`;
+
                       return (
                         <Link
                           prefetch={false}
-                          key={page.slug.join("/")}
+                          key={result.slug.join("/")}
                           href={href}
-                          onClick={(e) => {
-                            e.preventDefault();
+                          onClick={(event) => {
+                            event.preventDefault();
                             handleResultClick(result);
                           }}
-                          className="block cursor-pointer rounded-md p-3 transition-colors hover:bg-default-100 focus:bg-default-200 focus:outline-none"
+                          className="block rounded-md px-4 py-3 transition-colors hover:bg-muted/70 focus:bg-muted focus:outline-none"
                           role="option"
                           aria-selected={false}
                         >
-                          <div className="text-sm font-medium">{page.title}</div>
+                          <div className="text-sm font-medium text-foreground">
+                            {result.title}
+                          </div>
                           <div
                             className="mt-1 line-clamp-2 text-xs text-muted-foreground"
                             dangerouslySetInnerHTML={{
                               __html: result.highlightedSnippet,
                             }}
                           />
-                          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>
-                              /
-                              {page.slug.join("/")}
-                            </span>
-                            {page.version && page.version !== "latest" && (
-                              <span className="rounded bg-primary-100 px-1 py-0.5 text-xs text-primary-700">
-                                {page.version}
-                              </span>
-                            )}
-                            <span className="text-muted-foreground">
-                              {result.matchType === "title"
-                                ? "Found in title"
-                                : "Found in content"}
-                            </span>
+                          <div className="mt-2 text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+                            {result.matchType === "title"
+                              ? "Title match"
+                              : "Content match"}
                           </div>
                         </Link>
                       );
@@ -196,7 +189,7 @@ export function WikiSearch({
                   </div>
                 )
               : (
-                  <div className="p-4 text-center text-muted-foreground">
+                  <div className="px-4 py-5 text-center text-sm text-muted-foreground">
                     No results found
                   </div>
                 )}
