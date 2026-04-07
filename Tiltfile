@@ -63,6 +63,59 @@ k8s_resource('rabbitmq',
     labels        = ['infra'],
 )
 
+# ── Observability (Prometheus, Tempo, Grafana) ──────────────────────────────
+
+local_resource('observability-config',
+    cmd = '''
+kubectl --kubeconfig kubeconfig.yaml -n core-local create configmap prometheus-config \
+  --from-file=prometheus.yml=local-setup/infra/observability/prometheus/prometheus.yml \
+  --dry-run=client -o yaml | kubectl --kubeconfig kubeconfig.yaml apply -f - && \
+kubectl --kubeconfig kubeconfig.yaml -n core-local create configmap tempo-config \
+  --from-file=tempo.yml=local-setup/infra/observability/tempo/tempo.yml \
+  --dry-run=client -o yaml | kubectl --kubeconfig kubeconfig.yaml apply -f - && \
+kubectl --kubeconfig kubeconfig.yaml -n core-local create configmap grafana-datasources \
+  --from-file=prometheus.yml=local-setup/infra/observability/grafana/provisioning/datasources/prometheus.yml \
+  --dry-run=client -o yaml | kubectl --kubeconfig kubeconfig.yaml apply -f - && \
+kubectl --kubeconfig kubeconfig.yaml -n core-local create configmap grafana-dashboards-config \
+  --from-file=dashboards.yml=local-setup/infra/observability/grafana/provisioning/dashboards/dashboards.yml \
+  --dry-run=client -o yaml | kubectl --kubeconfig kubeconfig.yaml apply -f - && \
+kubectl --kubeconfig kubeconfig.yaml -n core-local create configmap grafana-dashboards-json \
+  --from-file=github-service-effect.json=local-setup/infra/observability/grafana/provisioning/dashboards/github-service-effect.json \
+  --dry-run=client -o yaml | kubectl --kubeconfig kubeconfig.yaml apply -f -
+''',
+    deps = [
+        'local-setup/infra/observability/prometheus/prometheus.yml',
+        'local-setup/infra/observability/tempo/tempo.yml',
+        'local-setup/infra/observability/grafana/provisioning/datasources/prometheus.yml',
+        'local-setup/infra/observability/grafana/provisioning/dashboards/dashboards.yml',
+        'local-setup/infra/observability/grafana/provisioning/dashboards/github-service-effect.json',
+    ],
+    resource_deps = ['namespace'],
+    labels = ['infra'],
+)
+
+k8s_yaml([
+    'local-setup/infra/observability.yaml',
+])
+
+k8s_resource('prometheus',
+    port_forwards = ['9090:9090'],
+    resource_deps = ['observability-config', 'namespace'],
+    labels        = ['infra'],
+)
+
+k8s_resource('tempo',
+    port_forwards = ['3200:3200', '4318:4318'],
+    resource_deps = ['observability-config', 'namespace'],
+    labels        = ['infra'],
+)
+
+k8s_resource('grafana',
+    port_forwards = ['3001:3000'],
+    resource_deps = ['prometheus', 'tempo'],
+    labels        = ['infra'],
+)
+
 # ── Object storage (SeaweedFS) ────────────────────────────────────────────────
 
 k8s_yaml([
@@ -139,8 +192,8 @@ docker_build('github-service', './github-service',
     live_update = [
         sync('./github-service/src', '/app/src'),
         run(
-            'cd /app && pnpm install --frozen-lockfile',
-            trigger = ['./github-service/package.json', './github-service/pnpm-lock.yaml'],
+            'cd /app && bun install --frozen-lockfile',
+            trigger = ['./github-service/package.json', './github-service/bun.lock'],
         ),
     ],
 )
@@ -151,7 +204,7 @@ k8s_yaml(helm(
     values    = ['local-setup/local-values/github-service.yaml'],
 ))
 k8s_resource('github-service',
-    resource_deps = ['rabbitmq'],
+    resource_deps = ['rabbitmq', 'tempo'],
     labels        = ['app'],
 )
 

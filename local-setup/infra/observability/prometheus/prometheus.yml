@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "github-service-effect"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["github-service-metrics:9464"]
+

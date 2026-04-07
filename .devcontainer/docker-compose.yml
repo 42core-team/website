@@ -31,8 +31,53 @@ services:
     networks:
       - development-network
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    volumes:
+      - ../local-setup/infra/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - development-network
+
+  tempo:
+    image: grafana/tempo:2.8.1
+    restart: unless-stopped
+    command:
+      - "-config.file=/etc/tempo/tempo.yml"
+    ports:
+      - "3200:3200"
+      - "4318:4318"
+    volumes:
+      - ../local-setup/infra/observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+    networks:
+      - development-network
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../local-setup/infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+      - tempo
+    networks:
+      - development-network
+
 networks:
   development-network:
 
 volumes:
   postgres-data:
+  grafana-data:
