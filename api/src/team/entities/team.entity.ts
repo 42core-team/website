@@ -61,6 +61,9 @@ export class TeamEntity {
   @Column({ default: false })
   hadBye: boolean;
 
+  @Column({ default: true })
+  allowChallenges: boolean;
+
   @JoinTable({ name: "teams_invites_users" })
   @ManyToMany(() => UserEntity, (user) => user.teamInvites)
   teamInvites: UserEntity[];

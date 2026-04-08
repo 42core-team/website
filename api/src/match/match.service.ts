@@ -65,31 +65,124 @@ export class MatchService {
           const events = await this.eventService.getAllEventsForQueue();
           await Promise.all(
             events.map(async (event) => {
-              let teamsInQueue = await this.teamService.getTeamsInQueue(
-                event.id,
-              );
-              while (teamsInQueue.length >= 2) {
-                const team1 =
-                  teamsInQueue[Math.floor(Math.random() * teamsInQueue.length)];
-                teamsInQueue = teamsInQueue.filter(
-                  (team) => team.id !== team1.id,
-                );
-                const team2 =
-                  teamsInQueue[Math.floor(Math.random() * teamsInQueue.length)];
-                teamsInQueue = teamsInQueue.filter(
-                  (team) => team.id !== team2.id,
-                );
+              const eligibleTeams =
+                await this.teamService.getTeamsEligibleForMatchmaking(event.id);
+
+              if (eligibleTeams.length < 2) return;
+
+              // 1. Fetch recent matches for all eligible teams to calculate "recency penalty"
+              const recentMatches = await this.matchRepository.find({
+                where: {
+                  phase: MatchPhase.QUEUE,
+                  state: MatchState.FINISHED,
+                  teams: {
+                    id: In(eligibleTeams.map((t) => t.id)),
+                  },
+                },
+                relations: { teams: true },
+                order: { createdAt: "DESC" },
+                take: 100, // Look at last 100 queue matches in this event
+              });
+
+              // Map to store recent opponents for each team
+              // teamId -> Map<opponentId, lastMatchTime>
+              const lastPlayedWith = new Map<string, Map<string, Date>>();
+              recentMatches.forEach((m) => {
+                const t1 = m.teams[0].id;
+                const t2 = m.teams[1].id;
+                const time = m.createdAt;
+
+                let t1Map = lastPlayedWith.get(t1);
+                if (!t1Map) {
+                  t1Map = new Map<string, Date>();
+                  lastPlayedWith.set(t1, t1Map);
+                }
+                let t2Map = lastPlayedWith.get(t2);
+                if (!t2Map) {
+                  t2Map = new Map<string, Date>();
+                  lastPlayedWith.set(t2, t2Map);
+                }
+
+                if (!t1Map.has(t2)) t1Map.set(t2, time);
+                if (!t2Map.has(t1)) t2Map.set(t1, time);
+              });
+
+              const pairings: Array<{
+                t1: TeamEntity;
+                t2: TeamEntity;
+                score: number;
+              }> = [];
+
+              for (let i = 0; i < eligibleTeams.length; i++) {
+                for (let j = i + 1; j < eligibleTeams.length; j++) {
+                  const t1 = eligibleTeams[i];
+                  const t2 = eligibleTeams[j];
+
+                  // If both teams don't have inQueue = true, they can't match each other automatically
+                  // One of them MUST be in queue for a match to be triggered automatically
+                  if (!t1.inQueue && !t2.inQueue) continue;
+
+                  let score = 1000; // Base score
+
+                  // 1. ELO Similarity (Priority)
+                  const eloDiff = Math.abs(t1.queueScore - t2.queueScore);
+                  score -= eloDiff * 2;
+
+                  // 2. Recent Opponent Penalty (Deprioritize)
+                  const lastMatchTime = lastPlayedWith.get(t1.id)?.get(t2.id);
+                  if (lastMatchTime) {
+                    const diffMs = Date.now() - lastMatchTime.getTime();
+                    const hoursSince = diffMs / (1000 * 60 * 60);
+                    // Penalty decays over time. Max penalty if just played, 0 after 24 hours.
+                    const penalty = Math.max(0, 1000 * (1 - hoursSince / 24));
+                    score -= penalty;
+                  }
+
+                  // 3. Activity Boost (Prioritize active players)
+                  // Use updatedAt as a proxy for recent queue activity/challenges toggle
+                  const now = Date.now();
+                  const t1Activity =
+                    (now - t1.updatedAt.getTime()) / (1000 * 60); // minutes
+                  const t2Activity =
+                    (now - t2.updatedAt.getTime()) / (1000 * 60); // minutes
+
+                  // Boost if they were active in the last 10 minutes
+                  if (t1Activity < 10) score += 50;
+                  if (t2Activity < 10) score += 50;
+
+                  pairings.push({ t1, t2, score });
+                }
+              }
+
+              // Sort pairings by score descending
+              pairings.sort((a, b) => b.score - a.score);
+
+              const matchedTeamIds = new Set<string>();
+              for (const pairing of pairings) {
+                if (
+                  matchedTeamIds.has(pairing.t1.id) ||
+                  matchedTeamIds.has(pairing.t2.id)
+                )
+                  continue;
+
                 this.logger.log(
-                  `Creating queue match for teams ${team1.name} and ${team2.name} in event ${event.name}.`,
+                  `Creating dynamic queue match for teams ${pairing.t1.name} and ${pairing.t2.name} in event ${event.name} (Score: ${pairing.score.toFixed(2)}).`,
                 );
+
                 const match = await this.createMatch(
-                  [team1.id, team2.id],
+                  [pairing.t1.id, pairing.t2.id],
                   0,
                   MatchPhase.QUEUE,
                 );
                 await this.startMatch(match.id);
-                await this.teamService.removeFromQueue(team1.id);
-                await this.teamService.removeFromQueue(team2.id);
+
+                if (pairing.t1.inQueue)
+                  await this.teamService.removeFromQueue(pairing.t1.id);
+                if (pairing.t2.inQueue)
+                  await this.teamService.removeFromQueue(pairing.t2.id);
+
+                matchedTeamIds.add(pairing.t1.id);
+                matchedTeamIds.add(pairing.t2.id);
               }
             }),
           );

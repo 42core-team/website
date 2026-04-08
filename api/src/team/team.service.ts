@@ -21,7 +21,7 @@ import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations"
 import { MatchService } from "../match/match.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { LockKeys } from "../constants";
-import { MatchEntity } from "../match/entites/match.entity";
+import { MatchEntity, MatchPhase, MatchState } from "../match/entites/match.entity";
 
 @Injectable()
 export class TeamService {
@@ -589,6 +589,28 @@ export class TeamService {
     return this.teamRepository.update(teamId, { queueScore: score });
   }
 
+  async getTeamsEligibleForMatchmaking(eventId: string): Promise<TeamEntity[]> {
+    return this.teamRepository
+      .createQueryBuilder("team")
+      .where("team.eventId = :eventId", { eventId })
+      .andWhere("team.repo IS NOT NULL")
+      .andWhere("(team.inQueue = true OR team.allowChallenges = true)")
+      .andWhere((qb) => {
+        const subQuery = qb
+          .subQuery()
+          .select("match.id")
+          .from(MatchEntity, "match")
+          .innerJoin("match.teams", "innerTeam")
+          .where("innerTeam.id = team.id")
+          .andWhere("match.state = :inProgress", {
+            inProgress: MatchState.IN_PROGRESS,
+          })
+          .getQuery();
+        return "NOT EXISTS " + subQuery;
+      })
+      .getMany();
+  }
+
   async getTeamsInQueue(eventId: string): Promise<TeamEntity[]> {
     return this.teamRepository.find({
       where: {
@@ -635,6 +657,44 @@ export class TeamService {
 
   async leaveQueue(teamId: string) {
     return this.teamRepository.update(teamId, { inQueue: false });
+  }
+
+  async toggleAllowChallenges(teamId: string) {
+    const team = await this.getTeamById(teamId);
+    return this.teamRepository.update(teamId, {
+      allowChallenges: !team.allowChallenges,
+    });
+  }
+
+  async challengeTeam(
+    eventId: string,
+    challengerTeamId: string,
+    targetTeamId: string,
+  ) {
+    const targetTeam = await this.getTeamById(targetTeamId, {
+      event: true
+    });
+    if (!targetTeam || targetTeam.event.id !== eventId) {
+      throw new BadRequestException("Target team not found in this event.");
+    }
+
+    if (!targetTeam.allowChallenges) {
+      throw new BadRequestException("Target team does not allow challenges.");
+    }
+
+    if (challengerTeamId === targetTeamId) {
+      throw new BadRequestException("You cannot challenge your own team.");
+    }
+
+    const match = await this.matchService.createMatch(
+      [challengerTeamId, targetTeamId],
+      0,
+      MatchPhase.QUEUE,
+    );
+
+    await this.matchService.startMatch(match.id);
+
+    return match;
   }
 
   async unlockTeamsForEvent(eventId: string) {

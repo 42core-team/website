@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import React from "react";
 import { isActionError } from "@/app/actions/errors";
-import { getTeamById, getTeamMembers } from "@/app/actions/team";
+import { getMyEventTeam, getTeamById, getTeamMembers } from "@/app/actions/team";
 import { getMatchesForTeam } from "@/app/actions/tournament";
 import { Card } from "@/components/ui/card";
 import BackButton from "./BackButton";
+import ChallengeButton from "./ChallengeButton";
 import TeamMatchHistory from "./TeamMatchHistory";
 import TeamUserTable from "./TeamUserTable";
 
@@ -42,9 +43,14 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
 
   const members = await getTeamMembers(teamId);
   const teamInfo = await getTeamById(teamId);
+  const myTeam = await getMyEventTeam(eventId);
+
   if (!teamInfo || !members) {
     notFound();
   }
+
+  const isMyTeam = myTeam?.id === teamId;
+  const canChallenge = !isMyTeam && teamInfo.allowChallenges;
 
   const matches = await getMatchesForTeam(teamId);
 
@@ -52,15 +58,24 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
     <div className="space-y-4 py-3">
       <Card className="px-5 py-4">
         <div className="mb-4 flex min-w-0 flex-col gap-2">
-          <div className="flex min-w-0 items-center gap-4">
-            <div className="shrink-0">
-              <BackButton />
+          <div className="flex min-w-0 items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="shrink-0">
+                <BackButton />
+              </div>
+              <h2 className="min-w-0 text-2xl font-bold break-words">
+                Team
+                {" "}
+                {teamInfo.name}
+              </h2>
             </div>
-            <h2 className="min-w-0 text-2xl font-bold break-words">
-              Team
-              {" "}
-              {teamInfo.name}
-            </h2>
+            {canChallenge && (
+              <ChallengeButton
+                eventId={eventId}
+                targetTeamId={teamId}
+                targetTeamName={teamInfo.name}
+              />
+            )}
           </div>
         </div>
         <TeamUserTable members={members} />

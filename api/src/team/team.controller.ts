@@ -307,4 +307,42 @@ export class TeamController {
   async getQueueState(@Team() team: TeamEntity) {
     return this.teamService.getQueueState(team.id);
   }
+
+  @UseGuards(JwtAuthGuard, MyTeamGuards)
+  @Put(`event/:${EVENT_ID_PARAM}/allowChallenges/toggle`)
+  async toggleAllowChallenges(@Team() team: TeamEntity, @UserId() userId: string) {
+    this.logger.log({
+      action: "attempt_toggle_allow_challenges",
+      teamId: team.id,
+      userId,
+    });
+    return this.teamService.toggleAllowChallenges(team.id);
+  }
+
+  @UseGuards(JwtAuthGuard, MyTeamGuards)
+  @Post(`event/:${EVENT_ID_PARAM}/challenge/:targetTeamId`)
+  async challengeTeam(
+    @EventId eventId: string,
+    @Team() challengerTeam: TeamEntity,
+    @Param("targetTeamId", ParseUUIDPipe) targetTeamId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.hasEventStartedForTeam(challengerTeam.id))) {
+      throw new BadRequestException("The event has not started yet.");
+    }
+
+    this.logger.log({
+      action: "attempt_challenge_team",
+      challengerTeamId: challengerTeam.id,
+      targetTeamId,
+      userId,
+      eventId,
+    });
+
+    return this.teamService.challengeTeam(
+      eventId,
+      challengerTeam.id,
+      targetTeamId,
+    );
+  }
 }
