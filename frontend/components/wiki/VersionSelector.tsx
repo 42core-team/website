@@ -1,6 +1,6 @@
 "use client";
 
-import type { WikiVersion } from "@/lib/markdown";
+import type { WikiVersion } from "@/lib/wiki/types";
 import { FileText } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { buildVersionPath } from "@/lib/wiki-navigation";
+import { buildVersionPath } from "@/lib/wiki/shared-paths";
 
 interface VersionSelectorProps {
   versions: WikiVersion[];
@@ -34,10 +34,9 @@ export function VersionSelector({
 
   return (
     <>
-      {/* Desktop Version - Full Select */}
       <div className="hidden lg:block">
         <Select value={currentVersion} onValueChange={handleVersionChange}>
-          <SelectTrigger className="w-32 sm:w-40">
+          <SelectTrigger className="h-11 min-w-[9rem] border-border/80 bg-background/80 pr-3 pl-4 shadow-sm">
             <SelectValue placeholder="Select version">
               {currentVersionName}
             </SelectValue>
@@ -52,11 +51,10 @@ export function VersionSelector({
         </Select>
       </div>
 
-      {/* Mobile Version - Icon Only */}
       <div className="lg:hidden">
         <Select value={currentVersion} onValueChange={handleVersionChange}>
-          <SelectTrigger className="my-2 flex items-center justify-center">
-            <FileText className="mr-1 size-4" />
+          <SelectTrigger className="size-11 border-border/80 bg-background/80 px-0 shadow-sm">
+            <FileText className="size-4" />
           </SelectTrigger>
           <SelectContent align="end">
             {versions.map(version => (

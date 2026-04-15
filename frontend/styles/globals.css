@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "./wiki.css";
 
 @plugin "@tailwindcss/typography";
 
@@ -50,20 +49,6 @@ html body[data-scroll-locked] {
   padding-right: 0 !important;
 }
 
-/* Offset for sticky header when jumping to anchors */
-h1[id]::before,
-h2[id]::before,
-h3[id]::before,
-h4[id]::before,
-h5[id]::before,
-h6[id]::before {
-  content: "";
-  display: block;
-  height: 80px;
-  margin-top: -80px;
-  visibility: hidden;
-}
-
 /* Code syntax highlighting — Shiki dual-theme switching via .dark class.
    rehype-pretty-code sets --shiki-light / --shiki-dark as inline CSS custom
    properties on every token. These rules resolve which variable is active. */
@@ -83,27 +68,6 @@ h6[id]::before {
 
 .dark [data-rehype-pretty-code-figure] span {
   color: var(--shiki-dark);
-}
-
-/* Search highlighting */
-mark {
-  background-color: #fef3c7;
-  color: #92400e;
-  font-weight: 500;
-}
-
-.dark mark {
-  background-color: #78350f;
-  color: #fef3c7;
-}
-
-.prose h1,
-.prose h2,
-.prose h3,
-.prose h4,
-.prose h5,
-.prose h6 {
-  scroll-margin-top: 90px;
 }
 
 @theme {

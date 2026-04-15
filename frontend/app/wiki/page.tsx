@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getDefaultWikiVersion } from "@/lib/markdown";
+import { getDefaultWikiVersion } from "@/lib/wiki";
 
 /**
  * WikiRoot entry point
@@ -8,17 +8,5 @@ import { getDefaultWikiVersion } from "@/lib/markdown";
  */
 export default async function WikiRoot() {
   const defaultVersion = await getDefaultWikiVersion();
-
-  // Mark this as permanent to avoid unnecessary re-renders
   redirect(`/wiki/${defaultVersion}`);
-}
-
-// Pre-generate the root page to immediately resolve default wiki version
-export async function generateStaticParams() {
-  const defaultVersion = await getDefaultWikiVersion();
-  return [
-    {
-      slug: [defaultVersion],
-    },
-  ];
 }
