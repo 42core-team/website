@@ -1,9 +1,14 @@
 "use client";
 import type { Event } from "@/app/actions/event";
+import { useQuery } from "@tanstack/react-query";
 import { Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
+import {
+  myTeamQueryFn,
+  myTeamQueryKey,
+} from "@/app/events/[id]/my-team/queries";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -37,6 +42,12 @@ export default function EventNavbar({
 }: Readonly<EventNavbarProps>) {
   const pathname = usePathname();
   const hasStarted = Date.now() >= new Date(event.startDate).getTime();
+  const { data: myTeam } = useQuery({
+    queryKey: myTeamQueryKey(eventId),
+    queryFn: () => myTeamQueryFn(eventId),
+    enabled: isUserRegistered,
+  });
+  const effectiveHasTeam = myTeam === undefined ? hasTeam : Boolean(myTeam);
 
   const navItems = useMemo(() => {
     const items = [
@@ -47,7 +58,7 @@ export default function EventNavbar({
     if (isUserRegistered) {
       items.push({ name: "My Team", path: `/events/${eventId}/my-team` });
 
-      if (hasStarted && hasTeam) {
+      if (hasStarted && effectiveHasTeam) {
         items.push({ name: "Queue", path: `/events/${eventId}/queue` });
       }
     }
@@ -65,7 +76,7 @@ export default function EventNavbar({
     }
 
     return items;
-  }, [eventId, isUserRegistered, hasTeam, isEventAdmin, hasStarted]);
+  }, [eventId, isUserRegistered, effectiveHasTeam, isEventAdmin, hasStarted]);
 
   return (
     <div className="flex items-center justify-start py-4 pl-12 md:justify-center md:pl-0">
