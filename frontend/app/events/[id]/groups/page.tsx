@@ -1,12 +1,20 @@
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+} from "@tanstack/react-query";
 import { isActionError } from "@/app/actions/errors";
 import { isEventAdmin } from "@/app/actions/event";
-import { getTeamsForEventTable } from "@/app/actions/team";
-import {
-  getSwissMatches,
-  getTournamentTeamCount,
-} from "@/app/actions/tournament";
 import Actions from "@/app/events/[id]/groups/actions";
 import GroupPhaseTabs from "@/app/events/[id]/groups/GroupPhaseTabs";
+import {
+  eventTeamsStandingsQueryFn,
+  eventTeamsStandingsQueryKey,
+  swissMatchesQueryFn,
+  swissMatchesQueryKey,
+  tournamentTeamCountQueryFn,
+  tournamentTeamCountQueryKey,
+} from "@/app/events/[id]/tournament-queries";
 
 export const metadata = {
   title: "Group Phase",
@@ -23,16 +31,28 @@ export default async function page({
 }) {
   const eventId = (await params).id;
   const isAdminView = (await searchParams).adminReveal === "true";
-  const [matches, eventAdmin, teams, advancementCount] = await Promise.all([
-    getSwissMatches(eventId, isAdminView),
-    isEventAdmin(eventId),
-    getTeamsForEventTable(eventId, undefined, "score", "desc", isAdminView),
-    getTournamentTeamCount(eventId),
-  ]);
+  const eventAdmin = await isEventAdmin(eventId);
 
   if (isActionError(eventAdmin)) {
     throw new Error("Failed to verify admin status");
   }
+
+  const queryClient = new QueryClient();
+
+  await Promise.all([
+    queryClient.prefetchQuery({
+      queryKey: swissMatchesQueryKey(eventId, isAdminView),
+      queryFn: () => swissMatchesQueryFn(eventId, isAdminView),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: tournamentTeamCountQueryKey(eventId),
+      queryFn: () => tournamentTeamCountQueryFn(eventId),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: eventTeamsStandingsQueryKey(eventId, isAdminView),
+      queryFn: () => eventTeamsStandingsQueryFn(eventId, isAdminView),
+    }),
+  ]);
 
   return (
     <div className="flex flex-col gap-4 pb-8 md:gap-8">
@@ -53,13 +73,13 @@ export default async function page({
         )}
       </div>
 
-      <GroupPhaseTabs
-        eventId={eventId}
-        matches={matches}
-        teams={teams}
-        isEventAdmin={eventAdmin}
-        advancementCount={advancementCount}
-      />
+      <HydrationBoundary state={dehydrate(queryClient)}>
+        <GroupPhaseTabs
+          eventId={eventId}
+          isEventAdmin={eventAdmin}
+          adminReveal={isAdminView}
+        />
+      </HydrationBoundary>
     </div>
   );
 }

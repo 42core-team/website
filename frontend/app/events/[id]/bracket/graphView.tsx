@@ -1,11 +1,12 @@
 "use client";
 import type { Edge, Node } from "reactflow";
 import type { Match } from "@/app/actions/tournament-model";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import ReactFlow, { Background, useEdgesState, useNodesState } from "reactflow";
 import { MatchState } from "@/app/actions/tournament-model";
 import { MatchNode } from "@/components/match";
+import { markMatchReturnInvalidate } from "@/hooks/useInvalidateOnMatchReturn";
 import "reactflow/dist/style.css";
 
 const MATCH_WIDTH = 200;
@@ -37,6 +38,7 @@ export default function GraphView({
 
   const router = useRouter();
   const eventId = useParams().id as string;
+  const pathname = usePathname();
 
   useEffect(() => {
     const newNodes: Node[] = [];
@@ -145,6 +147,7 @@ export default function GraphView({
                   (match.state === MatchState.FINISHED || isEventAdmin)
                   && clickedMatch.id
                 ) {
+                  markMatchReturnInvalidate(pathname);
                   router.push(`/events/${eventId}/match/${clickedMatch.id}`);
                 }
               },
@@ -181,6 +184,7 @@ export default function GraphView({
                     || isEventAdmin)
                   && clickedMatch.id
                 ) {
+                  markMatchReturnInvalidate(pathname);
                   router.push(`/events/${eventId}/match/${clickedMatch.id}`);
                 }
               },
@@ -219,7 +223,16 @@ export default function GraphView({
 
     setNodes(newNodes);
     setEdges(newEdges);
-  }, [matches, teamCount, isEventAdmin, router, eventId, setNodes, setEdges]);
+  }, [
+    matches,
+    teamCount,
+    isEventAdmin,
+    router,
+    eventId,
+    pathname,
+    setNodes,
+    setEdges,
+  ]);
 
   return (
     <div className="h-full w-full">

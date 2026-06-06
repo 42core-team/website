@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { markMatchReturnInvalidate } from "@/hooks/useInvalidateOnMatchReturn";
 import { cn } from "@/lib/utils";
 
 interface MatchResult {
@@ -18,6 +19,7 @@ export function MatchHistoryBadges({
   eventId,
 }: MatchHistoryBadgesProps) {
   const router = useRouter();
+  const pathname = usePathname();
 
   if (history.length === 0) {
     return <span className="text-xs text-muted-foreground">No matches</span>;
@@ -30,6 +32,7 @@ export function MatchHistoryBadges({
           key={i}
           onClick={(e) => {
             e.stopPropagation();
+            markMatchReturnInvalidate(pathname);
             router.push(`/events/${eventId}/match/${match.id}`);
           }}
           className={cn(

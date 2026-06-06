@@ -1,11 +1,12 @@
 "use client";
 import type { Node } from "reactflow";
 import type { Match } from "@/app/actions/tournament-model";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import ReactFlow, { Background, useNodesState } from "reactflow";
 import { MatchState } from "@/app/actions/tournament-model";
 import { MatchNode } from "@/components/match";
+import { markMatchReturnInvalidate } from "@/hooks/useInvalidateOnMatchReturn";
 import "reactflow/dist/style.css";
 
 // Custom node types for ReactFlow
@@ -33,10 +34,13 @@ export default function GraphView({
 
   const router = useRouter();
   const eventId = useParams().id as string;
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!matches || matches.length === 0)
+    if (!matches || matches.length === 0) {
+      setNodes([]);
       return;
+    }
 
     const matchesByRound = matches.reduce(
       (acc, match) => {
@@ -103,6 +107,7 @@ export default function GraphView({
                 (match.state === MatchState.FINISHED || isEventAdmin)
                 && clickedMatch.id
               ) {
+                markMatchReturnInvalidate(pathname);
                 router.push(`/events/${eventId}/match/${clickedMatch.id}`);
               }
             },
@@ -112,7 +117,7 @@ export default function GraphView({
     });
 
     setNodes(newNodes);
-  }, [matches, isEventAdmin, eventId, router]);
+  }, [matches, isEventAdmin, eventId, router, pathname, setNodes]);
 
   return (
     <div className="h-full w-full">

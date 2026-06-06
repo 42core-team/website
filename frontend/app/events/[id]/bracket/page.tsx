@@ -1,12 +1,20 @@
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+} from "@tanstack/react-query";
 import { isActionError } from "@/app/actions/errors";
 import { isEventAdmin } from "@/app/actions/event";
-import { getTeamsForEventTable } from "@/app/actions/team";
-import {
-  getTournamentMatches,
-  getTournamentTeamCount,
-} from "@/app/actions/tournament";
 import Actions from "@/app/events/[id]/bracket/actions";
 import BracketTabs from "@/app/events/[id]/bracket/BracketTabs";
+import {
+  eventTeamsStandingsQueryFn,
+  eventTeamsStandingsQueryKey,
+  tournamentMatchesQueryFn,
+  tournamentMatchesQueryKey,
+  tournamentTeamCountQueryFn,
+  tournamentTeamCountQueryKey,
+} from "@/app/events/[id]/tournament-queries";
 
 export const metadata = {
   title: "Tournament Bracket",
@@ -26,10 +34,21 @@ export default async function page({
     throw new Error("Failed to verify admin status");
   }
   const isAdminView = (await searchParams).adminReveal === "true";
-  const [serializedMatches, teamCount, teams] = await Promise.all([
-    getTournamentMatches(eventId, isAdminView),
-    getTournamentTeamCount(eventId),
-    getTeamsForEventTable(eventId, undefined, "score", "desc", isAdminView),
+  const queryClient = new QueryClient();
+
+  await Promise.all([
+    queryClient.prefetchQuery({
+      queryKey: tournamentMatchesQueryKey(eventId, isAdminView),
+      queryFn: () => tournamentMatchesQueryFn(eventId, isAdminView),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: tournamentTeamCountQueryKey(eventId),
+      queryFn: () => tournamentTeamCountQueryFn(eventId),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: eventTeamsStandingsQueryKey(eventId, isAdminView),
+      queryFn: () => eventTeamsStandingsQueryFn(eventId, isAdminView),
+    }),
   ]);
 
   return (
@@ -51,13 +70,13 @@ export default async function page({
         )}
       </div>
 
-      <BracketTabs
-        eventId={eventId}
-        matches={serializedMatches}
-        teams={teams}
-        isEventAdmin={eventAdmin}
-        teamCount={teamCount}
-      />
+      <HydrationBoundary state={dehydrate(queryClient)}>
+        <BracketTabs
+          eventId={eventId}
+          isEventAdmin={eventAdmin}
+          adminReveal={isAdminView}
+        />
+      </HydrationBoundary>
     </div>
   );
 }

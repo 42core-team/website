@@ -1,29 +1,83 @@
 "use client";
 
-import type { Team } from "@/app/actions/team";
-import type { Match } from "@/app/actions/tournament-model";
+import { useQuery } from "@tanstack/react-query";
 import { BarChart3, Network } from "lucide-react";
+import { useMemo } from "react";
+import {
+  eventTeamsStandingsQueryFn,
+  eventTeamsStandingsQueryKey,
+  tournamentMatchesQueryFn,
+  tournamentMatchesQueryKey,
+  tournamentTeamCountQueryFn,
+  tournamentTeamCountQueryKey,
+} from "@/app/events/[id]/tournament-queries";
+import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useInvalidateOnMatchReturn } from "@/hooks/useInvalidateOnMatchReturn";
 import { useTabParam } from "@/hooks/useTabParam";
 import BracketRankingTable from "./BracketRankingTable";
 import GraphView from "./graphView";
 
 interface BracketTabsProps {
   eventId: string;
-  matches: Match[];
-  teams: Team[];
   isEventAdmin: boolean;
-  teamCount: number;
+  adminReveal: boolean;
 }
 
 export default function BracketTabs({
   eventId,
-  matches,
-  teams,
   isEventAdmin,
-  teamCount,
+  adminReveal,
 }: BracketTabsProps) {
+  const queryKeys = useMemo(
+    () => [
+      tournamentMatchesQueryKey(eventId, adminReveal),
+      tournamentTeamCountQueryKey(eventId),
+      eventTeamsStandingsQueryKey(eventId, adminReveal),
+    ],
+    [eventId, adminReveal],
+  );
+
+  useInvalidateOnMatchReturn(queryKeys);
   const { currentTab, onTabChange } = useTabParam("graph");
+  const matchesQuery = useQuery({
+    queryKey: tournamentMatchesQueryKey(eventId, adminReveal),
+    queryFn: () => tournamentMatchesQueryFn(eventId, adminReveal),
+  });
+  const teamCountQuery = useQuery({
+    queryKey: tournamentTeamCountQueryKey(eventId),
+    queryFn: () => tournamentTeamCountQueryFn(eventId),
+  });
+  const teamsQuery = useQuery({
+    queryKey: eventTeamsStandingsQueryKey(eventId, adminReveal),
+    queryFn: () => eventTeamsStandingsQueryFn(eventId, adminReveal),
+  });
+
+  const matches = matchesQuery.data;
+  const teamCount = teamCountQuery.data;
+  const teams = teamsQuery.data;
+  const isLoading = [matchesQuery, teamCountQuery, teamsQuery].some(
+    query => query.isPending && query.data === undefined,
+  );
+  const hasError = [matchesQuery, teamCountQuery, teamsQuery].some(
+    query => query.isError && query.data === undefined,
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[320px] items-center justify-center rounded-xl border bg-card/50">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (hasError || !matches || teamCount === undefined || !teams) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-6 text-sm text-destructive">
+        Failed to load tournament bracket data.
+      </div>
+    );
+  }
 
   return (
     <Tabs value={currentTab} onValueChange={onTabChange} className="w-full">
