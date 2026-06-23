@@ -49,27 +49,70 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          version: 10
+          bun-version: 1.3.11
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
         with:
-          node-version: 25
-          cache: "pnpm"
-          cache-dependency-path: github-service/pnpm-lock.yaml
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('github-service/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
       - name: Install dependencies
         working-directory: ./github-service
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Lint code
         working-directory: ./github-service
         run: |
-          pnpm lint
+          bun run lint
           git diff --exit-code ..
+
+      - name: Cancel workflow on failure
+        if: failure()
+        run: gh run cancel ${{ github.run_id }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  test:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' &&
+       github.head_ref != 'dev' &&
+       github.event.pull_request.base.ref != github.event.pull_request.head.ref)
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('github-service/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        working-directory: ./github-service
+        run: bun install --frozen-lockfile
+
+      - name: Run tests
+        working-directory: ./github-service
+        run: bun run test
 
       - name: Cancel workflow on failure
         if: failure()
@@ -183,7 +226,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
   deploy:
-    needs: [lint, build]
+    needs: [lint, test, build]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/github-service-deploy.yml
     with:
