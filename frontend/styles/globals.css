@@ -24,7 +24,7 @@
       display: none;
     }
 
-    text-wrap: nowrap;
+    overflow-wrap: break-word;
   }
 }
 

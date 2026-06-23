@@ -1,3 +1,5 @@
+"use client";
+
 import type { WikiNavItem } from "@/lib/markdown";
 import Link from "next/link";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -7,9 +9,11 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { scrollToWikiHeading } from "@/lib/wiki-scroll";
 
 const INDENT_BASE = 8; // px
 const INDENT_STEP = 10; // px per depth level
+const NAV_ACCORDION_KEY = "wiki-nav-accordion-closed";
 
 interface TocItem {
   id: string;
@@ -36,6 +40,51 @@ export function WikiNavigation({
   const [activeId, setActiveId] = useState<string>("");
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track which accordions the user has explicitly closed (default: all open).
+  // Initialised synchronously from sessionStorage so the first render already
+  // has the correct open/closed state (avoids a visible flash / layout shift).
+  const [closedAccordions, setClosedAccordions] = useState<Set<string>>(
+    () => {
+      if (typeof window === "undefined")
+        return new Set();
+      try {
+        const stored = sessionStorage.getItem(NAV_ACCORDION_KEY);
+        if (stored)
+          return new Set(JSON.parse(stored));
+      }
+      catch {
+        // Ignore sessionStorage errors
+      }
+      return new Set();
+    },
+  );
+
+  // Handle accordion open/close and persist to sessionStorage
+  const handleAccordionChange = useCallback(
+    (itemPath: string, value: string) => {
+      setClosedAccordions((prev) => {
+        const next = new Set(prev);
+        if (!value) {
+          next.add(itemPath);
+        }
+        else {
+          next.delete(itemPath);
+        }
+        try {
+          sessionStorage.setItem(
+            NAV_ACCORDION_KEY,
+            JSON.stringify([...next]),
+          );
+        }
+        catch {
+          // Ignore sessionStorage errors
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   // Parse table of contents from page content
   useEffect(() => {
@@ -74,23 +123,47 @@ export function WikiNavigation({
     if (toc.length === 0)
       return;
 
-    // Set initial active heading on mount by finding the first one in/near the viewport
-    const idealPosition = 100;
-    let bestId = toc[0]?.id ?? "";
-    let bestDistance = Infinity;
-    for (const { id } of toc) {
-      const el = document.getElementById(id);
-      if (!el)
-        continue;
-      const dist = Math.abs(el.getBoundingClientRect().top - idealPosition);
-      if (dist < bestDistance) {
-        bestDistance = dist;
-        bestId = id;
-      }
+    // The wiki content lives inside its own scroll container (.main-wiki-content).
+    // We use it as the IntersectionObserver root so visibility is measured
+    // relative to the scroll area, not the viewport.
+    const scrollRoot = document.querySelector(".main-wiki-content") as HTMLElement | null;
+    const rootTop = scrollRoot?.getBoundingClientRect().top ?? 0;
+    const idealPosition = rootTop + 100; // 100px from the top of the scroll container
+
+    // If the URL already contains a #hash that matches a heading, scroll to it
+    // and use it as the initial active heading. Otherwise fall back to the
+    // heading closest to the top of the scroll container.
+    const hash = window.location.hash.slice(1);
+    const hashElement = hash ? document.getElementById(hash) : null;
+
+    if (hashElement && toc.some(t => t.id === hash)) {
+      setActiveId(hash);
+      scrollActiveLinkIntoView(hash);
+      isScrollingRef.current = true;
+      scrollToWikiHeading(hashElement);
+      if (scrollTimeoutRef.current)
+        clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 500);
     }
-    if (bestId) {
-      setActiveId(bestId);
-      scrollActiveLinkIntoView(bestId);
+    else {
+      let bestId = toc[0]?.id ?? "";
+      let bestDistance = Infinity;
+      for (const { id } of toc) {
+        const el = document.getElementById(id);
+        if (!el)
+          continue;
+        const dist = Math.abs(el.getBoundingClientRect().top - idealPosition);
+        if (dist < bestDistance) {
+          bestDistance = dist;
+          bestId = id;
+        }
+      }
+      if (bestId) {
+        setActiveId(bestId);
+        scrollActiveLinkIntoView(bestId);
+      }
     }
 
     const handleIntersect = (entries: IntersectionObserverEntry[]) => {
@@ -119,6 +192,7 @@ export function WikiNavigation({
     };
 
     const observer = new IntersectionObserver(handleIntersect, {
+      root: scrollRoot,
       rootMargin: "0px 0px -80% 0px",
     });
 
@@ -137,10 +211,11 @@ export function WikiNavigation({
     e.preventDefault();
     isScrollingRef.current = true;
     setActiveId(id); // Immediate feedback
+    history.replaceState(null, "", `#${id}`);
 
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrollToWikiHeading(element);
     }
 
     if (scrollTimeoutRef.current) {
@@ -239,7 +314,8 @@ export function WikiNavigation({
           key={uniqueKey}
           type="single"
           collapsible
-          defaultValue={itemPath} // open by default
+          value={closedAccordions.has(itemPath) ? "" : itemPath}
+          onValueChange={val => handleAccordionChange(itemPath, val)}
           className="px-0"
         >
           <AccordionItem value={itemPath} className="border-none">

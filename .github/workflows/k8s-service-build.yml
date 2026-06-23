@@ -50,8 +50,7 @@ jobs:
       contents: read
       packages: write
     outputs:
-      short_sha: ${{ steps.short-sha.outputs.short_sha }}
-      branch_tag: ${{ steps.compute-tag.outputs.branch_tag }}
+      image_tag: ${{ steps.image-tag.outputs.image_tag }}
 
     steps:
       - name: Checkout repository
@@ -74,18 +73,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract short SHA
-        id: short-sha
-        run: echo "short_sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-
-      - name: Compute branch-shortsha tag
-        id: compute-tag
+      - name: Compute image tag
+        id: image-tag
         run: |
-          BRANCH_NAME="${{ github.ref_name }}"
-          SANITIZED_BRANCH=$(echo "${BRANCH_NAME}" | sed 's/[^a-zA-Z0-9._-]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
-          TAG="${SANITIZED_BRANCH}-${{ steps.short-sha.outputs.short_sha }}"
-          echo "branch_tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "Computed tag: ${TAG}"
+          IMAGE_TAG="build-${{ github.run_number }}-${{ github.run_attempt }}"
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "Image tag: $IMAGE_TAG"
 
       - name: Build image (PR - no push)
         if: github.event_name == 'pull_request'
@@ -95,7 +88,9 @@ jobs:
           file: ./k8s-service/Dockerfile
           platforms: ${{ matrix.platform }}
           push: false
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.compute-tag.outputs.branch_tag }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.sanitize-branch.outputs.name }}
 
       - name: Build and push Docker image
         if: github.event_name != 'pull_request'
@@ -105,7 +100,9 @@ jobs:
           file: ./k8s-service/Dockerfile
           platforms: ${{ matrix.platform }}
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.compute-tag.outputs.branch_tag }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.sanitize-branch.outputs.name }}
 
       - name: Output image details
         run: |
@@ -116,8 +113,7 @@ jobs:
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Tag:** ${{ steps.compute-tag.outputs.branch_tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Short SHA:** ${{ steps.short-sha.outputs.short_sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag:** ${{ steps.image-tag.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
           echo "**Event:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
 
@@ -127,4 +123,5 @@ jobs:
     uses: ./.github/workflows/k8s-service-deploy.yml
     with:
       environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'prod' || 'dev') }}
+      image_tag: build-${{ github.run_number }}-${{ github.run_attempt }}
     secrets: inherit

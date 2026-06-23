@@ -2,7 +2,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { isActionError } from "@/app/actions/errors";
 import { joinEvent } from "@/app/actions/event";
+import { myTeamQueryKey } from "@/app/events/[id]/my-team/queries";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -57,11 +60,21 @@ export default function EventInfoNotice({
   const timeLeftMs = startsAt.getTime() - now.getTime();
 
   const joinEventMutation = useMutation({
-    mutationFn: () => joinEvent(eventId),
+    mutationFn: async () => {
+      const result = await joinEvent(eventId);
+      if (isActionError(result)) {
+        throw new Error(result.error);
+      }
+      return result;
+    },
     onSuccess: () => {
+      toast.success("Successfully joined the event!");
       queryClient.invalidateQueries({ queryKey: ["event", eventId] });
-      queryClient.invalidateQueries({ queryKey: ["myTeam", eventId] });
+      queryClient.invalidateQueries({ queryKey: myTeamQueryKey(eventId) });
       router.refresh();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to join event");
     },
   });
 

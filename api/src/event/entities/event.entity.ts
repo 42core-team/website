@@ -15,6 +15,7 @@ import {
 import { TeamEntity } from "../../team/entities/team.entity";
 import { Exclude } from "class-transformer";
 import { EventStarterTemplateEntity } from "./event-starter-template.entity";
+import { EventWhitelistEntity } from "./event-whitelist.entity";
 
 @Entity("events")
 export class EventEntity {
@@ -121,4 +122,9 @@ export class EventEntity {
     cascade: true,
   })
   starterTemplates: EventStarterTemplateEntity[];
+
+  @OneToMany(() => EventWhitelistEntity, (whitelist) => whitelist.event, {
+    onDelete: "CASCADE",
+  })
+  whitelists: EventWhitelistEntity[];
 }

@@ -9,6 +9,7 @@ import { UserEventPermissionEntity } from "../user/entities/user.entity";
 import { CheckController } from "./check.controller";
 
 import { EventStarterTemplateEntity } from "./entities/event-starter-template.entity";
+import { EventWhitelistEntity } from "./entities/event-whitelist.entity";
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { EventStarterTemplateEntity } from "./entities/event-starter-template.en
       EventEntity,
       UserEventPermissionEntity,
       EventStarterTemplateEntity,
+      EventWhitelistEntity,
     ]),
     UserModule,
     forwardRef(() => TeamModule),

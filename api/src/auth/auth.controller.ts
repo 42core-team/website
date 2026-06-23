@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Controller,
   Get,
+  HttpException,
   Query,
   Req,
   Res,
@@ -118,15 +119,12 @@ export class AuthController {
 
       return res.redirect(redirectUrl);
     } catch (e) {
-      if (e instanceof BadRequestException) {
-        throw e;
-      }
-
-      throw new BadRequestException(
-        e instanceof Error
-          ? `Invalid state parameter: ${e.message}`
-          : "Invalid state parameter.",
-      );
+      const errorMessage = this.getFortyTwoErrorMessage(e);
+      this.logger.warn({
+        action: "fortytwo_link_failed",
+        message: errorMessage,
+      });
+      return res.redirect(this.buildFortyTwoErrorRedirectUrl(errorMessage));
     }
   }
 
@@ -134,6 +132,37 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   me(@Req() req: Request) {
     const user = req.user as UserEntity;
-    return this.userService.getUserById(user.id);
+    return this.userService.getUserWithSocialAccounts(user.id);
+  }
+
+  private getFortyTwoErrorMessage(error: unknown): string {
+    if (error instanceof HttpException) {
+      const response = error.getResponse();
+      if (
+        typeof response === "object"
+        && response !== null
+        && "message" in response
+      ) {
+        const message = (response as { message: unknown }).message;
+        return Array.isArray(message) ? message.join(", ") : String(message);
+      }
+
+      return error.message;
+    }
+
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return "Failed to link 42 account";
+  }
+
+  private buildFortyTwoErrorRedirectUrl(errorMessage: string): string {
+    const redirectUrl = this.configService.getOrThrow<string>(
+      "OAUTH_42_SUCCESS_REDIRECT_URL",
+    );
+    const url = new URL(redirectUrl);
+    url.searchParams.set("error", errorMessage);
+    return url.toString();
   }
 }

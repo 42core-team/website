@@ -10,8 +10,10 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { EventEntity } from "./entities/event.entity";
 import { EventStarterTemplateEntity } from "./entities/event-starter-template.entity";
+import { EventWhitelistEntity } from "./entities/event-whitelist.entity";
 import {
   DataSource,
+  In,
   IsNull,
   LessThanOrEqual,
   MoreThanOrEqual,
@@ -29,6 +31,7 @@ import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations"
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { EventVersionDto } from "./dtos/eventVersionDto";
 import { LockKeys } from "../constants";
+import { WhitelistPlatform } from "./entities/event-whitelist.entity";
 
 @Injectable()
 export class EventService {
@@ -39,6 +42,8 @@ export class EventService {
     private readonly permissionRepository: Repository<UserEventPermissionEntity>,
     @InjectRepository(EventStarterTemplateEntity)
     private readonly templateRepository: Repository<EventStarterTemplateEntity>,
+    @InjectRepository(EventWhitelistEntity)
+    private readonly whitelistRepository: Repository<EventWhitelistEntity>,
     private readonly configService: ConfigService,
     @Inject(forwardRef(() => TeamService))
     private readonly teamService: TeamService,
@@ -592,17 +597,16 @@ export class EventService {
 
   async removeEventAdmin(eventId: string, userId: string) {
     await this.dataSource.transaction(async (manager) => {
-      // Re-query admin permissions with a row-level lock (FOR UPDATE)
-      const admins = await manager.find(UserEventPermissionEntity, {
-        where: {
-          event: { id: eventId },
-          role: PermissionRole.ADMIN,
-        },
-        relations: {
-          user: true,
-        },
-        lock: { mode: "pessimistic_write" },
-      });
+      // Re-query admin permissions with a row-level lock (FOR UPDATE).
+      // manager.find() with relations produces a LEFT JOIN which PostgreSQL
+      // rejects with FOR UPDATE, so use a query builder with INNER JOIN instead.
+      const admins = await manager
+        .createQueryBuilder(UserEventPermissionEntity, "perm")
+        .innerJoinAndSelect("perm.user", "user")
+        .where("perm.eventId = :eventId", { eventId })
+        .andWhere("perm.role = :role", { role: PermissionRole.ADMIN })
+        .setLock("pessimistic_write")
+        .getMany();
 
       const permissionToRemove = admins.find((p) => p.user.id === userId);
 
@@ -665,5 +669,122 @@ export class EventService {
       id: eventId,
       canCreateTeam: true,
     });
+  }
+
+  async getWhitelist(eventId: string): Promise<EventWhitelistEntity[]> {
+    return this.whitelistRepository.find({
+      where: { event: { id: eventId } },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  async addToWhitelist(
+    eventId: string,
+    entries: { username: string; platform: WhitelistPlatform }[],
+  ): Promise<EventWhitelistEntity[]> {
+    const event = await this.getEventById(eventId);
+    const normalizedEntries = entries
+      .map((entry) => ({
+        username: entry.username.trim().toLowerCase(),
+        platform: entry.platform,
+      }))
+      .filter((entry) => entry.username.length > 0);
+
+    const toKey = (e: { username: string; platform: WhitelistPlatform }) =>
+      `${e.username}:${e.platform}`;
+
+    const uniqueInputEntries = [
+      ...new Map(normalizedEntries.map((e) => [toKey(e), e])).values(),
+    ];
+
+    const existingEntries = await this.whitelistRepository.find({
+      where: {
+        event: { id: eventId },
+      },
+    });
+
+    const existingSet = new Set(existingEntries.map(toKey));
+
+    const newEntries = uniqueInputEntries.filter(
+      (entry) => !existingSet.has(toKey(entry)),
+    );
+
+    if (newEntries.length === 0) {
+      return [];
+    }
+
+    const whitelistEntries = newEntries.map((entry) =>
+      this.whitelistRepository.create({
+        event,
+        username: entry.username,
+        platform: entry.platform,
+      }),
+    );
+
+    try {
+      return await this.whitelistRepository.save(whitelistEntries);
+    } catch (error) {
+      // Handle race condition: if unique constraint is violated (e.g., Postgres 23505),
+      // entries were added concurrently, so return empty array as no-op
+      if (error.code === '23505' || error.message?.includes('duplicate key')) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  async removeFromWhitelist(
+    eventId: string,
+    whitelistId: string,
+  ): Promise<void> {
+    await this.whitelistRepository.delete({
+      id: whitelistId,
+      event: { id: eventId },
+    });
+  }
+
+  async bulkRemoveFromWhitelist(
+    eventId: string,
+    ids: string[],
+  ): Promise<void> {
+    await this.whitelistRepository.delete({
+      id: In(ids),
+      event: { id: eventId },
+    });
+  }
+
+  async hasWhitelist(eventId: string): Promise<boolean> {
+    return this.whitelistRepository.existsBy({
+      event: { id: eventId },
+    });
+  }
+
+  async isUserWhitelisted(
+    eventId: string,
+    githubUsername: string,
+    fortyTwoUsername: string | null,
+  ): Promise<boolean> {
+    if (!(await this.hasWhitelist(eventId))) {
+      return true;
+    }
+
+    const conditions: { username: string; platform: WhitelistPlatform }[] = [
+      { username: githubUsername.trim().toLowerCase(), platform: WhitelistPlatform.GITHUB },
+    ];
+
+    if (fortyTwoUsername) {
+      conditions.push({
+        username: fortyTwoUsername.trim().toLowerCase(),
+        platform: WhitelistPlatform.FORTYTWO,
+      });
+    }
+
+    return this.whitelistRepository.existsBy(
+      conditions.map((cond) => ({
+        event: { id: eventId },
+        username: cond.username,
+        platform: cond.platform,
+      })),
+    );
   }
 }

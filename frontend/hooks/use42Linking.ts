@@ -20,6 +20,24 @@ interface Use42LinkingReturn {
   clearMessage: () => void;
 }
 
+function normalizeErrorMessage(error: string): string {
+  try {
+    const decodedError = decodeURIComponent(error);
+    if (decodedError === "invalid-provider") {
+      return "Invalid OAuth provider";
+    }
+
+    return decodedError.includes("-")
+      ? decodedError.replace(/-/g, " ")
+      : decodedError;
+  }
+  catch {
+    return error === "invalid-provider"
+      ? "Invalid OAuth provider"
+      : error.replace(/-/g, " ");
+  }
+}
+
 export function use42Linking(onSuccess?: () => void): Use42LinkingReturn {
   const searchParams = useSearchParams();
   const [isInitiating, setIsInitiating] = useState(false);
@@ -89,12 +107,7 @@ export function use42Linking(onSuccess?: () => void): Use42LinkingReturn {
       }
       else if (error) {
         // Only show messages for errors
-        if (error === "invalid-provider") {
-          setMessage({ type: "error", text: "Invalid OAuth provider" });
-        }
-        else {
-          setMessage({ type: "error", text: error.replace(/-/g, " ") });
-        }
+        setMessage({ type: "error", text: normalizeErrorMessage(error) });
       }
 
       // Clear the initiating state
