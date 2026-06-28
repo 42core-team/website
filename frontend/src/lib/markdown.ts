@@ -1,6 +1,3 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import matter from "gray-matter";
 import rehypeCodeGroup from "rehype-code-group";
 import rehypePrettyCode from "rehype-pretty-code";
 import rehypeStringify from "rehype-stringify";
@@ -11,16 +8,11 @@ import { unified } from "unified";
 
 const FALLBACK_WIKI_VERSION = "latest";
 
-// Standard YAML frontmatter contract for wiki pages
-// - title:         string    -> Display title for the page
-// - sidebarTitle:  string    -> Optional shorter/different title for navigation
-// - permalink:     string    -> Optional slug override for the last path segment
-// Additional custom keys are supported and exposed via `frontmatter`.
 export interface WikiFrontmatter {
   title?: string;
   sidebarTitle?: string;
   permalink?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface WikiPage {
@@ -53,9 +45,40 @@ export interface WikiVersion {
   isDefault?: boolean;
 }
 
-const contentDirectory = path.join(process.cwd(), "content/wiki");
+const markdownModules = import.meta.glob("../../content/wiki/**/*.md", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+}) as Record<string, string>;
 
-// Exposed default wiki version getter for centralized control
+interface WikiFile {
+  version: string;
+  slug: string[];
+  path: string;
+  raw: string;
+  frontmatter: WikiFrontmatter;
+}
+
+const wikiFiles = Object.entries(markdownModules).map(([path, raw]) => {
+  const parts = path.replace("../../content/wiki/", "").split("/");
+  const version = parts[0];
+  const fileParts = parts.slice(1);
+  const last = fileParts[fileParts.length - 1] ?? "README.md";
+  const slug = [
+    ...fileParts.slice(0, -1),
+    last.replace(/\.md$/, ""),
+  ].filter(Boolean);
+  const parsed = parseFrontmatter(raw);
+
+  return {
+    version,
+    slug,
+    path,
+    raw,
+    frontmatter: parsed.data,
+  };
+});
+
 export async function getDefaultWikiVersion(): Promise<string> {
   const versions = await getAvailableVersions();
   const defaultVersion = versions.find(v => v.isDefault);
@@ -63,472 +86,154 @@ export async function getDefaultWikiVersion(): Promise<string> {
 }
 
 export async function getAvailableVersions(): Promise<WikiVersion[]> {
-  try {
-    const entries = await fs.readdir(contentDirectory, {
-      withFileTypes: true,
-    });
-    const versions: WikiVersion[] = [];
+  const versionSlugs = [...new Set(wikiFiles.map(file => file.version))]
+    .filter(slug => slug && slug !== "images" && slug !== "assets");
 
-    // Add directories as versions (no more root-level files handling)
-    for (const entry of entries) {
-      if (
-        entry.isDirectory()
-        && !entry.name.startsWith(".")
-        && entry.name !== "images"
-        && entry.name !== "assets"
-      ) {
-        versions.push({
-          name: formatVersionName(entry.name),
-          slug: entry.name,
-          isDefault: false, // assign below based on newest tag
-        });
-      }
-    }
+  const stableSlugs = versionSlugs.filter(slug => isStableTagName(slug));
+  const defaultSlug = stableSlugs.length > 0
+    ? stableSlugs.sort(compareTagNamesDesc)[0]
+    : versionSlugs.includes(FALLBACK_WIKI_VERSION)
+      ? FALLBACK_WIKI_VERSION
+      : versionSlugs[0];
 
-    // Determine newest stable tag as default, if any exist
-    const tagSlugs = versions
-      .map(v => v.slug)
-      .filter(slug => isStableTagName(slug));
-
-    let defaultSlug = FALLBACK_WIKI_VERSION;
-    if (tagSlugs.length > 0) {
-      defaultSlug = tagSlugs.sort(compareTagNamesDesc)[0];
-    }
-
-    versions.forEach((v) => {
-      v.isDefault = v.slug === defaultSlug;
-    });
-
-    return versions.sort((a, b) => {
+  return versionSlugs
+    .map(slug => ({
+      name: formatVersionName(slug),
+      slug,
+      isDefault: slug === defaultSlug,
+    }))
+    .sort((a, b) => {
       if (a.isDefault)
         return -1;
       if (b.isDefault)
         return 1;
       return b.name.localeCompare(a.name);
     });
-  }
-  catch (error) {
-    console.error("Error reading versions:", error);
-    return [];
-  }
 }
 
 export async function getWikiPageWithVersion(
   slug: string[],
   version?: string,
 ): Promise<WikiPage | null> {
-  try {
-    const filePath = await getFilePathFromSlugWithVersion(slug, version);
-    let fileContent: string;
-    try {
-      fileContent = await fs.readFile(filePath, "utf8");
-    }
-    catch (err: any) {
-      if (err.code === "ENOENT") {
-        // If the file truly does not exist, signal not found so nice error message appears
-        return null;
-      }
-      else {
-        throw err;
-      }
-    }
+  const actualVersion = version || (await getDefaultWikiVersion());
+  const decodedSlug = normalizeSlug(slug);
+  const file = findWikiFile(decodedSlug, actualVersion);
 
-    // Parse standard YAML frontmatter using gray-matter
-    const parsed = matter(fileContent);
-    const data = parsed.data as WikiFrontmatter;
-    const content = parsed.content;
-
-    // Process markdown content with callout support
-    const processedContent = await unified()
-      .use(remarkParse)
-      .use(remarkGfm)
-      .use(remarkRehype)
-      .use(rehypePrettyCode, {
-        theme: {
-          dark: "github-dark",
-          light: "github-light",
-        },
-      })
-      .use(rehypeCodeGroup, {})
-      .use(rehypeStringify)
-      .process(content);
-
-    // Post-process the HTML to add IDs to headings and handle callouts
-    let htmlContent = processedContent.toString();
-
-    // Strip the <head> element injected by rehype-code-group (it contains
-    // built-in styles and a DOMContentLoaded script that don't work inside our
-    // Next.js SPA; we provide our own CSS and client-side JS instead).
-    htmlContent = htmlContent.replace(/<head>[\s\S]*?<\/head>/, "");
-
-    // Transform GitHub-style callouts (> [!TYPE])
-    htmlContent = htmlContent.replace(
-      // eslint-disable-next-line regexp/no-super-linear-backtracking
-      /<blockquote>\s*<p>\s*\[!(WARNING|INFO|NOTE|TIP|IMPORTANT|CAUTION)\]\s*(.*?)<\/p>\s*([\s\S]*?)<\/blockquote>/g,
-      (_match: string, type: string, title: string, content: string) => {
-        const typeClass = type.toLowerCase();
-        const icon = getCalloutIcon(type);
-        const titleText = title.trim() || type;
-
-        // Clean up content and remove any extra paragraph tags if present
-        let cleanContent = content.trim();
-        if (cleanContent.startsWith("<p>") && cleanContent.endsWith("</p>")) {
-          cleanContent = cleanContent.slice(3, -4);
-        }
-
-        return `<div class="callout callout-${typeClass}">
-          <div class="callout-header">
-            <span class="callout-icon">${icon}</span>
-            <span class="callout-title">${titleText}</span>
-          </div>
-          <div class="callout-content">${cleanContent}</div>
-        </div>`;
-      },
-    );
-
-    // Transform image paths to use the API route
-    const imageVersion = version || (await getDefaultWikiVersion());
-    htmlContent = htmlContent.replace(
-      /<img([^>]*)\ssrc="([^"]+)"([^>]*)>/g,
-      (_match: string, beforeSrc: string, src: string, afterSrc: string) => {
-        // Skip if already an absolute URL or API path
-        if (src.startsWith("http") || src.startsWith("/api/wiki-images/")) {
-          return _match;
-        }
-
-        // For relative image paths, determine the correct directory
-        let imagePath: string;
-
-        if (path.basename(filePath) === "README.md") {
-          // For README files, images are relative to the directory containing the README
-          const readmeDir = path.dirname(
-            path.relative(path.join(contentDirectory, imageVersion), filePath),
-          );
-          imagePath = readmeDir
-            ? path.posix.join(imageVersion, readmeDir, src)
-            : path.posix.join(imageVersion, src);
-        }
-        else {
-          // For regular .md files, images are relative to the file's directory
-          const fileDir = path.dirname(
-            path.relative(path.join(contentDirectory, imageVersion), filePath),
-          );
-          imagePath = fileDir
-            ? path.posix.join(imageVersion, fileDir, src)
-            : path.posix.join(imageVersion, src);
-        }
-
-        const apiPath = `/api/wiki-images/${imagePath}`;
-        return `<img${beforeSrc} src="${apiPath}"${afterSrc}>`;
-      },
-    );
-
-    // Simple regex to add IDs to headings
-    htmlContent = htmlContent.replace(
-      /<h([1-6])>(.*?)<\/h[1-6]>/g,
-      (_match: string, level: string, text: string) => {
-        const id = text
-          .toLowerCase()
-          .replace(/[^\w\s-]/g, "") // Remove special characters
-          .replace(/\s+/g, "-") // Replace spaces with hyphens
-          .trim();
-        return `<h${level} id="${id}"><a href="#${id}" class="heading-anchor">${text}</a></h${level}>`;
-      },
-    );
-
-    // Fix .md links to work with wiki routing
-    const actualVersion = version || (await getDefaultWikiVersion());
-    htmlContent = htmlContent.replace(
-      /<a href="([^"]*\.md)"([^>]*)>/g,
-      (_match: string, href: string, attributes: string) => {
-        // Remove .md extension and create proper wiki URL
-        const cleanHref = href.replace(/\.md$/, "");
-        const wikiUrl = `/wiki/${actualVersion}/${cleanHref}`;
-        return `<a href="${wikiUrl}"${attributes}>`;
-      },
-    );
-
-    // Fix relative links that don't end with .md but should be wiki links
-    htmlContent = htmlContent.replace(
-      /<a href="([^"#][^"]*)"([^>]*)>/g,
-      (_match: string, href: string, attributes: string) => {
-        // Skip if it's already a full URL, fragment link, or wiki link
-        if (
-          href.startsWith("http")
-          || href.startsWith("#")
-          || href.startsWith("/wiki/")
-        ) {
-          return _match;
-        }
-        // Convert relative links to wiki URLs
-        const wikiUrl = `/wiki/${actualVersion}/${href}`;
-        return `<a href="${wikiUrl}"${attributes}>`;
-      },
-    );
-
-    let lastModified: Date;
-    try {
-      const stats = await fs.stat(filePath);
-      lastModified = stats.mtime;
-    }
-    catch (err: any) {
-      if (err.code === "ENOENT") {
-        lastModified = new Date(0); // fallback for missing file
-      }
-      else {
-        throw err;
-      }
-    }
-
-    // Determine title: prefer YAML frontmatter `title`, fallback to slug
-    const pageTitle = data.title ?? getTitleFromSlug(slug);
-
-    // If `permalink` is set in frontmatter, reflect it in the last slug segment
-    const effectiveSlug = [...slug];
-    if (data.permalink && effectiveSlug.length > 0) {
-      effectiveSlug[effectiveSlug.length - 1] = data.permalink;
-    }
-
-    return {
-      slug: effectiveSlug,
-      title: pageTitle,
-      content: htmlContent,
-      frontmatter: { ...data },
-      lastModified,
-      version,
-    };
-  }
-  catch (error) {
-    console.error(
-      `Error reading wiki page ${slug?.join("/") || "unknown"} for version ${version}:`,
-      error,
-    );
+  if (!file)
     return null;
+
+  const parsed = parseFrontmatter(file.raw);
+  const content = parsed.content;
+  const data = parsed.data;
+
+  const processedContent = await unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkRehype)
+    .use(rehypePrettyCode, {
+      theme: {
+        dark: "github-dark",
+        light: "github-light",
+      },
+    })
+    .use(rehypeCodeGroup, {})
+    .use(rehypeStringify)
+    .process(content);
+
+  let htmlContent = processedContent.toString();
+
+  htmlContent = htmlContent.replace(/<head>[\s\S]*?<\/head>/, "");
+  htmlContent = transformCallouts(htmlContent);
+  htmlContent = addHeadingAnchors(htmlContent);
+  htmlContent = fixWikiLinks(htmlContent, actualVersion);
+
+  const effectiveSlug = [...decodedSlug];
+  if (data.permalink && effectiveSlug.length > 0) {
+    effectiveSlug[effectiveSlug.length - 1] = data.permalink;
   }
+
+  return {
+    slug: effectiveSlug,
+    title: data.title ?? getTitleFromSlug(decodedSlug),
+    content: htmlContent,
+    frontmatter: { ...data },
+    lastModified: new Date(0),
+    version: actualVersion,
+  };
 }
 
 export async function getWikiNavigationWithVersion(
   version?: string,
 ): Promise<WikiNavItem[]> {
-  // Get the default version if none specified
   const actualVersion = version || (await getDefaultWikiVersion());
-  const versionDir = path.join(contentDirectory, actualVersion);
+  const files = wikiFiles.filter(file => file.version === actualVersion);
 
-  const buildNavigation = async (
-    dir: string,
-    basePath: string[] = [],
-  ): Promise<WikiNavItem[]> => {
-    const items: WikiNavItem[] = [];
+  const root: WikiNavItem[] = [];
 
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
+  for (const file of files) {
+    const slug = getEffectiveSlug(file);
+    const dirs = slug.slice(0, -1);
+    let level = root;
 
-      for (const entry of entries) {
-        if (
-          entry.name.startsWith(".")
-          || entry.name === "index.html"
-          || entry.name === "script.js"
-          || entry.name === "style.css"
-          || entry.name === "favicon.ico"
-        ) {
-          continue;
-        }
+    for (let i = 0; i < dirs.length; i++) {
+      const dirSlug = dirs.slice(0, i + 1);
+      let dir = level.find(
+        item => !item.isFile && item.slug.join("/") === dirSlug.join("/"),
+      );
 
-        if (entry.isDirectory()) {
-          const children = await buildNavigation(path.join(dir, entry.name), [
-            ...basePath,
-            entry.name,
-          ]);
-          // Only include directories that have markdown files (either directly or in subdirectories)
-          if (children.length > 0) {
-            items.push({
-              title: formatTitle(entry.name),
-              slug: [...basePath, entry.name],
-              isFile: false,
-              children,
-            });
-          }
-        }
-        else if (entry.name.endsWith(".md")) {
-          const fsPath = path.join(dir, entry.name);
-          let sidebarTitleOverride: string | undefined;
-          let permalinkOverride: string | undefined;
-
-          try {
-            const raw = await fs.readFile(fsPath, "utf8");
-            const front = matter(raw).data as WikiFrontmatter;
-            sidebarTitleOverride = front.sidebarTitle ?? front.title;
-            permalinkOverride = front.permalink;
-          }
-          catch {
-            // ignore file read errors, navigation will still render
-          }
-
-          const fileBase = entry.name.replace(".md", "");
-          const finalLastSegment
-            = permalinkOverride !== undefined ? permalinkOverride : fileBase;
-
-          const slug = [...basePath, finalLastSegment];
-          items.push({
-            title:
-              sidebarTitleOverride !== undefined
-                ? sidebarTitleOverride
-                : formatTitle(fileBase),
-            slug,
-            isFile: true,
-          });
-        }
+      if (!dir) {
+        dir = {
+          title: formatTitle(dirs[i]),
+          slug: dirSlug,
+          isFile: false,
+          children: [],
+        };
+        level.push(dir);
       }
-    }
-    catch (error) {
-      console.error(`Error reading directory ${dir}:`, error);
+
+      level = dir.children ?? [];
     }
 
-    return items.sort((a, b) => {
-      // Put README files first
-      if (
-        a.title.toLowerCase().includes("readme")
-        && !b.title.toLowerCase().includes("readme")
-      ) {
-        return -1;
-      }
-      if (
-        !a.title.toLowerCase().includes("readme")
-        && b.title.toLowerCase().includes("readme")
-      ) {
-        return 1;
-      }
-
-      // Put files before directories
-      if (a.isFile && !b.isFile)
-        return -1;
-      if (!a.isFile && b.isFile)
-        return 1;
-
-      return a.title.localeCompare(b.title);
+    const fileBase = slug[slug.length - 1] ?? "README";
+    level.push({
+      title:
+        typeof file.frontmatter.sidebarTitle === "string"
+          ? file.frontmatter.sidebarTitle
+          : typeof file.frontmatter.title === "string"
+            ? file.frontmatter.title
+            : formatTitle(fileBase),
+      slug,
+      isFile: true,
     });
-  };
-
-  return buildNavigation(versionDir);
-}
-
-async function getFilePathFromSlugWithVersion(
-  slug: string[],
-  version?: string,
-): Promise<string> {
-  const actualVersion = version || (await getDefaultWikiVersion());
-  const versionDir = path.join(contentDirectory, actualVersion);
-
-  const decodedSlug = slug.map(segment => decodeURIComponent(segment));
-
-  if (
-    decodedSlug.length === 0
-    || (decodedSlug.length === 1 && decodedSlug[0] === "")
-  ) {
-    return path.join(versionDir, "README.md");
   }
 
-  const candidateDirect = `${path.resolve(versionDir, ...decodedSlug)}.md`;
-  if (!candidateDirect.startsWith(path.resolve(versionDir))) {
-    throw new Error("Invalid wiki path");
-  }
-
-  try {
-    await fs.access(candidateDirect);
-    return candidateDirect;
-  }
-  catch {
-    // Try README in directory
-    const candidateReadme = path.resolve(
-      versionDir,
-      ...decodedSlug,
-      "README.md",
-    );
-    if (!candidateReadme.startsWith(path.resolve(versionDir))) {
-      throw new Error("Invalid wiki path");
-    }
-    try {
-      await fs.access(candidateReadme);
-      return candidateReadme;
-    }
-    catch {
-      // FALLBACK: last segment might be a PERMALINK pointing to some file in this directory
-      const parentDir = path.resolve(versionDir, ...decodedSlug.slice(0, -1));
-      if (!parentDir.startsWith(path.resolve(versionDir))) {
-        throw new Error("Invalid wiki path");
-      }
-      try {
-        const entries = await fs.readdir(parentDir, {
-          withFileTypes: true,
-        });
-        for (const e of entries) {
-          if (!e.isFile() || !e.name.endsWith(".md"))
-            continue;
-          const p = path.join(parentDir, e.name);
-          try {
-            const raw = await fs.readFile(p, "utf8");
-            const front = matter(raw).data as WikiFrontmatter;
-            if (front.permalink === decodedSlug[decodedSlug.length - 1]) {
-              return p;
-            }
-          }
-          catch {
-            // ignore a single file read error and continue
-          }
+  const sortItems = (items: WikiNavItem[]): WikiNavItem[] =>
+    items
+      .map(item => ({
+        ...item,
+        children: item.children ? sortItems(item.children) : undefined,
+      }))
+      .sort((a, b) => {
+        if (
+          a.title.toLowerCase().includes("readme")
+          && !b.title.toLowerCase().includes("readme")
+        ) {
+          return -1;
         }
-      }
-      catch {
-        // parent directory not readable or doesn't exist
-      }
-    }
-  }
+        if (
+          !a.title.toLowerCase().includes("readme")
+          && b.title.toLowerCase().includes("readme")
+        ) {
+          return 1;
+        }
+        if (a.isFile && !b.isFile)
+          return -1;
+        if (!a.isFile && b.isFile)
+          return 1;
+        return a.title.localeCompare(b.title);
+      });
 
-  // Default to README inside the target path if everything above failed
-  return path.resolve(versionDir, ...decodedSlug, "README.md");
-}
-
-function formatVersionName(slug: string): string {
-  // Convert kebab-case or snake_case to Title Case
-  return slug.replace(/[-_]/g, " ");
-}
-
-function getTitleFromSlug(slug: string[]): string {
-  if (slug.length === 0)
-    return "README";
-  // Decode the last segment to handle URL-encoded characters
-  const lastSegment = decodeURIComponent(slug[slug.length - 1]);
-  return formatTitle(lastSegment);
-}
-
-function formatTitle(name: string): string {
-  // Convert kebab-case or snake_case to Title Case
-  return name.replace(/[-_]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
-}
-
-// Helpers to detect and compare stable tag directory names like "v1.2.3" or "1.2.3.4"
-function isStableTagName(name: string): boolean {
-  if (name.includes("-"))
-    return false; // exclude pre-release markers
-  const normalized = name.startsWith("v") ? name.slice(1) : name;
-  return /^\d+(?:\.\d+)*$/.test(normalized);
-}
-
-function parseTagNumbers(name: string): number[] {
-  const normalized = name.startsWith("v") ? name.slice(1) : name;
-  return normalized.split(".").map(n => Number.parseInt(n, 10) || 0);
-}
-
-function compareTagNamesDesc(a: string, b: string): number {
-  const aNums = parseTagNumbers(a);
-  const bNums = parseTagNumbers(b);
-  const maxLen = Math.max(aNums.length, bNums.length);
-  for (let i = 0; i < maxLen; i++) {
-    const aVal = aNums[i] ?? 0;
-    const bVal = bNums[i] ?? 0;
-    if (aVal !== bVal)
-      return bVal - aVal; // descending: larger first
-  }
-  return 0;
+  return sortItems(root);
 }
 
 export async function searchWikiPages(
@@ -561,7 +266,6 @@ export async function searchWikiPages(
           .indexOf(lowercaseQuery);
         matchPosition = matchIndex;
 
-        // Extract snippet around the match (100 chars before and after)
         const start = Math.max(0, matchIndex - 100);
         const end = Math.min(
           plainTextContent.length,
@@ -569,7 +273,6 @@ export async function searchWikiPages(
         );
         snippet = plainTextContent.substring(start, end);
 
-        // Add ellipsis if we're not at the beginning/end
         if (start > 0)
           snippet = `...${snippet}`;
         if (end < plainTextContent.length)
@@ -592,7 +295,172 @@ export async function searchWikiPages(
   return results;
 }
 
-// Helper function to strip HTML tags
+export async function getAllWikiPagesForVersion(
+  version?: string,
+): Promise<WikiPage[]> {
+  const actualVersion = version || (await getDefaultWikiVersion());
+  const pages: WikiPage[] = [];
+
+  for (const file of wikiFiles.filter(file => file.version === actualVersion)) {
+    const page = await getWikiPageWithVersion(file.slug, actualVersion);
+    if (page) {
+      pages.push(page);
+    }
+  }
+
+  return pages;
+}
+
+function findWikiFile(slug: string[], version: string): WikiFile | undefined {
+  const files = wikiFiles.filter(file => file.version === version);
+  const candidates = getSlugCandidates(slug);
+
+  for (const candidate of candidates) {
+    const direct = files.find(file => slugsEqual(file.slug, candidate));
+    if (direct)
+      return direct;
+  }
+
+  const parent = slug.slice(0, -1);
+  const last = slug[slug.length - 1];
+
+  return files.find((file) => {
+    if (!slugsEqual(file.slug.slice(0, -1), parent))
+      return false;
+    return file.frontmatter.permalink === last;
+  });
+}
+
+function getSlugCandidates(slug: string[]): string[][] {
+  if (slug.length === 0 || (slug.length === 1 && slug[0] === "")) {
+    return [["README"]];
+  }
+
+  return [slug, [...slug, "README"]];
+}
+
+function normalizeSlug(slug: string[]): string[] {
+  return slug
+    .filter(segment => segment !== "")
+    .map(segment => decodeURIComponent(segment));
+}
+
+function slugsEqual(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((part, index) => part === b[index]);
+}
+
+function getEffectiveSlug(file: WikiFile): string[] {
+  const slug = [...file.slug];
+  if (file.frontmatter.permalink && slug.length > 0) {
+    slug[slug.length - 1] = file.frontmatter.permalink;
+  }
+  return slug;
+}
+
+function transformCallouts(htmlContent: string): string {
+  return htmlContent.replace(
+    /<blockquote>\s*<p>\s*\[!(WARNING|INFO|NOTE|TIP|IMPORTANT|CAUTION)\]\s*(.*?)<\/p>\s*([\s\S]*?)<\/blockquote>/g,
+    (_match: string, type: string, title: string, content: string) => {
+      const typeClass = type.toLowerCase();
+      const icon = getCalloutIcon(type);
+      const titleText = title.trim() || type;
+
+      let cleanContent = content.trim();
+      if (cleanContent.startsWith("<p>") && cleanContent.endsWith("</p>")) {
+        cleanContent = cleanContent.slice(3, -4);
+      }
+
+      return `<div class="callout callout-${typeClass}">
+        <div class="callout-header">
+          <span class="callout-icon">${icon}</span>
+          <span class="callout-title">${titleText}</span>
+        </div>
+        <div class="callout-content">${cleanContent}</div>
+      </div>`;
+    },
+  );
+}
+
+function addHeadingAnchors(htmlContent: string): string {
+  return htmlContent.replace(
+    /<h([1-6])>(.*?)<\/h[1-6]>/g,
+    (_match: string, level: string, text: string) => {
+      const id = text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .trim();
+      return `<h${level} id="${id}"><a href="#${id}" class="heading-anchor">${text}</a></h${level}>`;
+    },
+  );
+}
+
+function fixWikiLinks(htmlContent: string, version: string): string {
+  const mdLinksFixed = htmlContent.replace(
+    /<a href="([^"]*\.md)"([^>]*)>/g,
+    (_match: string, href: string, attributes: string) => {
+      const cleanHref = href.replace(/\.md$/, "");
+      return `<a href="/wiki/${version}/${cleanHref}"${attributes}>`;
+    },
+  );
+
+  return mdLinksFixed.replace(
+    /<a href="([^"#][^"]*)"([^>]*)>/g,
+    (_match: string, href: string, attributes: string) => {
+      if (
+        href.startsWith("http")
+        || href.startsWith("#")
+        || href.startsWith("/wiki/")
+        || href.startsWith("mailto:")
+      ) {
+        return _match;
+      }
+
+      return `<a href="/wiki/${version}/${href}"${attributes}>`;
+    },
+  );
+}
+
+function formatVersionName(slug: string): string {
+  return slug.replace(/[-_]/g, " ");
+}
+
+function getTitleFromSlug(slug: string[]): string {
+  if (slug.length === 0)
+    return "README";
+  const lastSegment = decodeURIComponent(slug[slug.length - 1]);
+  return formatTitle(lastSegment);
+}
+
+function formatTitle(name: string): string {
+  return name.replace(/[-_]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function isStableTagName(name: string): boolean {
+  if (name.includes("-"))
+    return false;
+  const normalized = name.startsWith("v") ? name.slice(1) : name;
+  return /^\d+(?:\.\d+)*$/.test(normalized);
+}
+
+function parseTagNumbers(name: string): number[] {
+  const normalized = name.startsWith("v") ? name.slice(1) : name;
+  return normalized.split(".").map(n => Number.parseInt(n, 10) || 0);
+}
+
+function compareTagNamesDesc(a: string, b: string): number {
+  const aNums = parseTagNumbers(a);
+  const bNums = parseTagNumbers(b);
+  const maxLen = Math.max(aNums.length, bNums.length);
+  for (let i = 0; i < maxLen; i++) {
+    const aVal = aNums[i] ?? 0;
+    const bVal = bNums[i] ?? 0;
+    if (aVal !== bVal)
+      return bVal - aVal;
+  }
+  return 0;
+}
+
 function stripHtml(html: string): string {
   return html
     .replace(/<[^>]*>/g, "")
@@ -600,68 +468,64 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-// Helper function to highlight search terms
 function highlightText(text: string, query: string): string {
   const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(`(${escapedQuery})`, "gi");
   return text.replace(regex, "<mark>$1</mark>");
 }
 
-export async function getAllWikiPagesForVersion(
-  version?: string,
-): Promise<WikiPage[]> {
-  const pages: WikiPage[] = [];
-  // Get the default version if none specified
-  const actualVersion = version || (await getDefaultWikiVersion());
-  const versionDir = path.join(contentDirectory, actualVersion);
+function parseFrontmatter(raw: string): {
+  data: WikiFrontmatter;
+  content: string;
+} {
+  if (!raw.startsWith("---")) {
+    return { data: {}, content: raw };
+  }
 
-  async function walkDirectory(
-    dir: string,
-    basePath: string[] = [],
-  ): Promise<void> {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
+  const end = raw.indexOf("\n---", 3);
+  if (end === -1) {
+    return { data: {}, content: raw };
+  }
 
-      for (const entry of entries) {
-        if (entry.isDirectory()) {
-          await walkDirectory(path.join(dir, entry.name), [
-            ...basePath,
-            entry.name,
-          ]);
-        }
-        else if (entry.name.endsWith(".md")) {
-          const slug = [...basePath, entry.name.replace(".md", "")];
-          const page = await getWikiPageWithVersion(slug, actualVersion);
-          if (page) {
-            pages.push(page);
-          }
-        }
-      }
-    }
-    catch (error) {
-      console.error(`Error walking directory ${dir}:`, error);
+  const frontmatter = raw.slice(3, end).trim();
+  const contentStart = raw.indexOf("\n", end + 4);
+  const content = contentStart === -1 ? "" : raw.slice(contentStart + 1);
+  const data: WikiFrontmatter = {};
+
+  for (const line of frontmatter.split("\n")) {
+    const separator = line.indexOf(":");
+    if (separator === -1)
+      continue;
+
+    const key = line.slice(0, separator).trim();
+    const value = line
+      .slice(separator + 1)
+      .trim()
+      .replace(/^["']|["']$/g, "");
+
+    if (key) {
+      data[key] = value;
     }
   }
 
-  await walkDirectory(versionDir);
-  return pages;
+  return { data, content };
 }
 
 function getCalloutIcon(type: string): string {
   switch (type.toUpperCase()) {
     case "WARNING":
-      return "⚠️";
+      return "!";
     case "INFO":
-      return "ℹ️";
+      return "i";
     case "NOTE":
-      return "📝";
+      return "N";
     case "TIP":
-      return "💡";
+      return "Tip";
     case "IMPORTANT":
-      return "❗";
+      return "!";
     case "CAUTION":
-      return "🚨";
+      return "!";
     default:
-      return "ℹ️";
+      return "i";
   }
 }

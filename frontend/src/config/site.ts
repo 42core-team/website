@@ -11,7 +11,7 @@ export const siteConfig = {
     },
     {
       label: "Wiki",
-      href: "/docs",
+      href: "/wiki",
     },
     {
       label: "About us",

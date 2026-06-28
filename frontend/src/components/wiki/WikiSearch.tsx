@@ -11,6 +11,7 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { searchWikiPages } from "@/lib/markdown";
 import styles from "./WikiSearch.module.css";
 
 interface WikiSearchProps {
@@ -39,12 +40,7 @@ export function WikiSearch({
       }
       setIsLoading(true);
       try {
-        const response = await fetch(
-          `/api/wiki/search?q=${encodeURIComponent(activeQuery)}&version=${encodeURIComponent(currentVersion)}`,
-        );
-        if (!response.ok)
-          throw new Error(`Search failed: ${response.status}`);
-        const searchResults = await response.json();
+        const searchResults = await searchWikiPages(activeQuery, currentVersion);
         if (!aborted) {
           setResults(searchResults);
           onResults?.(searchResults);

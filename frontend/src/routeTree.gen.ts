@@ -15,8 +15,11 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ImpressumRouteImport } from './routes/impressum'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as DatenschutzRouteImport } from './routes/datenschutz'
+import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WikiSplatRouteImport } from './routes/wiki.$'
+import { Route as EventsCreateRouteImport } from './routes/events/create'
 import { Route as EventsIdRouteImport } from './routes/events/$id'
 import { Route as EventsIdTeamsRouteImport } from './routes/events/$id/teams'
 import { Route as EventsIdQueueMatchesRouteImport } from './routes/events/$id/queue-matches'
@@ -58,6 +61,11 @@ const DatenschutzRoute = DatenschutzRouteImport.update({
   path: '/datenschutz',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -67,6 +75,16 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const WikiSplatRoute = WikiSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => WikiRoute,
+} as any)
+const EventsCreateRoute = EventsCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => EventsRoute,
 } as any)
 const EventsIdRoute = EventsIdRouteImport.update({
   id: '/$id',
@@ -122,13 +140,16 @@ const EventsIdMatchMatchIdRoute = EventsIdMatchMatchIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/changelog': typeof ChangelogRoute
   '/datenschutz': typeof DatenschutzRoute
   '/events': typeof EventsRouteWithChildren
   '/impressum': typeof ImpressumRoute
   '/profile': typeof ProfileRoute
   '/rush': typeof RushRoute
-  '/wiki': typeof WikiRoute
+  '/wiki': typeof WikiRouteWithChildren
   '/events/$id': typeof EventsIdRouteWithChildren
+  '/events/create': typeof EventsCreateRoute
+  '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
   '/events/$id/groups': typeof EventsIdGroupsRoute
@@ -142,13 +163,16 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/changelog': typeof ChangelogRoute
   '/datenschutz': typeof DatenschutzRoute
   '/events': typeof EventsRouteWithChildren
   '/impressum': typeof ImpressumRoute
   '/profile': typeof ProfileRoute
   '/rush': typeof RushRoute
-  '/wiki': typeof WikiRoute
+  '/wiki': typeof WikiRouteWithChildren
   '/events/$id': typeof EventsIdRouteWithChildren
+  '/events/create': typeof EventsCreateRoute
+  '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
   '/events/$id/groups': typeof EventsIdGroupsRoute
@@ -163,13 +187,16 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/changelog': typeof ChangelogRoute
   '/datenschutz': typeof DatenschutzRoute
   '/events': typeof EventsRouteWithChildren
   '/impressum': typeof ImpressumRoute
   '/profile': typeof ProfileRoute
   '/rush': typeof RushRoute
-  '/wiki': typeof WikiRoute
+  '/wiki': typeof WikiRouteWithChildren
   '/events/$id': typeof EventsIdRouteWithChildren
+  '/events/create': typeof EventsCreateRoute
+  '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
   '/events/$id/groups': typeof EventsIdGroupsRoute
@@ -185,6 +212,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/changelog'
     | '/datenschutz'
     | '/events'
     | '/impressum'
@@ -192,6 +220,8 @@ export interface FileRouteTypes {
     | '/rush'
     | '/wiki'
     | '/events/$id'
+    | '/events/create'
+    | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
     | '/events/$id/groups'
@@ -205,6 +235,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/changelog'
     | '/datenschutz'
     | '/events'
     | '/impressum'
@@ -212,6 +243,8 @@ export interface FileRouteTypes {
     | '/rush'
     | '/wiki'
     | '/events/$id'
+    | '/events/create'
+    | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
     | '/events/$id/groups'
@@ -225,6 +258,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/changelog'
     | '/datenschutz'
     | '/events'
     | '/impressum'
@@ -232,6 +266,8 @@ export interface FileRouteTypes {
     | '/rush'
     | '/wiki'
     | '/events/$id'
+    | '/events/create'
+    | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
     | '/events/$id/groups'
@@ -246,12 +282,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  ChangelogRoute: typeof ChangelogRoute
   DatenschutzRoute: typeof DatenschutzRoute
   EventsRoute: typeof EventsRouteWithChildren
   ImpressumRoute: typeof ImpressumRoute
   ProfileRoute: typeof ProfileRoute
   RushRoute: typeof RushRoute
-  WikiRoute: typeof WikiRoute
+  WikiRoute: typeof WikiRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -298,6 +335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DatenschutzRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -311,6 +355,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/wiki/$': {
+      id: '/wiki/$'
+      path: '/$'
+      fullPath: '/wiki/$'
+      preLoaderRoute: typeof WikiSplatRouteImport
+      parentRoute: typeof WikiRoute
+    }
+    '/events/create': {
+      id: '/events/create'
+      path: '/create'
+      fullPath: '/events/create'
+      preLoaderRoute: typeof EventsCreateRouteImport
+      parentRoute: typeof EventsRoute
     }
     '/events/$id': {
       id: '/events/$id'
@@ -425,34 +483,38 @@ const EventsIdRouteWithChildren = EventsIdRoute._addFileChildren(
 
 interface EventsRouteChildren {
   EventsIdRoute: typeof EventsIdRouteWithChildren
+  EventsCreateRoute: typeof EventsCreateRoute
 }
 
 const EventsRouteChildren: EventsRouteChildren = {
   EventsIdRoute: EventsIdRouteWithChildren,
+  EventsCreateRoute: EventsCreateRoute,
 }
 
 const EventsRouteWithChildren =
   EventsRoute._addFileChildren(EventsRouteChildren)
 
+interface WikiRouteChildren {
+  WikiSplatRoute: typeof WikiSplatRoute
+}
+
+const WikiRouteChildren: WikiRouteChildren = {
+  WikiSplatRoute: WikiSplatRoute,
+}
+
+const WikiRouteWithChildren = WikiRoute._addFileChildren(WikiRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  ChangelogRoute: ChangelogRoute,
   DatenschutzRoute: DatenschutzRoute,
   EventsRoute: EventsRouteWithChildren,
   ImpressumRoute: ImpressumRoute,
   ProfileRoute: ProfileRoute,
   RushRoute: RushRoute,
-  WikiRoute: WikiRoute,
+  WikiRoute: WikiRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

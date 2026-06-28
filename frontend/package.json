@@ -6,6 +6,8 @@
     "#/*": "./src/*"
   },
   "scripts": {
+    "prebuild": "node scripts/clone-wiki-branches.cjs && node scripts/fetch-releases.cjs",
+    "clone:wiki": "node scripts/clone-wiki-branches.cjs",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
     "build": "vite build",
