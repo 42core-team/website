@@ -296,7 +296,8 @@ export function StarterTemplatesManagement({
                     <TableCell className="align-top">
                       <form.Field
                         name="name"
-                        children={field => (
+                      >
+                        {field => (
                           <div className="space-y-1">
                             <Input
                               id={field.name}
@@ -324,12 +325,13 @@ export function StarterTemplatesManagement({
                             )}
                           </div>
                         )}
-                      />
+                      </form.Field>
                     </TableCell>
                     <TableCell className="align-top">
                       <form.Field
                         name="basePath"
-                        children={field => (
+                      >
+                        {field => (
                           <div className="space-y-1">
                             <Input
                               id={field.name}
@@ -357,12 +359,13 @@ export function StarterTemplatesManagement({
                             )}
                           </div>
                         )}
-                      />
+                      </form.Field>
                     </TableCell>
                     <TableCell className="align-top">
                       <form.Field
                         name="myCoreBotDockerImage"
-                        children={field => (
+                      >
+                        {field => (
                           <div className="space-y-1">
                             <Input
                               id={field.name}
@@ -390,12 +393,13 @@ export function StarterTemplatesManagement({
                             )}
                           </div>
                         )}
-                      />
+                      </form.Field>
                     </TableCell>
                     <TableCell className="text-right align-top">
                       <form.Subscribe
                         selector={state => [state.canSubmit, state.isSubmitting]}
-                        children={([canSubmit, isSubmitting]) => (
+                      >
+                        {([canSubmit, isSubmitting]) => (
                           <Button
                             size="sm"
                             variant={!canSubmit ? "destructive" : "default"}
@@ -413,7 +417,7 @@ export function StarterTemplatesManagement({
                             Create
                           </Button>
                         )}
-                      />
+                      </form.Subscribe>
                     </TableCell>
                   </TableRow>
                 </TableBody>

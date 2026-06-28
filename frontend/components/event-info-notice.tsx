@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { isActionError } from "@/app/actions/errors";
 import { joinEvent } from "@/app/actions/event";
@@ -27,7 +27,7 @@ export default function EventInfoNotice({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [now, setNow] = useState<Date>(new Date());
-  const startsAt = new Date(startDate);
+  const startsAt = useMemo(() => new Date(startDate), [startDate]);
   const hasStarted = startsAt <= now;
   const didRefreshRef = useRef(false);
 

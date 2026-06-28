@@ -1,2 +1,4 @@
 // empty for eslint only
-export default {};
+const config = {};
+
+export default config;

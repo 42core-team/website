@@ -3,7 +3,6 @@ import type { AxiosError } from "axios";
 import type { SyntheticEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Info, Loader2, Terminal } from "lucide-react";
-import { usePlausible } from "next-plausible";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import axiosInstance from "@/app/actions/axios";
@@ -165,7 +164,7 @@ export default function TeamCreationForm() {
                   </h3>
                   <p className="text-xs leading-relaxed text-muted-foreground">
                     Invite your team members, push your changes, and start
-                    testing your bot's logic in the queue.
+                    testing your bot&apos;s logic in the queue.
                   </p>
                 </div>
               </div>
@@ -191,7 +190,7 @@ export default function TeamCreationForm() {
                         </p>
                       </TooltipContent>
                     </Tooltip>
-                    <span>Templates can't be changed later.</span>
+                    <span>Templates can&apos;t be changed later.</span>
                   </div>
                 </TooltipProvider>
               </div>

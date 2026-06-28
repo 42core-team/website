@@ -71,7 +71,7 @@ export default function TeamView({ eventId, canCreateTeam }: TeamViewProps) {
           <AlertCircleIcon />
           <AlertTitle>Something went wrong</AlertTitle>
           <AlertDescription>
-            We couldn't load your team information. Please try again later.
+            We couldn&apos;t load your team information. Please try again later.
           </AlertDescription>
         </Alert>
       </div>

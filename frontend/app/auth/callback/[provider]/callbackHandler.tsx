@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { OAUTH_CONFIG, OAUTH_PROVIDERS } from "@/lib/constants/oauth";
 
 /**
@@ -16,7 +16,7 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
   const [error, setError] = useState<string | null>(null);
   const processingRef = useRef<string | null>(null);
 
-  const handleOAuthCallback = async (code: string, state: string) => {
+  const handleOAuthCallback = useCallback(async (code: string, state: string) => {
     if (!session?.user?.id)
       return;
 
@@ -58,7 +58,7 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
     finally {
       setIsProcessing(false);
     }
-  };
+  }, [provider, router, session?.user?.id]);
 
   useEffect(() => {
     // Wait for session to load
@@ -122,7 +122,7 @@ export function OAuthCallbackHandler({ provider }: { provider: string }) {
       // No OAuth parameters, redirect to profile
       router.push("/profile");
     }
-  }, [session?.user?.id, searchParams, router, provider, status]);
+  }, [session?.user?.id, searchParams, router, provider, status, handleOAuthCallback]);
 
   if (error) {
     return (
