@@ -1,0 +1,112 @@
+# Default values for frontend
+replicaCount: 1
+
+image:
+  repository: ghcr.io/42core-team/website_relaunch-frontend
+  pullPolicy: IfNotPresent
+  tag: latest
+
+imagePullSecrets:
+  - name: secret-pull-coregame
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 3000
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+env:
+  NODE_ENV: production
+  # 42 OAuth Client ID - public variable
+  NEXT_PUBLIC_FORTY_TWO_CLIENT_ID: ""
+  # Add other environment variables as needed
+  NEXT_PUBLIC_VISUALIZER_URL: ""
+  NEXT_PUBLIC_BACKEND_PUBLIC_URL: ""
+  # Plausible analytics domain defaults
+  PLAUSIBLE_DOMAIN: coregame.sh
+  PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.sh"
+  AUTH_COOKIE_NAME: "token"
+
+# Secrets - these should be provided via GitHub secrets during deployment
+secrets:
+  NEXTAUTH_SECRET: ""
+  # Next.js Server Actions encryption key for AES-GCM.
+  # Must be a random 32-byte value, encoded as base64 or hex.
+  # Example (base64): openssl rand -base64 32
+  # Example (hex):    openssl rand -hex 32
+  NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ""
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+# Redirect ingress for handling domain redirects (e.g., www to apex domain)
+ingressRedirect:
+  enabled: false
+  className: ""
+  annotations: {}
+  # Source host to redirect from (e.g., www.example.com)
+  fromHost: ""
+  # Destination host to redirect to (e.g., example.com)
+  toHost: ""
+  # HTTP status code for redirect (default: 308 permanent redirect)
+  code: "308"
+  tls:
+    enabled: false
+    secretName: ""
+
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /api/health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
