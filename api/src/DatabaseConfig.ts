@@ -7,6 +7,8 @@ export class DatabaseConfig {
   constructor(private configService: ConfigService) {}
 
   getConfig(migrations: boolean = false): TypeOrmModuleOptions {
+    const databaseUrl = this.getOptionalString("DB_URL");
+    const schema = this.getOptionalString("DB_SCHEMA");
     const config: Record<string, unknown> = {
       type: "postgres",
       host: this.configService.getOrThrow("DB_HOST"),
@@ -14,7 +16,6 @@ export class DatabaseConfig {
       username: this.configService.getOrThrow("DB_USER"),
       password: this.configService.getOrThrow("DB_PASSWORD"),
       database: this.configService.getOrThrow("DB_NAME"),
-      schema: this.configService.getOrThrow("DB_SCHEMA"),
       entities: ["dist/**/*.entity{.ts,.js}"],
       migrations: migrations
         ? [
@@ -23,11 +24,18 @@ export class DatabaseConfig {
           ]
         : [],
       autoLoadEntities: true,
-      url: this.configService.get("DB_URL"),
       synchronize: false,
       timezone: "Z",
       dateStrings: false,
     };
+
+    if (databaseUrl) {
+      config["url"] = databaseUrl;
+    }
+
+    if (schema) {
+      config["schema"] = schema;
+    }
 
     // Add SSL configuration if required
     const requireSSL = this.configService.get("DB_SSL_REQUIRED", "false");
@@ -47,5 +55,10 @@ export class DatabaseConfig {
   createDataSource(): DataSource {
     const config = this.getConfig(true);
     return new DataSource(config as DataSourceOptions);
+  }
+
+  private getOptionalString(key: string): string | undefined {
+    const value = this.configService.get<string>(key);
+    return value?.trim() || undefined;
   }
 }
