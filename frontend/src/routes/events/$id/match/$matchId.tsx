@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { isActionError } from '@/app/actions/errors'
 import { getLogsOfMatch, getMatchById } from '@/app/actions/tournament'
 import MatchLogsDisplay from '@/components/match/MatchLogsDisplay'
 import { Badge } from '@/components/ui/badge'
@@ -15,19 +14,11 @@ function MatchRoute() {
   const { matchId } = Route.useParams()
   const matchQuery = useQuery({
     queryKey: ['match', matchId],
-    queryFn: async () => {
-      const result = await getMatchById(matchId)
-      if (isActionError(result)) throw new Error(result.error)
-      return result
-    },
+    queryFn: async () => getMatchById(matchId),
   })
   const logsQuery = useQuery({
     queryKey: ['match', matchId, 'logs'],
-    queryFn: async () => {
-      const result = await getLogsOfMatch(matchId)
-      if (isActionError(result)) throw new Error(result.error)
-      return result
-    },
+    queryFn: async () => getLogsOfMatch(matchId),
     enabled: Boolean(matchQuery.data),
   })
 

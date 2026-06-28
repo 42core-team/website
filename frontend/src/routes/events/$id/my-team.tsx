@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import axiosInstance from '@/app/actions/axios'
-import { isActionError } from '@/app/actions/errors'
 import { getEventById, getEventGithubOrg } from '@/app/actions/event'
 import {
   acceptTeamInvite,
@@ -33,11 +32,7 @@ function MyTeamRoute() {
 
   const eventQuery = useQuery({
     queryKey: ['event', id],
-    queryFn: async () => {
-      const event = await getEventById(id)
-      if (isActionError(event)) throw new Error(event.error)
-      return event
-    },
+    queryFn: async () => getEventById(id)
   })
   const myTeamQuery = useQuery({
     queryKey: myTeamQueryKey(id),
@@ -55,11 +50,7 @@ function MyTeamRoute() {
   })
   const githubOrgQuery = useQuery({
     queryKey: ['event', id, 'github-org'],
-    queryFn: async () => {
-      const result = await getEventGithubOrg(id)
-      if (isActionError(result)) throw new Error(result.error)
-      return result
-    },
+    queryFn: async () => getEventGithubOrg(id),
     enabled: Boolean(myTeamQuery.data),
   })
   const eventStartedQuery = useQuery({
@@ -90,20 +81,14 @@ function MyTeamRoute() {
   })
 
   const leaveTeamMutation = useMutation({
-    mutationFn: async () => {
-      const result = await leaveTeam(id)
-      if (isActionError(result)) throw new Error(result.error)
-    },
+    mutationFn: async () => leaveTeam(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: myTeamQueryKey(id) })
     },
   })
 
   const acceptInviteMutation = useMutation({
-    mutationFn: async (teamId: string) => {
-      const result = await acceptTeamInvite(id, teamId)
-      if (isActionError(result)) throw new Error(result.error)
-    },
+    mutationFn: async (teamId: string) => acceptTeamInvite(id, teamId),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: myTeamQueryKey(id) }),
@@ -115,10 +100,7 @@ function MyTeamRoute() {
   })
 
   const declineInviteMutation = useMutation({
-    mutationFn: async (teamId: string) => {
-      const result = await declineTeamInvite(id, teamId)
-      if (isActionError(result)) throw new Error(result.error)
-    },
+    mutationFn: async (teamId: string) => declineTeamInvite(id, teamId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ['event', id, 'pending-invites'],

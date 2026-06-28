@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { LogIn, LogOut, Swords, Users } from 'lucide-react'
-import { isActionError } from '@/app/actions/errors'
 import {
   getQueueMatches,
   getQueueState,
@@ -39,10 +38,7 @@ function QueueRoute() {
   })
 
   const joinQueueMutation = useMutation({
-    mutationFn: async () => {
-      const result = await joinQueue(id)
-      if (isActionError(result)) throw new Error(result.error)
-    },
+    mutationFn: async () => joinQueue(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ['event', id, 'queue-state'],
@@ -51,10 +47,7 @@ function QueueRoute() {
   })
 
   const leaveQueueMutation = useMutation({
-    mutationFn: async () => {
-      const result = await leaveQueue(id)
-      if (isActionError(result)) throw new Error(result.error)
-    },
+    mutationFn: async () => leaveQueue(id),
     onSettled: async () => {
       await queryClient.invalidateQueries({
         queryKey: ['event', id, 'queue-state'],

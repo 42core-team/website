@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
-import { isActionError } from '@/app/actions/errors'
 import {
   getEventById,
   getParticipantsCountForEvent,
@@ -52,11 +51,7 @@ function EventRoute() {
 
   const eventQuery = useQuery({
     queryKey: ['event', id],
-    queryFn: async () => {
-      const event = await getEventById(id)
-      if (isActionError(event)) throw new Error(event.error)
-      return event
-    },
+    queryFn: async () => getEventById(id),
   })
 
   const teamsCountQuery = useQuery({
@@ -73,21 +68,13 @@ function EventRoute() {
 
   const isUserRegisteredQuery = useQuery({
     queryKey: ['event', id, 'is-user-registered'],
-    queryFn: async () => {
-      const result = await isUserRegisteredForEvent(id)
-      if (isActionError(result)) throw new Error(result.error)
-      return result
-    },
+    queryFn: async () => isUserRegisteredForEvent(id),
     enabled: Boolean(userId),
   })
 
   const isEventAdminQuery = useQuery({
     queryKey: ['event', id, 'is-event-admin'],
-    queryFn: async () => {
-      const result = await isEventAdmin(id)
-      if (isActionError(result)) throw new Error(result.error)
-      return result
-    },
+    queryFn: async () => isEventAdmin(id),
     enabled: Boolean(userId),
   })
 

@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { isActionError } from '@/app/actions/errors'
 import { joinEvent } from '@/app/actions/event'
 import { myTeamQueryKey } from '@/app/events/my-team-queries'
 import { Badge } from '@/components/ui/badge'
@@ -62,13 +61,7 @@ export default function EventInfoNotice({
   const timeLeftMs = startsAtTime - now
 
   const joinEventMutation = useMutation({
-    mutationFn: async () => {
-      const result = await joinEvent(eventId)
-      if (isActionError(result)) {
-        throw new Error(result.error)
-      }
-      return result
-    },
+    mutationFn: async () => joinEvent(eventId),
     onSuccess: () => {
       toast.success('Successfully joined the event!')
       void queryClient.invalidateQueries({ queryKey: ['event', eventId] })

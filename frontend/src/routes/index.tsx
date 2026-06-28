@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { getCurrentLiveEvent } from "@/app/actions/event";
-import { isActionError } from "@/app/actions/errors";
 import HomePageClient from "@/components/HomePageClient";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -12,13 +11,7 @@ export const Route = createFileRoute("/")({
 function HomeRoute() {
   const currentEventQuery = useQuery({
     queryKey: ["events", "current-live"],
-    queryFn: async () => {
-      const response = await getCurrentLiveEvent();
-      if (isActionError(response)) {
-        throw new Error(response.error);
-      }
-      return response;
-    },
+    queryFn: getCurrentLiveEvent
   });
 
   if (currentEventQuery.isPending) {
