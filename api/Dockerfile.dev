@@ -4,6 +4,7 @@ RUN npm install -g pnpm
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN export CI=true
 RUN pnpm install --frozen-lockfile
 
 COPY . .
@@ -11,5 +12,6 @@ COPY . .
 EXPOSE 4000
 
 ENV NODE_OPTIONS="--max-old-space-size=1536"
+ENV CI=true
 
 CMD ["sh", "-c", "pnpm run migration:run-local && pnpm run start:dev"]
