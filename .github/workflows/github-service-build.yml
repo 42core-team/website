@@ -49,27 +49,70 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          version: 10
+          bun-version: 1.3.11
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
         with:
-          node-version: 25
-          cache: "pnpm"
-          cache-dependency-path: github-service/pnpm-lock.yaml
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('github-service/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
       - name: Install dependencies
         working-directory: ./github-service
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Lint code
         working-directory: ./github-service
         run: |
-          pnpm lint
+          bun run lint
           git diff --exit-code ..
+
+      - name: Cancel workflow on failure
+        if: failure()
+        run: gh run cancel ${{ github.run_id }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  test:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' &&
+       github.head_ref != 'dev' &&
+       github.event.pull_request.base.ref != github.event.pull_request.head.ref)
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('github-service/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        working-directory: ./github-service
+        run: bun install --frozen-lockfile
+
+      - name: Run tests
+        working-directory: ./github-service
+        run: bun run test
 
       - name: Cancel workflow on failure
         if: failure()
@@ -94,6 +137,7 @@ jobs:
       actions: write
     outputs:
       image_tag: ${{ steps.image-tag.outputs.image_tag }}
+      short_sha: ${{ steps.short-sha.outputs.short_sha }}
 
     steps:
       - name: Checkout repository
@@ -124,6 +168,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr,prefix=pr-
+            type=sha,format=short
             type=raw,value=build-${{ github.run_number }}-${{ github.run_attempt }}
 
       - name: Compute image tag
@@ -155,6 +200,16 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      - name: Extract short SHA for deployment
+        id: short-sha
+        run: |
+          SHORT_SHA=$(echo "${{ steps.meta.outputs.tags }}" | grep -o '[a-f0-9]\{7\}' | head -1)
+          if [ -z "$SHORT_SHA" ]; then
+            SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          fi
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "Extracted short SHA: $SHORT_SHA"
+
       - name: Output image details
         run: |
           if [ "${{ github.event_name }}" != "pull_request" ]; then
@@ -166,6 +221,7 @@ jobs:
           echo "**Image:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
           echo "**Tags:** ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo "**Image Tag:** ${{ steps.image-tag.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Short SHA:** ${{ steps.short-sha.outputs.short_sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Event:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           if [ "${{ github.event_name }}" == "pull_request" ]; then
@@ -180,7 +236,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
   deploy:
-    needs: [lint, build]
+    needs: [lint, test, build]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/github-service-deploy.yml
     with:

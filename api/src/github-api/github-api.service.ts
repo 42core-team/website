@@ -6,9 +6,9 @@ import * as CryptoJS from "crypto-js";
 
 @Injectable()
 export class GithubApiService {
-  private githubClient: ClientProxy;
+  private readonly githubClient: ClientProxy;
 
-  constructor(private configService: ConfigService) {
+  constructor(private readonly configService: ConfigService) {
     this.githubClient = ClientProxyFactory.create(
       getRabbitmqConfig(configService, "github_service"),
     );

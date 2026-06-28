@@ -10,6 +10,12 @@ run_lint() {
   (cd "$ROOT/$dir" && pnpm lint)
 }
 
+run_bun_lint() {
+  local dir="$1"
+  echo "==> Running bun run lint in $dir..."
+  (cd "$ROOT/$dir" && bun run lint)
+}
+
 if echo "$STAGED_FILES" | grep -q "^frontend/"; then
   run_lint frontend
 fi
@@ -19,5 +25,5 @@ if echo "$STAGED_FILES" | grep -q "^api/"; then
 fi
 
 if echo "$STAGED_FILES" | grep -q "^github-service/"; then
-  run_lint github-service
+  run_bun_lint github-service
 fi
