@@ -95,7 +95,7 @@ export async function joinEvent(eventId: string): Promise<boolean> {
 }
 
 // Interface for creating events
-interface EventCreateParams {
+export interface EventCreateParams {
   name: string;
   description?: string;
   githubOrg: string;

@@ -1,6 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
-
 export interface Release {
   id: number;
   tag_name: string;
@@ -11,15 +8,15 @@ export interface Release {
   author: string | null;
 }
 
-const DATA_PATH = path.join(process.cwd(), "content/changelog/releases.json");
+const releaseModules = import.meta.glob("../../content/changelog/releases.json", {
+  eager: true,
+  import: "default",
+});
 
 export function getAllReleases(): Release[] {
-  if (!fs.existsSync(DATA_PATH))
-    return [];
-  const raw = fs.readFileSync(DATA_PATH, "utf8");
-  const arr: Release[] = JSON.parse(raw);
+  const arr = (Object.values(releaseModules)[0] ?? []) as Release[];
   // defensive sort (newest first)
-  return arr.sort(
+  return [...arr].sort(
     (a, b) =>
       new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
   );
