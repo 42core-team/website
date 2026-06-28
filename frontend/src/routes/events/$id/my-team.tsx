@@ -1,6 +1,7 @@
 import type { TeamMember } from '@/app/actions/team'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
+import type { AxiosError } from 'axios'
 import { useState } from 'react'
 import axiosInstance from '@/app/actions/axios'
 import { getEventById, getEventGithubOrg } from '@/app/actions/event'
@@ -61,11 +62,14 @@ function MyTeamRoute() {
 
   const validation = validateTeamName(newTeamName)
   const createTeamMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (starterTemplateId?: string) => {
       if (!validation.isValid) {
         throw new Error(validation.error)
       }
-      await axiosInstance.post(`team/event/${id}/create`, { name: newTeamName })
+      await axiosInstance.post(`team/event/${id}/create`, {
+        name: newTeamName,
+        starterTemplateId,
+      })
     },
     onMutate: () => setErrorMessage(null),
     onSuccess: async () => {
@@ -77,7 +81,22 @@ function MyTeamRoute() {
         }),
       ])
     },
-    onError: (error: Error) => setErrorMessage(error.message),
+    onError: (error: Error | AxiosError<{ message?: string }>) => {
+      if ('response' in error && error.response?.status === 400) {
+        setErrorMessage(
+          error.response.data.message ??
+            'A team with this name already exists. Please choose a different name.',
+        )
+        return
+      }
+
+      if (error.message && !error.message.startsWith('An unexpected')) {
+        setErrorMessage(error.message)
+        return
+      }
+
+      setErrorMessage('An unexpected error occurred while creating the team.')
+    },
   })
 
   const leaveTeamMutation = useMutation({
@@ -144,10 +163,11 @@ function MyTeamRoute() {
       ) : eventQuery.data.canCreateTeam ? (
         <div className="space-y-6">
           <TeamCreationSection
+            eventId={id}
             newTeamName={newTeamName}
             setNewTeamName={setNewTeamName}
-            handleCreateTeam={async () => {
-              await createTeamMutation.mutateAsync()
+            handleCreateTeam={async (starterTemplateId) => {
+              await createTeamMutation.mutateAsync(starterTemplateId)
             }}
             isLoading={createTeamMutation.isPending}
             errorMessage={errorMessage}
