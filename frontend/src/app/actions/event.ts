@@ -174,11 +174,13 @@ export async function updateEventSettings(
 
 export async function getEventAdmins(
   eventId: string,
-): Promise<{ id: string; username: string; name: string }[]> {
+): Promise<
+  { id: string; username: string; name: string; profilePicture?: string }[]
+> {
   return (
-    await axiosInstance.get<{ id: string; username: string; name: string }[]>(
-      `event/${eventId}/admins`,
-    )
+    await axiosInstance.get<
+      { id: string; username: string; name: string; profilePicture?: string }[]
+    >(`event/${eventId}/admins`)
   ).data;
 }
 
