@@ -4,18 +4,38 @@ multi-ecosystem-groups:
   github-actions:
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore"
+      include: "scope"
   api:
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore"
+      include: "scope"
   frontend:
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore"
+      include: "scope"
   github-service:
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore"
+      include: "scope"
   k8s-service:
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore"
+      include: "scope"
 
 updates:
   - package-ecosystem: "github-actions"
@@ -23,10 +43,6 @@ updates:
     multi-ecosystem-group: "github-actions"
     patterns:
       - "*"
-    open-pull-requests-limit: 2
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels:
       - "dependencies"
       - "github-actions"
@@ -48,10 +64,6 @@ updates:
     multi-ecosystem-group: "api"
     patterns:
       - "*"
-    open-pull-requests-limit: 2
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels:
       - "dependencies"
       - "api"
@@ -73,10 +85,6 @@ updates:
     multi-ecosystem-group: "api"
     patterns:
       - "*"
-    open-pull-requests-limit: 2
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels:
       - "dependencies"
       - "docker"
@@ -99,10 +107,6 @@ updates:
     multi-ecosystem-group: "frontend"
     patterns:
       - "*"
-    open-pull-requests-limit: 2
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels:
       - "dependencies"
       - "frontend"
@@ -124,10 +128,6 @@ updates:
     multi-ecosystem-group: "frontend"
     patterns:
       - "*"
-    open-pull-requests-limit: 2
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels:
       - "dependencies"
       - "docker"
@@ -150,10 +150,6 @@ updates:
     multi-ecosystem-group: "github-service"
     patterns:
       - "*"
-    open-pull-requests-limit: 2
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels:
       - "dependencies"
       - "github-service"
@@ -175,10 +171,6 @@ updates:
     multi-ecosystem-group: "github-service"
     patterns:
       - "*"
-    open-pull-requests-limit: 2
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels:
       - "dependencies"
       - "docker"
@@ -201,10 +193,6 @@ updates:
     multi-ecosystem-group: "k8s-service"
     patterns:
       - "*"
-    open-pull-requests-limit: 2
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels:
       - "dependencies"
       - "k8s-service"
@@ -226,10 +214,6 @@ updates:
     multi-ecosystem-group: "k8s-service"
     patterns:
       - "*"
-    open-pull-requests-limit: 2
-    commit-message:
-      prefix: "chore"
-      include: "scope"
     labels:
       - "dependencies"
       - "docker"
