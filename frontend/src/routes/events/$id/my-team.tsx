@@ -13,8 +13,13 @@ import {
   hasEventStarted,
   leaveTeam,
 } from '@/app/actions/team'
+import { getMatchesForTeam } from '@/app/actions/tournament'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
-import { TeamCreationSection, TeamInfoSection } from '@/components/team'
+import {
+  TeamCreationSection,
+  TeamInfoSection,
+  TeamMatchHistory,
+} from '@/components/team'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,7 +38,7 @@ function MyTeamRoute() {
 
   const eventQuery = useQuery({
     queryKey: ['event', id],
-    queryFn: async () => getEventById(id)
+    queryFn: async () => getEventById(id),
   })
   const myTeamQuery = useQuery({
     queryKey: myTeamQueryKey(id),
@@ -57,6 +62,11 @@ function MyTeamRoute() {
   const eventStartedQuery = useQuery({
     queryKey: ['team', myTeamQuery.data?.id, 'event-started'],
     queryFn: () => hasEventStarted(myTeamQuery.data!.id),
+    enabled: Boolean(myTeamQuery.data?.id),
+  })
+  const matchesQuery = useQuery({
+    queryKey: ['team', myTeamQuery.data?.id, 'matches'],
+    queryFn: () => getMatchesForTeam(myTeamQuery.data!.id),
     enabled: Boolean(myTeamQuery.data?.id),
   })
 
@@ -149,17 +159,25 @@ function MyTeamRoute() {
   return (
     <main className="container mx-auto max-w-4xl px-4 py-8">
       {myTeamQuery.data ? (
-        <TeamInfoSection
-          myTeam={myTeamQuery.data}
-          onLeaveTeam={async () => {
-            await leaveTeamMutation.mutateAsync()
-            return true
-          }}
-          isLeaving={leaveTeamMutation.isPending}
-          teamMembers={teamMembersQuery.data ?? []}
-          githubOrg={githubOrgQuery.data ?? ''}
-          isRepoPending={!eventStartedQuery.data || !githubOrgQuery.data}
-        />
+        <div className="space-y-6">
+          <TeamInfoSection
+            myTeam={myTeamQuery.data}
+            onLeaveTeam={async () => {
+              await leaveTeamMutation.mutateAsync()
+              return true
+            }}
+            isLeaving={leaveTeamMutation.isPending}
+            teamMembers={teamMembersQuery.data ?? []}
+            githubOrg={githubOrgQuery.data ?? ''}
+            isRepoPending={!eventStartedQuery.data || !githubOrgQuery.data}
+          />
+          <TeamMatchHistory
+            eventId={id}
+            matches={matchesQuery.data ?? []}
+            isLoading={matchesQuery.isPending}
+            isError={matchesQuery.isError}
+          />
+        </div>
       ) : eventQuery.data.canCreateTeam ? (
         <div className="space-y-6">
           <TeamCreationSection

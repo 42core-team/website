@@ -1,8 +1,12 @@
 import type { Team } from '@/app/actions/team'
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useLocation,
+} from '@tanstack/react-router'
 import { getTeamsForEventTable } from '@/app/actions/team'
-import Link from '@/components/app-link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import {
@@ -20,10 +24,19 @@ export const Route = createFileRoute('/events/$id/teams')({
 
 function TeamsRoute() {
   const { id } = Route.useParams()
+  const isTeamsOverview = useLocation({
+    select: (location) =>
+      location.pathname === `/events/${id}/teams` ||
+      location.pathname === `/events/${id}/teams/`,
+  })
   const teamsQuery = useQuery({
     queryKey: ['event', id, 'teams'],
     queryFn: () => getTeamsForEventTable(id),
   })
+
+  if (!isTeamsOverview) {
+    return <Outlet />
+  }
 
   if (teamsQuery.isPending) {
     return (
@@ -71,7 +84,11 @@ function TeamsRoute() {
                 teamsQuery.data.map((team: Team) => (
                   <TableRow key={team.id} className="hover:bg-muted/50">
                     <TableCell className="font-medium">
-                      <Link href={`/events/${id}/teams/${team.id}`}>
+                      <Link
+                        to="/events/$id/teams/$teamId"
+                        params={{ id, teamId: team.id }}
+                        className="hover:underline"
+                      >
                         {team.name}
                       </Link>
                     </TableCell>
