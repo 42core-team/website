@@ -1,37 +1,26 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import antfu from "@antfu/eslint-config";
-import tailwind from "eslint-plugin-tailwindcss";
+import { defineConfig, globalIgnores } from 'eslint/config'
+import nextVitals from 'eslint-config-next/core-web-vitals'
 
-const configDir = path.dirname(fileURLToPath(import.meta.url));
-const tailwindEntry = path.join(configDir, "styles", "globals.css");
-
-export default antfu({
-  type: "app",
-  nextjs: true,
-  formatters: true,
-  typescript: true,
-  stylistic: {
-    indent: 2,
-    semi: true,
-    quotes: "double",
-  },
-  ignores: [".pnpm-store/**", "helm/**"],
-}, {
-  rules: {
-    "no-console": "warn",
-    "no-debugger": "warn",
-    "node/prefer-global/process": "off",
-    "no-alert": "warn",
-  },
-}, ...tailwind.configs["flat/recommended"], {
-  settings: {
-    tailwindcss: {
-      config: tailwindEntry,
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  {
+    rules: {
+      // The project is not using React Compiler gating yet. Keep the standard
+      // hooks rules, but do not fail lint on compiler eligibility checks.
+      "react-hooks/error-boundaries": "off",
+      "react-hooks/incompatible-library": "off",
+      "react-hooks/purity": "off",
+      "react-hooks/set-state-in-effect": "off",
     },
   },
-  rules: {
-    "tailwindcss/classnames-order": "warn",
-    "tailwindcss/no-custom-classname": "off",
-  },
-});
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    '.next/**',
+    'out/**',
+    'build/**',
+    'next-env.d.ts',
+  ]),
+])
+
+export default eslintConfig

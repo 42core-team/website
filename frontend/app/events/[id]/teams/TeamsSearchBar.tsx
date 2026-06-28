@@ -24,7 +24,7 @@ export default function TeamsSearchBar({
     }, 400); // 400ms debounce
 
     return () => clearTimeout(handler);
-  }, [value]);
+  }, [pathname, router, searchParams, value]);
 
   return (
     <div className="relative w-full sm:max-w-xs">

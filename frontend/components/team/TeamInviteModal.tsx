@@ -2,7 +2,6 @@ import type {
   UserSearchResult,
 } from "@/app/actions/team";
 
-import { usePlausible } from "next-plausible";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import axiosInstance from "@/app/actions/axios";
@@ -35,8 +34,6 @@ export function TeamInviteModal({
   onClose,
   eventId,
 }: TeamInviteModalProps) {
-  const plausible = usePlausible();
-
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedQuery = useDebouncedValue(searchQuery, 300);
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
@@ -59,7 +56,6 @@ export function TeamInviteModal({
 
   // Send invite to a user
   const handleInviteUser = async (userId: string) => {
-    plausible("invite_team_member");
     setIsInviting(prev => ({ ...prev, [userId]: true }));
     try {
       await axiosInstance.post(`team/event/${eventId}/sendInvite`, {

@@ -24,8 +24,6 @@ env:
   BACKEND_URL: "http://api:4000"
   NEXT_PUBLIC_BACKEND_PUBLIC_URL: "http://localhost:4000"
   NEXT_PUBLIC_VISUALIZER_URL: "https://dev.visualizer.coregame.sh"
-  PLAUSIBLE_DOMAIN: localhost
-  PLAUSIBLE_CUSTOM_DOMAIN: ""
   CURRENT_BRANCH: dev
   NEXT_PUBLIC_S3_REPLAYS_BUCKET_URL: "http://localhost:9000/core-replays"
 

@@ -112,7 +112,7 @@ export default function GraphView({
     });
 
     setNodes(newNodes);
-  }, [matches, isEventAdmin, eventId, router]);
+  }, [matches, isEventAdmin, eventId, router, setNodes]);
 
   return (
     <div className="h-full w-full">
