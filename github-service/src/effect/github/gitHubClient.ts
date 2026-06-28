@@ -1,4 +1,13 @@
-import { Effect, Schema, Duration, Data, Context, Layer, Option } from "effect";
+import {
+  Effect,
+  Schema,
+  Duration,
+  Data,
+  Context,
+  Layer,
+  Option,
+  Number,
+} from "effect";
 import {
   HttpClient,
   HttpClientRequest,
