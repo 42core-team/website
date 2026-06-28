@@ -726,7 +726,11 @@ export class EventService {
     } catch (error) {
       // Handle race condition: if unique constraint is violated (e.g., Postgres 23505),
       // entries were added concurrently, so return empty array as no-op
-      if (error.code === '23505' || error.message?.includes('duplicate key')) {
+      const databaseError = error as { code?: string; message?: string };
+      if (
+        databaseError.code === "23505" ||
+        databaseError.message?.includes("duplicate key")
+      ) {
         return [];
       }
       throw error;
