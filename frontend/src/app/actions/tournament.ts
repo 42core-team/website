@@ -1,7 +1,6 @@
 
-import type { ServerActionResponse } from "@/app/actions/errors";
 import type { Match, MatchLogs } from "@/app/actions/tournament-model";
-import axiosInstance, { handleError } from "@/app/actions/axios";
+import axiosInstance from "@/app/actions/axios";
 
 export async function getSwissMatches(eventId: string, adminReveal: boolean) {
   const params = new URLSearchParams();
@@ -40,38 +39,34 @@ export async function getTournamentMatches(
 
 export async function getLogsOfMatch(
   matchId: string,
-): Promise<ServerActionResponse<MatchLogs>> {
-  return handleError(axiosInstance.get<MatchLogs>(`/match/logs/${matchId}`));
+): Promise<MatchLogs> {
+  return (await axiosInstance.get<MatchLogs>(`/match/logs/${matchId}`)).data;
 }
 
 export async function revealMatch(
   matchId: string,
-): Promise<ServerActionResponse<Match>> {
-  return handleError(axiosInstance.put<Match>(`/match/reveal/${matchId}`));
+): Promise<Match> {
+  return (await axiosInstance.put<Match>(`/match/reveal/${matchId}`)).data;
 }
 
 export async function revealAllMatches(
   eventId: string,
   phase: string,
-): Promise<ServerActionResponse<void>> {
-  return handleError(
-    axiosInstance.put<void>(`/match/reveal-all/${eventId}/${phase}`),
-  );
+): Promise<void> {
+  await axiosInstance.put<void>(`/match/reveal-all/${eventId}/${phase}`);
 }
 
 export async function cleanupAllMatches(
   eventId: string,
   phase: string,
-): Promise<ServerActionResponse<void>> {
-  return handleError(
-    axiosInstance.put<void>(`/match/cleanup-all/${eventId}/${phase}`),
-  );
+): Promise<void> {
+  await axiosInstance.put<void>(`/match/cleanup-all/${eventId}/${phase}`);
 }
 
 export async function getMatchById(
   matchId: string,
-): Promise<ServerActionResponse<Match>> {
-  return handleError(axiosInstance.get<Match>(`/match/${matchId}`));
+): Promise<Match> {
+  return (await axiosInstance.get<Match>(`/match/${matchId}`)).data;
 }
 
 export async function getMatchesForTeam(teamId: string): Promise<Match[]> {

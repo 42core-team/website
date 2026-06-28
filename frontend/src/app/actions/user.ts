@@ -1,6 +1,5 @@
 
-import type { ServerActionResponse } from "@/app/actions/errors";
-import axiosInstance, { handleError } from "@/app/actions/axios";
+import axiosInstance from "@/app/actions/axios";
 
 export interface UserSearchResult {
   id: string;
@@ -11,8 +10,10 @@ export interface UserSearchResult {
 
 export async function searchUsers(
   query: string,
-): Promise<ServerActionResponse<UserSearchResult[]>> {
-  return await handleError(
-    axiosInstance.get<UserSearchResult[]>(`user/search?q=${encodeURIComponent(query)}`),
-  );
+): Promise<UserSearchResult[]> {
+  return (
+    await axiosInstance.get<UserSearchResult[]>(
+      `user/search?q=${encodeURIComponent(query)}`,
+    )
+  ).data;
 }

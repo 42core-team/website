@@ -1,7 +1,6 @@
-import type { ServerActionResponse } from '@/app/actions/errors'
 import type { QueueState } from '@/app/actions/team.model'
 import type { Match } from '@/app/actions/tournament-model'
-import axiosInstance, { handleError } from '@/app/actions/axios'
+import axiosInstance from '@/app/actions/axios'
 
 export interface Team {
   id: string
@@ -55,18 +54,14 @@ export async function getQueueState(eventId: string): Promise<QueueState> {
 
 export async function joinQueue(
   eventId: string,
-): Promise<ServerActionResponse<void>> {
-  return await handleError(
-    axiosInstance.put(`team/event/${eventId}/queue/join`),
-  )
+): Promise<void> {
+  await axiosInstance.put(`team/event/${eventId}/queue/join`)
 }
 
 export async function leaveQueue(
   eventId: string,
-): Promise<ServerActionResponse<void>> {
-  return await handleError(
-    axiosInstance.put(`team/event/${eventId}/queue/leave`),
-  )
+): Promise<void> {
+  await axiosInstance.put(`team/event/${eventId}/queue/leave`)
 }
 
 export async function getTeamById(teamId: string): Promise<Team | null> {
@@ -130,8 +125,8 @@ export async function unlockEvent(eventId: string) {
  */
 export async function leaveTeam(
   eventId: string,
-): Promise<ServerActionResponse<void>> {
-  return await handleError(axiosInstance.put(`team/event/${eventId}/leave`))
+): Promise<void> {
+  await axiosInstance.put(`team/event/${eventId}/leave`)
 }
 
 /**
@@ -189,10 +184,8 @@ export async function getUserPendingInvites(eventId: string): Promise<Team[]> {
 export async function acceptTeamInvite(
   eventId: string,
   teamId: string,
-): Promise<ServerActionResponse<void>> {
-  return await handleError(
-    axiosInstance.put(`team/event/${eventId}/acceptInvite/${teamId}`),
-  )
+): Promise<void> {
+  await axiosInstance.put(`team/event/${eventId}/acceptInvite/${teamId}`)
 }
 
 /**
@@ -204,10 +197,8 @@ export async function acceptTeamInvite(
 export async function declineTeamInvite(
   eventId: string,
   teamId: string,
-): Promise<ServerActionResponse> {
-  return await handleError(
-    axiosInstance.delete(`team/event/${eventId}/declineInvite/${teamId}`),
-  )
+): Promise<void> {
+  await axiosInstance.delete(`team/event/${eventId}/declineInvite/${teamId}`)
 }
 
 export async function getTeamsForEventTable(

@@ -1,8 +1,7 @@
 
-import type { ServerActionResponse } from "@/app/actions/errors";
 import type { WhitelistPlatform } from "@/lib/constants/whitelist";
 
-import axiosInstance, { handleError } from "@/app/actions/axios";
+import axiosInstance from "@/app/actions/axios";
 
 export interface Event {
   id: string;
@@ -43,36 +42,35 @@ export interface EventStarterTemplate {
 
 export async function getEventById(
   eventId: string,
-): Promise<ServerActionResponse<Event>> {
-  return await handleError(axiosInstance.get(`event/${eventId}`));
+): Promise<Event> {
+  return (await axiosInstance.get<Event>(`event/${eventId}`)).data;
 }
 
 export async function getEventGithubOrg(
   eventId: string,
-): Promise<ServerActionResponse<string>> {
-  return await handleError(axiosInstance.get(`event/${eventId}/github-org`));
+): Promise<string> {
+  return (await axiosInstance.get<string>(`event/${eventId}/github-org`)).data;
 }
 
-export async function getCurrentLiveEvent(): Promise<
-  ServerActionResponse<Event | undefined>
-> {
-  return await handleError(
-    axiosInstance.get<Event | undefined>("event/event/currentLiveEvent"),
-  );
+export async function getCurrentLiveEvent(): Promise<Event | undefined> {
+  return (
+    await axiosInstance.get<Event | undefined>("event/event/currentLiveEvent")
+  ).data;
 }
 
 export async function isUserRegisteredForEvent(
   eventId: string,
-): Promise<ServerActionResponse<boolean>> {
-  return await handleError(
-    axiosInstance.get<boolean>(`event/${eventId}/isUserRegistered`),
-  );
+): Promise<boolean> {
+  return (
+    await axiosInstance.get<boolean>(`event/${eventId}/isUserRegistered`)
+  ).data;
 }
 
 export async function isEventAdmin(
   eventId: string,
-): Promise<ServerActionResponse<boolean>> {
-  return await handleError(axiosInstance.get(`event/${eventId}/isEventAdmin`));
+): Promise<boolean> {
+  return (await axiosInstance.get<boolean>(`event/${eventId}/isEventAdmin`))
+    .data;
 }
 
 // Get all events
@@ -92,8 +90,8 @@ export async function getParticipantsCountForEvent(
 }
 
 // Join a user to an event
-export async function joinEvent(eventId: string): Promise<ServerActionResponse<boolean>> {
-  return await handleError(axiosInstance.put(`event/${eventId}/join`));
+export async function joinEvent(eventId: string): Promise<boolean> {
+  return (await axiosInstance.put<boolean>(`event/${eventId}/join`)).data;
 }
 
 // Interface for creating events
@@ -121,8 +119,8 @@ interface EventCreateParams {
 // Create a new event
 export async function createEvent(
   eventData: EventCreateParams,
-): Promise<ServerActionResponse<Event>> {
-  return await handleError(axiosInstance.post<Event>(`event`, eventData));
+): Promise<Event> {
+  return (await axiosInstance.post<Event>(`event`, eventData)).data;
 }
 
 export async function canUserCreateEvent(): Promise<boolean> {
@@ -137,12 +135,12 @@ export async function canUserCreateEvent(): Promise<boolean> {
 export async function setEventTeamsLockDate(
   eventId: string,
   lockDate: number | null,
-): Promise<ServerActionResponse<Event>> {
-  return await handleError(
-    axiosInstance.put<Event>(`event/${eventId}/lockTeamsDate`, {
+): Promise<Event> {
+  return (
+    await axiosInstance.put<Event>(`event/${eventId}/lockTeamsDate`, {
       repoLockDate: lockDate,
-    }),
-  );
+    })
+  ).data;
 }
 
 export async function updateEventSettings(
@@ -169,36 +167,33 @@ export async function updateEventSettings(
     gameConfig?: string;
     serverConfig?: string;
   },
-): Promise<ServerActionResponse<Event>> {
-  return await handleError(
-    axiosInstance.put<Event>(`event/${eventId}/settings`, settings),
-  );
+): Promise<Event> {
+  return (await axiosInstance.put<Event>(`event/${eventId}/settings`, settings))
+    .data;
 }
 
 export async function getEventAdmins(
   eventId: string,
-): Promise<
-  ServerActionResponse<{ id: string; username: string; name: string }[]>
-> {
-  return await handleError(axiosInstance.get(`event/${eventId}/admins`));
+): Promise<{ id: string; username: string; name: string }[]> {
+  return (
+    await axiosInstance.get<{ id: string; username: string; name: string }[]>(
+      `event/${eventId}/admins`,
+    )
+  ).data;
 }
 
 export async function addEventAdmin(
   eventId: string,
   userId: string,
-): Promise<ServerActionResponse<void>> {
-  return await handleError(
-    axiosInstance.post(`event/${eventId}/admins/${userId}`),
-  );
+): Promise<void> {
+  await axiosInstance.post(`event/${eventId}/admins/${userId}`);
 }
 
 export async function removeEventAdmin(
   eventId: string,
   userId: string,
-): Promise<ServerActionResponse<void>> {
-  return await handleError(
-    axiosInstance.delete(`event/${eventId}/admins/${userId}`),
-  );
+): Promise<void> {
+  await axiosInstance.delete(`event/${eventId}/admins/${userId}`);
 }
 
 export async function getMyEvents(): Promise<Event[]> {
@@ -212,36 +207,44 @@ export async function getMyEvents(): Promise<Event[]> {
 
 export async function getStarterTemplates(
   eventId: string,
-): Promise<ServerActionResponse<EventStarterTemplate[]>> {
-  return await handleError(axiosInstance.get(`event/${eventId}/templates`));
+): Promise<EventStarterTemplate[]> {
+  return (
+    await axiosInstance.get<EventStarterTemplate[]>(
+      `event/${eventId}/templates`,
+    )
+  ).data;
 }
 
 export async function createStarterTemplate(
   eventId: string,
   data: { name: string; basePath: string; myCoreBotDockerImage: string },
-): Promise<ServerActionResponse<EventStarterTemplate>> {
-  return await handleError(
-    axiosInstance.post(`event/${eventId}/templates`, data),
-  );
+): Promise<EventStarterTemplate> {
+  return (
+    await axiosInstance.post<EventStarterTemplate>(
+      `event/${eventId}/templates`,
+      data,
+    )
+  ).data;
 }
 
 export async function updateStarterTemplate(
   eventId: string,
   templateId: string,
   data: { name?: string; basePath?: string; myCoreBotDockerImage?: string },
-): Promise<ServerActionResponse<EventStarterTemplate>> {
-  return await handleError(
-    axiosInstance.put(`event/${eventId}/templates/${templateId}`, data),
-  );
+): Promise<EventStarterTemplate> {
+  return (
+    await axiosInstance.put<EventStarterTemplate>(
+      `event/${eventId}/templates/${templateId}`,
+      data,
+    )
+  ).data;
 }
 
 export async function deleteStarterTemplate(
   eventId: string,
   templateId: string,
-): Promise<ServerActionResponse<void>> {
-  return await handleError(
-    axiosInstance.delete(`event/${eventId}/templates/${templateId}`),
-  );
+): Promise<void> {
+  await axiosInstance.delete(`event/${eventId}/templates/${templateId}`);
 }
 
 export interface WhitelistEntry {
@@ -253,33 +256,33 @@ export interface WhitelistEntry {
 
 export async function getEventWhitelist(
   eventId: string,
-): Promise<ServerActionResponse<WhitelistEntry[]>> {
-  return await handleError(axiosInstance.get(`event/${eventId}/whitelist`));
+): Promise<WhitelistEntry[]> {
+  return (
+    await axiosInstance.get<WhitelistEntry[]>(`event/${eventId}/whitelist`)
+  ).data;
 }
 
 export async function addToWhitelist(
   eventId: string,
   entries: { username: string; platform: WhitelistPlatform }[],
-): Promise<ServerActionResponse<WhitelistEntry[]>> {
-  return await handleError(
-    axiosInstance.post(`event/${eventId}/whitelist`, { entries }),
-  );
+): Promise<WhitelistEntry[]> {
+  return (
+    await axiosInstance.post<WhitelistEntry[]>(`event/${eventId}/whitelist`, {
+      entries,
+    })
+  ).data;
 }
 
 export async function removeFromWhitelist(
   eventId: string,
   whitelistId: string,
-): Promise<ServerActionResponse<void>> {
-  return await handleError(
-    axiosInstance.delete(`event/${eventId}/whitelist/${whitelistId}`),
-  );
+): Promise<void> {
+  await axiosInstance.delete(`event/${eventId}/whitelist/${whitelistId}`);
 }
 
 export async function bulkRemoveFromWhitelist(
   eventId: string,
   ids: string[],
-): Promise<ServerActionResponse<void>> {
-  return await handleError(
-    axiosInstance.post(`event/${eventId}/whitelist/bulk-delete`, { ids }),
-  );
+): Promise<void> {
+  await axiosInstance.post(`event/${eventId}/whitelist/bulk-delete`, { ids });
 }
