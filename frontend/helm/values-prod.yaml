@@ -28,9 +28,6 @@ env:
   BACKEND_URL: "http://api-main"
   NEXT_PUBLIC_VISUALIZER_URL: "https://visualizer.coregame.sh"
   NEXT_PUBLIC_BACKEND_PUBLIC_URL: "https://api.coregame.sh"
-  # Plausible analytics domain defaults for prod
-  PLAUSIBLE_DOMAIN: coregame.sh
-  PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.sh"
   AUTH_COOKIE_NAME: "token"
 
 ingress:

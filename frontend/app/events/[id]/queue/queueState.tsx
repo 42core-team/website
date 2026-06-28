@@ -4,7 +4,6 @@ import type { QueueState as QueueStateType } from "@/app/actions/team.model";
 import type { Match } from "@/app/actions/tournament-model";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, LogIn, LogOut, Swords, Users } from "lucide-react";
-import { usePlausible } from "next-plausible";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { MatchState } from "@/app/actions/tournament-model";
@@ -28,7 +27,6 @@ export default function QueueState(props: {
   team: Team;
   queueMatches: Match[];
 }) {
-  const plausible = usePlausible();
   const router = useRouter();
   const { id } = useParams();
   const eventId = id as string;
@@ -51,7 +49,6 @@ export default function QueueState(props: {
 
   const joinQueueMutation = useMutation({
     mutationFn: async () => {
-      plausible("join_queue");
       await joinQueue(props.eventId);
     },
     onSuccess: async () => {
@@ -63,7 +60,6 @@ export default function QueueState(props: {
 
   const leaveQueueMutation = useMutation({
     mutationFn: async () => {
-      plausible("leave_queue");
       await leaveQueue(props.eventId);
     },
     onSuccess: async () => {

@@ -2,7 +2,6 @@
 
 import type { SocialAccount } from "@/app/actions/social-accounts";
 import { useSession } from "next-auth/react";
-import { usePlausible } from "next-plausible";
 import { useCallback, useEffect, useState } from "react";
 import {
   getSocialAccounts,
@@ -19,8 +18,6 @@ import {
 } from "@/lib/constants/platform-icons";
 
 export default function SocialAccountsDisplay() {
-  const plausible = usePlausible();
-
   const { data: session } = useSession();
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,14 +61,9 @@ export default function SocialAccountsDisplay() {
   }, [socialAccounts, message, clearMessage]);
 
   const handleUnlink = async (platform: string) => {
-    plausible("unlink_account", {
-      props: {
-        platform,
-      },
-    });
     if (
       !session?.user?.id
-      // eslint-disable-next-line no-alert
+       
       || !confirm("Are you sure you want to unlink this account?")
     ) {
       return;
@@ -86,7 +78,7 @@ export default function SocialAccountsDisplay() {
     }
     catch (error) {
       console.error("Error unlinking account:", error);
-      // eslint-disable-next-line no-alert
+       
       alert("Failed to unlink account. Please try again.");
     }
     finally {
@@ -169,11 +161,6 @@ export default function SocialAccountsDisplay() {
                 size="sm"
                 color="primary"
                 onClick={() => {
-                  plausible("link_account", {
-                    props: {
-                      platform: OAUTH_PROVIDERS.FORTY_TWO,
-                    },
-                  });
                   initiate42OAuth();
                 }}
                 // TODO: isLoading={isInitiating}

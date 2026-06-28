@@ -30,7 +30,6 @@ import {
 import { validateTeamName } from "@/lib/utils/validation";
 
 export default function TeamCreationForm() {
-  const plausible = usePlausible();
 
   const [newTeamName, setNewTeamName] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -75,7 +74,6 @@ export default function TeamCreationForm() {
       });
     },
     onMutate: () => {
-      plausible("create_team");
       setErrorMessage(null);
       setValidationError(null);
     },

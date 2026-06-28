@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import PlausibleProvider from "next-plausible";
 
 import React from "react";
 import Providers from "@/app/providers";
@@ -58,18 +57,9 @@ export default function App({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <body>
         <Providers>
-          <PlausibleProvider
-            domain={process.env.PLAUSIBLE_DOMAIN ?? "coregame.sh"}
-            customDomain={process.env.NEXTAUTH_URL ?? "coregame.sh"}
-            selfHosted={true}
-            trackOutboundLinks={true}
-            trackFileDownloads={true}
-            taggedEvents={true}
-          >
             <ClientProviders>
               <DefaultLayout>{children}</DefaultLayout>
             </ClientProviders>
-          </PlausibleProvider>
         </Providers>
       </body>
     </html>

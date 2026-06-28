@@ -1,9 +1,10 @@
+onlyBuiltDependencies:
+  - '@heroui/shared-utils'
+  - '@tailwindcss/oxide'
+  - postinstall-postinstall
+  - sharp
+  - unrs-resolver
+
 shellEmulator: true
 
 trustPolicy: no-downgrade
-
-onlyBuiltDependencies:
-  - "@heroui/shared-utils"
-  - "@tailwindcss/oxide"
-  - postinstall-postinstall
-  - sharp

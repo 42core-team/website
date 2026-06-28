@@ -1,6 +1,5 @@
 "use client";
 import type { Team } from "@/app/actions/team";
-import { usePlausible } from "next-plausible";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { isActionError } from "@/app/actions/errors";
@@ -15,8 +14,6 @@ interface TeamInvitesDisplayProps {
 export default function TeamInvitesDisplay({
   pendingInvites,
 }: TeamInvitesDisplayProps) {
-  const plausible = usePlausible();
-
   const [invites, setInvites] = useState(pendingInvites);
   const [actionStates, setActionStates] = useState<
     Record<
@@ -32,7 +29,6 @@ export default function TeamInvitesDisplay({
   const router = useRouter();
 
   const handleAcceptInvite = async (teamId: string) => {
-    plausible("accept_team_invite");
     setActionStates(prev => ({
       ...prev,
       [teamId]: { ...prev[teamId], isAccepting: true, message: undefined },
@@ -57,7 +53,6 @@ export default function TeamInvitesDisplay({
   };
 
   const handleDeclineInvite = async (teamId: string) => {
-    plausible("decline_team_invite");
     setActionStates(prev => ({
       ...prev,
       [teamId]: { ...prev[teamId], isDeclining: true, message: undefined },
