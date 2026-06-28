@@ -1,105 +1,105 @@
-"use client";
+'use client'
 
-import { motion } from "framer-motion";
-import { LucideGithub, LucideLinkedin } from "lucide-react";
-import Image from "@/components/app-image";
-import Link from "@/components/app-link";
-import { title } from "@/components/primitives";
-import { CoreLogoWhite } from "@/components/social";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { motion } from 'framer-motion'
+import { LucideGithub, LucideLinkedin } from 'lucide-react'
+import Image from '@/components/app-image'
+import Link from '@/components/app-link'
+import { title } from '@/components/primitives'
+import { CoreLogoWhite } from '@/components/social'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 
 interface TeamMember {
-  name: string;
-  role: string;
-  imgSrc: string;
-  linkUrl: string;
-  linkType: "linkedin" | "github";
+  name: string
+  role: string
+  imgSrc: string
+  linkUrl: string
+  linkType: 'linkedin' | 'github'
 }
 
 const team: TeamMember[] = [
   {
-    name: "Frederick Schubert",
-    role: "Server and Game",
-    imgSrc: "/team/fschuber.jpg",
-    linkUrl: "https://www.linkedin.com/in/frederick-m-schubert/",
-    linkType: "linkedin",
+    name: 'Frederick Schubert',
+    role: 'Server and Game',
+    imgSrc: '/team/fschuber.jpg',
+    linkUrl: 'https://www.linkedin.com/in/frederick-m-schubert/',
+    linkType: 'linkedin',
   },
   {
-    name: "Paul Großmann",
-    role: "Programs the rest",
-    imgSrc: "/team/pgrossma.jpeg",
-    linkUrl: "https://www.linkedin.com/in/pgrossma/",
-    linkType: "linkedin",
+    name: 'Paul Großmann',
+    role: 'Programs the rest',
+    imgSrc: '/team/pgrossma.jpeg',
+    linkUrl: 'https://www.linkedin.com/in/pgrossma/',
+    linkType: 'linkedin',
   },
   {
-    name: "Emil Ebert",
-    role: "Head of Web Systems",
-    imgSrc: "/team/eebert.png",
-    linkUrl: "https://www.linkedin.com/in/emil-ebert/",
-    linkType: "linkedin",
+    name: 'Emil Ebert',
+    role: 'Head of Web Systems',
+    imgSrc: '/team/eebert.png',
+    linkUrl: 'https://www.linkedin.com/in/emil-ebert/',
+    linkType: 'linkedin',
   },
   {
-    name: "Theo Paesch",
-    role: "Event Management and Design",
-    imgSrc: "/team/tpaesch.jpeg",
-    linkUrl: "https://www.linkedin.com/in/tpaesch/",
-    linkType: "linkedin",
+    name: 'Theo Paesch',
+    role: 'Event Management and Design',
+    imgSrc: '/team/tpaesch.jpeg',
+    linkUrl: 'https://www.linkedin.com/in/tpaesch/',
+    linkType: 'linkedin',
   },
   {
-    name: "Johannes Moritz",
-    role: "Head of money spending",
+    name: 'Johannes Moritz',
+    role: 'Head of money spending',
     imgSrc:
-      "https://cdn.intra.42.fr/users/b70f90a3f5b8abafd72246cad22bda34/medium_jmoritz.jpg",
-    linkUrl: "https://www.linkedin.com/in/johannes-moritz",
-    linkType: "linkedin",
+      'https://cdn.intra.42.fr/users/b70f90a3f5b8abafd72246cad22bda34/medium_jmoritz.jpg',
+    linkUrl: 'https://www.linkedin.com/in/johannes-moritz',
+    linkType: 'linkedin',
   },
   {
-    name: "Jonas Götz",
-    role: "Head of Server and Kubernetes",
-    imgSrc: "/team/jgotz.png",
-    linkUrl: "https://www.linkedin.com/in/jonas-götz-7b66b61bb",
-    linkType: "linkedin",
+    name: 'Jonas Götz',
+    role: 'Head of Server and Kubernetes',
+    imgSrc: '/team/jgotz.png',
+    linkUrl: 'https://www.linkedin.com/in/jonas-götz-7b66b61bb',
+    linkType: 'linkedin',
   },
   {
-    name: "Florian Fischer",
-    role: "Visualizer",
-    imgSrc: "/team/flfische.jpg",
-    linkUrl: "https://www.linkedin.com/in/flo-fischer/",
-    linkType: "linkedin",
+    name: 'Florian Fischer',
+    role: 'Visualizer',
+    imgSrc: '/team/flfische.jpg',
+    linkUrl: 'https://www.linkedin.com/in/flo-fischer/',
+    linkType: 'linkedin',
   },
   {
-    name: "Jonas Kauker",
-    role: "Video",
-    imgSrc: "/team/jkauker.jpg",
-    linkUrl: "https://www.linkedin.com/in/jonas-kauker-777894258/",
-    linkType: "linkedin",
+    name: 'Jonas Kauker',
+    role: 'Video',
+    imgSrc: '/team/jkauker.jpg',
+    linkUrl: 'https://www.linkedin.com/in/jonas-kauker-777894258/',
+    linkType: 'linkedin',
   },
   {
-    name: "Anakin Pregitzer",
-    role: "Head of Rush",
+    name: 'Anakin Pregitzer',
+    role: 'Head of Rush',
     imgSrc:
-      "https://cdn.intra.42.fr/users/f69eb7c83b6b91f6d84d6635cc33e953/medium_apregitz.jpg",
-    linkUrl: "https://www.linkedin.com/in/anakin-pregitzer-927555368/",
-    linkType: "linkedin",
+      'https://cdn.intra.42.fr/users/f69eb7c83b6b91f6d84d6635cc33e953/medium_apregitz.jpg',
+    linkUrl: 'https://www.linkedin.com/in/anakin-pregitzer-927555368/',
+    linkType: 'linkedin',
   },
   {
-    name: "Christopher Uhlig",
-    role: "Head of Balancing",
+    name: 'Christopher Uhlig',
+    role: 'Head of Balancing',
     imgSrc:
-      "https://cdn.intra.42.fr/users/c86f2d994f58da1df739af962abca534/medium_chuhlig.jpg",
-    linkUrl: "https://github.com/cuhlig42",
-    linkType: "github",
+      'https://cdn.intra.42.fr/users/c86f2d994f58da1df739af962abca534/medium_chuhlig.jpg',
+    linkUrl: 'https://github.com/cuhlig42',
+    linkType: 'github',
   },
   {
-    name: "Konrad Mühlbauer",
-    role: "Website",
+    name: 'Konrad Mühlbauer',
+    role: 'Website',
     imgSrc:
-      "https://cdn.intra.42.fr/users/12e74e15f7b4926f9b9c1e1554b6bcd9/medium_kmuhlbau.jpg",
-    linkUrl: "https://www.linkedin.com/in/konrad-muehlbauer/",
-    linkType: "linkedin",
+      'https://cdn.intra.42.fr/users/12e74e15f7b4926f9b9c1e1554b6bcd9/medium_kmuhlbau.jpg',
+    linkUrl: 'https://www.linkedin.com/in/konrad-muehlbauer/',
+    linkType: 'linkedin',
   },
-];
+]
 
 export default function AboutPageClient() {
   return (
@@ -223,30 +223,31 @@ export default function AboutPageClient() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 * (i + 1) }}
               >
-                <Card>
-                  <CardContent className="flex flex-col items-center p-6">
-                    <div className="relative">
-                      <Image
-                        src={m.imgSrc}
-                        alt={`Photo of ${m.name}`}
-                        width={200}
-                        height={200}
-                        className="mb-4 h-40 w-40 rounded-full object-cover"
-                      />
+                <Card className="flex h-full flex-col overflow-hidden">
+                  <CardContent className="flex h-full flex-col items-center p-6">
+                    <div className="relative mb-4 flex h-40 w-40 shrink-0 items-center justify-center">
+                      <div className="h-full w-full overflow-hidden rounded-full bg-muted/20">
+                        <Image
+                          src={m.imgSrc}
+                          alt={`Photo of ${m.name}`}
+                          width={200}
+                          height={200}
+                          className="h-full w-full object-cover"
+                          style={{ height: '100%' }}
+                        />
+                      </div>
                       <a
                         href={m.linkUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="no-icon absolute right-2.5 bottom-2.5 rounded-full bg-primary p-2 text-primary-foreground transition-transform hover:scale-110"
+                        className="no-icon absolute right-0 bottom-0 rounded-full bg-primary p-2 text-primary-foreground transition-transform hover:scale-110"
                         aria-label={`${m.name} profile link`}
                       >
-                        {m.linkType === "github"
-                          ? (
-                              <LucideGithub />
-                            )
-                          : (
-                              <LucideLinkedin />
-                            )}
+                        {m.linkType === 'github' ? (
+                          <LucideGithub />
+                        ) : (
+                          <LucideLinkedin />
+                        )}
                       </a>
                     </div>
                     <h3 className="text-center text-xl font-semibold">
@@ -264,5 +265,5 @@ export default function AboutPageClient() {
         </motion.div>
       </section>
     </div>
-  );
+  )
 }
