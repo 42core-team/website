@@ -14,6 +14,9 @@ run_bun_lint() {
   local dir="$1"
   echo "==> Running bun run lint in $dir..."
   (cd "$ROOT/$dir" && bun run lint)
+  echo "==> Running tsc check in $dir..."
+  (cd "$ROOT/$dir" && bun run tscheck)
+
 }
 
 if echo "$STAGED_FILES" | grep -q "^frontend/"; then

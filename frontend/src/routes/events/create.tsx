@@ -349,6 +349,58 @@ function CreateEventRoute() {
     void form.handleSubmit();
   };
 
+  function ImageFields({
+    imageLabel,
+    imageName,
+    imagePlaceholder,
+    tagName,
+  }: {
+    imageLabel: string;
+    imageName: ImageFieldName;
+    imagePlaceholder: string;
+    tagName: ImageTagName;
+  }) {
+    return (
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
+        <form.Field
+          name={imageName}
+          children={(field) => (
+            <TextField
+              className="md:col-span-2"
+              errors={field.state.meta.errors}
+              label={imageLabel}
+            >
+              <Input
+                id={field.name}
+                name={field.name}
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+                placeholder={imagePlaceholder}
+              />
+            </TextField>
+          )}
+        />
+        <form.Field
+          name={tagName}
+          children={(field) => (
+            <TextField errors={field.state.meta.errors} label="Tag">
+              <Input
+                id={field.name}
+                name={field.name}
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+                placeholder="e.g., dev, v0.0.0"
+                list="repo-tags"
+              />
+            </TextField>
+          )}
+        />
+      </div>
+    );
+  }
+
   if (
     status === "loading" ||
     (session?.user.id && canCreateQuery.isPending) ||
@@ -723,21 +775,18 @@ function CreateEventRoute() {
             </h3>
             <div className="space-y-4">
               <ImageFields
-                form={form}
                 imageName="gameServerDockerImage"
                 tagName="gameServerImageTag"
                 imageLabel="Game Server Image *"
                 imagePlaceholder="e.g., ghcr.io/42core-team/server"
               />
               <ImageFields
-                form={form}
                 imageName="myCoreBotDockerImage"
                 tagName="myCoreBotImageTag"
                 imageLabel="My Core Bot Image *"
                 imagePlaceholder="e.g., ghcr.io/42core-team/my-core-bot"
               />
               <ImageFields
-                form={form}
                 imageName="visualizerDockerImage"
                 tagName="visualizerImageTag"
                 imageLabel="Visualizer Image *"
@@ -876,7 +925,6 @@ function ConfigTextarea({
   );
 }
 
-type CreateEventFormApi = ReturnType<typeof useForm<FormValues>>;
 type ImageFieldName =
   | "gameServerDockerImage"
   | "myCoreBotDockerImage"
@@ -885,60 +933,6 @@ type ImageTagName =
   | "gameServerImageTag"
   | "myCoreBotImageTag"
   | "visualizerImageTag";
-
-function ImageFields({
-  form,
-  imageLabel,
-  imageName,
-  imagePlaceholder,
-  tagName,
-}: {
-  form: CreateEventFormApi;
-  imageLabel: string;
-  imageName: ImageFieldName;
-  imagePlaceholder: string;
-  tagName: ImageTagName;
-}) {
-  return (
-    <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
-      <form.Field
-        name={imageName}
-        children={(field) => (
-          <TextField
-            className="md:col-span-2"
-            errors={field.state.meta.errors}
-            label={imageLabel}
-          >
-            <Input
-              id={field.name}
-              name={field.name}
-              value={field.state.value}
-              onBlur={field.handleBlur}
-              onChange={(event) => field.handleChange(event.target.value)}
-              placeholder={imagePlaceholder}
-            />
-          </TextField>
-        )}
-      />
-      <form.Field
-        name={tagName}
-        children={(field) => (
-          <TextField errors={field.state.meta.errors} label="Tag">
-            <Input
-              id={field.name}
-              name={field.name}
-              value={field.state.value}
-              onBlur={field.handleBlur}
-              onChange={(event) => field.handleChange(event.target.value)}
-              placeholder="e.g., dev, v0.0.0"
-              list="repo-tags"
-            />
-          </TextField>
-        )}
-      />
-    </div>
-  );
-}
 
 function TextField({
   children,

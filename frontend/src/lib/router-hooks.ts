@@ -3,7 +3,11 @@ import {
   useNavigate,
   useParams as useTanStackParams,
 } from "@tanstack/react-router";
+import type { RegisteredRouter } from "@tanstack/react-router";
+import type { AllParams } from "@tanstack/router-core";
 import React from "react";
+
+type AppRouteParams = AllParams<RegisteredRouter["routeTree"]>;
 
 export function usePathname() {
   return useLocation({ select: location => location.pathname });
@@ -14,16 +18,26 @@ export function useSearchParams() {
   return React.useMemo(() => new URLSearchParams(searchStr), [searchStr]);
 }
 
-export function useParams<TParams extends Record<string, string> = Record<string, string>>() {
-  return useTanStackParams({ strict: false }) as TParams;
+export function useParams(): AppRouteParams {
+  return useTanStackParams<
+    RegisteredRouter,
+    undefined,
+    false,
+    true,
+    unknown,
+    false
+  >({
+    strict: false,
+    structuralSharing: false,
+  });
 }
 
 export function useRouter() {
   const navigate = useNavigate();
 
   return {
-    push: (href: string) => navigate({ to: href }),
-    replace: (href: string) => navigate({ to: href, replace: true }),
+    push: (href: string) => navigate({ href }),
+    replace: (href: string) => navigate({ href, replace: true }),
     back: () => window.history.back(),
     refresh: () => window.location.reload(),
   };

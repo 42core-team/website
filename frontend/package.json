@@ -14,6 +14,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "lint": "eslint",
+    "tscheck": "tsc --noEmit",
     "format": "prettier --write . && eslint --fix",
     "check": "prettier --check ."
   },

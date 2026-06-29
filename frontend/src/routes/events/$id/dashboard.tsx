@@ -1,5 +1,6 @@
 import type { Event } from "@/app/actions/event";
 import type { UserSearchResult } from "@/app/actions/user";
+import type { UseMutationResult } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -81,6 +82,15 @@ type PendingEventSettings = Partial<
   }
 >;
 type EventSettingsUpdate = Parameters<typeof updateEventSettings>[1];
+type VoidMutation = UseMutationResult<unknown, Error, void, unknown>;
+type PhaseMutation = UseMutationResult<unknown, Error, string, unknown>;
+type StringMutation = UseMutationResult<unknown, Error, string, unknown>;
+type TeamLockDateMutation = UseMutationResult<
+  unknown,
+  Error,
+  number | null,
+  unknown
+>;
 
 interface EventAdmin {
   id: string;
@@ -573,13 +583,13 @@ function OperationTab({
   event: Event;
   teamAutoLockTime: string;
   setTeamAutoLockTime: (value: string) => void;
-  lockEventMutation: ReturnType<typeof useMutation>;
-  unlockEventMutation: ReturnType<typeof useMutation>;
-  startSwissMatchesMutation: ReturnType<typeof useMutation>;
-  startTournamentMatchesMutation: ReturnType<typeof useMutation>;
-  revealMatchesMutation: ReturnType<typeof useMutation>;
-  cleanupMatchesMutation: ReturnType<typeof useMutation>;
-  setTeamsLockDateMutation: ReturnType<typeof useMutation>;
+  lockEventMutation: VoidMutation;
+  unlockEventMutation: VoidMutation;
+  startSwissMatchesMutation: VoidMutation;
+  startTournamentMatchesMutation: VoidMutation;
+  revealMatchesMutation: PhaseMutation;
+  cleanupMatchesMutation: PhaseMutation;
+  setTeamsLockDateMutation: TeamLockDateMutation;
 }) {
   return (
     <Card>
@@ -1003,8 +1013,8 @@ function AdminsTab({
   setUserSearchQuery: (value: string) => void;
   searchResults: UserSearchResult[];
   isSearching: boolean;
-  addAdminMutation: ReturnType<typeof useMutation>;
-  removeAdminMutation: ReturnType<typeof useMutation>;
+  addAdminMutation: StringMutation;
+  removeAdminMutation: StringMutation;
 }) {
   return (
     <Card>

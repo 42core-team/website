@@ -19,5 +19,5 @@ function WikiRoute() {
     return <Outlet />;
   }
 
-  return <Navigate to={`/wiki/${defaultVersion}`} replace />;
+  return <Navigate to={`/wiki/${defaultVersion}` as "/wiki/$"} replace />;
 }

@@ -152,7 +152,6 @@ export function WikiSearch({
                       const href = `/wiki/${currentVersion}/${page.slug.join("/")}`;
                       return (
                         <Link
-                          prefetch={false}
                           key={page.slug.join("/")}
                           href={href}
                           onClick={(e) => {

@@ -35,6 +35,8 @@ const formSchema = z.object({
   myCoreBotDockerImage: z.string().min(1, "Bot docker image is required"),
 });
 
+type StarterTemplateFormValues = z.infer<typeof formSchema>;
+
 interface StarterTemplatesManagementProps {
   eventId: string;
 }
@@ -71,7 +73,7 @@ export function StarterTemplatesManagement({
       name: "",
       basePath: "",
       myCoreBotDockerImage: "",
-    },
+    } satisfies StarterTemplateFormValues,
     validators: {
       onChange: formSchema,
     },
@@ -113,6 +115,50 @@ export function StarterTemplatesManagement({
     },
     onError: (error) => toast.error(getErrorMessage(error, "Failed to delete template.")),
   });
+
+  function TemplateField({
+    name,
+    placeholder,
+  }: {
+    name: "name" | "basePath" | "myCoreBotDockerImage";
+    placeholder: string;
+  }) {
+    return (
+      <TableCell className="align-top">
+        <form.Field
+          name={name}
+          children={(field) => (
+            <div className="space-y-1">
+              <Input
+                id={field.name}
+                name={field.name}
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+                placeholder={placeholder}
+                className={`h-8 bg-background ${
+                  field.state.meta.errors.length > 0
+                    ? "border-destructive focus-visible:ring-destructive"
+                    : ""
+                }`}
+              />
+              {field.state.meta.errors.length > 0 && (
+                <p className="text-[10px] font-medium text-destructive">
+                  {field.state.meta.errors
+                    .map((error) =>
+                      typeof error === "object" && "message" in error
+                        ? String(error.message)
+                        : String(error),
+                    )
+                    .join(", ")}
+                </p>
+              )}
+            </div>
+          )}
+        />
+      </TableCell>
+    );
+  }
 
   const templates = templatesQuery.data ?? [];
 
@@ -260,10 +306,9 @@ export function StarterTemplatesManagement({
 
               <TableRow className="border-t-2 bg-muted/30">
                 <TableCell className="align-top" />
-                <TemplateField form={form} name="name" placeholder="New Template Name..." />
-                <TemplateField form={form} name="basePath" placeholder="bots/c/softcore" />
+                <TemplateField name="name" placeholder="New Template Name..." />
+                <TemplateField name="basePath" placeholder="bots/c/softcore" />
                 <TemplateField
-                  form={form}
                   name="myCoreBotDockerImage"
                   placeholder="ghcr.io/42core-team/my-core-bot:dev"
                 />
@@ -294,56 +339,6 @@ export function StarterTemplatesManagement({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function TemplateField({
-  form,
-  name,
-  placeholder,
-}: {
-  form: ReturnType<typeof useForm<{
-    name: string;
-    basePath: string;
-    myCoreBotDockerImage: string;
-  }>>;
-  name: "name" | "basePath" | "myCoreBotDockerImage";
-  placeholder: string;
-}) {
-  return (
-    <TableCell className="align-top">
-      <form.Field
-        name={name}
-        children={(field) => (
-          <div className="space-y-1">
-            <Input
-              id={field.name}
-              name={field.name}
-              value={field.state.value}
-              onBlur={field.handleBlur}
-              onChange={(event) => field.handleChange(event.target.value)}
-              placeholder={placeholder}
-              className={`h-8 bg-background ${
-                field.state.meta.errors.length > 0
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : ""
-              }`}
-            />
-            {field.state.meta.errors.length > 0 && (
-              <p className="text-[10px] font-medium text-destructive">
-                {field.state.meta.errors
-                  .map((error) =>
-                    typeof error === "object" && error && "message" in error
-                      ? String(error.message)
-                      : String(error),
-                  )
-                  .join(", ")}
-              </p>
-            )}
-          </div>
-        )}
-      />
-    </TableCell>
   );
 }
 
