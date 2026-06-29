@@ -19,6 +19,7 @@ RUN pnpm prune --prod
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV CI=true
 
 # Copy production dependencies and built artifacts
 COPY package.json ./

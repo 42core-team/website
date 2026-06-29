@@ -70,7 +70,7 @@ export default function HomePageClient(props: {
       <section className="mb-15 flex flex-col items-center justify-center">
         {/* Foreground (logo + text + links) */}
         <div className="mb-25 flex w-full flex-col justify-center text-center">
-          <CoreLogoWhite className="mx-auto h-auto w-[30%]" />
+          <CoreLogoWhite className="mx-auto h-auto w-[20%]" />
           <h1 className="mx-auto mt-2 block max-w-2xl text-2xl font-bold text-balance">
             Imagine a game contest that brings people
             from around the world together for fun and learning.

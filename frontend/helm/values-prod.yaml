@@ -19,15 +19,16 @@ resources:
 env:
   NODE_ENV: production
   # NextAuth Configuration
-  NEXTAUTH_URL: "https://coregame.sh"
+  VITE_AUTH_URL: "https://coregame.sh"
   # GitHub OAuth Configuration
   CLIENT_ID_GITHUB: prod-github-client-id
   # 42 OAuth Configuration - public variable
-  NEXT_PUBLIC_FORTY_TWO_CLIENT_ID: prod-42-client-id
+  VITE_FORTY_TWO_CLIENT_ID: prod-42-client-id
   # Backend API Configuration
   BACKEND_URL: "http://api-main"
-  NEXT_PUBLIC_VISUALIZER_URL: "https://visualizer.coregame.sh"
-  NEXT_PUBLIC_BACKEND_PUBLIC_URL: "https://api.coregame.sh"
+  VITE_VISUALIZER_URL: "https://visualizer.coregame.sh"
+  VITE_BACKEND_PUBLIC_URL: "https://api.coregame.sh"
+  VITE_S3_REPLAYS_BUCKET_URL: "https://s3.coregame.sh/core-replays"
   # Plausible analytics domain defaults for prod
   PLAUSIBLE_DOMAIN: coregame.sh
   PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.sh"

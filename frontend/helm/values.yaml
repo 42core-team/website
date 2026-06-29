@@ -51,10 +51,11 @@ affinity: {}
 env:
   NODE_ENV: production
   # 42 OAuth Client ID - public variable
-  NEXT_PUBLIC_FORTY_TWO_CLIENT_ID: ""
+  VITE_FORTY_TWO_CLIENT_ID: ""
   # Add other environment variables as needed
-  NEXT_PUBLIC_VISUALIZER_URL: ""
-  NEXT_PUBLIC_BACKEND_PUBLIC_URL: ""
+  VITE_VISUALIZER_URL: ""
+  VITE_BACKEND_PUBLIC_URL: ""
+  VITE_S3_REPLAYS_BUCKET_URL: ""
   # Plausible analytics domain defaults
   PLAUSIBLE_DOMAIN: coregame.sh
   PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.sh"
@@ -62,12 +63,12 @@ env:
 
 # Secrets - these should be provided via GitHub secrets during deployment
 secrets:
-  NEXTAUTH_SECRET: ""
+  VITE_AUTH_SECRET: ""
   # Next.js Server Actions encryption key for AES-GCM.
   # Must be a random 32-byte value, encoded as base64 or hex.
   # Example (base64): openssl rand -base64 32
   # Example (hex):    openssl rand -hex 32
-  NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ""
+  VITE_SERVER_ACTIONS_ENCRYPTION_KEY: ""
 
 ingress:
   enabled: false

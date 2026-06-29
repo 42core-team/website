@@ -13,8 +13,8 @@ const config = defineConfig({
     devtools(),
     tailwindcss(),
     tanstackStart({
-      spa: {
-        enabled: true,
+      prerender: {
+        enabled: false,
       },
     }),
     viteReact(),

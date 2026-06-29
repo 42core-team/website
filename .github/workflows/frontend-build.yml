@@ -152,6 +152,10 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
+            VITE_BACKEND_PUBLIC_URL=${{ vars.VITE_BACKEND_PUBLIC_URL || vars.NEXT_PUBLIC_BACKEND_PUBLIC_URL }}
+            VITE_VISUALIZER_URL=${{ vars.VITE_VISUALIZER_URL || vars.NEXT_PUBLIC_VISUALIZER_URL }}
+            VITE_S3_REPLAYS_BUCKET_URL=${{ vars.VITE_S3_REPLAYS_BUCKET_URL || vars.NEXT_PUBLIC_S3_REPLAYS_BUCKET_URL }}
+            VITE_FORTY_TWO_CLIENT_ID=${{ vars.VITE_FORTY_TWO_CLIENT_ID || vars.NEXT_PUBLIC_FORTY_TWO_CLIENT_ID }}
             CURRENT_BRANCH=${{ github.head_ref || github.ref_name }}
 
       - name: Build and push Docker image
@@ -166,12 +170,13 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            NEXT_PUBLIC_BACKEND_PUBLIC_URL=${{ vars.NEXT_PUBLIC_BACKEND_PUBLIC_URL }}
-            NEXT_PUBLIC_VISUALIZER_URL=${{ vars.NEXT_PUBLIC_VISUALIZER_URL }}
-            NEXT_PUBLIC_S3_REPLAYS_BUCKET_URL=${{ vars.NEXT_PUBLIC_S3_REPLAYS_BUCKET_URL }}
+            VITE_BACKEND_PUBLIC_URL=${{ vars.VITE_BACKEND_PUBLIC_URL || vars.NEXT_PUBLIC_BACKEND_PUBLIC_URL }}
+            VITE_VISUALIZER_URL=${{ vars.VITE_VISUALIZER_URL || vars.NEXT_PUBLIC_VISUALIZER_URL }}
+            VITE_S3_REPLAYS_BUCKET_URL=${{ vars.VITE_S3_REPLAYS_BUCKET_URL || vars.NEXT_PUBLIC_S3_REPLAYS_BUCKET_URL }}
+            VITE_FORTY_TWO_CLIENT_ID=${{ vars.VITE_FORTY_TWO_CLIENT_ID || vars.NEXT_PUBLIC_FORTY_TWO_CLIENT_ID }}
             CURRENT_BRANCH=${{ github.ref_name }}
           secrets: |
-            NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=${{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
+            VITE_SERVER_ACTIONS_ENCRYPTION_KEY=${{ secrets.VITE_SERVER_ACTIONS_ENCRYPTION_KEY || secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
 
       - name: Output image details
         run: |
