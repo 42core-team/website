@@ -21,31 +21,17 @@ ARG CURRENT_BRANCH
 ENV CURRENT_BRANCH=$CURRENT_BRANCH
 
 RUN apk add --no-cache git nodejs openssh
-RUN VITE_BACKEND_PUBLIC_URL="${VITE_BACKEND_PUBLIC_URL}" \
+RUN STATIC_BUILD=true \
+    VITE_BACKEND_PUBLIC_URL="${VITE_BACKEND_PUBLIC_URL}" \
     VITE_VISUALIZER_URL="${VITE_VISUALIZER_URL}" \
     VITE_FORTY_TWO_CLIENT_ID="${VITE_FORTY_TWO_CLIENT_ID}" \
     VITE_S3_REPLAYS_BUCKET_URL="${VITE_S3_REPLAYS_BUCKET_URL}" \
     node node_modules/vite/bin/vite.js build
 
 # Production image
-FROM base AS runner
-WORKDIR /app
-
-ENV NODE_ENV=production
-
-RUN addgroup -S -g 1001 bunjs
-RUN adduser -S -u 1001 start -G bunjs
-RUN apk add --no-cache nodejs
-
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
-
-COPY --from=builder --chown=start:bunjs /app/dist ./dist
-
-USER start
+FROM nginx:1.29-alpine AS runner
 
 EXPOSE 3000
-ENV PORT=3000
-ENV HOST=0.0.0.0
 
-CMD ["node", "node_modules/.bin/srvx", "serve", "--entry", "dist/server/server.js", "--static", "dist/client", "--prod"]
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist/client /usr/share/nginx/html
