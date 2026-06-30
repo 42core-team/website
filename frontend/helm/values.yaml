@@ -64,11 +64,6 @@ env:
 # Secrets - these should be provided via GitHub secrets during deployment
 secrets:
   VITE_AUTH_SECRET: ""
-  # Next.js Server Actions encryption key for AES-GCM.
-  # Must be a random 32-byte value, encoded as base64 or hex.
-  # Example (base64): openssl rand -base64 32
-  # Example (hex):    openssl rand -hex 32
-  VITE_SERVER_ACTIONS_ENCRYPTION_KEY: ""
 
 ingress:
   enabled: false

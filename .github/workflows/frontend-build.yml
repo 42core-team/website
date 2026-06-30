@@ -10,7 +10,7 @@ on:
   pull_request:
     branches: [main, dev]
     paths:
-      - "../../frontend/**"
+      - "frontend/**"
       - ".github/workflows/frontend-build.yml"
       - ".github/workflows/frontend-deploy.yml"
     types: [opened, synchronize, reopened]
@@ -175,9 +175,6 @@ jobs:
             VITE_S3_REPLAYS_BUCKET_URL=${{ vars.VITE_S3_REPLAYS_BUCKET_URL || vars.NEXT_PUBLIC_S3_REPLAYS_BUCKET_URL }}
             VITE_FORTY_TWO_CLIENT_ID=${{ vars.VITE_FORTY_TWO_CLIENT_ID || vars.NEXT_PUBLIC_FORTY_TWO_CLIENT_ID }}
             CURRENT_BRANCH=${{ github.ref_name }}
-          secrets: |
-            VITE_SERVER_ACTIONS_ENCRYPTION_KEY=${{ secrets.VITE_SERVER_ACTIONS_ENCRYPTION_KEY || secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
-
       - name: Output image details
         run: |
           if [ "${{ github.event_name }}" != "pull_request" ]; then

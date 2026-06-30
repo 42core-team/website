@@ -43,11 +43,6 @@ spec:
               value: {{ $value | quote }}
             {{- end }}
             # Secrets from Kubernetes secrets
-            - name: VITE_SERVER_ACTIONS_ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "frontend.fullname" . }}-secrets
-                  key: VITE_SERVER_ACTIONS_ENCRYPTION_KEY
             - name: VITE_AUTH_SECRET
               valueFrom:
                 secretKeyRef:
