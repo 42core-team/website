@@ -1,162 +1,232 @@
 version: 2
-updates:
-  # Keep GitHub Actions up to date
-  - package-ecosystem: "github-actions"
-    directory: "/"
+
+multi-ecosystem-groups:
+  github-actions:
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 2
     commit-message:
       prefix: "chore"
       include: "scope"
+  api:
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+  frontend:
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+  github-service:
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+  k8s-service:
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    multi-ecosystem-group: "github-actions"
+    patterns:
+      - "*"
     labels:
       - "dependencies"
       - "github-actions"
-    # Grouping configuration
     groups:
-      all-actions:
+      github-actions-dependencies:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      github-actions-major-versions:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
 
-  # Node.js (npm/pnpm) workspaces
   - package-ecosystem: "npm"
     directory: "/api"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "chore"
-      include: "scope"
+    multi-ecosystem-group: "api"
+    patterns:
+      - "*"
     labels:
       - "dependencies"
       - "api"
-    # Groups all /api npm updates into one PR
     groups:
-      api-npm-dependencies:
+      api-dependencies:
         patterns:
           - "*"
-
-  - package-ecosystem: "npm"
-    directory: "/frontend"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "frontend"
-    # Groups all /frontend npm updates into one PR
-    groups:
-      frontend-npm-dependencies:
+        update-types:
+          - "minor"
+          - "patch"
+      api-major-versions:
         patterns:
           - "*"
+        update-types:
+          - "major"
 
-  - package-ecosystem: "npm"
-    directory: "/github-service"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "github-service"
-    # Groups all /github-service npm updates into one PR
-    groups:
-      github-service-npm-dependencies:
-        patterns:
-          - "*"
-
-  # Go modules
-  - package-ecosystem: "gomod"
-    directory: "/k8s-service"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "k8s-service"
-    # Groups all go module updates into one PR
-    groups:
-      k8s-go-dependencies:
-        patterns:
-          - "*"
-
-  # Dockerfiles across services
   - package-ecosystem: "docker"
     directory: "/api"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "chore"
-      include: "scope"
+    multi-ecosystem-group: "api"
+    patterns:
+      - "*"
     labels:
       - "dependencies"
       - "docker"
       - "api"
-    # Groups docker updates for api
     groups:
       api-docker-dependencies:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      api-docker-major-versions:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    multi-ecosystem-group: "frontend"
+    patterns:
+      - "*"
+    labels:
+      - "dependencies"
+      - "frontend"
+    groups:
+      frontend-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      frontend-major-versions:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
 
   - package-ecosystem: "docker"
     directory: "/frontend"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "chore"
-      include: "scope"
+    multi-ecosystem-group: "frontend"
+    patterns:
+      - "*"
     labels:
       - "dependencies"
       - "docker"
       - "frontend"
-    # Groups docker updates for frontend
     groups:
       frontend-docker-dependencies:
         patterns:
           - "*"
-
-  - package-ecosystem: "docker"
-    directory: "/k8s-service"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "dependencies"
-      - "docker"
-      - "k8s-service"
-    # Groups docker updates for k8s-service
-    groups:
-      k8s-docker-dependencies:
+        update-types:
+          - "minor"
+          - "patch"
+      frontend-docker-major-versions:
         patterns:
           - "*"
+        update-types:
+          - "major"
+
+  - package-ecosystem: "npm"
+    directory: "/github-service"
+    multi-ecosystem-group: "github-service"
+    patterns:
+      - "*"
+    labels:
+      - "dependencies"
+      - "github-service"
+    groups:
+      github-service-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      github-service-major-versions:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
 
   - package-ecosystem: "docker"
     directory: "/github-service"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "chore"
-      include: "scope"
+    multi-ecosystem-group: "github-service"
+    patterns:
+      - "*"
     labels:
       - "dependencies"
       - "docker"
       - "github-service"
-    # Groups docker updates for github-service
     groups:
       github-service-docker-dependencies:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      github-service-docker-major-versions:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+
+  - package-ecosystem: "gomod"
+    directory: "/k8s-service"
+    multi-ecosystem-group: "k8s-service"
+    patterns:
+      - "*"
+    labels:
+      - "dependencies"
+      - "k8s-service"
+    groups:
+      k8s-service-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      k8s-service-major-versions:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+
+  - package-ecosystem: "docker"
+    directory: "/k8s-service"
+    multi-ecosystem-group: "k8s-service"
+    patterns:
+      - "*"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "k8s-service"
+    groups:
+      k8s-service-docker-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      k8s-service-docker-major-versions:
+        patterns:
+          - "*"
+        update-types:
+          - "major"

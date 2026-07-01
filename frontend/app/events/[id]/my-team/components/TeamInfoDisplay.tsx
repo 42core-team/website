@@ -1,7 +1,6 @@
 "use client";
 import type { Team, TeamMember } from "@/app/actions/team";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePlausible } from "next-plausible";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import axiosInstance from "@/app/actions/axios";
@@ -21,7 +20,6 @@ export default function TeamInfoDisplay({
   team: initialTeam,
   teamMembers: initialTeamMembers,
 }: TeamInfoDisplayProps) {
-  const plausible = usePlausible();
   const queryClient = useQueryClient();
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -89,7 +87,6 @@ export default function TeamInfoDisplay({
       }
     },
     onMutate: () => {
-      plausible("leave_team");
       setErrorMessage(null);
     },
     onError: (error: Error) => {

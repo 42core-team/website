@@ -163,7 +163,6 @@ export async function getWikiPageWithVersion(
 
     // Transform GitHub-style callouts (> [!TYPE])
     htmlContent = htmlContent.replace(
-      // eslint-disable-next-line regexp/no-super-linear-backtracking
       /<blockquote>\s*<p>\s*\[!(WARNING|INFO|NOTE|TIP|IMPORTANT|CAUTION)\]\s*(.*?)<\/p>\s*([\s\S]*?)<\/blockquote>/g,
       (_match: string, type: string, title: string, content: string) => {
         const typeClass = type.toLowerCase();

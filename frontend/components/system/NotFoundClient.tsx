@@ -24,7 +24,7 @@ export default function NotFoundClient() {
           </CardDescription>
         </CardHeader>
         <CardContent className="gap-2 text-center">
-          <p>Oops! The page you are looking for doesn't exist.</p>
+          <p>Oops! The page you are looking for doesn&apos;t exist.</p>
           <p>
             You can check
             {" "}

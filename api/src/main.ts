@@ -11,7 +11,7 @@ import {
   Transport,
 } from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
-import * as cookieParser from "cookie-parser";
+import cookieParser from "cookie-parser";
 
 export const getRabbitmqConfig = (
   configService: ConfigService,

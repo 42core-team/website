@@ -9,8 +9,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import GlobalStats from "@/components/GlobalStats";
-import { GithubIcon, WikiIcon } from "@/components/icons";
-import { CoreLogoWhite } from "@/components/social";
+import { CoreLogoWhite, GithubIcon, WikiIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Card,

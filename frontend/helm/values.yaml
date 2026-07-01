@@ -55,9 +55,6 @@ env:
   # Add other environment variables as needed
   NEXT_PUBLIC_VISUALIZER_URL: ""
   NEXT_PUBLIC_BACKEND_PUBLIC_URL: ""
-  # Plausible analytics domain defaults
-  PLAUSIBLE_DOMAIN: coregame.sh
-  PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.sh"
   AUTH_COOKIE_NAME: "token"
 
 # Secrets - these should be provided via GitHub secrets during deployment

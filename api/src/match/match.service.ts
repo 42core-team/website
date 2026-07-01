@@ -6,8 +6,7 @@ import { MatchStatsEntity } from "./entites/matchStats.entity";
 import { DataSource, In, Not, Repository } from "typeorm";
 import { Swiss } from "tournament-pairings";
 import { EventService } from "../event/event.service";
-// @ts-expect-error: tournament-pairings interfaces are not correctly typed and missing 'interfaces' export.
-import { Player } from "tournament-pairings/interfaces";
+import type { Player } from "tournament-pairings/interfaces";
 import { EventEntity } from "../event/entities/event.entity";
 import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
 import { getRabbitmqConfig } from "../main";
@@ -266,8 +265,9 @@ export class MatchService {
       await queryRunner.commitTransaction();
     } catch (err) {
       await queryRunner.rollbackTransaction();
+      const message = err instanceof Error ? err.message : String(err);
       this.logger.error(
-        `Error finishing round for event ${event.id}: ${err.message}`,
+        `Error finishing round for event ${event.id}: ${message}`,
       );
     } finally {
       await queryRunner.release();
@@ -516,7 +516,7 @@ export class MatchService {
         avoid: await this.getFormerOpponents(team.id).then((opponents) =>
           opponents.map((opponent) => opponent.id),
         ),
-        rating: true,
+        rating: team.score,
       })),
     );
 
@@ -1212,7 +1212,11 @@ export class MatchService {
     // Fetch all teams for this event to get their bye status and current total scores
     const teams = await this.dataSource.getRepository(TeamEntity).find({
       where: { event: { id: eventId } },
-      select: ["id", "hadBye", "score"],
+      select: {
+        id: true,
+        hadBye: true,
+        score: true,
+      },
     });
 
     // const teamsMap = new Map(teams.map((t) => [t.id, t]));

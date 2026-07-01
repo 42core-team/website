@@ -58,7 +58,7 @@ export class FortyTwoOAuthStrategy extends PassportStrategy(Strategy, "42") {
         },
       });
     } catch (err) {
-      done(err, undefined);
+      done(err instanceof Error ? err : new Error(String(err)), undefined);
     }
   }
 }

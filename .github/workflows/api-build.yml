@@ -47,10 +47,10 @@ jobs:
       actions: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v5
+        uses: pnpm/action-setup@v6
         with:
           version: 10
 
@@ -98,17 +98,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Blacksmith Builder
         uses: useblacksmith/setup-docker-builder@v1
 
-      - name: Sanitize branch names
-        id: sanitize-branch
+      - name: Compute image tag
+        id: image-tag
         run: |
-          RAW_REF="${{ github.head_ref || github.ref_name }}"
-          SANITIZED=$(echo "$RAW_REF" | tr '[:upper:]' '[:lower:]' | sed 's#[^a-z0-9._-]#-#g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
-          echo "name=$SANITIZED" >> $GITHUB_OUTPUT
+          IMAGE_TAG="build-${{ github.run_number }}-${{ github.run_attempt }}"
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "Image tag: $IMAGE_TAG"
 
       - name: Log in to Container Registry
         uses: docker/login-action@v4
@@ -125,14 +125,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr,prefix=pr-
-            type=raw,value=build-${{ github.run_number }}-${{ github.run_attempt }}
-
-      - name: Compute image tag
-        id: image-tag
-        run: |
-          IMAGE_TAG="build-${{ github.run_number }}-${{ github.run_attempt }}"
-          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "Image tag: $IMAGE_TAG"
+            type=raw,value=${{ steps.image-tag.outputs.image_tag }}
 
       - name: Build image (PR - no push)
         if: github.event_name == 'pull_request'
@@ -187,5 +180,5 @@ jobs:
     uses: ./.github/workflows/api-deploy.yml
     with:
       environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'prod' || 'dev') }}
-      image_tag: build-${{ github.run_number }}-${{ github.run_attempt }}
+      image_tag: ${{ needs.build.outputs.image_tag }}
     secrets: inherit
