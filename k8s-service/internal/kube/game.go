@@ -212,7 +212,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 	gameEnv := []corev1.EnvVar{
 		{Name: "GAME_ID", Value: game.ID.String()},
 		{Name: "SEND_RESULTS", Value: "true"},
-		{Name: "RABBITMQ_URL", Value: c.cfg.RabbitMQHTTP + "/api/exchanges/%2f/amq.direct/publish"},
+		{Name: "RABBITMQ_URL", Value: c.cfg.RabbitMQHTTP + "/api/exchanges/%2f/amq.default/publish"},
 		{Name: "S3_PRESIGNED_URL", Value: presignedURL},
 		{Name: "UPLOAD_REPLAY", Value: "true"},
 		{Name: "BOT_ID_MAPPING", Value: string(botMappingJSON)},
