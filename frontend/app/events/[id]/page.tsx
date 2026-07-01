@@ -10,7 +10,6 @@ import {
   getParticipantsCountForEvent,
   getTeamsCountForEvent,
 } from "@/app/actions/event";
-import ConfigSection from "@/app/events/[id]/ConfigSection";
 import RepoLockCountdown from "@/app/events/[id]/repoLockCountdown";
 import TimeBadge from "@/components/timeBadge";
 import {
@@ -70,6 +69,27 @@ export default async function EventPage({
       .use(rehypeStringify)
       .process(event.description || ""),
   );
+  const image = event.gameServerDockerImage?.split("@")[0] || "";
+  const imageTagIndex = image.lastIndexOf(":");
+  const imageTag = imageTagIndex > image.lastIndexOf("/")
+    ? image.slice(imageTagIndex + 1)
+    : "Unknown";
+  let worldGenerator = "Unknown";
+
+  try {
+    const parsedGameConfig = JSON.parse(event.gameConfig || "{}") as {
+      worldGenerator?: unknown;
+    };
+
+    if (typeof parsedGameConfig.worldGenerator === "string") {
+      worldGenerator = parsedGameConfig.worldGenerator
+        .replace(/_/g, " ")
+        .replace(/([A-Z])/g, " $1")
+        .replace(/\b\w/g, letter => letter.toUpperCase())
+        .trim();
+    }
+  }
+  catch {}
 
   return (
     <div className="container mx-auto py-4">
@@ -128,10 +148,18 @@ export default async function EventPage({
             {event.repoLockDate && (
               <RepoLockCountdown repoLockDate={event.repoLockDate} />
             )}
-            <ConfigSection
-              gameConfig={event.gameConfig}
-              serverConfig={event.serverConfig}
-            />
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Version
+              </h3>
+              <p className="mt-1">{imageTag}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">
+                World Generator
+              </h3>
+              <p className="mt-1">{worldGenerator}</p>
+            </div>
           </div>
         </CardContent>
       </Card>

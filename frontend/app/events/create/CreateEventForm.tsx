@@ -162,7 +162,7 @@ export default function CreateEventForm() {
       gameServerImageTag: "",
       myCoreBotImageTag: "",
       visualizerImageTag: "",
-      basePath: "bots/softcore",
+      basePath: "bots/c/softcore",
       gameConfig: "",
       serverConfig: "",
       isPrivate: false,
@@ -704,11 +704,11 @@ export default function CreateEventForm() {
                     <FormItem>
                       <FormLabel>Base Path *</FormLabel>
                       <FormControl>
-                        <Input placeholder="bots/softcore" {...field} />
+                        <Input placeholder="bots/c/softcore" {...field} />
                       </FormControl>
                       <FormDescription>
                         Path in the monorepo where the game logic is located
-                        (e.g., bots/softcore)
+                        (e.g., bots/c/softcore)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
