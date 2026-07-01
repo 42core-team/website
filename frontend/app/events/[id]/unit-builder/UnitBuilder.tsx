@@ -1,32 +1,33 @@
 "use client";
 
-import type { DragEvent } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import type {
   ComponentConfig,
   ComponentsConfig,
   RuleViolation,
   UnitPropertyName,
 } from "./types";
-import { AnimatePresence, motion } from "framer-motion";
-import { Check, Copy, X } from "lucide-react";
+import { motion } from "framer-motion";
+import { Check, Copy, Plus, X } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import {
-  conditionToC,
-  findViolation,
-  getTotalCost,
-  getUnitProperties,
-} from "./rules";
+import { findViolation, getTotalCost, getUnitProperties } from "./rules";
 import { UNIT_PROPERTY_NAMES } from "./types";
 import { getUnitAssetPath, getUnitIconSrc } from "./visualizer";
 
-const DRAG_TYPE = "application/x-core-unit-builder";
 const EMPTY_UNIT_NAME = "unit_name";
 const EMPTY_DISPLAY_NAME = "Your Unit";
 const GOOD_WHEN_SMALLER = new Set<UnitPropertyName>([
@@ -43,15 +44,42 @@ interface SelectedComponent {
   componentId: string;
 }
 
-type DragPayload =
-  | { source: "library"; componentId: string }
-  | { source: "assembly"; key: string };
-
 type ImpactTone = "positive" | "negative";
+type DragTarget = "assembly" | "library" | null;
 
 interface Highlights {
   cost?: ImpactTone;
   properties: Partial<Record<UnitPropertyName, ImpactTone>>;
+}
+
+interface ActiveDrag {
+  source: "library" | "assembly";
+  item: SelectedComponent;
+  component: ComponentConfig;
+  x: number;
+  y: number;
+  offsetX: number;
+  offsetY: number;
+  fromLeft: number;
+  fromTop: number;
+  target: DragTarget;
+  insertIndex: number | null;
+}
+
+interface DropGhost {
+  key: string;
+  component: ComponentConfig;
+  fromLeft: number;
+  fromTop: number;
+  toLeft: number;
+  toTop: number;
+}
+
+interface PendingDropGhost {
+  key: string;
+  component: ComponentConfig;
+  fromLeft: number;
+  fromTop: number;
 }
 
 function titleize(value: string) {
@@ -99,71 +127,8 @@ function cString(value: string) {
 
 function showViolation(violation: RuleViolation) {
   window.alert(
-    `${violation.message} [${violation.conditionText} must be true]`,
+    `${violation.message}\n\nThe following must be true for the unit assembly to be allowed:\n${violation.conditionText}`,
   );
-}
-
-function readPayload(event: DragEvent) {
-  try {
-    const raw = event.dataTransfer.getData(DRAG_TYPE);
-    if (!raw) return null;
-
-    return JSON.parse(raw) as DragPayload;
-  } catch {
-    return null;
-  }
-}
-
-function setSmallDragImage(event: DragEvent, component: ComponentConfig) {
-  const preview = document.createElement("div");
-  const icon = document.createElement("img");
-  const label = document.createElement("span");
-  const isDark = document.documentElement.classList.contains("dark");
-
-  icon.src = getUnitIconSrc(component.visualizer_asset_path);
-  icon.alt = "";
-  Object.assign(icon.style, {
-    filter: isDark ? "invert(1)" : "none",
-    height: "40px",
-    objectFit: "contain",
-    width: "40px",
-  });
-
-  label.textContent = titleize(component.id);
-  Object.assign(label.style, {
-    display: "block",
-    maxWidth: "88px",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  });
-
-  Object.assign(preview.style, {
-    alignItems: "center",
-    background: "var(--background)",
-    border: "1px solid var(--border)",
-    borderRadius: "8px",
-    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.18)",
-    color: "var(--foreground)",
-    display: "flex",
-    flexDirection: "column",
-    font: "600 12px system-ui, sans-serif",
-    gap: "8px",
-    height: "112px",
-    justifyContent: "center",
-    left: "-1000px",
-    padding: "12px",
-    position: "fixed",
-    textAlign: "center",
-    top: "-1000px",
-    width: "112px",
-    zIndex: "9999",
-  });
-
-  preview.append(icon, label);
-  document.body.append(preview);
-  event.dataTransfer.setDragImage(preview, 24, 24);
-  window.setTimeout(() => preview.remove(), 0);
 }
 
 function UnitIcon({
@@ -195,9 +160,40 @@ function UnitIcon({
   );
 }
 
-function ComponentEffects({ component }: { component: ComponentConfig }) {
+function ComponentTileVisual({
+  component,
+  className,
+}: {
+  component: ComponentConfig;
+  className?: string;
+}) {
   return (
-    <div className="mt-3 flex flex-wrap gap-1.5">
+    <div
+      className={cn(
+        "relative flex h-28 w-28 flex-col items-center justify-center rounded-lg border bg-background p-3 text-center shadow-sm",
+        className,
+      )}
+    >
+      <UnitIcon
+        assetPath={component.visualizer_asset_path}
+        className="size-10"
+      />
+      <span className="mt-2 max-w-full truncate text-xs font-semibold">
+        {titleize(component.id)}
+      </span>
+    </div>
+  );
+}
+
+function ComponentEffects({
+  component,
+  className,
+}: {
+  component: ComponentConfig;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex flex-wrap gap-1.5", className)}>
       {component.properties.map((property) => {
         const tone = impactForProperty(property.name, property.modification);
 
@@ -205,7 +201,10 @@ function ComponentEffects({ component }: { component: ComponentConfig }) {
           <Badge
             key={property.name}
             variant="outline"
-            className={cn("font-mono text-[11px]", impactBorder(tone))}
+            className={cn(
+              "block min-w-0 max-w-full whitespace-normal break-all text-left font-mono text-[11px] leading-tight",
+              impactBorder(tone),
+            )}
           >
             {property.modification > 0 ? "+" : ""}
             {property.modification} {property.name}
@@ -214,6 +213,19 @@ function ComponentEffects({ component }: { component: ComponentConfig }) {
       })}
     </div>
   );
+}
+
+function insertAt<T>(items: T[], item: T, index: number) {
+  const next = [...items];
+  next.splice(Math.max(0, Math.min(index, next.length)), 0, item);
+  return next;
+}
+
+function isInside(element: HTMLElement | null, x: number, y: number) {
+  if (!element) return false;
+
+  const rect = element.getBoundingClientRect();
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
 function PropertyRow({
@@ -292,20 +304,24 @@ function SidebarCost({ value, tone }: { value: number; tone?: ImpactTone }) {
 export default function UnitBuilder({ config }: UnitBuilderProps) {
   const nextKey = useRef(0);
   const copiedTimeout = useRef<number | null>(null);
+  const libraryGhostTimeout = useRef<number | null>(null);
+  const assemblyRef = useRef<HTMLDivElement | null>(null);
+  const libraryRef = useRef<HTMLDivElement | null>(null);
+  const placeholderRef = useRef<HTMLDivElement | null>(null);
+  const tileRefs = useRef(new Map<string, HTMLDivElement>());
+  const libraryTileRefs = useRef(new Map<string, HTMLDivElement>());
   const [unitName, setUnitName] = useState("");
   const [copied, setCopied] = useState(false);
   const [selected, setSelected] = useState<SelectedComponent[]>([]);
-  const [highlights, setHighlights] = useState<Highlights>({ properties: {} });
-  const [assemblyHot, setAssemblyHot] = useState(false);
-  const [libraryHot, setLibraryHot] = useState(false);
-
-  const componentOrder = useMemo(
-    () =>
-      new Map(
-        config.components.map((component, index) => [component.id, index]),
-      ),
-    [config.components],
-  );
+  const [highlights, setHighlights] = useState<Highlights>({
+    properties: {},
+  });
+  const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
+  const [dropGhost, setDropGhost] = useState<DropGhost | null>(null);
+  const [pendingDropGhost, setPendingDropGhost] =
+    useState<PendingDropGhost | null>(null);
+  const [ghostedLibraryId, setGhostedLibraryId] = useState<string | null>(null);
+  const [dragEnabled, setDragEnabled] = useState(false);
 
   const componentById = useMemo(
     () =>
@@ -341,28 +357,73 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
   useEffect(() => {
     return () => {
       if (copiedTimeout.current) window.clearTimeout(copiedTimeout.current);
+      if (libraryGhostTimeout.current)
+        window.clearTimeout(libraryGhostTimeout.current);
     };
   }, []);
 
-  function sortSelected(items: SelectedComponent[]) {
-    return [...items].sort((a, b) => {
-      const byType =
-        (componentOrder.get(a.componentId) ?? 0) -
-        (componentOrder.get(b.componentId) ?? 0);
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(
+      "(any-hover: hover) and (any-pointer: fine)",
+    );
+    const syncDragMode = () => {
+      setDragEnabled(mediaQuery.matches);
 
-      return byType || a.key.localeCompare(b.key);
+      if (!mediaQuery.matches) {
+        setActiveDrag(null);
+        setGhostedLibraryId(null);
+      }
+    };
+
+    syncDragMode();
+    mediaQuery.addEventListener("change", syncDragMode);
+
+    return () => mediaQuery.removeEventListener("change", syncDragMode);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!pendingDropGhost) return;
+
+    const targetRect = tileRefs.current
+      .get(pendingDropGhost.key)
+      ?.getBoundingClientRect();
+
+    if (!targetRect) return;
+
+    setDropGhost({
+      ...pendingDropGhost,
+      toLeft: targetRect.left,
+      toTop: targetRect.top,
     });
+    setPendingDropGhost(null);
+  }, [pendingDropGhost, selected]);
+
+  function setAssemblyTileRef(key: string, node: HTMLDivElement | null) {
+    if (node) tileRefs.current.set(key, node);
+    else tileRefs.current.delete(key);
+  }
+
+  function setLibraryTileRef(key: string, node: HTMLDivElement | null) {
+    if (node) libraryTileRefs.current.set(key, node);
+    else libraryTileRefs.current.delete(key);
+  }
+
+  function getSelectionViolation(items: SelectedComponent[]) {
+    return findViolation(
+      config,
+      items.map((component) => component.componentId),
+    );
   }
 
   function commit(next: SelectedComponent[]) {
     const previousProperties = getUnitProperties(config, componentIds);
     const previousCost = getTotalCost(config, componentIds);
     const nextIds = next.map((component) => component.componentId);
-    const nextViolation = findViolation(config, nextIds);
+    const nextViolation = getSelectionViolation(next);
 
     if (nextViolation) {
       showViolation(nextViolation);
-      return;
+      return false;
     }
 
     const nextProperties = getUnitProperties(config, nextIds);
@@ -381,18 +442,85 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
       cost: impactForCost(getTotalCost(config, nextIds) - previousCost),
       properties: propertyHighlights,
     });
-    setSelected(sortSelected(next));
+    setSelected(next);
+    return true;
   }
 
-  function addComponent(componentId: string) {
-    commit([
-      ...selected,
-      { key: `${componentId}-${nextKey.current++}`, componentId },
-    ]);
+  function addComponentWithFlight(
+    component: ComponentConfig,
+    violation: RuleViolation | null,
+  ) {
+    if (violation) {
+      showViolation(violation);
+      return;
+    }
+
+    const sourceRect = libraryTileRefs.current
+      .get(component.id)
+      ?.getBoundingClientRect();
+    const item = {
+      key: `${component.id}-${nextKey.current++}`,
+      componentId: component.id,
+    };
+
+    if (sourceRect) {
+      setGhostedLibraryId(component.id);
+      restoreLibraryGhost();
+      setPendingDropGhost({
+        key: item.key,
+        component,
+        fromLeft: sourceRect.left,
+        fromTop: sourceRect.top,
+      });
+    }
+
+    if (!commit([...selected, item])) {
+      setPendingDropGhost(null);
+      setGhostedLibraryId(null);
+    }
   }
 
-  function removeComponent(key: string) {
-    commit(selected.filter((component) => component.key !== key));
+  function returnToLibrary(
+    drag: ActiveDrag,
+    fromLeft = drag.x - drag.offsetX,
+    fromTop = drag.y - drag.offsetY,
+  ) {
+    const targetRect = libraryTileRefs.current
+      .get(drag.item.componentId)
+      ?.getBoundingClientRect();
+
+    if (!targetRect) return;
+
+    setDropGhost({
+      key: drag.item.key,
+      component: drag.component,
+      fromLeft,
+      fromTop,
+      toLeft: targetRect.left,
+      toTop: targetRect.top,
+    });
+  }
+
+  function removeComponentWithReturn(
+    item: SelectedComponent,
+    component: ComponentConfig,
+  ) {
+    const sourceRect = tileRefs.current.get(item.key)?.getBoundingClientRect();
+    const targetRect = libraryTileRefs.current
+      .get(item.componentId)
+      ?.getBoundingClientRect();
+    const removed = commit(selected.filter((entry) => entry.key !== item.key));
+
+    if (removed && sourceRect && targetRect) {
+      setDropGhost({
+        key: item.key,
+        component,
+        fromLeft: sourceRect.left,
+        fromTop: sourceRect.top,
+        toLeft: targetRect.left,
+        toTop: targetRect.top,
+      });
+    }
   }
 
   function getAddViolation(componentId: string) {
@@ -408,60 +536,208 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
     );
   }
 
-  function startLibraryDrag(
-    event: DragEvent,
-    component: ComponentConfig,
-    violation: RuleViolation | null,
-  ) {
-    if (violation) {
-      event.preventDefault();
-      showViolation(violation);
-      return;
+  function visibleItemsForDrag(drag: ActiveDrag | null) {
+    if (drag?.source !== "assembly") return selected;
+    return selected.filter((component) => component.key !== drag.item.key);
+  }
+
+  function getInsertionIndex(x: number, y: number, drag: ActiveDrag) {
+    const items = visibleItemsForDrag(drag);
+    if (items.length === 0) return 0;
+
+    const rects = items.flatMap((item, index) => {
+      const node = tileRefs.current.get(item.key);
+      return node ? [{ index, rect: node.getBoundingClientRect() }] : [];
+    });
+
+    if (rects.length === 0) return items.length;
+
+    const row = rects.filter(
+      ({ rect }) => y >= rect.top - 12 && y <= rect.bottom + 12,
+    );
+
+    if (row.length > 0) {
+      for (const { index, rect } of row) {
+        if (x < rect.left + rect.width / 2) return index;
+      }
+
+      return row[row.length - 1].index + 1;
     }
 
-    event.dataTransfer.setData(
-      DRAG_TYPE,
-      JSON.stringify({
-        source: "library",
+    for (const { index, rect } of rects) {
+      if (y < rect.top + rect.height / 2) return index;
+    }
+
+    return items.length;
+  }
+
+  function resolveDragTarget(drag: ActiveDrag, x: number, y: number) {
+    if (isInside(assemblyRef.current, x, y)) {
+      return {
+        ...drag,
+        x,
+        y,
+        target: "assembly" as const,
+        insertIndex: getInsertionIndex(x, y, drag),
+      };
+    }
+
+    if (drag.source === "assembly" && isInside(libraryRef.current, x, y)) {
+      return {
+        ...drag,
+        x,
+        y,
+        target: "library" as const,
+        insertIndex: null,
+      };
+    }
+
+    return { ...drag, x, y, target: null, insertIndex: null };
+  }
+
+  function restoreLibraryGhost() {
+    if (libraryGhostTimeout.current)
+      window.clearTimeout(libraryGhostTimeout.current);
+
+    libraryGhostTimeout.current = window.setTimeout(() => {
+      setGhostedLibraryId(null);
+    }, 180);
+  }
+
+  function startLibraryDrag(
+    event: ReactPointerEvent<HTMLElement>,
+    component: ComponentConfig,
+  ) {
+    if (!dragEnabled) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.button !== 0) return;
+
+    if (libraryGhostTimeout.current)
+      window.clearTimeout(libraryGhostTimeout.current);
+
+    const sourceRect = libraryTileRefs.current
+      .get(component.id)
+      ?.getBoundingClientRect();
+    const drag: ActiveDrag = {
+      source: "library",
+      item: {
+        key: `${component.id}-${nextKey.current++}`,
         componentId: component.id,
-      } satisfies DragPayload),
-    );
-    event.dataTransfer.effectAllowed = "copy";
-    setSmallDragImage(event, component);
+      },
+      component,
+      x: event.clientX,
+      y: event.clientY,
+      offsetX: 56,
+      offsetY: 56,
+      fromLeft: sourceRect?.left ?? event.clientX - 56,
+      fromTop: sourceRect?.top ?? event.clientY - 56,
+      target: null,
+      insertIndex: null,
+    };
+
+    setGhostedLibraryId(component.id);
+    setActiveDrag(resolveDragTarget(drag, event.clientX, event.clientY));
   }
 
   function startAssemblyDrag(
-    event: DragEvent,
-    key: string,
+    event: ReactPointerEvent<HTMLElement>,
+    item: SelectedComponent,
+    component: ComponentConfig,
     violation: RuleViolation | null,
   ) {
+    if (!dragEnabled) return;
+
+    event.preventDefault();
+
+    if (event.button !== 0) return;
+
     if (violation) {
-      event.preventDefault();
       showViolation(violation);
       return;
     }
 
-    event.dataTransfer.setData(
-      DRAG_TYPE,
-      JSON.stringify({ source: "assembly", key } satisfies DragPayload),
+    const rect = event.currentTarget.getBoundingClientRect();
+    const drag: ActiveDrag = {
+      source: "assembly",
+      item,
+      component,
+      x: event.clientX,
+      y: event.clientY,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      fromLeft: rect.left,
+      fromTop: rect.top,
+      target: null,
+      insertIndex: null,
+    };
+
+    setActiveDrag(resolveDragTarget(drag, event.clientX, event.clientY));
+  }
+
+  function moveActiveDrag(event: ReactPointerEvent<HTMLElement>) {
+    setActiveDrag((drag) =>
+      drag ? resolveDragTarget(drag, event.clientX, event.clientY) : drag,
     );
-    event.dataTransfer.effectAllowed = "move";
   }
 
-  function dropOnAssembly(event: DragEvent) {
-    event.preventDefault();
-    setAssemblyHot(false);
+  function finishActiveDrag(event: ReactPointerEvent<HTMLElement>) {
+    if (!activeDrag) return;
 
-    const payload = readPayload(event);
-    if (payload?.source === "library") addComponent(payload.componentId);
+    const drag = resolveDragTarget(activeDrag, event.clientX, event.clientY);
+    const visibleItems = visibleItemsForDrag(drag);
+
+    if (drag.target === "assembly" && drag.insertIndex !== null) {
+      const next = insertAt(visibleItems, drag.item, drag.insertIndex);
+      const violation = getSelectionViolation(next);
+      const targetRect = placeholderRef.current?.getBoundingClientRect();
+
+      if (violation) {
+        returnToLibrary(drag);
+        setActiveDrag(null);
+        if (drag.source === "library") restoreLibraryGhost();
+        window.setTimeout(() => showViolation(violation), 190);
+        return;
+      }
+
+      const committed = commit(next);
+
+      if (committed && targetRect) {
+        setDropGhost({
+          key: drag.item.key,
+          component: drag.component,
+          fromLeft: drag.x - drag.offsetX,
+          fromTop: drag.y - drag.offsetY,
+          toLeft: targetRect.left,
+          toTop: targetRect.top,
+        });
+      } else if (!committed) {
+        returnToLibrary(drag);
+      }
+    } else if (drag.target === "library" && drag.source === "assembly") {
+      const committed = commit(visibleItems);
+
+      if (committed) returnToLibrary(drag);
+    } else if (drag.source === "library") {
+      returnToLibrary(drag);
+    }
+
+    setActiveDrag(null);
+
+    if (drag.source === "library") restoreLibraryGhost();
   }
 
-  function dropOnLibrary(event: DragEvent) {
-    event.preventDefault();
-    setLibraryHot(false);
+  function cancelActiveDrag() {
+    const drag = activeDrag;
 
-    const payload = readPayload(event);
-    if (payload?.source === "assembly") removeComponent(payload.key);
+    setActiveDrag(null);
+
+    if (drag?.source === "library") {
+      returnToLibrary(drag);
+      restoreLibraryGhost();
+    }
   }
 
   async function copyCall() {
@@ -474,6 +750,18 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
       setCopied(false);
     }, 1400);
   }
+
+  const visibleSelected = visibleItemsForDrag(activeDrag);
+  const placeholderIndex =
+    activeDrag?.target === "assembly" && activeDrag.insertIndex !== null
+      ? Math.max(0, Math.min(activeDrag.insertIndex, visibleSelected.length))
+      : null;
+  const assemblyDropViolation =
+    activeDrag?.target === "assembly" && placeholderIndex !== null
+      ? getSelectionViolation(
+          insertAt(visibleSelected, activeDrag.item, placeholderIndex),
+        )
+      : null;
 
   return (
     <div className="mx-auto mt-3 mb-10">
@@ -519,22 +807,20 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
                 Step 2: Assemble Its Abilities
               </h2>
               <p className="max-w-2xl text-sm leading-snug text-muted-foreground">
-                Drag up the components into the assembly section to apply them
-                to your unit
+                {dragEnabled
+                  ? "Drag up the components into the assembly section to apply them to your unit"
+                  : "Use the plus buttons to add components and the cross buttons to remove them"}
               </p>
             </div>
 
             <div
-              onDrop={dropOnAssembly}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setAssemblyHot(true);
-              }}
-              onDragLeave={() => setAssemblyHot(false)}
+              ref={assemblyRef}
               className={cn(
                 "min-h-52 rounded-xl border-2 border-dashed p-4 transition-colors",
-                assemblyHot
-                  ? "border-emerald-500 bg-emerald-500/10"
+                activeDrag?.target === "assembly"
+                  ? assemblyDropViolation
+                    ? "border-red-500 bg-muted/30"
+                    : "border-emerald-500 bg-muted/30"
                   : "border-border bg-muted/30",
               )}
             >
@@ -545,116 +831,184 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
                 </Badge>
               </div>
               <motion.div layout className="flex min-h-32 flex-wrap gap-3">
-                <AnimatePresence initial={false}>
-                  {selected.map((item) => {
-                    const component = componentById.get(item.componentId);
-                    const violation = getRemoveViolation(item.key);
-                    if (!component) return null;
+                {visibleSelected.map((item, index) => {
+                  const component = componentById.get(item.componentId);
+                  const violation = getRemoveViolation(item.key);
+                  if (!component) return null;
 
-                    return (
-                      <motion.button
-                        key={item.key}
-                        type="button"
+                  return (
+                    <Fragment key={item.key}>
+                      {placeholderIndex === index && (
+                        <motion.div
+                          ref={placeholderRef}
+                          layout
+                          transition={{
+                            layout: {
+                              duration: 0.16,
+                              ease: "easeOut",
+                            },
+                          }}
+                          className="h-28 w-28 rounded-lg border-2 border-dashed border-border bg-muted/50"
+                        />
+                      )}
+                      <motion.div
+                        ref={(node) => setAssemblyTileRef(item.key, node)}
                         layout
-                        initial={{ opacity: 0, x: 14 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 28 }}
-                        transition={{ duration: 0.18, ease: "easeOut" }}
-                        draggable
-                        aria-disabled={Boolean(violation)}
-                        onClick={() =>
-                          violation
-                            ? showViolation(violation)
-                            : removeComponent(item.key)
-                        }
-                        onDragStartCapture={(event) =>
-                          startAssemblyDrag(event, item.key, violation)
+                        transition={{
+                          layout: {
+                            duration: 0.16,
+                            ease: "easeOut",
+                          },
+                        }}
+                        onPointerDown={(event) =>
+                          startAssemblyDrag(event, item, component, violation)
                         }
                         className={cn(
-                          "group relative flex h-28 w-28 flex-col items-center justify-center rounded-lg border bg-background p-3 text-center shadow-sm transition hover:shadow-md",
-                          violation &&
-                            "cursor-not-allowed opacity-45 grayscale",
+                          "group relative",
+                          dragEnabled
+                            ? "cursor-grab active:cursor-grabbing"
+                            : "cursor-default",
+                          dragEnabled && violation && "cursor-not-allowed",
+                          (dropGhost?.key === item.key ||
+                            pendingDropGhost?.key === item.key) &&
+                            "opacity-0",
                         )}
                       >
-                        <UnitIcon
-                          assetPath={component.visualizer_asset_path}
-                          className="size-10"
+                        <ComponentTileVisual
+                          component={component}
+                          className={cn(
+                            dragEnabled &&
+                              "transition-shadow group-hover:shadow-md",
+                            violation && "opacity-45 grayscale",
+                          )}
                         />
-                        <span className="mt-2 max-w-full truncate text-xs font-semibold">
-                          {titleize(component.id)}
-                        </span>
-                        <X className="absolute top-2 right-2 size-3 opacity-0 transition-opacity group-hover:opacity-70" />
-                      </motion.button>
-                    );
-                  })}
-                </AnimatePresence>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${titleize(component.id)}`}
+                          onPointerDown={(event) => event.stopPropagation()}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (violation) showViolation(violation);
+                            else removeComponentWithReturn(item, component);
+                          }}
+                          className={cn(
+                            "absolute top-2 right-2 rounded-sm p-0.5 transition-opacity duration-75 focus-visible:opacity-100",
+                            dragEnabled
+                              ? "opacity-0 group-hover:opacity-70"
+                              : "opacity-70",
+                          )}
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </motion.div>
+                    </Fragment>
+                  );
+                })}
+                {placeholderIndex === visibleSelected.length && (
+                  <motion.div
+                    ref={placeholderRef}
+                    layout
+                    transition={{
+                      layout: {
+                        duration: 0.16,
+                        ease: "easeOut",
+                      },
+                    }}
+                    className="h-28 w-28 rounded-lg border-2 border-dashed border-border bg-muted/50"
+                  />
+                )}
               </motion.div>
             </div>
 
             <div
-              onDrop={dropOnLibrary}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setLibraryHot(true);
-              }}
-              onDragLeave={() => setLibraryHot(false)}
+              ref={libraryRef}
               className={cn(
                 "rounded-xl border p-4 transition-colors",
-                libraryHot ? "border-sky-500 bg-sky-500/10" : "bg-background",
+                activeDrag?.target === "library"
+                  ? "border-border bg-muted/20"
+                  : "bg-background",
               )}
             >
               <h3 className="mb-4 text-base font-semibold">Components</h3>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
                 {config.components.map((component) => {
                   const violation = getAddViolation(component.id);
 
                   return (
-                    <motion.button
+                    <motion.div
                       key={component.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       layout
-                      draggable
                       aria-disabled={Boolean(violation)}
-                      onClick={() =>
-                        violation
-                          ? showViolation(violation)
-                          : addComponent(component.id)
+                      onPointerDown={(event) =>
+                        startLibraryDrag(event, component)
                       }
-                      onDragStartCapture={(event) =>
-                        startLibraryDrag(event, component, violation)
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        addComponentWithFlight(component, violation);
+                      }}
+                      whileHover={
+                        dragEnabled && !violation ? { y: -3 } : undefined
                       }
-                      whileHover={violation ? undefined : { y: -3 }}
-                      whileTap={violation ? undefined : { scale: 0.98 }}
+                      whileTap={
+                        dragEnabled && !violation ? { scale: 0.98 } : undefined
+                      }
                       className={cn(
-                        "group relative min-h-36 rounded-lg border bg-card p-4 text-left shadow-sm transition hover:shadow-md",
-                        violation
-                          ? "cursor-not-allowed opacity-45 grayscale"
-                          : "cursor-grab active:cursor-grabbing",
+                        "group relative rounded-lg border bg-card p-3 text-left shadow-sm transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                        dragEnabled && "hover:shadow-md",
+                        dragEnabled
+                          ? "cursor-grab active:cursor-grabbing"
+                          : "cursor-default",
+                        violation && "opacity-45 grayscale",
                       )}
                     >
-                      {violation && (
-                        <div className="pointer-events-none absolute inset-x-3 top-3 z-10 hidden rounded-md bg-primary px-3 py-2 text-sm leading-snug text-primary-foreground shadow-lg group-hover:block group-focus-visible:block">
-                          {violation.message}
-                        </div>
-                      )}
                       <div className="flex items-start gap-3">
-                        <div className="flex size-12 shrink-0 items-center justify-center rounded-md bg-muted">
-                          <UnitIcon
-                            assetPath={component.visualizer_asset_path}
-                            className="size-8"
+                        <div
+                          ref={(node) => setLibraryTileRef(component.id, node)}
+                          className={cn(
+                            "shrink-0 transition-opacity duration-150",
+                            dragEnabled
+                              ? "cursor-grab active:cursor-grabbing"
+                              : "cursor-default",
+                            ghostedLibraryId === component.id && "opacity-0",
+                          )}
+                        >
+                          <ComponentTileVisual
+                            component={component}
+                            className={cn(
+                              dragEnabled &&
+                                "transition-shadow hover:shadow-md",
+                            )}
                           />
                         </div>
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold">
-                            {titleize(component.id)}
+                        <div className="min-w-0 flex-1 py-1">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-xs text-muted-foreground">
+                              💎 {component.cost} gems
+                            </div>
+                            <button
+                              type="button"
+                              aria-label={`Add ${titleize(component.id)}`}
+                              onPointerDown={(event) => event.stopPropagation()}
+                              onKeyDown={(event) => event.stopPropagation()}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                addComponentWithFlight(component, violation);
+                              }}
+                              className="rounded-md border bg-background p-1 opacity-90 shadow-sm transition-opacity duration-75 hover:opacity-100 focus-visible:opacity-100"
+                            >
+                              <Plus className="size-3.5" />
+                            </button>
                           </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            💎 {component.cost} gems
-                          </div>
+                          <ComponentEffects
+                            component={component}
+                            className="mt-3"
+                          />
                         </div>
                       </div>
-                      <ComponentEffects component={component} />
-                    </motion.button>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -725,6 +1079,64 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
           </CardContent>
         </Card>
       </div>
+
+      {activeDrag && (
+        <>
+          <div
+            className="fixed inset-0 z-40 cursor-grabbing touch-none"
+            onPointerMove={moveActiveDrag}
+            onPointerUp={finishActiveDrag}
+            onPointerCancel={cancelActiveDrag}
+          />
+          <motion.div
+            className="pointer-events-none fixed z-50"
+            initial={{
+              left: activeDrag.fromLeft,
+              top: activeDrag.fromTop,
+              scale: 1,
+            }}
+            animate={{
+              left: activeDrag.x - activeDrag.offsetX,
+              top: activeDrag.y - activeDrag.offsetY,
+              scale: 1.03,
+            }}
+            transition={{ duration: 0.14, ease: "easeOut" }}
+          >
+            <ComponentTileVisual
+              component={activeDrag.component}
+              className="border-primary/30 opacity-100 shadow-2xl ring-2 ring-primary/20"
+            />
+          </motion.div>
+        </>
+      )}
+
+      {dropGhost && (
+        <motion.div
+          key={dropGhost.key}
+          initial={{
+            left: dropGhost.fromLeft,
+            top: dropGhost.fromTop,
+            scale: 1.03,
+          }}
+          animate={{
+            left: dropGhost.toLeft,
+            top: dropGhost.toTop,
+            scale: 1,
+          }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          onAnimationComplete={() =>
+            setDropGhost((current) =>
+              current?.key === dropGhost.key ? null : current,
+            )
+          }
+          className="pointer-events-none fixed z-50"
+        >
+          <ComponentTileVisual
+            component={dropGhost.component}
+            className="border-primary/30 shadow-2xl ring-2 ring-primary/20"
+          />
+        </motion.div>
+      )}
     </div>
   );
 }
