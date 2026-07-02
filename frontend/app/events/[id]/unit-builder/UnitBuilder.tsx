@@ -804,7 +804,7 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
           <section className="space-y-4">
             <div className="space-y-1">
               <h2 className="text-lg font-semibold">
-                Step 2: Assemble Its Abilities
+                Step 2: Assemble Its Components
               </h2>
               <p className="max-w-2xl text-sm leading-snug text-muted-foreground">
                 {dragEnabled
