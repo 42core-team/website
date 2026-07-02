@@ -807,9 +807,9 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
                 Step 2: Assemble Its Components
               </h2>
               <p className="max-w-2xl text-sm leading-snug text-muted-foreground">
-                {dragEnabled
-                  ? "Drag up the components into the assembly section to apply them to your unit"
-                  : "Use the plus buttons to add components and the cross buttons to remove them"}
+                {(dragEnabled
+                  ? "Drag up the components into the assembly section to apply them to your unit."
+                  : "Use the plus buttons to add components to your unit and the cross buttons to remove them.") + " Each component affects multiple of the units properties, which define how your unit will work."}
               </p>
             </div>
 
