@@ -127,7 +127,7 @@ function cString(value: string) {
 
 function showViolation(violation: RuleViolation) {
   window.alert(
-    `${violation.message}\n\nThe following must be true for the unit assembly to be allowed:\n${violation.conditionText}`,
+    `${violation.message}\n\nThe following condition is forbidden, if a unit fulfills it it is not allowed:\n${violation.conditionText}`,
   );
 }
 
