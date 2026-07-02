@@ -57,10 +57,13 @@ export default function EventNavbar({
 
     if (isUserRegistered) {
       items.push({ name: "My Team", path: `/events/${eventId}/my-team` });
-      items.push({
-        name: "Unit Builder",
-        path: `/events/${eventId}/unit-builder`,
-      });
+
+      if (hasStarted) {
+        items.push({
+          name: "Unit Builder",
+          path: `/events/${eventId}/unit-builder`,
+        });
+      }
 
       if (hasStarted && effectiveHasTeam) {
         items.push({ name: "Queue", path: `/events/${eventId}/queue` });

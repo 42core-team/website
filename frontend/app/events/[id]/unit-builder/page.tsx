@@ -25,6 +25,9 @@ export default async function Page({
   if (isActionError(event))
     redirect(`/events/${id}`);
 
+  if (new Date(event.startDate).getTime() > Date.now())
+    redirect(`/events/${id}`);
+
   const config = readComponentsConfig(event.gameConfig);
 
   if (!config) {
