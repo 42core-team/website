@@ -82,8 +82,8 @@ export default function EventInfoNotice({
   if (!showJoinButton && !hasStarted) {
     return (
       <div className="border-primary-200 mt-5 w-full border-b bg-primary-50 pb-7 sm:mt-0 sm:pb-0">
-        <div className="container mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
-          <div className="flex w-full flex-wrap items-center justify-between">
+        <div className="container mx-auto flex min-h-14 max-w-7xl items-center justify-between px-6 py-3">
+          <div className="flex w-full flex-wrap items-center justify-between gap-2">
             <p className="text-warning-400">
               This event has not started yet. You can start coding when the
               countdown ends.
@@ -99,7 +99,7 @@ export default function EventInfoNotice({
 
   return (
     <div className="border-primary-200 mt-5 w-full border-b bg-primary-50 pb-7 sm:mt-0 sm:pb-0">
-      <div className="container mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
+      <div className="container mx-auto flex min-h-14 max-w-7xl items-center justify-between px-6 py-3">
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
           {!hasStarted && (
             <p className="text-warning-400">

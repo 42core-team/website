@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/input-group";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { searchWikiPages } from "@/lib/markdown";
+import { scrollToWikiHeading } from "@/lib/wiki-scroll";
 import styles from "./WikiSearch.module.css";
 
 interface WikiSearchProps {
@@ -83,10 +84,7 @@ export function WikiSearch({
             );
             for (const element of Array.from(elements)) {
               if (element.textContent?.toLowerCase().includes(searchSnapshot)) {
-                element.scrollIntoView({
-                  behavior: "smooth",
-                  block: "center",
-                });
+                scrollToWikiHeading(element as HTMLElement);
                 element.classList.add(styles.wikiHighlightTemp);
                 setTimeout(() => {
                   element.classList.remove(styles.wikiHighlightTemp);

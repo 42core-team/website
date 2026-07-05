@@ -90,13 +90,18 @@ export function WikiLayout({
     if (!container)
       return;
 
-    const links = container.querySelectorAll("a.heading-anchor");
     const handleClick = (e: Event) => {
+      const anchor = (e.target as HTMLElement | null)?.closest(
+        "a.heading-anchor",
+      ) as HTMLAnchorElement | null;
+      if (!anchor)
+        return;
+
       e.preventDefault();
-      const href = (e.currentTarget as HTMLAnchorElement).getAttribute("href");
+      e.stopPropagation();
+      const href = anchor.getAttribute("href");
       const targetId = href?.startsWith("#") ? href.slice(1) : null;
       if (targetId) {
-        history.replaceState(null, "", `#${targetId}`);
         const target = document.getElementById(targetId);
         if (target) {
           scrollToWikiHeading(target);
@@ -104,11 +109,11 @@ export function WikiLayout({
       }
     };
 
-    links.forEach(link => link.addEventListener("click", handleClick));
+    container.addEventListener("click", handleClick, { capture: true });
     return () => {
-      links.forEach(link => link.removeEventListener("click", handleClick));
+      container.removeEventListener("click", handleClick, { capture: true });
     };
-  }, []);
+  }, [pageContent]);
 
   // ── Tabbed code-group switching (rehype-code-group) ──────────────────────
   // The plugin ships its own DOMContentLoaded script, but it doesn't fire in

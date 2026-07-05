@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "@/components/app-link";
+import type { MouseEvent } from "react";
 import { useEffect, useState } from "react";
+import { scrollToWikiHeading } from "@/lib/wiki-scroll";
 
 interface TocItem {
   id: string;
@@ -61,6 +62,15 @@ export function TableOfContents({ content }: TableOfContentsProps) {
     return null;
   }
 
+  const handleHeadingClick = (id: string, event: MouseEvent) => {
+    event.preventDefault();
+
+    const element = document.getElementById(id);
+    if (element) {
+      scrollToWikiHeading(element);
+    }
+  };
+
   return (
     <nav className="sticky top-24 h-fit">
       <div className="rounded-lg border bg-content1 p-4">
@@ -68,9 +78,10 @@ export function TableOfContents({ content }: TableOfContentsProps) {
         <ul className="space-y-1">
           {toc.map(item => (
             <li key={item.id}>
-              <Link
-                href={`#${item.id}`}
-                className={`block text-sm transition-colors hover:text-primary ${
+              <button
+                type="button"
+                onClick={event => handleHeadingClick(item.id, event)}
+                className={`block text-left text-sm transition-colors hover:text-primary ${
                   activeId === item.id
                     ? "font-medium text-primary"
                     : "text-muted-foreground"
@@ -78,7 +89,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
                 style={{ paddingLeft: `${(item.level - 1) * 12}px` }}
               >
                 {item.text}
-              </Link>
+              </button>
             </li>
           ))}
         </ul>

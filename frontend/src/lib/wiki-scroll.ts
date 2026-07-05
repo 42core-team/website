@@ -5,7 +5,7 @@
  */
 export function scrollToWikiHeading(element: HTMLElement) {
   const container = document.querySelector(".main-wiki-content");
-  if (!container)
+  if (!(container instanceof HTMLElement))
     return;
 
   // element.offsetTop is relative to its offsetParent, which may not be the
@@ -16,9 +16,10 @@ export function scrollToWikiHeading(element: HTMLElement) {
 
   const targetScroll
     = container.scrollTop + (elementRect.top - containerRect.top);
+  const maxScroll = container.scrollHeight - container.clientHeight;
 
   container.scrollTo({
-    top: targetScroll,
+    top: Math.max(0, Math.min(targetScroll, maxScroll)),
     behavior: "smooth",
   });
 }

@@ -111,9 +111,34 @@ export function WikiNavigation({
   // Scroll the sidebar so the active TOC link is visible
   const scrollActiveLinkIntoView = useCallback((id: string) => {
     requestAnimationFrame(() => {
-      const activeLink = document.querySelector(`a[href="#${id}"]`);
+      const activeLink = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          ".wiki-sidebar-navigation a[data-heading-id]",
+        ),
+      ).find(link => link.dataset.headingId === id);
+
       if (activeLink instanceof HTMLElement) {
-        activeLink.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        const sidebar = activeLink.closest("aside");
+        if (!(sidebar instanceof HTMLElement))
+          return;
+
+        const sidebarRect = sidebar.getBoundingClientRect();
+        const linkRect = activeLink.getBoundingClientRect();
+        const topOverflow = linkRect.top - sidebarRect.top;
+        const bottomOverflow = linkRect.bottom - sidebarRect.bottom;
+
+        if (topOverflow < 0) {
+          sidebar.scrollTo({
+            top: sidebar.scrollTop + topOverflow,
+            behavior: "smooth",
+          });
+        }
+        else if (bottomOverflow > 0) {
+          sidebar.scrollTo({
+            top: sidebar.scrollTop + bottomOverflow,
+            behavior: "smooth",
+          });
+        }
       }
     });
   }, []);
@@ -211,7 +236,6 @@ export function WikiNavigation({
     e.preventDefault();
     isScrollingRef.current = true;
     setActiveId(id); // Immediate feedback
-    history.replaceState(null, "", `#${id}`);
 
     const element = document.getElementById(id);
     if (element) {
@@ -281,14 +305,15 @@ export function WikiNavigation({
               </div>
               <div className="space-y-0.5">
                 {toc.map((tocItem, index) => (
-                  <a
+                  <button
                     key={`toc-${index}-${tocItem.id.replace(/[^\w-]/g, "_")}`}
-                    href={`#${tocItem.id}`}
+                    type="button"
+                    data-heading-id={tocItem.id}
                     onClick={(e) => {
                       handleTocClick(tocItem.id, e);
                       onItemClick?.();
                     }}
-                    className={`block cursor-pointer rounded-xs px-2 py-1 text-xs transition-colors hover:bg-default-100 hover:text-primary ${activeId === tocItem.id
+                    className={`block w-full cursor-pointer rounded-xs px-2 py-1 text-left text-xs transition-colors hover:bg-default-100 hover:text-primary ${activeId === tocItem.id
                       ? "border-l-2 border-primary bg-primary-50 font-medium text-primary"
                       : "text-muted-foreground"
                     }`}
@@ -297,7 +322,7 @@ export function WikiNavigation({
                     }}
                   >
                     {tocItem.text}
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>

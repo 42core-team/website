@@ -50,20 +50,6 @@ html body[data-scroll-locked] {
   padding-right: 0 !important;
 }
 
-/* Offset for sticky header when jumping to anchors */
-h1[id]::before,
-h2[id]::before,
-h3[id]::before,
-h4[id]::before,
-h5[id]::before,
-h6[id]::before {
-  content: "";
-  display: block;
-  height: 80px;
-  margin-top: -80px;
-  visibility: hidden;
-}
-
 /* Code syntax highlighting — Shiki dual-theme switching via .dark class.
    rehype-pretty-code sets --shiki-light / --shiki-dark as inline CSS custom
    properties on every token. These rules resolve which variable is active. */
