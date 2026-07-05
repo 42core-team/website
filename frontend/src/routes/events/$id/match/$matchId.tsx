@@ -3,9 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { ExternalLink } from 'lucide-react'
 import { getLogsOfMatch, getMatchById } from '@/app/actions/tournament'
 import MatchLogsDisplay from '@/components/match/MatchLogsDisplay'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { getS3ReplaysBucketUrl, getVisualizerUrl } from '@/lib/env'
 
@@ -50,47 +48,30 @@ function MatchRoute() {
 
   return (
     <main className="container mx-auto max-w-7xl px-4 py-8">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            Match
-            <Badge>{matchQuery.data.state}</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {visualizerUrl && (
-            <section className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <Button asChild variant="outline" size="sm">
-                  <a href={visualizerUrl} target="_blank" rel="noreferrer">
-                    <ExternalLink />
-                    Open
-                  </a>
-                </Button>
-              </div>
-              <div className="aspect-video overflow-hidden rounded-md border bg-black">
-                <iframe
-                  src={visualizerUrl}
-                  title="Match visualizer"
-                  className="h-full w-full"
-                  allowFullScreen
-                />
-              </div>
-            </section>
-          )}
-          <div className="grid gap-4 md:grid-cols-2">
-            {matchQuery.data.teams.map((team) => (
-              <div key={team.id} className="rounded-md border p-4">
-                <p className="font-semibold">{team.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  Score: {team.score}
-                </p>
-              </div>
-            ))}
-          </div>
-          {logsQuery.data && <MatchLogsDisplay logs={logsQuery.data} />}
-        </CardContent>
-      </Card>
+      <h1 className="mb-6 text-3xl font-bold">Match</h1>
+      <div className="space-y-6">
+        {visualizerUrl && (
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <Button asChild variant="outline" size="sm">
+                <a href={visualizerUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink />
+                  Open
+                </a>
+              </Button>
+            </div>
+            <div className="aspect-video overflow-hidden rounded-md border bg-black">
+              <iframe
+                src={visualizerUrl}
+                title="Match visualizer"
+                className="h-full w-full"
+                allowFullScreen
+              />
+            </div>
+          </section>
+        )}
+        {logsQuery.data && <MatchLogsDisplay logs={logsQuery.data} />}
+      </div>
     </main>
   )
 }
