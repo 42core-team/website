@@ -1,4 +1,4 @@
-import type { TeamMember } from '@/app/actions/team'
+import type { Team, TeamMember } from '@/app/actions/team'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import type { AxiosError } from 'axios'
@@ -30,6 +30,8 @@ export const Route = createFileRoute('/events/$id/my-team')({
   component: MyTeamRoute,
 })
 
+const REPO_CREATION_POLL_INTERVAL_MS = 2000
+
 function MyTeamRoute() {
   const { id } = Route.useParams()
   const queryClient = useQueryClient()
@@ -40,9 +42,11 @@ function MyTeamRoute() {
     queryKey: ['event', id],
     queryFn: async () => getEventById(id),
   })
-  const myTeamQuery = useQuery({
+  const myTeamQuery = useQuery<Team | null>({
     queryKey: myTeamQueryKey(id),
     queryFn: () => myTeamQueryFn(id),
+    refetchInterval: ({ state }) =>
+      state.data && !state.data.repo ? REPO_CREATION_POLL_INTERVAL_MS : false,
   })
   const teamMembersQuery = useQuery<TeamMember[]>({
     queryKey: ['team', myTeamQuery.data?.id, 'members'],
@@ -58,11 +62,19 @@ function MyTeamRoute() {
     queryKey: ['event', id, 'github-org'],
     queryFn: async () => getEventGithubOrg(id),
     enabled: Boolean(myTeamQuery.data),
+    refetchInterval: ({ state }) =>
+      myTeamQuery.data && !myTeamQuery.data.repo && !state.data
+        ? REPO_CREATION_POLL_INTERVAL_MS
+        : false,
   })
   const eventStartedQuery = useQuery({
     queryKey: ['team', myTeamQuery.data?.id, 'event-started'],
     queryFn: () => hasEventStarted(myTeamQuery.data!.id),
     enabled: Boolean(myTeamQuery.data?.id),
+    refetchInterval: () =>
+      myTeamQuery.data && !myTeamQuery.data.repo
+        ? REPO_CREATION_POLL_INTERVAL_MS
+        : false,
   })
   const matchesQuery = useQuery({
     queryKey: ['team', myTeamQuery.data?.id, 'matches'],
@@ -169,7 +181,10 @@ function MyTeamRoute() {
             isLeaving={leaveTeamMutation.isPending}
             teamMembers={teamMembersQuery.data ?? []}
             githubOrg={githubOrgQuery.data ?? ''}
-            isRepoPending={!eventStartedQuery.data || !githubOrgQuery.data}
+            isRepoPending={!eventStartedQuery.data}
+            isRepoCreating={Boolean(
+              eventStartedQuery.data && !myTeamQuery.data.repo,
+            )}
           />
           <TeamMatchHistory
             eventId={id}

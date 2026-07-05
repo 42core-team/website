@@ -30,6 +30,7 @@ interface TeamInfoSectionProps {
   teamMembers: TeamMember[]
   githubOrg: string
   isRepoPending: boolean
+  isRepoCreating: boolean
 }
 
 export function TeamInfoSection({
@@ -38,6 +39,7 @@ export function TeamInfoSection({
   isLeaving,
   teamMembers,
   isRepoPending,
+  isRepoCreating,
   githubOrg,
 }: Readonly<TeamInfoSectionProps>) {
   const eventId = useParams().id as string
@@ -75,7 +77,7 @@ export function TeamInfoSection({
           <div>
             <p className="text-sm text-muted-foreground">Repository</p>
             <div className="font-medium">
-              {myTeam.repo ? (
+              {myTeam.repo && githubOrg ? (
                 <a
                   href={getRepoUrl()}
                   target="_blank"
@@ -84,9 +86,15 @@ export function TeamInfoSection({
                 >
                   {myTeam.repo}
                 </a>
+              ) : myTeam.repo ? (
+                <span>{myTeam.repo}</span>
               ) : isRepoPending ? (
                 <p className="text-sm text-gray-200">
                   Repository will be created when the event starts.
+                </p>
+              ) : isRepoCreating ? (
+                <p className="text-sm text-gray-200">
+                  Repository is being created...
                 </p>
               ) : (
                 <Skeleton className="m-2 h-5 w-72 rounded-md" />
