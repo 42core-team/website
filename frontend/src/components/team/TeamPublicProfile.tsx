@@ -35,6 +35,11 @@ export default function TeamPublicProfile({
                 <p className="truncate font-medium">{member.username}</p>
                 <p className="truncate text-sm text-muted-foreground">
                   {member.name}
+                  {member.intraUsername && (
+                    <span className="ml-1 text-xs text-muted-foreground/80">
+                      ({member.intraUsername})
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
