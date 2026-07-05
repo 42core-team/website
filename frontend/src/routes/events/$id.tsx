@@ -87,7 +87,7 @@ function EventRoute() {
   if (eventQuery.isPending) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center">
-        <Spinner size="lg"/>
+        <Spinner size="lg" />
       </main>
     )
   }

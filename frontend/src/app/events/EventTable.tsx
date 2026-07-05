@@ -1,9 +1,9 @@
-"use client";
+'use client'
 
-import type { Event } from "@/app/actions/event";
-import { useRouter } from "@/lib/router-hooks";
+import type { Event } from '@/app/actions/event'
+import { useRouter } from '@/lib/router-hooks'
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -11,38 +11,38 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table'
 
 export default function EventsTable({ events }: Readonly<{ events: Event[] }>) {
-  const router = useRouter();
+  const router = useRouter()
 
   const formatState = (
     event: Event,
   ): {
-    text: string;
-    variant: "default" | "secondary" | "destructive";
+    text: string
+    variant: 'default' | 'secondary' | 'destructive'
   } => {
-    const hasStarted = Date.now() >= new Date(event.startDate).getTime();
+    const hasStarted = Date.now() >= new Date(event.startDate).getTime()
 
     if (!hasStarted) {
       return {
-        text: "Team finding",
-        variant: "default",
-      };
+        text: 'Team finding',
+        variant: 'default',
+      }
     }
 
     if (event.currentRound === 0) {
       return {
-        text: "In Progress",
-        variant: "secondary",
-      };
+        text: 'In Progress',
+        variant: 'secondary',
+      }
     }
 
     return {
-      text: "Completed",
-      variant: "destructive",
-    };
-  };
+      text: 'Completed',
+      variant: 'destructive',
+    }
+  }
 
   return (
     <div className="mb-8">
@@ -56,47 +56,39 @@ export default function EventsTable({ events }: Readonly<{ events: Event[] }>) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {events.length === 0
-            ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={4}
-                    className="text-center text-muted-foreground"
-                  >
-                    No events found
-                  </TableCell>
-                </TableRow>
-              )
-            : (
-                events.map(event => (
-                  <TableRow
-                    key={event.id}
-                    className="cursor-pointer transition-colors hover:bg-muted/50"
-                    onClick={() => router.push(`/events/${event.id}`)}
-                  >
-                    <TableCell className="font-medium">{event.name}</TableCell>
-                    <TableCell>
-                      {new Date(event.startDate).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {event.minTeamSize}
-                      {" "}
-                      -
-                      {" "}
-                      {event.maxTeamSize}
-                      {" "}
-                      members
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={formatState(event).variant}>
-                        {formatState(event).text}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+          {events.length === 0 ? (
+            <TableRow>
+              <TableCell
+                colSpan={4}
+                className="text-center text-muted-foreground"
+              >
+                No events found
+              </TableCell>
+            </TableRow>
+          ) : (
+            events.map((event) => (
+              <TableRow
+                key={event.id}
+                className="cursor-pointer transition-colors hover:bg-muted/50"
+                onClick={() => router.push(`/events/${event.id}`)}
+              >
+                <TableCell className="font-medium">{event.name}</TableCell>
+                <TableCell>
+                  {new Date(event.startDate).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  {event.minTeamSize} - {event.maxTeamSize} members
+                </TableCell>
+                <TableCell>
+                  <Badge variant={formatState(event).variant}>
+                    {formatState(event).text}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
     </div>
-  );
+  )
 }

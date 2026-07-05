@@ -1,15 +1,15 @@
-import type { Team, TeamMember } from "@/app/actions/team";
+import type { Team, TeamMember } from '@/app/actions/team'
 
-import { DialogTrigger } from "@radix-ui/react-dialog";
-import { Plus } from "lucide-react";
-import Link from "@/components/app-link";
-import { useParams } from "@/lib/router-hooks";
-import { useState } from "react";
+import { DialogTrigger } from '@radix-ui/react-dialog'
+import { Plus } from 'lucide-react'
+import Link from '@/components/app-link'
+import { useParams } from '@/lib/router-hooks'
+import { useState } from 'react'
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogClose,
@@ -18,18 +18,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import TeamInviteModal from "./TeamInviteModal";
+} from '@/components/ui/dialog'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
+import TeamInviteModal from './TeamInviteModal'
 
 interface TeamInfoSectionProps {
-  myTeam: Team;
-  onLeaveTeam: () => Promise<boolean>;
-  isLeaving: boolean;
-  teamMembers: TeamMember[];
-  githubOrg: string;
-  isRepoPending: boolean;
+  myTeam: Team
+  onLeaveTeam: () => Promise<boolean>
+  isLeaving: boolean
+  teamMembers: TeamMember[]
+  githubOrg: string
+  isRepoPending: boolean
 }
 
 export function TeamInfoSection({
@@ -40,35 +40,33 @@ export function TeamInfoSection({
   isRepoPending,
   githubOrg,
 }: Readonly<TeamInfoSectionProps>) {
-  const eventId = useParams().id as string;
-  const [isOpen, setIsOpen] = useState(false);
-  const [leaveError, setLeaveError] = useState<string | null>(null);
-  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+  const eventId = useParams().id as string
+  const [isOpen, setIsOpen] = useState(false)
+  const [leaveError, setLeaveError] = useState<string | null>(null)
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false)
 
   const getRepoUrl = () => {
-    return `https://github.com/${githubOrg}/${myTeam.repo}`;
-  };
+    return `https://github.com/${githubOrg}/${myTeam.repo}`
+  }
 
   const handleConfirmLeave = async () => {
-    setLeaveError(null);
-    const success = await onLeaveTeam();
+    setLeaveError(null)
+    const success = await onLeaveTeam()
     if (!success) {
       setLeaveError(
-        "Failed to leave team. Try refreshing the page or trying again later.",
-      );
-      return;
+        'Failed to leave team. Try refreshing the page or trying again later.',
+      )
+      return
     }
 
-    setIsLeaveDialogOpen(false);
-  };
+    setIsLeaveDialogOpen(false)
+  }
 
   return (
     <Card className="rounded-lg border">
       <CardHeader>
         <CardTitle className="text-2xl font-bold">
-          Team:
-          {" "}
-          {myTeam.name}
+          Team: {myTeam.name}
         </CardTitle>
         {myTeam.locked && <Badge variant="destructive">Locked</Badge>}
       </CardHeader>
@@ -77,32 +75,28 @@ export function TeamInfoSection({
           <div>
             <p className="text-sm text-muted-foreground">Repository</p>
             <div className="font-medium">
-              {myTeam.repo
-                ? (
-                    <a
-                      href={getRepoUrl()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {myTeam.repo}
-                    </a>
-                  )
-                : isRepoPending
-                  ? (
-                      <p className="text-sm text-gray-200">
-                        Repository will be created when the event starts.
-                      </p>
-                    )
-                  : (
-                      <Skeleton className="m-2 h-5 w-72 rounded-md" />
-                    )}
+              {myTeam.repo ? (
+                <a
+                  href={getRepoUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {myTeam.repo}
+                </a>
+              ) : isRepoPending ? (
+                <p className="text-sm text-gray-200">
+                  Repository will be created when the event starts.
+                </p>
+              ) : (
+                <Skeleton className="m-2 h-5 w-72 rounded-md" />
+              )}
             </div>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Created</p>
             <p className="font-medium">
-              {new Date(myTeam.createdAt || "").toLocaleDateString()}
+              {new Date(myTeam.createdAt || '').toLocaleDateString()}
             </p>
           </div>
           <div>
@@ -112,7 +106,7 @@ export function TeamInfoSection({
           <div>
             <p className="text-sm text-muted-foreground">Updated</p>
             <p className="font-medium">
-              {new Date(myTeam.updatedAt || "").toLocaleDateString()}
+              {new Date(myTeam.updatedAt || '').toLocaleDateString()}
             </p>
           </div>
         </div>
@@ -129,46 +123,44 @@ export function TeamInfoSection({
             )}
           </div>
           <div className="flex flex-wrap items-start gap-3">
-            {teamMembers.length > 0
-              ? (
-                  teamMembers.map(member => (
-                    <Link
-                      key={member.id}
-                      href={`https://github.com/${member.username}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="no-icon group w-full max-w-32 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-                      aria-label={`Open ${member.username}'s GitHub profile`}
+            {teamMembers.length > 0 ? (
+              teamMembers.map((member) => (
+                <Link
+                  key={member.id}
+                  href={`https://github.com/${member.username}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="no-icon group w-full max-w-32 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                  aria-label={`Open ${member.username}'s GitHub profile`}
+                >
+                  <div className="flex flex-col items-center rounded-xl bg-content1/50 p-4 shadow-sm ring-1 ring-default-200 transition hover:shadow-md hover:ring-primary/60">
+                    <Avatar
+                      className={cn(
+                        'mb-2',
+                        member.isEventAdmin
+                          ? 'outline-2 outline-solid outline-orange-500'
+                          : '',
+                      )}
                     >
-                      <div className="flex flex-col items-center rounded-xl bg-content1/50 p-4 shadow-sm ring-1 ring-default-200 transition hover:shadow-md hover:ring-primary/60">
-                        <Avatar
-                          className={cn(
-                            "mb-2",
-                            member.isEventAdmin
-                              ? "outline-2 outline-solid outline-orange-500"
-                              : "",
-                          )}
-                        >
-                          <AvatarImage
-                            src={member.profilePicture}
-                            alt={member.name}
-                          />
-                          <AvatarFallback>
-                            {member.name.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="external-link w-full truncate text-center text-sm font-medium group-hover:text-primary">
-                          {member.username}
-                        </span>
-                      </div>
-                    </Link>
-                  ))
-                )
-              : (
-                  <p className="col-span-full text-center text-muted-foreground">
-                    No team members found
-                  </p>
-                )}
+                      <AvatarImage
+                        src={member.profilePicture}
+                        alt={member.name}
+                      />
+                      <AvatarFallback>
+                        {member.name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="external-link w-full truncate text-center text-sm font-medium group-hover:text-primary">
+                      {member.username}
+                    </span>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <p className="col-span-full text-center text-muted-foreground">
+                No team members found
+              </p>
+            )}
           </div>
         </div>
 
@@ -186,7 +178,9 @@ export function TeamInfoSection({
                 onOpenChange={setIsLeaveDialogOpen}
               >
                 <DialogTrigger asChild>
-                  <Button variant="destructive" disabled={isLeaving}>Leave Team</Button>
+                  <Button variant="destructive" disabled={isLeaving}>
+                    Leave Team
+                  </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
@@ -234,7 +228,7 @@ export function TeamInfoSection({
         />
       </CardContent>
     </Card>
-  );
+  )
 }
 
-export default TeamInfoSection;
+export default TeamInfoSection

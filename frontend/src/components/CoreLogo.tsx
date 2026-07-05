@@ -1,12 +1,12 @@
-import * as React from "react";
+import * as React from 'react'
 
 interface LogoBlackProps extends React.SVGProps<SVGSVGElement> {
-  fill?: string;
-  className?: string;
+  fill?: string
+  className?: string
 }
 
 const CoreLogo: React.FC<LogoBlackProps> = ({
-  fill = "currentColor",
+  fill = 'currentColor',
   className,
   ...props
 }) => (
@@ -26,6 +26,6 @@ const CoreLogo: React.FC<LogoBlackProps> = ({
       />
     </g>
   </svg>
-);
+)
 
-export default CoreLogo;
+export default CoreLogo

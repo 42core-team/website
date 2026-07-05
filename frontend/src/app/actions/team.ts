@@ -52,15 +52,11 @@ export async function getQueueState(eventId: string): Promise<QueueState> {
   ).data
 }
 
-export async function joinQueue(
-  eventId: string,
-): Promise<void> {
+export async function joinQueue(eventId: string): Promise<void> {
   await axiosInstance.put(`team/event/${eventId}/queue/join`)
 }
 
-export async function leaveQueue(
-  eventId: string,
-): Promise<void> {
+export async function leaveQueue(eventId: string): Promise<void> {
   await axiosInstance.put(`team/event/${eventId}/queue/leave`)
 }
 
@@ -123,9 +119,7 @@ export async function unlockEvent(eventId: string) {
  * @param eventId ID of the event to leave the team for
  * @returns boolean indicating success
  */
-export async function leaveTeam(
-  eventId: string,
-): Promise<void> {
+export async function leaveTeam(eventId: string): Promise<void> {
   await axiosInstance.put(`team/event/${eventId}/leave`)
 }
 

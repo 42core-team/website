@@ -1,36 +1,36 @@
-"use client";
+'use client'
 
-import type { WikiVersion } from "@/lib/markdown";
-import { FileText } from "lucide-react";
-import { usePathname, useRouter } from "@/lib/router-hooks";
+import type { WikiVersion } from '@/lib/markdown'
+import { FileText } from 'lucide-react'
+import { usePathname, useRouter } from '@/lib/router-hooks'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { buildVersionPath } from "@/lib/wiki-navigation";
+} from '@/components/ui/select'
+import { buildVersionPath } from '@/lib/wiki-navigation'
 
 interface VersionSelectorProps {
-  versions: WikiVersion[];
-  currentVersion: string;
+  versions: WikiVersion[]
+  currentVersion: string
 }
 
 export function VersionSelector({
   versions,
   currentVersion,
 }: VersionSelectorProps) {
-  const router = useRouter();
-  const pathname = usePathname();
+  const router = useRouter()
+  const pathname = usePathname()
 
   const handleVersionChange = (version: string) => {
-    const newPath = buildVersionPath(pathname, version, versions);
-    router.push(newPath);
-  };
+    const newPath = buildVersionPath(pathname, version, versions)
+    router.push(newPath)
+  }
 
-  const currentVersionName
-    = versions.find(v => v.slug === currentVersion)?.name || "Select Version";
+  const currentVersionName =
+    versions.find((v) => v.slug === currentVersion)?.name || 'Select Version'
 
   return (
     <>
@@ -43,7 +43,7 @@ export function VersionSelector({
             </SelectValue>
           </SelectTrigger>
           <SelectContent align="end">
-            {versions.map(version => (
+            {versions.map((version) => (
               <SelectItem key={version.slug} value={version.slug}>
                 {version.name}
               </SelectItem>
@@ -59,7 +59,7 @@ export function VersionSelector({
             <FileText className="mr-1 size-4" />
           </SelectTrigger>
           <SelectContent align="end">
-            {versions.map(version => (
+            {versions.map((version) => (
               <SelectItem key={version.slug} value={version.slug}>
                 {version.name}
               </SelectItem>
@@ -68,5 +68,5 @@ export function VersionSelector({
         </Select>
       </div>
     </>
-  );
+  )
 }

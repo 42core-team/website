@@ -1,104 +1,102 @@
-import { useForm } from "@tanstack/react-form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useStore } from "@tanstack/react-store";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { format } from "date-fns";
-import { ArrowLeft, CalendarIcon } from "lucide-react";
-import type { FormEvent, ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
-import * as z from "zod";
-import type { EventCreateParams } from "@/app/actions/event";
-import { canUserCreateEvent, createEvent } from "@/app/actions/event";
-import Link from "@/components/app-link";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useForm } from '@tanstack/react-form'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useStore } from '@tanstack/react-store'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { format } from 'date-fns'
+import { ArrowLeft, CalendarIcon } from 'lucide-react'
+import type { FormEvent, ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
+import * as z from 'zod'
+import type { EventCreateParams } from '@/app/actions/event'
+import { canUserCreateEvent, createEvent } from '@/app/actions/event'
+import Link from '@/components/app-link'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Spinner } from "@/components/ui/spinner";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import { useSession } from "@/lib/auth";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/popover'
+import { Spinner } from '@/components/ui/spinner'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { useSession } from '@/lib/auth'
+import { cn } from '@/lib/utils'
 
-export const Route = createFileRoute("/events/create")({
+export const Route = createFileRoute('/events/create')({
   component: CreateEventRoute,
-});
+})
 
 const formSchema = z
   .object({
-    name: z.string().min(1, "Event name is required"),
+    name: z.string().min(1, 'Event name is required'),
     description: z.string().optional(),
-    githubOrg: z.string().min(1, "GitHub organization is required"),
+    githubOrg: z.string().min(1, 'GitHub organization is required'),
     githubOrgSecret: z
       .string()
-      .min(1, "GitHub organization secret is required"),
+      .min(1, 'GitHub organization secret is required'),
     location: z.string().optional(),
-    startDate: z.date({ message: "Start date is required" }),
-    endDate: z.date({ message: "End date is required" }),
+    startDate: z.date({ message: 'Start date is required' }),
+    endDate: z.date({ message: 'End date is required' }),
     minTeamSize: z.number().min(1).max(10),
     maxTeamSize: z.number().min(1).max(10),
-    monorepoUrl: z.string().min(1, "Monorepo URL is required"),
-    monorepoVersion: z.string().min(1, "Monorepo version is required"),
-    gameServerDockerImage: z
-      .string()
-      .min(1, "Game server image is required"),
-    myCoreBotDockerImage: z.string().min(1, "My Core Bot image is required"),
-    visualizerDockerImage: z.string().min(1, "Visualizer image is required"),
+    monorepoUrl: z.string().min(1, 'Monorepo URL is required'),
+    monorepoVersion: z.string().min(1, 'Monorepo version is required'),
+    gameServerDockerImage: z.string().min(1, 'Game server image is required'),
+    myCoreBotDockerImage: z.string().min(1, 'My Core Bot image is required'),
+    visualizerDockerImage: z.string().min(1, 'Visualizer image is required'),
     gameServerImageTag: z.string().optional(),
     myCoreBotImageTag: z.string().optional(),
     visualizerImageTag: z.string().optional(),
-    basePath: z.string().min(1, "Base path is required"),
-    gameConfig: z.string().min(1, "Game config is required"),
-    serverConfig: z.string().min(1, "Server config is required"),
+    basePath: z.string().min(1, 'Base path is required'),
+    gameConfig: z.string().min(1, 'Game config is required'),
+    serverConfig: z.string().min(1, 'Server config is required'),
     isPrivate: z.boolean(),
   })
   .refine((value) => value.maxTeamSize >= value.minTeamSize, {
-    message: "Max team size must be at least the min team size",
-    path: ["maxTeamSize"],
-  });
+    message: 'Max team size must be at least the min team size',
+    path: ['maxTeamSize'],
+  })
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<typeof formSchema>
 
 const defaultValues: FormValues = {
-  name: "",
-  description: "",
-  githubOrg: "",
-  githubOrgSecret: "",
-  location: "",
+  name: '',
+  description: '',
+  githubOrg: '',
+  githubOrgSecret: '',
+  location: '',
   startDate: new Date(),
   endDate: new Date(),
   minTeamSize: 1,
   maxTeamSize: 4,
-  monorepoUrl: "https://github.com/42core-team/monorepo",
-  monorepoVersion: "",
-  gameServerDockerImage: "ghcr.io/42core-team/server",
-  myCoreBotDockerImage: "ghcr.io/42core-team/my-core-bot",
-  visualizerDockerImage: "ghcr.io/42core-team/visualizer",
-  gameServerImageTag: "",
-  myCoreBotImageTag: "",
-  visualizerImageTag: "",
-  basePath: "bots/softcore",
-  gameConfig: "",
-  serverConfig: "",
+  monorepoUrl: 'https://github.com/42core-team/monorepo',
+  monorepoVersion: '',
+  gameServerDockerImage: 'ghcr.io/42core-team/server',
+  myCoreBotDockerImage: 'ghcr.io/42core-team/my-core-bot',
+  visualizerDockerImage: 'ghcr.io/42core-team/visualizer',
+  gameServerImageTag: '',
+  myCoreBotImageTag: '',
+  visualizerImageTag: '',
+  basePath: 'bots/softcore',
+  gameConfig: '',
+  serverConfig: '',
   isPrivate: false,
-};
+}
 
 function parseGitHubRepo(url: string): { owner: string; repo: string } | null {
   try {
-    const parsedUrl = new URL(url.trim());
-    if (parsedUrl.hostname !== "github.com") return null;
-    const parts = parsedUrl.pathname.split("/").filter(Boolean);
-    if (parts.length < 2) return null;
-    return { owner: parts[0], repo: parts[1].replace(/\.git$/, "") };
+    const parsedUrl = new URL(url.trim())
+    if (parsedUrl.hostname !== 'github.com') return null
+    const parts = parsedUrl.pathname.split('/').filter(Boolean)
+    if (parts.length < 2) return null
+    return { owner: parts[0], repo: parts[1].replace(/\.git$/, '') }
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -108,135 +106,138 @@ async function validateGithubToken(
 ): Promise<string | null> {
   const headers = {
     Authorization: `Bearer ${token}`,
-    Accept: "application/vnd.github.v3+json",
-  };
+    Accept: 'application/vnd.github.v3+json',
+  }
 
   try {
     const orgResponse = await fetch(`https://api.github.com/orgs/${orgName}`, {
       headers,
-    });
+    })
 
     if (!orgResponse.ok) {
       const errorMessage = await getGitHubErrorMessage(
         orgResponse,
         `Failed to access GitHub organization: ${orgResponse.statusText}`,
-      );
+      )
       if (orgResponse.status === 404) {
-        return `Organization '${orgName}' not found or token has no access. ${errorMessage}`;
+        return `Organization '${orgName}' not found or token has no access. ${errorMessage}`
       }
-      return errorMessage;
+      return errorMessage
     }
 
     const reposResponse = await fetch(
       `https://api.github.com/orgs/${orgName}/repos?type=all`,
       { headers },
-    );
+    )
     if (!reposResponse.ok) {
       return getGitHubErrorMessage(
         reposResponse,
         `Token lacks permission to list repositories in '${orgName}'. Required: 'repo' scope.`,
-      );
+      )
     }
 
     const membersResponse = await fetch(
       `https://api.github.com/orgs/${orgName}/members`,
       { headers },
-    );
+    )
     if (!membersResponse.ok) {
       return getGitHubErrorMessage(
         membersResponse,
         `Token lacks permission to list members in '${orgName}'. Required: 'admin:org' or 'read:org' scope.`,
-      );
+      )
     }
 
-    return null;
+    return null
   } catch {
-    return "An unexpected error occurred during GitHub token validation.";
+    return 'An unexpected error occurred during GitHub token validation.'
   }
 }
 
 async function getGitHubErrorMessage(response: Response, fallback: string) {
   try {
-    const body = (await response.json()) as { message?: string };
-    if (body.message) return `GitHub API Error: ${body.message}`;
+    const body = (await response.json()) as { message?: string }
+    if (body.message) return `GitHub API Error: ${body.message}`
   } catch {
-    return fallback;
+    return fallback
   }
-  return fallback;
+  return fallback
 }
 
 function combineImageAndTag(image: string, tag: string | undefined) {
-  if (!image.trim() || !tag?.trim()) return image.trim();
-  return `${image.trim()}:${tag.trim()}`;
+  if (!image.trim() || !tag?.trim()) return image.trim()
+  return `${image.trim()}:${tag.trim()}`
 }
 
-function getErrorMessage(error: unknown, fallback = "Failed to create event.") {
-  if (error instanceof Error && error.message) return error.message;
-  return fallback;
+function getErrorMessage(error: unknown, fallback = 'Failed to create event.') {
+  if (error instanceof Error && error.message) return error.message
+  return fallback
 }
 
 function formatFieldErrors(errors: unknown[]) {
   return errors
     .map((error) =>
-      typeof error === "object" && error && "message" in error
+      typeof error === 'object' && error && 'message' in error
         ? String(error.message)
         : String(error),
     )
-    .join(", ");
+    .join(', ')
 }
 
 function CreateEventRoute() {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { data: session, status } = useSession();
-  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { data: session, status } = useSession()
+  const [error, setError] = useState<string | null>(null)
 
   const canCreateQuery = useQuery({
-    queryKey: ["events", "can-create"],
+    queryKey: ['events', 'can-create'],
     queryFn: canUserCreateEvent,
     enabled: Boolean(session?.user.id),
-  });
+  })
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      void navigate({ to: "/events", replace: true });
+    if (status === 'unauthenticated') {
+      void navigate({ to: '/events', replace: true })
     }
-    if (status === "authenticated" && canCreateQuery.data === false) {
-      void navigate({ to: "/events", replace: true });
+    if (status === 'authenticated' && canCreateQuery.data === false) {
+      void navigate({ to: '/events', replace: true })
     }
-  }, [canCreateQuery.data, navigate, status]);
+  }, [canCreateQuery.data, navigate, status])
 
   const createMutation = useMutation({
     mutationFn: async (values: FormValues) => {
       const gameServerDockerImage = combineImageAndTag(
         values.gameServerDockerImage,
         values.gameServerImageTag,
-      );
+      )
       const myCoreBotDockerImage = combineImageAndTag(
         values.myCoreBotDockerImage,
         values.myCoreBotImageTag,
-      );
+      )
       const visualizerDockerImage = combineImageAndTag(
         values.visualizerDockerImage,
         values.visualizerImageTag,
-      );
+      )
 
-      if (!gameServerDockerImage) throw new Error("Game Server image is required");
-      if (!myCoreBotDockerImage) throw new Error("My Core Bot image is required");
-      if (!visualizerDockerImage) throw new Error("Visualizer image is required");
+      if (!gameServerDockerImage)
+        throw new Error('Game Server image is required')
+      if (!myCoreBotDockerImage)
+        throw new Error('My Core Bot image is required')
+      if (!visualizerDockerImage)
+        throw new Error('Visualizer image is required')
 
       const validationError = await validateGithubToken(
         values.githubOrg,
         values.githubOrgSecret,
-      );
-      if (validationError) throw new Error(validationError);
+      )
+      if (validationError) throw new Error(validationError)
 
       const payload: EventCreateParams = {
         name: values.name.trim(),
-        description: values.description?.trim() || "",
+        description: values.description?.trim() || '',
         githubOrg: values.githubOrg,
         githubOrgSecret: values.githubOrgSecret,
-        location: values.location?.trim() || "",
+        location: values.location?.trim() || '',
         startDate: values.startDate.getTime(),
         endDate: values.endDate.getTime(),
         minTeamSize: values.minTeamSize,
@@ -250,19 +251,19 @@ function CreateEventRoute() {
         gameConfig: values.gameConfig,
         serverConfig: values.serverConfig,
         isPrivate: values.isPrivate,
-      };
+      }
 
-      return createEvent(payload);
+      return createEvent(payload)
     },
     onSuccess: async (event) => {
-      toast.success("Event created.");
-      await queryClient.invalidateQueries({ queryKey: ["events"] });
-      await navigate({ to: "/events/$id", params: { id: event.id } });
+      toast.success('Event created.')
+      await queryClient.invalidateQueries({ queryKey: ['events'] })
+      await navigate({ to: '/events/$id', params: { id: event.id } })
     },
     onError: (mutationError) => {
-      setError(getErrorMessage(mutationError));
+      setError(getErrorMessage(mutationError))
     },
-  });
+  })
 
   const form = useForm({
     defaultValues,
@@ -270,45 +271,47 @@ function CreateEventRoute() {
       onChange: formSchema,
     },
     onSubmit: async ({ value }) => {
-      setError(null);
-      await createMutation.mutateAsync(value);
+      setError(null)
+      await createMutation.mutateAsync(value)
     },
-  });
+  })
 
-  const formValues = useStore(form.store, (state) => state.values);
+  const formValues = useStore(form.store, (state) => state.values)
   const parsedRepo = useMemo(
     () => parseGitHubRepo(formValues.monorepoUrl),
     [formValues.monorepoUrl],
-  );
+  )
 
   const {
     data: availableTags = [],
     isLoading: isLoadingTags,
     error: tagFetchError,
   } = useQuery({
-    queryKey: ["github", "tags", parsedRepo?.owner, parsedRepo?.repo],
+    queryKey: ['github', 'tags', parsedRepo?.owner, parsedRepo?.repo],
     queryFn: async () => {
-      if (!parsedRepo) return [];
+      if (!parsedRepo) return []
       const response = await fetch(
         `https://api.github.com/repos/${parsedRepo.owner}/${parsedRepo.repo}/tags?per_page=100`,
-        { headers: { Accept: "application/vnd.github+json" } },
-      );
+        { headers: { Accept: 'application/vnd.github+json' } },
+      )
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as {
-          message?: string;
-        };
-        throw new Error(body.message || `Failed to fetch tags (${response.status})`);
+          message?: string
+        }
+        throw new Error(
+          body.message || `Failed to fetch tags (${response.status})`,
+        )
       }
-      const data = (await response.json()) as Array<{ name: string }>;
-      return Array.from(new Set(data.map((tag) => tag.name)));
+      const data = (await response.json()) as Array<{ name: string }>
+      return Array.from(new Set(data.map((tag) => tag.name)))
     },
     enabled: Boolean(parsedRepo),
-  });
+  })
 
   const { isLoading: isFetchingConfig } = useQuery({
     queryKey: [
-      "github",
-      "config",
+      'github',
+      'config',
       parsedRepo?.owner,
       parsedRepo?.repo,
       formValues.monorepoVersion,
@@ -316,7 +319,7 @@ function CreateEventRoute() {
     ],
     queryFn: async () => {
       if (!parsedRepo || !formValues.monorepoVersion || !formValues.basePath) {
-        return null;
+        return null
       }
 
       const [gameResponse, serverResponse] = await Promise.all([
@@ -326,28 +329,28 @@ function CreateEventRoute() {
         fetch(
           `https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${formValues.monorepoVersion}/${formValues.basePath}/configs/server.config.json`,
         ),
-      ]);
+      ])
 
       if (gameResponse.ok) {
-        form.setFieldValue("gameConfig", await gameResponse.text());
+        form.setFieldValue('gameConfig', await gameResponse.text())
       }
       if (serverResponse.ok) {
-        form.setFieldValue("serverConfig", await serverResponse.text());
+        form.setFieldValue('serverConfig', await serverResponse.text())
       }
 
-      return true;
+      return true
     },
     enabled:
       Boolean(parsedRepo) &&
       Boolean(formValues.monorepoVersion) &&
       Boolean(formValues.basePath),
-  });
+  })
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    void form.handleSubmit();
-  };
+    event.preventDefault()
+    event.stopPropagation()
+    void form.handleSubmit()
+  }
 
   function ImageFields({
     imageLabel,
@@ -355,10 +358,10 @@ function CreateEventRoute() {
     imagePlaceholder,
     tagName,
   }: {
-    imageLabel: string;
-    imageName: ImageFieldName;
-    imagePlaceholder: string;
-    tagName: ImageTagName;
+    imageLabel: string
+    imageName: ImageFieldName
+    imagePlaceholder: string
+    tagName: ImageTagName
   }) {
     return (
       <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
@@ -398,20 +401,20 @@ function CreateEventRoute() {
           )}
         />
       </div>
-    );
+    )
   }
 
   if (
-    status === "loading" ||
+    status === 'loading' ||
     (session?.user.id && canCreateQuery.isPending) ||
-    status === "unauthenticated" ||
+    status === 'unauthenticated' ||
     canCreateQuery.data === false
   ) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center">
         <Spinner size="lg" />
       </main>
-    );
+    )
   }
 
   return (
@@ -452,7 +455,9 @@ function CreateEventRoute() {
                       name={field.name}
                       value={field.state.value}
                       onBlur={field.handleBlur}
-                      onChange={(event) => field.handleChange(event.target.value)}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
                       placeholder="Enter event name"
                     />
                   </TextField>
@@ -471,7 +476,9 @@ function CreateEventRoute() {
                       name={field.name}
                       value={field.state.value}
                       onBlur={field.handleBlur}
-                      onChange={(event) => field.handleChange(event.target.value)}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
                       placeholder="Enter event description"
                       className="min-h-24"
                     />
@@ -488,7 +495,9 @@ function CreateEventRoute() {
                       name={field.name}
                       value={field.state.value}
                       onBlur={field.handleBlur}
-                      onChange={(event) => field.handleChange(event.target.value)}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
                       placeholder="Enter event location"
                     />
                   </TextField>
@@ -607,7 +616,9 @@ function CreateEventRoute() {
                       name={field.name}
                       value={field.state.value}
                       onBlur={field.handleBlur}
-                      onChange={(event) => field.handleChange(event.target.value)}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
                       placeholder="e.g. 42-core-repos"
                     />
                   </TextField>
@@ -628,7 +639,9 @@ function CreateEventRoute() {
                       type="password"
                       value={field.state.value}
                       onBlur={field.handleBlur}
-                      onChange={(event) => field.handleChange(event.target.value)}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
                       placeholder="github_pat_*"
                       title="The token needs Administration and Contents permissions."
                     />
@@ -703,7 +716,9 @@ function CreateEventRoute() {
                       name={field.name}
                       value={field.state.value}
                       onBlur={field.handleBlur}
-                      onChange={(event) => field.handleChange(event.target.value)}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
                       placeholder="bots/softcore"
                     />
                   </TextField>
@@ -760,7 +775,7 @@ function CreateEventRoute() {
 
               {tagFetchError && (
                 <div className="text-sm text-red-600">
-                  {getErrorMessage(tagFetchError, "Failed to fetch tags.")}
+                  {getErrorMessage(tagFetchError, 'Failed to fetch tags.')}
                 </div>
               )}
               {isLoadingTags && (
@@ -805,7 +820,7 @@ function CreateEventRoute() {
             <Button
               variant="destructive"
               type="button"
-              onClick={() => void navigate({ to: "/events" })}
+              onClick={() => void navigate({ to: '/events' })}
             >
               Cancel
             </Button>
@@ -819,8 +834,8 @@ function CreateEventRoute() {
                   }
                 >
                   {createMutation.isPending || isSubmitting
-                    ? "Creating..."
-                    : "Create Event"}
+                    ? 'Creating...'
+                    : 'Create Event'}
                 </Button>
               )}
             />
@@ -828,7 +843,7 @@ function CreateEventRoute() {
         </div>
       </form>
     </main>
-  );
+  )
 }
 
 function DateTimeField({
@@ -837,10 +852,10 @@ function DateTimeField({
   onChange,
   value,
 }: {
-  errors: unknown[];
-  label: string;
-  onChange: (value: Date) => void;
-  value: Date;
+  errors: unknown[]
+  label: string
+  onChange: (value: Date) => void
+  value: Date
 }) {
   return (
     <TextField errors={errors} label={label}>
@@ -851,7 +866,7 @@ function DateTimeField({
             variant="outline"
             className="w-full pl-3 text-left font-normal"
           >
-            {format(value, "PPP p")}
+            {format(value, 'PPP p')}
             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -860,10 +875,10 @@ function DateTimeField({
             mode="single"
             selected={value}
             onSelect={(date) => {
-              if (!date) return;
-              const nextDate = new Date(date);
-              nextDate.setHours(value.getHours(), value.getMinutes());
-              onChange(nextDate);
+              if (!date) return
+              const nextDate = new Date(date)
+              nextDate.setHours(value.getHours(), value.getMinutes())
+              onChange(nextDate)
             }}
             disabled={(date) =>
               date < new Date(new Date().setHours(0, 0, 0, 0))
@@ -873,19 +888,19 @@ function DateTimeField({
           <div className="border-t p-3">
             <Input
               type="time"
-              value={format(value, "HH:mm")}
+              value={format(value, 'HH:mm')}
               onChange={(event) => {
-                const [hours, minutes] = event.target.value.split(":");
-                const nextDate = new Date(value);
-                nextDate.setHours(Number(hours), Number(minutes));
-                onChange(nextDate);
+                const [hours, minutes] = event.target.value.split(':')
+                const nextDate = new Date(value)
+                nextDate.setHours(Number(hours), Number(minutes))
+                onChange(nextDate)
               }}
             />
           </div>
         </PopoverContent>
       </Popover>
     </TextField>
-  );
+  )
 }
 
 function ConfigTextarea({
@@ -896,12 +911,12 @@ function ConfigTextarea({
   placeholder,
   value,
 }: {
-  isFetchingConfig: boolean;
-  name: string;
-  onBlur: () => void;
-  onChange: (value: string) => void;
-  placeholder: string;
-  value: string;
+  isFetchingConfig: boolean
+  name: string
+  onBlur: () => void
+  onChange: (value: string) => void
+  placeholder: string
+  value: string
 }) {
   return (
     <div className="relative">
@@ -922,17 +937,13 @@ function ConfigTextarea({
         </div>
       )}
     </div>
-  );
+  )
 }
 
 type ImageFieldName =
-  | "gameServerDockerImage"
-  | "myCoreBotDockerImage"
-  | "visualizerDockerImage";
+  'gameServerDockerImage' | 'myCoreBotDockerImage' | 'visualizerDockerImage'
 type ImageTagName =
-  | "gameServerImageTag"
-  | "myCoreBotImageTag"
-  | "visualizerImageTag";
+  'gameServerImageTag' | 'myCoreBotImageTag' | 'visualizerImageTag'
 
 function TextField({
   children,
@@ -941,24 +952,26 @@ function TextField({
   errors,
   label,
 }: {
-  children: ReactNode;
-  className?: string;
-  description?: string;
-  errors: unknown[];
-  label: string;
+  children: ReactNode
+  className?: string
+  description?: string
+  errors: unknown[]
+  label: string
 }) {
-  const hasErrors = errors.length > 0;
+  const hasErrors = errors.length > 0
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn('space-y-2', className)}>
       <Label>{label}</Label>
       {children}
-      {description && <p className="text-sm text-muted-foreground">{description}</p>}
+      {description && (
+        <p className="text-sm text-muted-foreground">{description}</p>
+      )}
       {hasErrors && (
         <p className="text-sm font-medium text-destructive">
           {formatFieldErrors(errors)}
         </p>
       )}
     </div>
-  );
+  )
 }

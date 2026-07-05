@@ -1,52 +1,50 @@
-
-import { motion } from "framer-motion";
-import { Flame, Gem, User } from "lucide-react";
-import { getGlobalStats } from "@/app/actions/stats";
-import AnimatedNumber from "@/components/animatedNumber";
-import { Badge } from "@/components/ui/badge";
-import {useQuery} from "@tanstack/react-query";
+import { motion } from 'framer-motion'
+import { Flame, Gem, User } from 'lucide-react'
+import { getGlobalStats } from '@/app/actions/stats'
+import AnimatedNumber from '@/components/animatedNumber'
+import { Badge } from '@/components/ui/badge'
+import { useQuery } from '@tanstack/react-query'
 
 export default function GlobalStats() {
-
   const statsQuery = useQuery({
-    queryKey: ["stats", "global"],
+    queryKey: ['stats', 'global'],
     queryFn: getGlobalStats,
-    refetchInterval: 2000
-  });
+    refetchInterval: 2000,
+  })
 
   const statCards = [
     {
-      title: "Total Damage",
-      value: Number.parseInt(statsQuery.data?.damageTotal || "0"),
+      title: 'Total Damage',
+      value: Number.parseInt(statsQuery.data?.damageTotal || '0'),
       icon: Flame,
-      description: "Total damage dealt across all matches",
-      color: "from-red-800 to-red-950",
-      iconColor: "text-red-400",
+      description: 'Total damage dealt across all matches',
+      color: 'from-red-800 to-red-950',
+      iconColor: 'text-red-400',
     },
     {
-      title: "Gems Gained",
-      value: Number.parseInt(statsQuery.data?.gemsGained || "0"),
+      title: 'Gems Gained',
+      value: Number.parseInt(statsQuery.data?.gemsGained || '0'),
       icon: Gem,
-      description: "Total gems collected in all matches",
-      color: "from-blue-800 to-blue-950",
-      iconColor: "text-blue-400",
+      description: 'Total gems collected in all matches',
+      color: 'from-blue-800 to-blue-950',
+      iconColor: 'text-blue-400',
     },
     {
-      title: "Units Spawned",
-      value: Number.parseInt(statsQuery.data?.unitsSpawned || "0"),
+      title: 'Units Spawned',
+      value: Number.parseInt(statsQuery.data?.unitsSpawned || '0'),
       icon: User,
-      description: "Total units created in all matches",
-      color: "from-green-800 to-green-950",
-      iconColor: "text-green-400",
+      description: 'Total units created in all matches',
+      color: 'from-green-800 to-green-950',
+      iconColor: 'text-green-400',
     },
-  ];
+  ]
 
   if (statsQuery.isPending) {
     return (
       <div className="flex w-full justify-center py-8">
         <div className="loading loading-spinner loading-lg"></div>
       </div>
-    );
+    )
   }
 
   return (
@@ -86,5 +84,5 @@ export default function GlobalStats() {
         </div>
       </div>
     </section>
-  );
+  )
 }

@@ -9,23 +9,18 @@ export default function ImpressumPage() {
           <br />
           Dammstraße 5/1
           <br />
-          74076 Heilbronn
-          {" "}
-          <br />
+          74076 Heilbronn <br />
         </p>
         <p>
-          {" "}
+          {' '}
           <strong>Vertreten durch: </strong>
           <br />
           Paul Großmann
           <br />
         </p>
         <p>
-          <strong>Kontakt:</strong>
-          {" "}
-          <br />
-          Telefon:
-          {" "}
+          <strong>Kontakt:</strong> <br />
+          Telefon:{' '}
           <span>
             +49
             <span className="hidden">phone.</span>
@@ -34,8 +29,7 @@ export default function ImpressumPage() {
             9954144
           </span>
           <br />
-          E-Mail:
-          {" "}
+          E-Mail:{' '}
           <span>
             core@
             <span className="hidden">email.</span>
@@ -48,14 +42,10 @@ export default function ImpressumPage() {
         <p>
           <strong>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV:</strong>
           <br />
-          Paul Großmann
-          {" "}
-          <br />
+          Paul Großmann <br />
           Dammstraße 5/1
           <br />
-          74076 Heilbronn
-          {" "}
-          <br />
+          74076 Heilbronn <br />
         </p>
         <div>
           <h2>Haftungsausschluss: </h2>
@@ -109,13 +99,11 @@ export default function ImpressumPage() {
           </p>
         </div>
         <p>
-          Impressum von
-          {" "}
+          Impressum von{' '}
           <a href="https://websitewissen.com" rel="dofollow" target="_blank">
             WebsiteWissen.com
           </a>
-          , dem Ratgeber für
-          {" "}
+          , dem Ratgeber für{' '}
           <a
             href="https://websitewissen.com/wordpress-website-erstellen"
             rel="dofollow"
@@ -123,28 +111,23 @@ export default function ImpressumPage() {
           >
             WordPress-Websites
           </a>
-          ,
-          {" "}
+          ,{' '}
           <a
             href="https://websitewissen.com/wordpress-hosting-vergleich"
             rel="dofollow"
             target="_blank"
           >
             WordPress-Hosting
-          </a>
-          {" "}
-          und
-          {" "}
+          </a>{' '}
+          und{' '}
           <a
             href="https://websitewissen.com/website-kosten"
             rel="dofollow"
             target="_blank"
           >
             Website-Kosten
-          </a>
-          {" "}
-          nach einem Muster von
-          {" "}
+          </a>{' '}
+          nach einem Muster von{' '}
           <a
             href="https://www.kanzlei-hasselbach.de/"
             rel="dofollow"
@@ -156,5 +139,5 @@ export default function ImpressumPage() {
         </p>
       </div>
     </div>
-  );
+  )
 }

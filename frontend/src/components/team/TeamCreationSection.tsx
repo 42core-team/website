@@ -1,34 +1,34 @@
-import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Info, Loader2, Terminal } from "lucide-react";
-import type { ReactNode } from "react";
-import { useState } from "react";
-import { getStarterTemplates } from "@/app/actions/event";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useQuery } from '@tanstack/react-query'
+import { CheckCircle2, Info, Loader2, Terminal } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { useState } from 'react'
+import { getStarterTemplates } from '@/app/actions/event'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/tooltip'
 
 interface TeamCreationSectionProps {
-  eventId: string;
-  newTeamName: string;
-  setNewTeamName: (name: string) => void;
-  handleCreateTeam: (starterTemplateId?: string) => Promise<void>;
-  isLoading: boolean;
-  errorMessage?: string | null;
-  validationError?: string | null;
+  eventId: string
+  newTeamName: string
+  setNewTeamName: (name: string) => void
+  handleCreateTeam: (starterTemplateId?: string) => Promise<void>
+  isLoading: boolean
+  errorMessage?: string | null
+  validationError?: string | null
 }
 
 export function TeamCreationSection({
@@ -40,14 +40,14 @@ export function TeamCreationSection({
   errorMessage,
   validationError,
 }: TeamCreationSectionProps) {
-  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const { data: templates = [], isLoading: isLoadingTemplates } = useQuery({
-    queryKey: ["event", eventId, "templates"],
+    queryKey: ['event', eventId, 'templates'],
     queryFn: () => getStarterTemplates(eventId),
-  });
+  })
 
-  const effectiveTemplateId = selectedTemplateId || templates[0]?.id;
-  const requiresTemplate = templates.length > 0;
+  const effectiveTemplateId = selectedTemplateId || templates[0]?.id
+  const requiresTemplate = templates.length > 0
 
   return (
     <Card className="mx-auto max-w-4xl overflow-hidden shadow-xl">
@@ -117,14 +117,14 @@ export function TeamCreationSection({
 
             <form
               onSubmit={(event) => {
-                event.preventDefault();
+                event.preventDefault()
                 if (
                   newTeamName &&
                   !validationError &&
                   !isLoading &&
                   !isLoadingTemplates
                 ) {
-                  void handleCreateTeam(effectiveTemplateId);
+                  void handleCreateTeam(effectiveTemplateId)
                 }
               }}
               className="space-y-6"
@@ -141,7 +141,7 @@ export function TeamCreationSection({
                   placeholder="e.g. MasseIstMacht"
                   className="h-10"
                   value={newTeamName}
-                  onChange={e => setNewTeamName(e.target.value)}
+                  onChange={(e) => setNewTeamName(e.target.value)}
                 />
                 {validationError && (
                   <p className="text-xs font-medium text-destructive">
@@ -163,7 +163,7 @@ export function TeamCreationSection({
                       <SelectValue placeholder="Choose your foundation" />
                     </SelectTrigger>
                     <SelectContent>
-                      {templates.map(template => (
+                      {templates.map((template) => (
                         <SelectItem key={template.id} value={template.id}>
                           {template.name}
                         </SelectItem>
@@ -194,7 +194,7 @@ export function TeamCreationSection({
                 {isLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  "Create My Team"
+                  'Create My Team'
                 )}
               </Button>
             </form>
@@ -202,7 +202,7 @@ export function TeamCreationSection({
         </div>
       </div>
     </Card>
-  );
+  )
 }
 
 function Feature({
@@ -210,9 +210,9 @@ function Feature({
   icon,
   title,
 }: {
-  children: string;
-  icon: ReactNode;
-  title: string;
+  children: string
+  icon: ReactNode
+  title: string
 }) {
   return (
     <div className="flex gap-3">
@@ -224,7 +224,7 @@ function Feature({
         </p>
       </div>
     </div>
-  );
+  )
 }
 
-export default TeamCreationSection;
+export default TeamCreationSection

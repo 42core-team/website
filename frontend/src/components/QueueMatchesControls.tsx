@@ -1,82 +1,80 @@
-"use client";
+'use client'
 
-import type { SyntheticEvent } from "react";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "@/lib/router-hooks";
-import { useCallback, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
+import type { SyntheticEvent } from 'react'
+import { format } from 'date-fns'
+import { CalendarIcon } from 'lucide-react'
+import { usePathname, useRouter, useSearchParams } from '@/lib/router-hooks'
+import { useCallback, useMemo, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Input } from '@/components/ui/input'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 
-type Interval = "minute" | "hour" | "day";
+type Interval = 'minute' | 'hour' | 'day'
 
 export default function QueueMatchesControls({
   initialInterval,
   initialStartISO,
   initialEndISO,
 }: {
-  initialInterval: Interval;
-  initialStartISO: string;
-  initialEndISO: string;
+  initialInterval: Interval
+  initialStartISO: string
+  initialEndISO: string
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
-  const [interval, setInterval] = useState<Interval>(initialInterval);
+  const [interval, setInterval] = useState<Interval>(initialInterval)
   const [range, setRange] = useState<{
-    start: Date | undefined;
-    end: Date | undefined;
+    start: Date | undefined
+    end: Date | undefined
   }>({
     start: initialStartISO ? new Date(initialStartISO) : new Date(),
     end: initialEndISO ? new Date(initialEndISO) : new Date(),
-  });
+  })
 
   const onChangeInterval = useCallback((value: string) => {
-    const next = (value as Interval) || "hour";
-    setInterval(next);
-  }, []);
+    const next = (value as Interval) || 'hour'
+    setInterval(next)
+  }, [])
 
   const apply = useCallback(
     (e?: SyntheticEvent) => {
-      e?.preventDefault();
+      e?.preventDefault()
 
-      const params = new URLSearchParams(searchParams?.toString() ?? "");
-      params.set("interval", interval);
+      const params = new URLSearchParams(searchParams?.toString() ?? '')
+      params.set('interval', interval)
 
-      const startISO = range.start ? range.start.toISOString() : undefined;
-      const endISO = range.end ? range.end.toISOString() : undefined;
+      const startISO = range.start ? range.start.toISOString() : undefined
+      const endISO = range.end ? range.end.toISOString() : undefined
 
-      if (startISO)
-        params.set("start", startISO);
-      else params.delete("start");
-      if (endISO)
-        params.set("end", endISO);
-      else params.delete("end");
+      if (startISO) params.set('start', startISO)
+      else params.delete('start')
+      if (endISO) params.set('end', endISO)
+      else params.delete('end')
 
-      router.replace(`${pathname}?${params.toString()}`);
+      router.replace(`${pathname}?${params.toString()}`)
     },
     [interval, pathname, range.end, range.start, router, searchParams],
-  );
+  )
 
   const canApply = useMemo(
     () => !!range.start && !!range.end,
     [range.end, range.start],
-  );
+  )
 
   return (
     <form
@@ -107,40 +105,42 @@ export default function QueueMatchesControls({
               <Button
                 variant="outline"
                 className={cn(
-                  "flex-1 justify-start text-left font-normal",
-                  !range.start && "text-muted-foreground",
+                  'flex-1 justify-start text-left font-normal',
+                  !range.start && 'text-muted-foreground',
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {range.start
-                  ? (
-                      format(range.start, interval === "day" ? "PP" : "PPp")
-                    )
-                  : (
-                      <span>Start date</span>
-                    )}
+                {range.start ? (
+                  format(range.start, interval === 'day' ? 'PP' : 'PPp')
+                ) : (
+                  <span>Start date</span>
+                )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
                 selected={range.start}
-                onSelect={date =>
-                  setRange(prev => ({ ...prev, start: date }))}
+                onSelect={(date) =>
+                  setRange((prev) => ({ ...prev, start: date }))
+                }
                 autoFocus
               />
-              {interval !== "day" && (
+              {interval !== 'day' && (
                 <div className="border-t p-3">
                   <Input
                     type="time"
-                    value={range.start ? format(range.start, "HH:mm") : ""}
+                    value={range.start ? format(range.start, 'HH:mm') : ''}
                     onChange={(e) => {
-                      const [hours, minutes] = e.target.value.split(":");
+                      const [hours, minutes] = e.target.value.split(':')
                       const newDate = range.start
                         ? new Date(range.start)
-                        : new Date();
-                      newDate.setHours(Number.parseInt(hours), Number.parseInt(minutes));
-                      setRange(prev => ({ ...prev, start: newDate }));
+                        : new Date()
+                      newDate.setHours(
+                        Number.parseInt(hours),
+                        Number.parseInt(minutes),
+                      )
+                      setRange((prev) => ({ ...prev, start: newDate }))
                     }}
                   />
                 </div>
@@ -153,40 +153,42 @@ export default function QueueMatchesControls({
               <Button
                 variant="outline"
                 className={cn(
-                  "flex-1 justify-start text-left font-normal",
-                  !range.end && "text-muted-foreground",
+                  'flex-1 justify-start text-left font-normal',
+                  !range.end && 'text-muted-foreground',
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {range.end
-                  ? (
-                      format(range.end, interval === "day" ? "PP" : "PPp")
-                    )
-                  : (
-                      <span>End date</span>
-                    )}
+                {range.end ? (
+                  format(range.end, interval === 'day' ? 'PP' : 'PPp')
+                ) : (
+                  <span>End date</span>
+                )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
                 selected={range.end}
-                onSelect={date =>
-                  setRange(prev => ({ ...prev, end: date }))}
+                onSelect={(date) =>
+                  setRange((prev) => ({ ...prev, end: date }))
+                }
                 autoFocus
               />
-              {interval !== "day" && (
+              {interval !== 'day' && (
                 <div className="border-t p-3">
                   <Input
                     type="time"
-                    value={range.end ? format(range.end, "HH:mm") : ""}
+                    value={range.end ? format(range.end, 'HH:mm') : ''}
                     onChange={(e) => {
-                      const [hours, minutes] = e.target.value.split(":");
+                      const [hours, minutes] = e.target.value.split(':')
                       const newDate = range.end
                         ? new Date(range.end)
-                        : new Date();
-                      newDate.setHours(Number.parseInt(hours), Number.parseInt(minutes));
-                      setRange(prev => ({ ...prev, end: newDate }));
+                        : new Date()
+                      newDate.setHours(
+                        Number.parseInt(hours),
+                        Number.parseInt(minutes),
+                      )
+                      setRange((prev) => ({ ...prev, end: newDate }))
                     }}
                   />
                 </div>
@@ -200,5 +202,5 @@ export default function QueueMatchesControls({
         Apply
       </Button>
     </form>
-  );
+  )
 }

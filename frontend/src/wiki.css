@@ -335,7 +335,7 @@
 .wiki-content h4 .heading-anchor::before,
 .wiki-content h5 .heading-anchor::before,
 .wiki-content h6 .heading-anchor::before {
-  content: "#";
+  content: '#';
   @apply absolute -left-6 text-muted-foreground opacity-0 transition-opacity;
 }
 

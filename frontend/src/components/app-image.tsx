@@ -1,17 +1,14 @@
-import React from "react";
+import React from 'react'
 
-type AppImageProps = Omit<
-  React.ImgHTMLAttributes<HTMLImageElement>,
-  "src"
-> & {
-  src?: string | null;
-  width?: number | string;
-  height?: number | string;
-};
+type AppImageProps = Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
+  src?: string | null
+  width?: number | string
+  height?: number | string
+}
 
 export default function Image({
   src,
-  alt = "",
+  alt = '',
   width,
   height,
   style,
@@ -23,8 +20,8 @@ export default function Image({
       alt={alt}
       width={width}
       height={height}
-      style={{ maxWidth: "100%", height: "auto", ...style }}
+      style={{ maxWidth: '100%', height: 'auto', ...style }}
       {...props}
     />
-  );
+  )
 }

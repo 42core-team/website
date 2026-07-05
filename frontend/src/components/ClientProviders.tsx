@@ -1,11 +1,11 @@
-import React from "react";
-import { Toaster } from "@/components/ui/sonner";
-import { NavbarProvider } from "@/contexts/NavbarContext";
-import { AuthProvider } from "@/lib/auth";
-import { ThemeProvider } from "@/lib/theme";
+import React from 'react'
+import { Toaster } from '@/components/ui/sonner'
+import { NavbarProvider } from '@/contexts/NavbarContext'
+import { AuthProvider } from '@/lib/auth'
+import { ThemeProvider } from '@/lib/theme'
 
 interface ClientProvidersProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 export default function ClientProviders({ children }: ClientProvidersProps) {
@@ -16,5 +16,5 @@ export default function ClientProviders({ children }: ClientProvidersProps) {
         <Toaster />
       </AuthProvider>
     </ThemeProvider>
-  );
+  )
 }

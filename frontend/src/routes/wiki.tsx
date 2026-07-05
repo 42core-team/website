@@ -1,23 +1,18 @@
-import {
-  Navigate,
-  Outlet,
-  createFileRoute,
-  useLocation,
-} from "@tanstack/react-router";
-import { getDefaultWikiVersion } from "@/lib/markdown";
+import { Outlet, createFileRoute, useLocation } from '@tanstack/react-router'
+import { loadWikiRouteData, WikiPageRoute } from './wiki.$'
 
-export const Route = createFileRoute("/wiki")({
-  loader: () => getDefaultWikiVersion(),
-  component: WikiRoute,
-});
+export const Route = createFileRoute('/wiki')({
+  loader: ({ location }) => loadWikiRouteData(location.pathname),
+  component: WikiIndexRoute,
+})
 
-function WikiRoute() {
-  const defaultVersion = Route.useLoaderData();
-  const pathname = useLocation({ select: location => location.pathname });
+function WikiIndexRoute() {
+  const data = Route.useLoaderData()
+  const pathname = useLocation({ select: (location) => location.pathname })
 
-  if (pathname !== "/wiki" && pathname !== "/wiki/") {
-    return <Outlet />;
+  if (pathname !== '/wiki' && pathname !== '/wiki/') {
+    return <Outlet />
   }
 
-  return <Navigate to={`/wiki/${defaultVersion}` as "/wiki/$"} replace />;
+  return <WikiPageRoute data={data} />
 }

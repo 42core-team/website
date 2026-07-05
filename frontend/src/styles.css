@@ -1,6 +1,6 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "./wiki.css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import './wiki.css';
 
 @plugin "@tailwindcss/typography";
 
@@ -11,8 +11,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @font-face {
-  font-family: "Original";
-  src: url("/original.otf") format("opentype");
+  font-family: 'Original';
+  src: url('/original.otf') format('opentype');
   font-weight: normal;
   font-style: normal;
 }
@@ -93,7 +93,7 @@ mark {
 }
 
 @theme {
-  --font-display: "Original", sans-serif;
+  --font-display: 'Original', sans-serif;
   --navbar-height: 4rem;
   --sidebar-width: 16rem;
   /* 256px – w-64 */
@@ -238,10 +238,10 @@ mark {
 }
 
 @layer components {
-  *[target="_blank"]:not(.no-icon)::after,
+  *[target='_blank']:not(.no-icon)::after,
   a.external::after,
   .external-link::after {
-    content: "";
+    content: '';
     @apply ml-[0.25em] inline-block h-[0.9em] w-[0.9em] bg-no-repeat align-baseline text-inherit;
     mask-image: url(/external.svg);
     -webkit-mask-image: url(/external.svg);

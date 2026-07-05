@@ -1,25 +1,25 @@
-import type { EventStarterTemplate } from "@/app/actions/event";
-import { useForm } from "@tanstack/react-form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Pencil, Trash2, X } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
-import * as z from "zod";
+import type { EventStarterTemplate } from '@/app/actions/event'
+import { useForm } from '@tanstack/react-form'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, Loader2, Pencil, Trash2, X } from 'lucide-react'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import * as z from 'zod'
 import {
   createStarterTemplate,
   deleteStarterTemplate,
   getStarterTemplates,
   updateStarterTemplate,
-} from "@/app/actions/event";
-import { Button } from "@/components/ui/button";
+} from '@/app/actions/event'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+} from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -27,68 +27,69 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table'
 
 const formSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  basePath: z.string().min(1, "Base path is required"),
-  myCoreBotDockerImage: z.string().min(1, "Bot docker image is required"),
-});
+  name: z.string().min(1, 'Name is required'),
+  basePath: z.string().min(1, 'Base path is required'),
+  myCoreBotDockerImage: z.string().min(1, 'Bot docker image is required'),
+})
 
-type StarterTemplateFormValues = z.infer<typeof formSchema>;
+type StarterTemplateFormValues = z.infer<typeof formSchema>
 
 interface StarterTemplatesManagementProps {
-  eventId: string;
+  eventId: string
 }
 
 export function StarterTemplatesManagement({
   eventId,
 }: StarterTemplatesManagementProps) {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
   const [editingTemplate, setEditingTemplate] =
-    useState<EventStarterTemplate | null>(null);
+    useState<EventStarterTemplate | null>(null)
 
   const templatesQuery = useQuery({
-    queryKey: ["event", eventId, "templates"],
+    queryKey: ['event', eventId, 'templates'],
     queryFn: () => getStarterTemplates(eventId),
-  });
+  })
 
   const createMutation = useMutation({
     mutationFn: (data: {
-      name: string;
-      basePath: string;
-      myCoreBotDockerImage: string;
+      name: string
+      basePath: string
+      myCoreBotDockerImage: string
     }) => createStarterTemplate(eventId, data),
     onSuccess: async () => {
-      toast.success("Template created");
+      toast.success('Template created')
       await queryClient.invalidateQueries({
-        queryKey: ["event", eventId, "templates"],
-      });
+        queryKey: ['event', eventId, 'templates'],
+      })
     },
-    onError: (error) => toast.error(getErrorMessage(error, "Failed to create template.")),
-  });
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'Failed to create template.')),
+  })
 
   const form = useForm({
     defaultValues: {
-      name: "",
-      basePath: "",
-      myCoreBotDockerImage: "",
+      name: '',
+      basePath: '',
+      myCoreBotDockerImage: '',
     } satisfies StarterTemplateFormValues,
     validators: {
       onChange: formSchema,
     },
     onSubmit: async ({ value }) => {
-      await createMutation.mutateAsync(value);
-      form.reset();
+      await createMutation.mutateAsync(value)
+      form.reset()
     },
-  });
+  })
 
   const updateMutation = useMutation({
     mutationFn: (data: {
-      id: string;
-      name: string;
-      basePath: string;
-      myCoreBotDockerImage: string;
+      id: string
+      name: string
+      basePath: string
+      myCoreBotDockerImage: string
     }) =>
       updateStarterTemplate(eventId, data.id, {
         name: data.name,
@@ -96,32 +97,35 @@ export function StarterTemplatesManagement({
         myCoreBotDockerImage: data.myCoreBotDockerImage,
       }),
     onSuccess: async () => {
-      toast.success("Template updated");
-      setEditingTemplate(null);
+      toast.success('Template updated')
+      setEditingTemplate(null)
       await queryClient.invalidateQueries({
-        queryKey: ["event", eventId, "templates"],
-      });
+        queryKey: ['event', eventId, 'templates'],
+      })
     },
-    onError: (error) => toast.error(getErrorMessage(error, "Failed to update template.")),
-  });
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'Failed to update template.')),
+  })
 
   const deleteMutation = useMutation({
-    mutationFn: (templateId: string) => deleteStarterTemplate(eventId, templateId),
+    mutationFn: (templateId: string) =>
+      deleteStarterTemplate(eventId, templateId),
     onSuccess: async () => {
-      toast.success("Template deleted");
+      toast.success('Template deleted')
       await queryClient.invalidateQueries({
-        queryKey: ["event", eventId, "templates"],
-      });
+        queryKey: ['event', eventId, 'templates'],
+      })
     },
-    onError: (error) => toast.error(getErrorMessage(error, "Failed to delete template.")),
-  });
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'Failed to delete template.')),
+  })
 
   function TemplateField({
     name,
     placeholder,
   }: {
-    name: "name" | "basePath" | "myCoreBotDockerImage";
-    placeholder: string;
+    name: 'name' | 'basePath' | 'myCoreBotDockerImage'
+    placeholder: string
   }) {
     return (
       <TableCell className="align-top">
@@ -138,29 +142,29 @@ export function StarterTemplatesManagement({
                 placeholder={placeholder}
                 className={`h-8 bg-background ${
                   field.state.meta.errors.length > 0
-                    ? "border-destructive focus-visible:ring-destructive"
-                    : ""
+                    ? 'border-destructive focus-visible:ring-destructive'
+                    : ''
                 }`}
               />
               {field.state.meta.errors.length > 0 && (
                 <p className="text-[10px] font-medium text-destructive">
                   {field.state.meta.errors
                     .map((error) =>
-                      typeof error === "object" && "message" in error
+                      typeof error === 'object' && 'message' in error
                         ? String(error.message)
                         : String(error),
                     )
-                    .join(", ")}
+                    .join(', ')}
                 </p>
               )}
             </div>
           )}
         />
       </TableCell>
-    );
+    )
   }
 
-  const templates = templatesQuery.data ?? [];
+  const templates = templatesQuery.data ?? []
 
   return (
     <Card>
@@ -244,7 +248,9 @@ export function StarterTemplatesManagement({
                             <Button
                               size="icon"
                               className="h-8 w-8"
-                              onClick={() => updateMutation.mutate(editingTemplate)}
+                              onClick={() =>
+                                updateMutation.mutate(editingTemplate)
+                              }
                               disabled={updateMutation.isPending}
                             >
                               {updateMutation.isPending ? (
@@ -318,7 +324,7 @@ export function StarterTemplatesManagement({
                     children={([canSubmit, isSubmitting]) => (
                       <Button
                         size="sm"
-                        variant={!canSubmit ? "destructive" : "default"}
+                        variant={!canSubmit ? 'destructive' : 'default'}
                         className="h-8"
                         onClick={() => form.handleSubmit()}
                         disabled={
@@ -339,12 +345,12 @@ export function StarterTemplatesManagement({
         )}
       </CardContent>
     </Card>
-  );
+  )
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) {
-    return error.message;
+    return error.message
   }
-  return fallback;
+  return fallback
 }

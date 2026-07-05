@@ -1,32 +1,32 @@
-"use client";
+'use client'
 
-import Image from "@/components/app-image";
-import Link from "@/components/app-link";
-import { siteConfig } from "@/config/site";
+import Image from '@/components/app-image'
+import Link from '@/components/app-link'
+import { siteConfig } from '@/config/site'
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
+  const currentYear = new Date().getFullYear()
   const handleReportIssue = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    const repo = "42core-team/website_relaunch";
-    const base = `https://github.com/${repo}/issues/new`;
+    e.preventDefault()
+    const repo = '42core-team/website_relaunch'
+    const base = `https://github.com/${repo}/issues/new`
     const title = encodeURIComponent(
-      `Feedback: ${document.title || "Website issue/idea"}`,
-    );
-    const ua = navigator.userAgent;
+      `Feedback: ${document.title || 'Website issue/idea'}`,
+    )
+    const ua = navigator.userAgent
     const body = encodeURIComponent(
       `Please describe the issue or suggestion:\n\n- Page URL: ${location.href}\n- Referrer: ${
-        document.referrer || "N/A"
+        document.referrer || 'N/A'
       }\n- What were you trying to do?\n- Steps to reproduce:\n- Expected result:\n- Actual result:\n- Screenshot(s): Drag-and-drop or paste here\n- Browser: ${ua}\n- OS:\n- Device:\n- Time (UTC): ${new Date()
         .toISOString()
-        .replace("T", " ")
+        .replace('T', ' ')
         .replace(
-          "Z",
-          " UTC",
+          'Z',
+          ' UTC',
         )}\n\nAdditional context:\n\nType of report: [ ] Bug [ ] Content issue [ ] Design [ ] Performance [ ] Accessibility`,
-    );
-    location.href = `${base}?labels=feedback&title=${title}&body=${body}`;
-  };
+    )
+    location.href = `${base}?labels=feedback&title=${title}&body=${body}`
+  }
   return (
     <footer className="w-full border-t">
       <div className="container mx-auto max-w-7xl px-8 py-12">
@@ -34,7 +34,13 @@ export default function Footer() {
           {/* Logo and Description */}
           <div className="col-span-1 md:col-span-2">
             <Link href="/" className="flex items-center gap-2">
-              <Image src="/logo-white.svg" alt="CORE" width={32} height={32} className="size-8" />
+              <Image
+                src="/logo-white.svg"
+                alt="CORE"
+                width={32}
+                height={32}
+                className="size-8"
+              />
               <span className="text-xl font-bold">CORE</span>
             </Link>
             <p className="mt-4 text-muted-foreground">
@@ -115,11 +121,7 @@ export default function Footer() {
         <div className="mt-8 border-t pt-8">
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
             <p className="text-sm text-muted-foreground">
-              ©
-              {" "}
-              {currentYear}
-              {" "}
-              CORE Game. All rights reserved.
+              © {currentYear} CORE Game. All rights reserved.
             </p>
             <div className="flex gap-4 text-sm">
               <Link
@@ -139,5 +141,5 @@ export default function Footer() {
         </div>
       </div>
     </footer>
-  );
+  )
 }

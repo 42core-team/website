@@ -1,69 +1,63 @@
-import type { Event } from "@/app/actions/event";
-import { motion } from "framer-motion";
-import { useTheme } from "@/lib/theme";
+import type { Event } from '@/app/actions/event'
+import { motion } from 'framer-motion'
+import { useTheme } from '@/lib/theme'
 
-import Image from "@/components/app-image";
+import Image from '@/components/app-image'
 
-import Link from "@/components/app-link";
-import { useEffect, useMemo, useState } from "react";
-import GlobalStats from "@/components/GlobalStats";
-import { GithubIcon, WikiIcon } from "@/components/icons";
-import { CoreLogoWhite } from "@/components/social";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { getVisualizerUrl } from "@/lib/env";
+import Link from '@/components/app-link'
+import { useEffect, useMemo, useState } from 'react'
+import GlobalStats from '@/components/GlobalStats'
+import { GithubIcon, WikiIcon } from '@/components/icons'
+import { CoreLogoWhite } from '@/components/social'
+import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
+import { getVisualizerUrl } from '@/lib/env'
 
-export default function HomePageClient(props: {
-  currentLiveEvent?: Event;
-}) {
-  const { resolvedTheme } = useTheme();
-  const [isMounted, setIsMounted] = useState(false);
-  const [now, setNow] = useState<Date>(new Date());
+export default function HomePageClient(props: { currentLiveEvent?: Event }) {
+  const { resolvedTheme } = useTheme()
+  const [isMounted, setIsMounted] = useState(false)
+  const [now, setNow] = useState<Date>(new Date())
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    setIsMounted(true)
+  }, [])
 
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
 
-  const visualizerTheme
-    = isMounted && resolvedTheme === "light" ? "light" : "dark";
+  const visualizerTheme =
+    isMounted && resolvedTheme === 'light' ? 'light' : 'dark'
 
   const visualizerUrl = useMemo(() => {
-    const base = getVisualizerUrl();
+    const base = getVisualizerUrl()
     const params = new URLSearchParams({
-      autoplay: "true",
-      speed: "5",
-      ui: "false",
+      autoplay: 'true',
+      speed: '5',
+      ui: 'false',
       theme: visualizerTheme,
-      gridlines: "off",
-      themeColor: "000000",
-      suppress_version_warning: "true",
-    });
-    return `${base}/?${params.toString()}`;
-  }, [visualizerTheme]);
+      gridlines: 'off',
+      themeColor: '000000',
+      suppress_version_warning: 'true',
+    })
+    return `${base}/?${params.toString()}`
+  }, [visualizerTheme])
 
   const formatTimeLeft = (ms: number) => {
-    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const hhmmss = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-    return days > 0 ? `${days}d ${hhmmss}` : hhmmss;
-  };
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000))
+    const days = Math.floor(totalSeconds / 86400)
+    const hours = Math.floor((totalSeconds % 86400) / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const seconds = totalSeconds % 60
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const hhmmss = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+    return days > 0 ? `${days}d ${hhmmss}` : hhmmss
+  }
 
   const timeLeftMs = props.currentLiveEvent
     ? new Date(props.currentLiveEvent.endDate).getTime() - now.getTime()
-    : 0;
+    : 0
 
   return (
     <div>
@@ -72,8 +66,8 @@ export default function HomePageClient(props: {
         <div className="mb-25 flex w-full flex-col justify-center text-center">
           <CoreLogoWhite className="mx-auto h-auto w-[20%]" />
           <h1 className="mx-auto mt-2 block max-w-2xl text-2xl font-bold text-balance">
-            Imagine a game contest that brings people
-            from around the world together for fun and learning.
+            Imagine a game contest that brings people from around the world
+            together for fun and learning.
           </h1>
           <div className="mt-6 flex items-center justify-center gap-3">
             <Button asChild>
@@ -97,9 +91,12 @@ export default function HomePageClient(props: {
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 10 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
             >
-              <Link href={`/events/${props.currentLiveEvent.id}`} className="group mx-auto mt-6 block w-full max-w-lg rounded-xl focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none md:mt-8">
+              <Link
+                href={`/events/${props.currentLiveEvent.id}`}
+                className="group mx-auto mt-6 block w-full max-w-lg rounded-xl focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none md:mt-8"
+              >
                 <Card className="relative h-full w-full overflow-hidden border-white/10 bg-background/60 shadow-2xl backdrop-blur-xl transition-all duration-300 group-hover:-translate-y-1 group-hover:border-primary/50 group-hover:bg-background/80 group-hover:shadow-[0_20px_40px_-15px_rgba(var(--primary),0.3)] group-active:translate-y-0 group-active:scale-[0.98]">
                   <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50 transition-opacity group-hover:opacity-100" />
                   <CardHeader className="flex flex-row items-center justify-between pb-6">
@@ -119,7 +116,9 @@ export default function HomePageClient(props: {
                     </div>
                     <div className="flex items-center gap-4 border-l border-border/50 pl-4 transition-colors group-hover:border-primary/30">
                       <div className="flex flex-col items-end gap-1 text-right">
-                        <span className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase transition-colors group-hover:text-primary/70">Closing in</span>
+                        <span className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase transition-colors group-hover:text-primary/70">
+                          Closing in
+                        </span>
                         <span className="font-mono text-base font-bold text-foreground tabular-nums transition-colors group-hover:text-primary">
                           {formatTimeLeft(timeLeftMs)}
                         </span>
@@ -158,7 +157,7 @@ export default function HomePageClient(props: {
                   allow="autoplay; fullscreen"
                   loading="lazy"
                   referrerPolicy="no-referrer"
-                  style={{ pointerEvents: "initial" }}
+                  style={{ pointerEvents: 'initial' }}
                   title="CORE Game Replay"
                 />
               )}
@@ -182,8 +181,8 @@ export default function HomePageClient(props: {
         >
           {[
             {
-              src: "/images/goblin_archer_idle__0.png",
-              alt: "Gib Character",
+              src: '/images/goblin_archer_idle__0.png',
+              alt: 'Gib Character',
               content: (
                 <div className="flex flex-col items-center gap-4">
                   <h2 className="text-4xl font-bold">What the Game is About</h2>
@@ -202,8 +201,8 @@ export default function HomePageClient(props: {
               direction: 1,
             },
             {
-              src: "/images/goblin_basic_idle__0.png",
-              alt: "Bob Character",
+              src: '/images/goblin_basic_idle__0.png',
+              alt: 'Bob Character',
               content: (
                 <div className="flex flex-col items-center gap-4">
                   <h2 className="text-4xl font-bold">How to Play the Game</h2>
@@ -215,8 +214,8 @@ export default function HomePageClient(props: {
               direction: -1,
             },
             {
-              src: "/images/goblin_tank_idle__0.png",
-              alt: "Rob Character",
+              src: '/images/goblin_tank_idle__0.png',
+              alt: 'Rob Character',
               content: (
                 <div className="flex flex-col items-center gap-4">
                   <h2 className="text-4xl font-bold">
@@ -230,8 +229,8 @@ export default function HomePageClient(props: {
               direction: 1,
             },
             {
-              src: "/images/goblin_healer_idle__0.png",
-              alt: "Zob Character",
+              src: '/images/goblin_healer_idle__0.png',
+              alt: 'Zob Character',
               content: (
                 <div className="flex flex-col items-center gap-4">
                   <h2 className="text-4xl font-bold">
@@ -244,13 +243,13 @@ export default function HomePageClient(props: {
               delay: 0.8,
               direction: -1,
             },
-          ].map(character => (
+          ].map((character) => (
             <motion.div
               key={character.alt}
               className="relative flex min-h-lvh flex-col items-center justify-center"
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
-              viewport={{ once: false, margin: "-100px" }}
+              viewport={{ once: false, margin: '-100px' }}
               transition={{ duration: 1.2 }}
             >
               <div className="absolute left-1/2 z-10 w-[50vw] -translate-x-1/2">
@@ -261,14 +260,14 @@ export default function HomePageClient(props: {
                 whileInView={{
                   opacity: 1,
                   x:
-                    character.direction
-                    * (typeof window !== "undefined"
+                    character.direction *
+                    (typeof window !== 'undefined'
                       ? window.innerWidth * 0.47
                       : 600),
                   rotate: character.direction * 15,
                 }}
-                viewport={{ once: false, margin: "-100px" }}
-                transition={{ duration: 1.2, ease: "easeOut" }}
+                viewport={{ once: false, margin: '-100px' }}
+                transition={{ duration: 1.2, ease: 'easeOut' }}
               >
                 <Image
                   src={character.src}
@@ -277,9 +276,9 @@ export default function HomePageClient(props: {
                   height={800}
                   className="image-rendering-pixel h-auto w-40 sm:w-56 md:w-72 lg:w-80"
                   style={{
-                    imageRendering: "pixelated",
+                    imageRendering: 'pixelated',
                     transform:
-                      character.direction === 1 ? "scaleX(-1)" : "none",
+                      character.direction === 1 ? 'scaleX(-1)' : 'none',
                   }}
                 />
               </motion.div>
@@ -288,5 +287,5 @@ export default function HomePageClient(props: {
         </motion.div>
       </section>
     </div>
-  );
+  )
 }

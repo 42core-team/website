@@ -1,9 +1,9 @@
-import type { Event } from "@/app/actions/event";
-import type { UserSearchResult } from "@/app/actions/user";
-import type { UseMutationResult } from "@tanstack/react-query";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { format } from "date-fns";
+import type { Event } from '@/app/actions/event'
+import type { UserSearchResult } from '@/app/actions/user'
+import type { UseMutationResult } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute } from '@tanstack/react-router'
+import { format } from 'date-fns'
 import {
   CalendarIcon,
   Loader2,
@@ -13,10 +13,10 @@ import {
   Search,
   Trash2,
   UserPlus,
-} from "lucide-react";
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
+} from 'lucide-react'
+import type { ReactNode } from 'react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import {
   addEventAdmin,
   getEventAdmins,
@@ -28,35 +28,35 @@ import {
   removeEventAdmin,
   setEventTeamsLockDate,
   updateEventSettings,
-} from "@/app/actions/event";
-import { lockEvent, unlockEvent } from "@/app/actions/team";
+} from '@/app/actions/event'
+import { lockEvent, unlockEvent } from '@/app/actions/team'
 import {
   cleanupAllMatches,
   revealAllMatches,
   startSwissMatches,
   startTournamentMatches,
-} from "@/app/actions/tournament";
-import { searchUsers } from "@/app/actions/user";
-import { StarterTemplatesManagement } from "@/components/dashboard/starter-templates-management";
-import { WhitelistManagement } from "@/components/dashboard/whitelist-management";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+} from '@/app/actions/tournament'
+import { searchUsers } from '@/app/actions/user'
+import { StarterTemplatesManagement } from '@/components/dashboard/starter-templates-management'
+import { WhitelistManagement } from '@/components/dashboard/whitelist-management'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Spinner } from "@/components/ui/spinner";
-import { Switch } from "@/components/ui/switch";
+} from '@/components/ui/popover'
+import { Spinner } from '@/components/ui/spinner'
+import { Switch } from '@/components/ui/switch'
 import {
   Table,
   TableBody,
@@ -64,256 +64,261 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { useTabParam } from "@/hooks/useTabParam";
-import { useSession } from "@/lib/auth";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
+import { useTabParam } from '@/hooks/useTabParam'
+import { useSession } from '@/lib/auth'
+import { cn } from '@/lib/utils'
 
-export const Route = createFileRoute("/events/$id/dashboard")({
+export const Route = createFileRoute('/events/$id/dashboard')({
   component: DashboardRoute,
-});
+})
 
 type PendingEventSettings = Partial<
-  Omit<Event, "startDate" | "endDate"> & {
-    startDate: string | number;
-    endDate: string | number;
+  Omit<Event, 'startDate' | 'endDate'> & {
+    startDate: string | number
+    endDate: string | number
   }
->;
-type EventSettingsUpdate = Parameters<typeof updateEventSettings>[1];
-type VoidMutation = UseMutationResult<unknown, Error, void, unknown>;
-type PhaseMutation = UseMutationResult<unknown, Error, string, unknown>;
-type StringMutation = UseMutationResult<unknown, Error, string, unknown>;
+>
+type EventSettingsUpdate = Parameters<typeof updateEventSettings>[1]
+type VoidMutation = UseMutationResult<unknown, Error, void, unknown>
+type PhaseMutation = UseMutationResult<unknown, Error, string, unknown>
+type StringMutation = UseMutationResult<unknown, Error, string, unknown>
 type TeamLockDateMutation = UseMutationResult<
   unknown,
   Error,
   number | null,
   unknown
->;
+>
 
 interface EventAdmin {
-  id: string;
-  username: string;
-  name: string;
-  profilePicture?: string;
+  id: string
+  username: string
+  name: string
+  profilePicture?: string
 }
 
 const SETTINGS_FIELDS = [
-  "name",
-  "description",
-  "location",
-  "canCreateTeam",
-  "processQueue",
-  "isPrivate",
-  "minTeamSize",
-  "maxTeamSize",
-  "gameServerDockerImage",
-  "myCoreBotDockerImage",
-  "visualizerDockerImage",
-  "monorepoUrl",
-  "monorepoVersion",
-  "basePath",
-  "gameConfig",
-  "serverConfig",
-  "githubOrg",
-  "githubOrgSecret",
-  "startDate",
-  "endDate",
-] as const;
+  'name',
+  'description',
+  'location',
+  'canCreateTeam',
+  'processQueue',
+  'isPrivate',
+  'minTeamSize',
+  'maxTeamSize',
+  'gameServerDockerImage',
+  'myCoreBotDockerImage',
+  'visualizerDockerImage',
+  'monorepoUrl',
+  'monorepoVersion',
+  'basePath',
+  'gameConfig',
+  'serverConfig',
+  'githubOrg',
+  'githubOrgSecret',
+  'startDate',
+  'endDate',
+] as const
 
 function DashboardRoute() {
-  const { id } = Route.useParams();
-  const session = useSession();
-  const queryClient = useQueryClient();
-  const { currentTab, onTabChange } = useTabParam("overview");
+  const { id } = Route.useParams()
+  const session = useSession()
+  const queryClient = useQueryClient()
+  const { currentTab, onTabChange } = useTabParam('overview')
 
-  const [teamAutoLockTime, setTeamAutoLockTime] = useState("");
-  const [userSearchQuery, setUserSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isGameConfigExpanded, setIsGameConfigExpanded] = useState(false);
-  const [isServerConfigExpanded, setIsServerConfigExpanded] = useState(false);
+  const [teamAutoLockTime, setTeamAutoLockTime] = useState('')
+  const [userSearchQuery, setUserSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [isGameConfigExpanded, setIsGameConfigExpanded] = useState(false)
+  const [isServerConfigExpanded, setIsServerConfigExpanded] = useState(false)
   const [pendingSettings, setPendingSettings] = useState<PendingEventSettings>(
     {},
-  );
+  )
 
   const eventQuery = useQuery<Event>({
-    queryKey: ["event", id],
+    queryKey: ['event', id],
     queryFn: () => getEventById(id),
-  });
+  })
 
   useEffect(() => {
     if (eventQuery.data) {
-      setPendingSettings(eventQuery.data);
+      setPendingSettings(eventQuery.data)
     }
-  }, [eventQuery.data]);
+  }, [eventQuery.data])
 
   const teamsCountQuery = useQuery({
-    queryKey: ["event", id, "teams-count"],
+    queryKey: ['event', id, 'teams-count'],
     queryFn: () => getTeamsCountForEvent(id),
-  });
+  })
 
   const participantsCountQuery = useQuery({
-    queryKey: ["event", id, "participants-count"],
+    queryKey: ['event', id, 'participants-count'],
     queryFn: () => getParticipantsCountForEvent(id),
-  });
+  })
 
   const isAdminQuery = useQuery({
-    queryKey: ["event", id, "is-admin"],
+    queryKey: ['event', id, 'is-admin'],
     queryFn: isEventAdmin.bind(null, id),
-    enabled: session.status !== "loading",
+    enabled: session.status !== 'loading',
     retry: false,
-  });
+  })
 
   const adminsQuery = useQuery<EventAdmin[]>({
-    queryKey: ["event", id, "admins"],
+    queryKey: ['event', id, 'admins'],
     queryFn: () => getEventAdmins(id),
     enabled: isAdminQuery.data === true,
-  });
+  })
 
   const starterTemplatesQuery = useQuery({
-    queryKey: ["event", id, "templates"],
+    queryKey: ['event', id, 'templates'],
     queryFn: () => getStarterTemplates(id),
-  });
+  })
 
   const lockEventMutation = useMutation({
     mutationFn: () => lockEvent(id),
     onSuccess: async () => {
-      toast.success("Team repositories locked.");
-      await queryClient.invalidateQueries({ queryKey: ["event", id] });
+      toast.success('Team repositories locked.')
+      await queryClient.invalidateQueries({ queryKey: ['event', id] })
     },
-    onError: () => toast.error("Failed to lock team repositories."),
-  });
+    onError: () => toast.error('Failed to lock team repositories.'),
+  })
 
   const unlockEventMutation = useMutation({
     mutationFn: () => unlockEvent(id),
     onSuccess: async () => {
-      toast.success("Team repositories unlocked.");
-      await queryClient.invalidateQueries({ queryKey: ["event", id] });
+      toast.success('Team repositories unlocked.')
+      await queryClient.invalidateQueries({ queryKey: ['event', id] })
     },
-    onError: () => toast.error("Failed to unlock team repositories."),
-  });
+    onError: () => toast.error('Failed to unlock team repositories.'),
+  })
 
   const startSwissMatchesMutation = useMutation({
     mutationFn: () => startSwissMatches(id),
     onSuccess: async () => {
-      toast.success("Started group phase.");
-      await queryClient.invalidateQueries({ queryKey: ["event", id] });
+      toast.success('Started group phase.')
+      await queryClient.invalidateQueries({ queryKey: ['event', id] })
     },
-    onError: () => toast.error("Failed to start group phase."),
-  });
+    onError: () => toast.error('Failed to start group phase.'),
+  })
 
   const startTournamentMatchesMutation = useMutation({
     mutationFn: () => startTournamentMatches(id),
     onSuccess: async () => {
-      toast.success("Started tournament phase.");
-      await queryClient.invalidateQueries({ queryKey: ["event", id] });
+      toast.success('Started tournament phase.')
+      await queryClient.invalidateQueries({ queryKey: ['event', id] })
     },
-    onError: () => toast.error("Failed to start tournament phase."),
-  });
+    onError: () => toast.error('Failed to start tournament phase.'),
+  })
 
   const revealMatchesMutation = useMutation({
     mutationFn: (phase: string) => revealAllMatches(id, phase),
     onSuccess: async () => {
-      toast.success("Matches revealed.");
-      await queryClient.invalidateQueries({ queryKey: ["event", id] });
+      toast.success('Matches revealed.')
+      await queryClient.invalidateQueries({ queryKey: ['event', id] })
     },
-    onError: (error) => toast.error(getErrorMessage(error, "Failed to reveal matches.")),
-  });
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'Failed to reveal matches.')),
+  })
 
   const cleanupMatchesMutation = useMutation({
     mutationFn: (phase: string) => cleanupAllMatches(id, phase),
     onSuccess: async () => {
-      toast.success("Matches cleaned up.");
-      await queryClient.invalidateQueries({ queryKey: ["event", id] });
+      toast.success('Matches cleaned up.')
+      await queryClient.invalidateQueries({ queryKey: ['event', id] })
     },
-    onError: (error) => toast.error(getErrorMessage(error, "Failed to cleanup matches.")),
-  });
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'Failed to cleanup matches.')),
+  })
 
   const setTeamsLockDateMutation = useMutation({
-    mutationFn: (lockDate: number | null) => setEventTeamsLockDate(id, lockDate),
+    mutationFn: (lockDate: number | null) =>
+      setEventTeamsLockDate(id, lockDate),
     onSuccess: async () => {
-      toast.success("Team auto lock date updated.");
-      await queryClient.invalidateQueries({ queryKey: ["event", id] });
+      toast.success('Team auto lock date updated.')
+      await queryClient.invalidateQueries({ queryKey: ['event', id] })
     },
-    onError: () => toast.error("Failed to update team auto lock date."),
-  });
+    onError: () => toast.error('Failed to update team auto lock date.'),
+  })
 
   const updateEventSettingsMutation = useMutation({
     mutationFn: (settings: EventSettingsUpdate) =>
       updateEventSettings(id, settings),
     onSuccess: async () => {
-      toast.success("Event settings updated.");
-      await queryClient.invalidateQueries({ queryKey: ["event", id] });
+      toast.success('Event settings updated.')
+      await queryClient.invalidateQueries({ queryKey: ['event', id] })
     },
     onError: (error) =>
-      toast.error(getErrorMessage(error, "Failed to update event settings.")),
-  });
+      toast.error(getErrorMessage(error, 'Failed to update event settings.')),
+  })
 
   const addAdminMutation = useMutation({
     mutationFn: (userId: string) => addEventAdmin(id, userId),
     onSuccess: async () => {
-      toast.success("Admin added.");
+      toast.success('Admin added.')
       await queryClient.invalidateQueries({
-        queryKey: ["event", id, "admins"],
-      });
+        queryKey: ['event', id, 'admins'],
+      })
     },
-    onError: (error) => toast.error(getErrorMessage(error, "Failed to add admin.")),
-  });
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'Failed to add admin.')),
+  })
 
   const removeAdminMutation = useMutation({
     mutationFn: (userId: string) => removeEventAdmin(id, userId),
     onSuccess: async () => {
-      toast.success("Admin removed.");
+      toast.success('Admin removed.')
       await queryClient.invalidateQueries({
-        queryKey: ["event", id, "admins"],
-      });
+        queryKey: ['event', id, 'admins'],
+      })
     },
-    onError: (error) => toast.error(getErrorMessage(error, "Failed to remove admin.")),
-  });
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'Failed to remove admin.')),
+  })
 
   useEffect(() => {
     if (eventQuery.data?.repoLockDate) {
-      setTeamAutoLockTime(new Date(eventQuery.data.repoLockDate).toISOString());
-      return;
+      setTeamAutoLockTime(new Date(eventQuery.data.repoLockDate).toISOString())
+      return
     }
-    setTeamAutoLockTime("");
-  }, [eventQuery.data?.repoLockDate]);
+    setTeamAutoLockTime('')
+  }, [eventQuery.data?.repoLockDate])
 
   useEffect(() => {
     const delayDebounceFn = window.setTimeout(async () => {
       if (userSearchQuery.length <= 2) {
-        setSearchResults([]);
-        return;
+        setSearchResults([])
+        return
       }
 
-      setIsSearching(true);
+      setIsSearching(true)
       try {
-        setSearchResults(await searchUsers(userSearchQuery));
+        setSearchResults(await searchUsers(userSearchQuery))
       } catch (error) {
-        toast.error(getErrorMessage(error, "Failed to search users."));
+        toast.error(getErrorMessage(error, 'Failed to search users.'))
       } finally {
-        setIsSearching(false);
+        setIsSearching(false)
       }
-    }, 300);
+    }, 300)
 
-    return () => window.clearTimeout(delayDebounceFn);
-  }, [userSearchQuery]);
+    return () => window.clearTimeout(delayDebounceFn)
+  }, [userSearchQuery])
 
-  const event = eventQuery.data;
+  const event = eventQuery.data
   const isLoading =
     eventQuery.isPending ||
     teamsCountQuery.isPending ||
     participantsCountQuery.isPending ||
-    isAdminQuery.isPending;
+    isAdminQuery.isPending
 
   if (isLoading || !event) {
     return (
       <main className="flex min-h-[45vh] items-center justify-center">
         <Spinner />
       </main>
-    );
+    )
   }
 
   if (eventQuery.isError) {
@@ -323,7 +328,7 @@ function DashboardRoute() {
           Failed to load dashboard.
         </p>
       </main>
-    );
+    )
   }
 
   if (!isAdminQuery.data) {
@@ -331,38 +336,38 @@ function DashboardRoute() {
       <main className="flex min-h-[45vh] items-center justify-center px-4 text-center text-muted-foreground">
         You are not authorized to access this dashboard.
       </main>
-    );
+    )
   }
 
   const hasChanges = Object.keys(pendingSettings).some(
     (key) =>
       pendingSettings[key as keyof PendingEventSettings] !==
       event[key as keyof Event],
-  );
+  )
 
   const handleSaveSettings = () => {
-    const updates: EventSettingsUpdate = {};
+    const updates: EventSettingsUpdate = {}
 
     SETTINGS_FIELDS.forEach((field) => {
       if (pendingSettings[field] !== event[field as keyof Event]) {
-        Object.assign(updates, { [field]: pendingSettings[field] });
+        Object.assign(updates, { [field]: pendingSettings[field] })
       }
-    });
+    })
 
     if (updates.startDate) {
-      updates.startDate = new Date(updates.startDate).getTime();
+      updates.startDate = new Date(updates.startDate).getTime()
     }
     if (updates.endDate) {
-      updates.endDate = new Date(updates.endDate).getTime();
+      updates.endDate = new Date(updates.endDate).getTime()
     }
 
     if (Object.keys(updates).length === 0) {
-      toast.info("No changes to save.");
-      return;
+      toast.info('No changes to save.')
+      return
     }
 
-    updateEventSettingsMutation.mutate(updates);
-  };
+    updateEventSettingsMutation.mutate(updates)
+  }
 
   const updatePendingSetting = <TKey extends keyof PendingEventSettings>(
     key: TKey,
@@ -371,8 +376,8 @@ function DashboardRoute() {
     setPendingSettings((current) => ({
       ...current,
       [key]: value,
-    }));
-  };
+    }))
+  }
 
   return (
     <main className="container mx-auto flex min-h-lvh max-w-7xl flex-col gap-6 px-4 py-6">
@@ -457,7 +462,7 @@ function DashboardRoute() {
         </TabsContent>
       </Tabs>
     </main>
-  );
+  )
 }
 
 function OverviewTab({
@@ -466,10 +471,10 @@ function OverviewTab({
   teamsCount,
   starterTemplates,
 }: {
-  event: Event;
-  participantsCount: number;
-  teamsCount: number;
-  starterTemplates: NonNullable<Event["starterTemplates"]>;
+  event: Event
+  participantsCount: number
+  teamsCount: number
+  starterTemplates: NonNullable<Event['starterTemplates']>
 }) {
   return (
     <>
@@ -483,13 +488,19 @@ function OverviewTab({
             <Metric label="Participants" value={participantsCount} />
             <Metric label="Teams" value={teamsCount} />
             <Metric label="Current Round" value={event.currentRound} />
-            <Metric label="Privacy" value={event.isPrivate ? "Private" : "Public"} />
+            <Metric
+              label="Privacy"
+              value={event.isPrivate ? 'Private' : 'Public'}
+            />
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-            <InfoBlock label="Start Date" value={formatDateTime(event.startDate)} />
+            <InfoBlock
+              label="Start Date"
+              value={formatDateTime(event.startDate)}
+            />
             <InfoBlock label="End Date" value={formatDateTime(event.endDate)} />
-            <InfoBlock label="Location" value={event.location || "Online"} />
+            <InfoBlock label="Location" value={event.location || 'Online'} />
           </div>
         </CardContent>
       </Card>
@@ -504,7 +515,7 @@ function OverviewTab({
             <CodeBlock
               className="lg:col-span-2"
               label="Monorepo URL"
-              value={event.monorepoUrl || "Not set"}
+              value={event.monorepoUrl || 'Not set'}
             />
             <CodeBlock label="Monorepo Version" value={event.monorepoVersion} />
           </div>
@@ -565,7 +576,7 @@ function OverviewTab({
         </CardContent>
       </Card>
     </>
-  );
+  )
 }
 
 function OperationTab({
@@ -580,22 +591,24 @@ function OperationTab({
   cleanupMatchesMutation,
   setTeamsLockDateMutation,
 }: {
-  event: Event;
-  teamAutoLockTime: string;
-  setTeamAutoLockTime: (value: string) => void;
-  lockEventMutation: VoidMutation;
-  unlockEventMutation: VoidMutation;
-  startSwissMatchesMutation: VoidMutation;
-  startTournamentMatchesMutation: VoidMutation;
-  revealMatchesMutation: PhaseMutation;
-  cleanupMatchesMutation: PhaseMutation;
-  setTeamsLockDateMutation: TeamLockDateMutation;
+  event: Event
+  teamAutoLockTime: string
+  setTeamAutoLockTime: (value: string) => void
+  lockEventMutation: VoidMutation
+  unlockEventMutation: VoidMutation
+  startSwissMatchesMutation: VoidMutation
+  startTournamentMatchesMutation: VoidMutation
+  revealMatchesMutation: PhaseMutation
+  cleanupMatchesMutation: PhaseMutation
+  setTeamsLockDateMutation: TeamLockDateMutation
 }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Operation Controls</CardTitle>
-        <CardDescription>Immediate actions for running the event.</CardDescription>
+        <CardDescription>
+          Immediate actions for running the event.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-10">
         <OperationSection title="Repository Management">
@@ -626,7 +639,7 @@ function OperationTab({
           </Button>
           <Button
             disabled={revealMatchesMutation.isPending}
-            onClick={() => revealMatchesMutation.mutate("SWISS")}
+            onClick={() => revealMatchesMutation.mutate('SWISS')}
             variant="secondary"
           >
             Reveal Group Phase Matches
@@ -636,10 +649,10 @@ function OperationTab({
             onClick={() => {
               if (
                 window.confirm(
-                  "Are you sure you want to delete ALL Group Phase matches? This will also reset team scores!",
+                  'Are you sure you want to delete ALL Group Phase matches? This will also reset team scores!',
                 )
               ) {
-                cleanupMatchesMutation.mutate("SWISS");
+                cleanupMatchesMutation.mutate('SWISS')
               }
             }}
             variant="destructive"
@@ -663,7 +676,7 @@ function OperationTab({
           </Button>
           <Button
             disabled={revealMatchesMutation.isPending}
-            onClick={() => revealMatchesMutation.mutate("ELIMINATION")}
+            onClick={() => revealMatchesMutation.mutate('ELIMINATION')}
             variant="secondary"
           >
             Reveal Tournament Matches
@@ -673,10 +686,10 @@ function OperationTab({
             onClick={() => {
               if (
                 window.confirm(
-                  "Are you sure you want to delete ALL Tournament matches?",
+                  'Are you sure you want to delete ALL Tournament matches?',
                 )
               ) {
-                cleanupMatchesMutation.mutate("ELIMINATION");
+                cleanupMatchesMutation.mutate('ELIMINATION')
               }
             }}
             variant="destructive"
@@ -702,23 +715,21 @@ function OperationTab({
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !teamAutoLockTime && "text-muted-foreground",
+                      'w-full justify-start text-left font-normal',
+                      !teamAutoLockTime && 'text-muted-foreground',
                     )}
                   >
                     <CalendarIcon className="h-4 w-4" />
                     {teamAutoLockTime
-                      ? format(new Date(teamAutoLockTime), "PPP p")
-                      : "Pick a date"}
+                      ? format(new Date(teamAutoLockTime), 'PPP p')
+                      : 'Pick a date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
                   <Calendar
                     mode="single"
                     selected={
-                      teamAutoLockTime
-                        ? new Date(teamAutoLockTime)
-                        : undefined
+                      teamAutoLockTime ? new Date(teamAutoLockTime) : undefined
                     }
                     onSelect={(date) =>
                       date && setTeamAutoLockTime(date.toISOString())
@@ -729,28 +740,28 @@ function OperationTab({
                       type="time"
                       value={
                         teamAutoLockTime
-                          ? format(new Date(teamAutoLockTime), "HH:mm")
-                          : ""
+                          ? format(new Date(teamAutoLockTime), 'HH:mm')
+                          : ''
                       }
                       onChange={(changeEvent) => {
-                        const value = changeEvent.target.value;
-                        if (!value) return;
+                        const value = changeEvent.target.value
+                        if (!value) return
 
                         const [hours, minutes] = value
-                          .split(":")
-                          .map((part) => Number.parseInt(part, 10));
+                          .split(':')
+                          .map((part) => Number.parseInt(part, 10))
                         if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-                          return;
+                          return
                         }
 
                         const current = teamAutoLockTime
                           ? new Date(teamAutoLockTime)
-                          : new Date();
+                          : new Date()
                         const date = Number.isNaN(current.getTime())
                           ? new Date()
-                          : current;
-                        date.setHours(hours, minutes, 0, 0);
-                        setTeamAutoLockTime(date.toISOString());
+                          : current
+                        date.setHours(hours, minutes, 0, 0)
+                        setTeamAutoLockTime(date.toISOString())
                       }}
                     />
                   </div>
@@ -778,7 +789,7 @@ function OperationTab({
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }
 
 function SettingsTab({
@@ -790,16 +801,16 @@ function SettingsTab({
   setIsServerConfigExpanded,
   eventId,
 }: {
-  pendingSettings: PendingEventSettings;
+  pendingSettings: PendingEventSettings
   updatePendingSetting: <TKey extends keyof PendingEventSettings>(
     key: TKey,
     value: PendingEventSettings[TKey],
-  ) => void;
-  isGameConfigExpanded: boolean;
-  setIsGameConfigExpanded: (value: boolean) => void;
-  isServerConfigExpanded: boolean;
-  setIsServerConfigExpanded: (value: boolean) => void;
-  eventId: string;
+  ) => void
+  isGameConfigExpanded: boolean
+  setIsGameConfigExpanded: (value: boolean) => void
+  isServerConfigExpanded: boolean
+  setIsServerConfigExpanded: (value: boolean) => void
+  eventId: string
 }) {
   return (
     <>
@@ -812,20 +823,20 @@ function SettingsTab({
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <DashboardInput
               label="Event Name"
-              value={pendingSettings.name || ""}
-              onChange={(value) => updatePendingSetting("name", value)}
+              value={pendingSettings.name || ''}
+              onChange={(value) => updatePendingSetting('name', value)}
             />
             <DashboardInput
               label="Location"
-              value={pendingSettings.location || ""}
-              onChange={(value) => updatePendingSetting("location", value)}
+              value={pendingSettings.location || ''}
+              onChange={(value) => updatePendingSetting('location', value)}
             />
             <div className="space-y-2 md:col-span-2">
               <Label>Description (Markdown)</Label>
               <Textarea
-                value={pendingSettings.description || ""}
+                value={pendingSettings.description || ''}
                 onChange={(event) =>
-                  updatePendingSetting("description", event.target.value)
+                  updatePendingSetting('description', event.target.value)
                 }
                 className="min-h-[100px]"
               />
@@ -837,13 +848,13 @@ function SettingsTab({
               label="Start Date"
               type="datetime-local"
               value={formatDateTimeInput(pendingSettings.startDate)}
-              onChange={(value) => updatePendingSetting("startDate", value)}
+              onChange={(value) => updatePendingSetting('startDate', value)}
             />
             <DashboardInput
               label="End Date"
               type="datetime-local"
               value={formatDateTimeInput(pendingSettings.endDate)}
-              onChange={(value) => updatePendingSetting("endDate", value)}
+              onChange={(value) => updatePendingSetting('endDate', value)}
             />
           </div>
         </CardContent>
@@ -863,7 +874,7 @@ function SettingsTab({
               type="number"
               value={pendingSettings.minTeamSize ?? 0}
               onChange={(value) =>
-                updatePendingSetting("minTeamSize", Number.parseInt(value, 10))
+                updatePendingSetting('minTeamSize', Number.parseInt(value, 10))
               }
             />
             <DashboardInput
@@ -871,7 +882,7 @@ function SettingsTab({
               type="number"
               value={pendingSettings.maxTeamSize ?? 0}
               onChange={(value) =>
-                updatePendingSetting("maxTeamSize", Number.parseInt(value, 10))
+                updatePendingSetting('maxTeamSize', Number.parseInt(value, 10))
               }
             />
           </div>
@@ -884,7 +895,7 @@ function SettingsTab({
                 label="Allow Team Creation"
                 checked={pendingSettings.canCreateTeam || false}
                 onCheckedChange={(value) =>
-                  updatePendingSetting("canCreateTeam", value)
+                  updatePendingSetting('canCreateTeam', value)
                 }
               />
               <SettingSwitch
@@ -892,14 +903,16 @@ function SettingsTab({
                 label="Process Queue"
                 checked={pendingSettings.processQueue || false}
                 onCheckedChange={(value) =>
-                  updatePendingSetting("processQueue", value)
+                  updatePendingSetting('processQueue', value)
                 }
               />
               <SettingSwitch
                 id="isPrivate"
                 label="Private Event"
                 checked={pendingSettings.isPrivate || false}
-                onCheckedChange={(value) => updatePendingSetting("isPrivate", value)}
+                onCheckedChange={(value) =>
+                  updatePendingSetting('isPrivate', value)
+                }
               />
             </div>
           </div>
@@ -909,47 +922,49 @@ function SettingsTab({
       <Card>
         <CardHeader>
           <CardTitle>Technical Configuration</CardTitle>
-          <CardDescription>Docker images and repository settings.</CardDescription>
+          <CardDescription>
+            Docker images and repository settings.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <DashboardInput
             label="Monorepo URL"
-            value={pendingSettings.monorepoUrl || ""}
-            onChange={(value) => updatePendingSetting("monorepoUrl", value)}
+            value={pendingSettings.monorepoUrl || ''}
+            onChange={(value) => updatePendingSetting('monorepoUrl', value)}
           />
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <DashboardInput
               label="Monorepo Version"
-              value={pendingSettings.monorepoVersion || ""}
+              value={pendingSettings.monorepoVersion || ''}
               onChange={(value) =>
-                updatePendingSetting("monorepoVersion", value)
+                updatePendingSetting('monorepoVersion', value)
               }
             />
             <DashboardInput
               label="Base Path"
-              value={pendingSettings.basePath || ""}
-              onChange={(value) => updatePendingSetting("basePath", value)}
+              value={pendingSettings.basePath || ''}
+              onChange={(value) => updatePendingSetting('basePath', value)}
             />
           </div>
           <DashboardInput
             label="Game Server Image"
-            value={pendingSettings.gameServerDockerImage || ""}
+            value={pendingSettings.gameServerDockerImage || ''}
             onChange={(value) =>
-              updatePendingSetting("gameServerDockerImage", value)
+              updatePendingSetting('gameServerDockerImage', value)
             }
           />
           <DashboardInput
             label="Bot Image (default)"
-            value={pendingSettings.myCoreBotDockerImage || ""}
+            value={pendingSettings.myCoreBotDockerImage || ''}
             onChange={(value) =>
-              updatePendingSetting("myCoreBotDockerImage", value)
+              updatePendingSetting('myCoreBotDockerImage', value)
             }
           />
           <DashboardInput
             label="Visualizer Image"
-            value={pendingSettings.visualizerDockerImage || ""}
+            value={pendingSettings.visualizerDockerImage || ''}
             onChange={(value) =>
-              updatePendingSetting("visualizerDockerImage", value)
+              updatePendingSetting('visualizerDockerImage', value)
             }
           />
         </CardContent>
@@ -967,34 +982,34 @@ function SettingsTab({
         <CardContent className="space-y-6">
           <DashboardInput
             label="GitHub Organization"
-            value={pendingSettings.githubOrg || ""}
-            onChange={(value) => updatePendingSetting("githubOrg", value)}
+            value={pendingSettings.githubOrg || ''}
+            onChange={(value) => updatePendingSetting('githubOrg', value)}
           />
           <DashboardInput
             label="GitHub Organization Secret (Token)"
             type="password"
             placeholder="Enter new token to update (leave blank to keep current)"
-            value={pendingSettings.githubOrgSecret || ""}
-            onChange={(value) => updatePendingSetting("githubOrgSecret", value)}
+            value={pendingSettings.githubOrgSecret || ''}
+            onChange={(value) => updatePendingSetting('githubOrgSecret', value)}
           />
           <ExpandableJsonTextarea
             label="Game Config (JSON)"
-            value={pendingSettings.gameConfig || ""}
+            value={pendingSettings.gameConfig || ''}
             expanded={isGameConfigExpanded}
             onExpandedChange={setIsGameConfigExpanded}
-            onChange={(value) => updatePendingSetting("gameConfig", value)}
+            onChange={(value) => updatePendingSetting('gameConfig', value)}
           />
           <ExpandableJsonTextarea
             label="Server Config (JSON)"
-            value={pendingSettings.serverConfig || ""}
+            value={pendingSettings.serverConfig || ''}
             expanded={isServerConfigExpanded}
             onExpandedChange={setIsServerConfigExpanded}
-            onChange={(value) => updatePendingSetting("serverConfig", value)}
+            onChange={(value) => updatePendingSetting('serverConfig', value)}
           />
         </CardContent>
       </Card>
     </>
-  );
+  )
 }
 
 function AdminsTab({
@@ -1007,14 +1022,14 @@ function AdminsTab({
   addAdminMutation,
   removeAdminMutation,
 }: {
-  admins: EventAdmin[];
-  isAdminsLoading: boolean;
-  userSearchQuery: string;
-  setUserSearchQuery: (value: string) => void;
-  searchResults: UserSearchResult[];
-  isSearching: boolean;
-  addAdminMutation: StringMutation;
-  removeAdminMutation: StringMutation;
+  admins: EventAdmin[]
+  isAdminsLoading: boolean
+  userSearchQuery: string
+  setUserSearchQuery: (value: string) => void
+  searchResults: UserSearchResult[]
+  isSearching: boolean
+  addAdminMutation: StringMutation
+  removeAdminMutation: StringMutation
 }) {
   return (
     <Card>
@@ -1048,8 +1063,8 @@ function AdminsTab({
                     type="button"
                     className="flex w-full cursor-pointer items-center justify-between rounded-sm p-2 text-left transition-colors hover:bg-accent"
                     onClick={() => {
-                      addAdminMutation.mutate(user.id);
-                      setUserSearchQuery("");
+                      addAdminMutation.mutate(user.id)
+                      setUserSearchQuery('')
                     }}
                   >
                     <div className="flex items-center gap-2">
@@ -1082,9 +1097,7 @@ function AdminsTab({
         </div>
 
         <div className="border-t pt-4">
-          <h3 className="mb-4 text-sm font-semibold">
-            Current Administrators
-          </h3>
+          <h3 className="mb-4 text-sm font-semibold">Current Administrators</h3>
 
           {isAdminsLoading ? (
             <div className="flex items-center justify-center py-8">
@@ -1106,13 +1119,15 @@ function AdminsTab({
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <img
-                          src={admin.profilePicture || "/placeholder-avatar.png"}
+                          src={
+                            admin.profilePicture || '/placeholder-avatar.png'
+                          }
                           alt={admin.name}
                           className="h-10 w-10 rounded-full border bg-background"
                         />
                         <div>
                           <p className="leading-none font-semibold">
-                            {admin.name || "Unknown User"}
+                            {admin.name || 'Unknown User'}
                           </p>
                           <p className="mt-1 font-mono text-xs text-muted-foreground">
                             @{admin.username}
@@ -1141,7 +1156,7 @@ function AdminsTab({
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }
 
 function Metric({ label, value }: { label: string; value: string | number }) {
@@ -1150,16 +1165,18 @@ function Metric({ label, value }: { label: string; value: string | number }) {
       <h3 className="mb-1 text-xs font-medium uppercase opacity-70">{label}</h3>
       <p className="text-2xl font-bold">{value}</p>
     </div>
-  );
+  )
 }
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border p-4">
-      <Label className="text-xs font-medium uppercase opacity-60">{label}</Label>
+      <Label className="text-xs font-medium uppercase opacity-60">
+        {label}
+      </Label>
       <p className="mt-1 text-base font-semibold">{value}</p>
     </div>
-  );
+  )
 }
 
 function CodeBlock({
@@ -1168,32 +1185,32 @@ function CodeBlock({
   className,
   small = false,
 }: {
-  label: string;
-  value?: string;
-  className?: string;
-  small?: boolean;
+  label: string
+  value?: string
+  className?: string
+  small?: boolean
 }) {
   return (
-    <div className={cn("space-y-1", className)}>
+    <div className={cn('space-y-1', className)}>
       <Label className="text-xs uppercase opacity-70">{label}</Label>
       <p
         className={cn(
-          "rounded border bg-muted/50 p-2 font-mono break-all",
-          small ? "text-xs" : "text-sm",
+          'rounded border bg-muted/50 p-2 font-mono break-all',
+          small ? 'text-xs' : 'text-sm',
         )}
       >
-        {value || "Not set"}
+        {value || 'Not set'}
       </p>
     </div>
-  );
+  )
 }
 
 function OperationSection({
   title,
   children,
 }: {
-  title: string;
-  children: ReactNode;
+  title: string
+  children: ReactNode
 }) {
   return (
     <div className="space-y-3">
@@ -1202,7 +1219,7 @@ function OperationSection({
       </h3>
       <div className="flex flex-wrap gap-3">{children}</div>
     </div>
-  );
+  )
 }
 
 function SettingSwitch({
@@ -1211,10 +1228,10 @@ function SettingSwitch({
   checked,
   onCheckedChange,
 }: {
-  id: string;
-  label: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
+  id: string
+  label: string
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
 }) {
   return (
     <div className="flex items-center justify-between rounded-lg border p-3">
@@ -1223,21 +1240,21 @@ function SettingSwitch({
       </Label>
       <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
     </div>
-  );
+  )
 }
 
 function DashboardInput({
   label,
   value,
   onChange,
-  type = "text",
+  type = 'text',
   placeholder,
 }: {
-  label: string;
-  value: string | number;
-  onChange: (value: string) => void;
-  type?: string;
-  placeholder?: string;
+  label: string
+  value: string | number
+  onChange: (value: string) => void
+  type?: string
+  placeholder?: string
 }) {
   return (
     <div className="space-y-2">
@@ -1249,7 +1266,7 @@ function DashboardInput({
         onChange={(event) => onChange(event.target.value)}
       />
     </div>
-  );
+  )
 }
 
 function ExpandableJsonTextarea({
@@ -1259,11 +1276,11 @@ function ExpandableJsonTextarea({
   onExpandedChange,
   onChange,
 }: {
-  label: string;
-  value: string;
-  expanded: boolean;
-  onExpandedChange: (value: boolean) => void;
-  onChange: (value: string) => void;
+  label: string
+  value: string
+  expanded: boolean
+  onExpandedChange: (value: boolean) => void
+  onChange: (value: string) => void
 }) {
   return (
     <div className="space-y-2">
@@ -1279,36 +1296,36 @@ function ExpandableJsonTextarea({
           ) : (
             <Maximize2 className="h-4 w-4" />
           )}
-          {expanded ? "Minimize" : "Expand"}
+          {expanded ? 'Minimize' : 'Expand'}
         </Button>
       </div>
       <Textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className={cn(
-          "font-mono text-xs transition-all duration-200",
-          expanded ? "min-h-[1200px]" : "min-h-[200px]",
+          'font-mono text-xs transition-all duration-200',
+          expanded ? 'min-h-[1200px]' : 'min-h-[200px]',
         )}
       />
     </div>
-  );
+  )
 }
 
 function formatDateTime(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Not set" : format(date, "PPP p");
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? 'Not set' : format(date, 'PPP p')
 }
 
 function formatDateTimeInput(value: string | number | undefined) {
-  if (!value) return "";
+  if (!value) return ''
 
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : format(date, "yyyy-MM-dd'T'HH:mm");
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '' : format(date, "yyyy-MM-dd'T'HH:mm")
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) {
-    return error.message;
+    return error.message
   }
-  return fallback;
+  return fallback
 }

@@ -1,75 +1,86 @@
-import { createFileRoute, useLocation } from "@tanstack/react-router";
-import { WikiLayout } from "@/components/wiki/WikiLayout";
+import { createFileRoute, useLocation } from '@tanstack/react-router'
+import { WikiLayout } from '@/components/wiki/WikiLayout'
 import {
   getAvailableVersions,
   getDefaultWikiVersion,
   getWikiNavigationWithVersion,
   getWikiPageWithVersion,
-} from "@/lib/markdown";
+} from '@/lib/markdown'
 
-interface WikiRouteData {
-  defaultVersion: string;
-  version: string;
-  pagePath: string[];
-  page: Awaited<ReturnType<typeof getWikiPageWithVersion>>;
-  navigation: Awaited<ReturnType<typeof getWikiNavigationWithVersion>>;
-  versions: Awaited<ReturnType<typeof getAvailableVersions>>;
-  fallbackMessage?: string;
+export interface WikiRouteData {
+  defaultVersion: string
+  version: string
+  pagePath: string[]
+  page: Awaited<ReturnType<typeof getWikiPageWithVersion>>
+  navigation: Awaited<ReturnType<typeof getWikiNavigationWithVersion>>
+  versions: Awaited<ReturnType<typeof getAvailableVersions>>
+  fallbackMessage?: string
 }
 
-export const Route = createFileRoute("/wiki/$")({
-  loader: async ({ location }): Promise<WikiRouteData> => {
-    const versions = await getAvailableVersions();
-    const defaultVersion = await getDefaultWikiVersion();
-    const slug = location.pathname
-      .replace(/^\/wiki\/?/, "")
-      .split("/")
-      .filter(Boolean);
+export async function loadWikiRouteData(pathname: string): Promise<WikiRouteData> {
+  const versions = await getAvailableVersions()
+  const defaultVersion = await getDefaultWikiVersion()
+  const slug = pathname
+    .replace(/^\/wiki\/?/, '')
+    .split('/')
+    .filter(Boolean)
 
-    const possibleVersion = slug[0] ?? defaultVersion;
-    const isVersion = versions.some(v => v.slug === possibleVersion);
-    const version = isVersion ? possibleVersion : defaultVersion;
-    let pagePath = isVersion ? slug.slice(1) : slug;
+  const possibleVersion = slug[0] ?? defaultVersion
+  const isVersion = versions.some((v) => v.slug === possibleVersion)
+  const version = isVersion ? possibleVersion : defaultVersion
+  let pagePath = isVersion ? slug.slice(1) : slug
 
-    if (pagePath.length === 0) {
-      pagePath = ["README"];
-    }
+  if (pagePath.length === 0) {
+    pagePath = ['README']
+  }
 
-    const [navigation, page] = await Promise.all([
-      getWikiNavigationWithVersion(version),
-      getWikiPageWithVersion(pagePath, version),
-    ]);
+  const [navigation, page] = await Promise.all([
+    getWikiNavigationWithVersion(version),
+    getWikiPageWithVersion(pagePath, version),
+  ])
 
-    if (page) {
-      return {
-        defaultVersion,
-        version,
-        pagePath,
-        page,
-        navigation,
-        versions,
-      };
-    }
-
-    const homePage = await getWikiPageWithVersion([], version);
-
+  if (page) {
     return {
       defaultVersion,
       version,
-      pagePath: [],
-      page: homePage,
+      pagePath,
+      page,
       navigation,
       versions,
-      fallbackMessage: `The page ${pagePath.join("/")} is not available in ${
-        version === defaultVersion ? "the default version" : version
-      }. Showing the home page for this version instead.`,
-    };
-  },
-  component: WikiPageRoute,
-});
+    }
+  }
 
-function WikiPageRoute() {
-  const { pathname } = useLocation();
+  const homePage = await getWikiPageWithVersion([], version)
+
+  return {
+    defaultVersion,
+    version,
+    pagePath: [],
+    page: homePage,
+    navigation,
+    versions,
+    fallbackMessage: `The page ${pagePath.join('/')} is not available in ${
+      version === defaultVersion ? 'the default version' : version
+    }. Showing the home page for this version instead.`,
+  }
+}
+
+export const Route = createFileRoute('/wiki/$')({
+  params: {
+    parse: (params) => params._splat ? params : false,
+  },
+  loader: ({ location }) => loadWikiRouteData(location.pathname),
+  component: WikiSplatRoute,
+})
+
+function WikiSplatRoute() {
+  const data = Route.useLoaderData()
+
+  return <WikiPageRoute data={data} />
+}
+
+export function WikiPageRoute({ data }: { data: WikiRouteData }) {
+  const { pathname } = useLocation()
   const {
     defaultVersion,
     version,
@@ -78,7 +89,7 @@ function WikiPageRoute() {
     navigation,
     versions,
     fallbackMessage,
-  } = Route.useLoaderData();
+  } = data
 
   if (!page) {
     return (
@@ -99,7 +110,7 @@ function WikiPageRoute() {
           </p>
         </article>
       </WikiLayout>
-    );
+    )
   }
 
   return (
@@ -125,11 +136,7 @@ function WikiPageRoute() {
             {page.title}
           </h1>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>
-              Last updated:
-              {" "}
-              {page.lastModified.toLocaleDateString()}
-            </span>
+            <span>Last updated: {page.lastModified.toLocaleDateString()}</span>
             {version !== defaultVersion && (
               <span className="rounded bg-primary-100 px-2 py-1 text-xs font-medium text-primary-700">
                 {version}
@@ -144,5 +151,5 @@ function WikiPageRoute() {
         />
       </article>
     </WikiLayout>
-  );
+  )
 }

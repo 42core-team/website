@@ -15,13 +15,13 @@ export interface ClientSession {
 }
 
 async function fetchCurrentUser(): Promise<ClientSession | null> {
-    const response = await axiosInstance.get<ClientUser>('/auth/me')
-    return {
-      user: {
-        ...response.data,
-        name: response.data.name || response.data.username,
-      },
-    }
+  const response = await axiosInstance.get<ClientUser>('/auth/me')
+  return {
+    user: {
+      ...response.data,
+      name: response.data.name || response.data.username,
+    },
+  }
 }
 
 export function useSession() {

@@ -1,18 +1,18 @@
-"use client";
+'use client'
 
-import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
-import { DownloadIcon } from "@/components/icons";
-import { title } from "@/components/primitives";
+import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { DownloadIcon } from '@/components/icons'
+import { title } from '@/components/primitives'
 
 export default function RushClient() {
-  const [mounted, setMounted] = useState(false);
-  const pdfUrl
-    = "https://core-files.object.storage.eu01.onstackit.cloud/subjects/rush/rush-02.pdf";
+  const [mounted, setMounted] = useState(false)
+  const pdfUrl =
+    'https://core-files.object.storage.eu01.onstackit.cloud/subjects/rush/rush-02.pdf'
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    setMounted(true)
+  }, [])
 
   return (
     <div className="container mx-auto px-4 py-4">
@@ -44,7 +44,7 @@ export default function RushClient() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.3 }}
           className="w-full overflow-hidden rounded-lg bg-black shadow-xl"
-          style={{ height: "75vh" }}
+          style={{ height: '75vh' }}
         >
           <iframe
             src={pdfUrl}
@@ -54,5 +54,5 @@ export default function RushClient() {
         </motion.div>
       )}
     </div>
-  );
+  )
 }

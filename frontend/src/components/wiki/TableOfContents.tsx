@@ -1,39 +1,39 @@
-"use client";
+'use client'
 
-import type { MouseEvent } from "react";
-import { useEffect, useState } from "react";
-import { scrollToWikiHeading } from "@/lib/wiki-scroll";
+import type { MouseEvent } from 'react'
+import { useEffect, useState } from 'react'
+import { scrollToWikiHeading } from '@/lib/wiki-scroll'
 
 interface TocItem {
-  id: string;
-  text: string;
-  level: number;
+  id: string
+  text: string
+  level: number
 }
 
 interface TableOfContentsProps {
-  content: string;
+  content: string
 }
 
 export function TableOfContents({ content }: TableOfContentsProps) {
-  const [toc, setToc] = useState<TocItem[]>([]);
-  const [activeId, setActiveId] = useState<string>("");
+  const [toc, setToc] = useState<TocItem[]>([])
+  const [activeId, setActiveId] = useState<string>('')
 
   useEffect(() => {
     // Parse headings from HTML content
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(content, "text/html");
-    const headings = doc.querySelectorAll("h1, h2, h3, h4, h5, h6");
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(content, 'text/html')
+    const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6')
 
     const tocItems: TocItem[] = Array.from(headings)
-      .map(heading => ({
+      .map((heading) => ({
         id: heading.id,
-        text: heading.textContent || "",
+        text: heading.textContent || '',
         level: Number.parseInt(heading.tagName.charAt(1)),
       }))
-      .filter(item => item.id && item.text);
+      .filter((item) => item.id && item.text)
 
-    setToc(tocItems);
-  }, [content]);
+    setToc(tocItems)
+  }, [content])
 
   useEffect(() => {
     // Track which heading is currently visible
@@ -41,50 +41,50 @@ export function TableOfContents({ content }: TableOfContentsProps) {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            setActiveId(entry.target.id);
+            setActiveId(entry.target.id)
           }
-        });
+        })
       },
-      { rootMargin: "-20% 0% -35% 0%" },
-    );
+      { rootMargin: '-20% 0% -35% 0%' },
+    )
 
     toc.forEach(({ id }) => {
-      const element = document.getElementById(id);
+      const element = document.getElementById(id)
       if (element) {
-        observer.observe(element);
+        observer.observe(element)
       }
-    });
+    })
 
-    return () => observer.disconnect();
-  }, [toc]);
+    return () => observer.disconnect()
+  }, [toc])
 
   if (toc.length === 0) {
-    return null;
+    return null
   }
 
   const handleHeadingClick = (id: string, event: MouseEvent) => {
-    event.preventDefault();
+    event.preventDefault()
 
-    const element = document.getElementById(id);
+    const element = document.getElementById(id)
     if (element) {
-      scrollToWikiHeading(element);
+      scrollToWikiHeading(element)
     }
-  };
+  }
 
   return (
     <nav className="sticky top-24 h-fit">
       <div className="rounded-lg border bg-content1 p-4">
         <h3 className="mb-3 text-sm font-semibold">On this page</h3>
         <ul className="space-y-1">
-          {toc.map(item => (
+          {toc.map((item) => (
             <li key={item.id}>
               <button
                 type="button"
-                onClick={event => handleHeadingClick(item.id, event)}
+                onClick={(event) => handleHeadingClick(item.id, event)}
                 className={`block text-left text-sm transition-colors hover:text-primary ${
                   activeId === item.id
-                    ? "font-medium text-primary"
-                    : "text-muted-foreground"
+                    ? 'font-medium text-primary'
+                    : 'text-muted-foreground'
                 }`}
                 style={{ paddingLeft: `${(item.level - 1) * 12}px` }}
               >
@@ -95,5 +95,5 @@ export function TableOfContents({ content }: TableOfContentsProps) {
         </ul>
       </div>
     </nav>
-  );
+  )
 }

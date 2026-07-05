@@ -1,24 +1,24 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, Loader2, Plus, Trash2, Users } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertCircle, Loader2, Plus, Trash2, Users } from 'lucide-react'
+import { useState } from 'react'
+import { toast } from 'sonner'
 import {
   addToWhitelist,
   bulkRemoveFromWhitelist,
   getEventWhitelist,
   removeFromWhitelist,
-} from "@/app/actions/event";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+} from '@/app/actions/event'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+} from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogClose,
@@ -28,16 +28,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+} from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -45,128 +45,132 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
-import { WhitelistPlatform } from "@/lib/constants/whitelist";
+} from '@/components/ui/table'
+import { Textarea } from '@/components/ui/textarea'
+import { WhitelistPlatform } from '@/lib/constants/whitelist'
 
 interface WhitelistManagementProps {
-  eventId: string;
+  eventId: string
 }
 
 export function WhitelistManagement({ eventId }: WhitelistManagementProps) {
-  const queryClient = useQueryClient();
-  const [addOpen, setAddOpen] = useState(false);
-  const [usernames, setUsernames] = useState("");
+  const queryClient = useQueryClient()
+  const [addOpen, setAddOpen] = useState(false)
+  const [usernames, setUsernames] = useState('')
   const [platform, setPlatform] = useState<WhitelistPlatform>(
     WhitelistPlatform.GITHUB,
-  );
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  )
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const whitelistQuery = useQuery({
-    queryKey: ["event", eventId, "whitelist"],
+    queryKey: ['event', eventId, 'whitelist'],
     queryFn: () => getEventWhitelist(eventId),
-  });
+  })
 
-  const list = whitelistQuery.data ?? [];
+  const list = whitelistQuery.data ?? []
 
   const addMutation = useMutation({
-    mutationFn: (entries: { username: string; platform: WhitelistPlatform }[]) =>
-      addToWhitelist(eventId, entries),
+    mutationFn: (
+      entries: { username: string; platform: WhitelistPlatform }[],
+    ) => addToWhitelist(eventId, entries),
     onSuccess: async () => {
-      toast.success("Users added to whitelist");
-      setAddOpen(false);
+      toast.success('Users added to whitelist')
+      setAddOpen(false)
       await queryClient.invalidateQueries({
-        queryKey: ["event", eventId, "whitelist"],
-      });
+        queryKey: ['event', eventId, 'whitelist'],
+      })
     },
-    onError: (error) => toast.error(getErrorMessage(error, "Failed to add users.")),
-  });
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'Failed to add users.')),
+  })
 
   const removeMutation = useMutation({
     mutationFn: (whitelistId: string) =>
       removeFromWhitelist(eventId, whitelistId),
     onSuccess: async (_data, whitelistId) => {
-      toast.success("User removed from whitelist");
+      toast.success('User removed from whitelist')
       setSelectedIds((previous) => {
-        const next = new Set(previous);
-        next.delete(whitelistId);
-        return next;
-      });
+        const next = new Set(previous)
+        next.delete(whitelistId)
+        return next
+      })
       await queryClient.invalidateQueries({
-        queryKey: ["event", eventId, "whitelist"],
-      });
+        queryKey: ['event', eventId, 'whitelist'],
+      })
     },
-    onError: (error) => toast.error(getErrorMessage(error, "Failed to remove user.")),
-  });
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'Failed to remove user.')),
+  })
 
   const bulkRemoveMutation = useMutation({
     mutationFn: (ids: string[]) => bulkRemoveFromWhitelist(eventId, ids),
     onSuccess: async () => {
-      toast.success("Users removed from whitelist");
-      setSelectedIds(new Set());
+      toast.success('Users removed from whitelist')
+      setSelectedIds(new Set())
       await queryClient.invalidateQueries({
-        queryKey: ["event", eventId, "whitelist"],
-      });
+        queryKey: ['event', eventId, 'whitelist'],
+      })
     },
-    onError: (error) => toast.error(getErrorMessage(error, "Failed to remove users.")),
-  });
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'Failed to remove users.')),
+  })
 
   const handleAdd = () => {
     const lines = usernames
-      .split("\n")
+      .split('\n')
       .map((line) => line.trim().toLowerCase())
-      .filter((line) => line.length > 0);
+      .filter((line) => line.length > 0)
 
     if (lines.length === 0) {
-      toast.error("Please enter at least one username");
-      return;
+      toast.error('Please enter at least one username')
+      return
     }
 
-    addMutation.mutate(lines.map((username) => ({ username, platform })));
-  };
+    addMutation.mutate(lines.map((username) => ({ username, platform })))
+  }
 
   const handleDialogOpenChange = (open: boolean) => {
-    setAddOpen(open);
+    setAddOpen(open)
     if (!open) {
-      setUsernames("");
-      setPlatform(WhitelistPlatform.GITHUB);
+      setUsernames('')
+      setPlatform(WhitelistPlatform.GITHUB)
     }
-  };
+  }
 
   const toggleSelect = (id: string) => {
     setSelectedIds((previous) => {
-      const next = new Set(previous);
+      const next = new Set(previous)
       if (next.has(id)) {
-        next.delete(id);
+        next.delete(id)
       } else {
-        next.add(id);
+        next.add(id)
       }
-      return next;
-    });
-  };
+      return next
+    })
+  }
 
   const toggleSelectAll = () => {
     setSelectedIds(
       selectedIds.size === list.length
         ? new Set()
         : new Set(list.map((entry) => entry.id)),
-    );
-  };
+    )
+  }
 
   const handleBulkDelete = () => {
     if (selectedIds.size === 0) {
-      toast.error("Please select users to delete");
-      return;
+      toast.error('Please select users to delete')
+      return
     }
-    bulkRemoveMutation.mutate(Array.from(selectedIds));
-  };
+    bulkRemoveMutation.mutate(Array.from(selectedIds))
+  }
 
   const selectAllState =
     list.length > 0 && selectedIds.size === list.length
       ? true
       : selectedIds.size > 0
-        ? "indeterminate"
-        : false;
+        ? 'indeterminate'
+        : false
 
   return (
     <Dialog open={addOpen} onOpenChange={handleDialogOpenChange}>
@@ -205,15 +209,17 @@ export function WhitelistManagement({ eventId }: WhitelistManagementProps) {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Failed to load whitelist</AlertTitle>
-              <AlertDescription>Please refresh the page to try again.</AlertDescription>
+              <AlertDescription>
+                Please refresh the page to try again.
+              </AlertDescription>
             </Alert>
           ) : (
             <>
               {selectedIds.size > 0 && (
                 <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2">
                   <span className="text-sm text-muted-foreground">
-                    {selectedIds.size}{" "}
-                    {selectedIds.size === 1 ? "user" : "users"} selected
+                    {selectedIds.size}{' '}
+                    {selectedIds.size === 1 ? 'user' : 'users'} selected
                   </span>
                   <Button
                     variant="destructive"
@@ -265,7 +271,7 @@ export function WhitelistManagement({ eventId }: WhitelistManagementProps) {
                         <TableRow
                           key={entry.id}
                           data-state={
-                            selectedIds.has(entry.id) ? "selected" : undefined
+                            selectedIds.has(entry.id) ? 'selected' : undefined
                           }
                         >
                           <TableCell>
@@ -282,13 +288,13 @@ export function WhitelistManagement({ eventId }: WhitelistManagementProps) {
                             <Badge
                               variant={
                                 entry.platform === WhitelistPlatform.GITHUB
-                                  ? "default"
-                                  : "secondary"
+                                  ? 'default'
+                                  : 'secondary'
                               }
                             >
                               {entry.platform === WhitelistPlatform.GITHUB
-                                ? "GitHub"
-                                : "42"}
+                                ? 'GitHub'
+                                : '42'}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
@@ -374,7 +380,7 @@ username3`}
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
 
 function WhitelistSkeleton() {
@@ -411,12 +417,12 @@ function WhitelistSkeleton() {
         </TableBody>
       </Table>
     </div>
-  );
+  )
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) {
-    return error.message;
+    return error.message
   }
-  return fallback;
+  return fallback
 }

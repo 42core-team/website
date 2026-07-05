@@ -9,13 +9,13 @@ image:
 imagePullSecrets:
   - name: secret-pull-coregame
 
-nameOverride: ""
-fullnameOverride: ""
+nameOverride: ''
+fullnameOverride: ''
 
 serviceAccount:
   create: true
   annotations: {}
-  name: ""
+  name: ''
 
 podAnnotations: {}
 
@@ -51,23 +51,23 @@ affinity: {}
 env:
   NODE_ENV: production
   # 42 OAuth Client ID - public variable
-  VITE_FORTY_TWO_CLIENT_ID: ""
+  VITE_FORTY_TWO_CLIENT_ID: ''
   # Add other environment variables as needed
-  VITE_VISUALIZER_URL: ""
-  VITE_BACKEND_PUBLIC_URL: ""
-  VITE_S3_REPLAYS_BUCKET_URL: ""
+  VITE_VISUALIZER_URL: ''
+  VITE_BACKEND_PUBLIC_URL: ''
+  VITE_S3_REPLAYS_BUCKET_URL: ''
   # Plausible analytics domain defaults
   PLAUSIBLE_DOMAIN: coregame.sh
-  PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.sh"
-  AUTH_COOKIE_NAME: "token"
+  PLAUSIBLE_CUSTOM_DOMAIN: 'https://plausible.coregame.sh'
+  AUTH_COOKIE_NAME: 'token'
 
 # Secrets - these should be provided via GitHub secrets during deployment
 secrets:
-  VITE_AUTH_SECRET: ""
+  VITE_AUTH_SECRET: ''
 
 ingress:
   enabled: false
-  className: ""
+  className: ''
   annotations: {}
   hosts:
     - host: chart-example.local
@@ -79,17 +79,17 @@ ingress:
 # Redirect ingress for handling domain redirects (e.g., www to apex domain)
 ingressRedirect:
   enabled: false
-  className: ""
+  className: ''
   annotations: {}
   # Source host to redirect from (e.g., www.example.com)
-  fromHost: ""
+  fromHost: ''
   # Destination host to redirect to (e.g., example.com)
-  toHost: ""
+  toHost: ''
   # HTTP status code for redirect (default: 308 permanent redirect)
-  code: "308"
+  code: '308'
   tls:
     enabled: false
-    secretName: ""
+    secretName: ''
 
 livenessProbe:
   enabled: true

@@ -1,74 +1,73 @@
-import rehypeCodeGroup from "rehype-code-group";
-import rehypePrettyCode from "rehype-pretty-code";
-import rehypeStringify from "rehype-stringify";
-import remarkGfm from "remark-gfm";
-import remarkParse from "remark-parse";
-import remarkRehype from "remark-rehype";
-import { unified } from "unified";
+import rehypeCodeGroup from 'rehype-code-group'
+import rehypePrettyCode from 'rehype-pretty-code'
+import rehypeStringify from 'rehype-stringify'
+import remarkGfm from 'remark-gfm'
+import remarkParse from 'remark-parse'
+import remarkRehype from 'remark-rehype'
+import { unified } from 'unified'
 
-const FALLBACK_WIKI_VERSION = "latest";
+const FALLBACK_WIKI_VERSION = 'latest'
 
 export interface WikiFrontmatter {
-  title?: string;
-  sidebarTitle?: string;
-  permalink?: string;
-  [key: string]: unknown;
+  title?: string
+  sidebarTitle?: string
+  permalink?: string
+  [key: string]: unknown
 }
 
 export interface WikiPage {
-  slug: string[];
-  title: string;
-  content: string;
-  frontmatter: WikiFrontmatter;
-  lastModified: Date;
-  version?: string;
+  slug: string[]
+  title: string
+  content: string
+  frontmatter: WikiFrontmatter
+  lastModified: Date
+  version?: string
 }
 
 export interface WikiSearchResult {
-  page: WikiPage;
-  snippet: string;
-  highlightedSnippet: string;
-  matchType: "title" | "content";
-  matchPosition?: number;
+  page: WikiPage
+  snippet: string
+  highlightedSnippet: string
+  matchType: 'title' | 'content'
+  matchPosition?: number
 }
 
 export interface WikiNavItem {
-  title: string;
-  slug: string[];
-  isFile: boolean;
-  children?: WikiNavItem[];
+  title: string
+  slug: string[]
+  isFile: boolean
+  children?: WikiNavItem[]
 }
 
 export interface WikiVersion {
-  name: string;
-  slug: string;
-  isDefault?: boolean;
+  name: string
+  slug: string
+  isDefault?: boolean
 }
 
-const markdownModules = import.meta.glob("../../content/wiki/**/*.md", {
+const markdownModules = import.meta.glob('../../content/wiki/**/*.md', {
   eager: true,
-  query: "?raw",
-  import: "default",
-}) as Record<string, string>;
+  query: '?raw',
+  import: 'default',
+}) as Record<string, string>
 
 interface WikiFile {
-  version: string;
-  slug: string[];
-  path: string;
-  raw: string;
-  frontmatter: WikiFrontmatter;
+  version: string
+  slug: string[]
+  path: string
+  raw: string
+  frontmatter: WikiFrontmatter
 }
 
 const wikiFiles = Object.entries(markdownModules).map(([path, raw]) => {
-  const parts = path.replace("../../content/wiki/", "").split("/");
-  const version = parts[0];
-  const fileParts = parts.slice(1);
-  const last = fileParts[fileParts.length - 1] ?? "README.md";
-  const slug = [
-    ...fileParts.slice(0, -1),
-    last.replace(/\.md$/, ""),
-  ].filter(Boolean);
-  const parsed = parseFrontmatter(raw);
+  const parts = path.replace('../../content/wiki/', '').split('/')
+  const version = parts[0]
+  const fileParts = parts.slice(1)
+  const last = fileParts[fileParts.length - 1] ?? 'README.md'
+  const slug = [...fileParts.slice(0, -1), last.replace(/\.md$/, '')].filter(
+    Boolean,
+  )
+  const parsed = parseFrontmatter(raw)
 
   return {
     version,
@@ -76,55 +75,54 @@ const wikiFiles = Object.entries(markdownModules).map(([path, raw]) => {
     path,
     raw,
     frontmatter: parsed.data,
-  };
-});
+  }
+})
 
 export async function getDefaultWikiVersion(): Promise<string> {
-  const versions = await getAvailableVersions();
-  const defaultVersion = versions.find(v => v.isDefault);
-  return defaultVersion ? defaultVersion.slug : FALLBACK_WIKI_VERSION;
+  const versions = await getAvailableVersions()
+  const defaultVersion = versions.find((v) => v.isDefault)
+  return defaultVersion ? defaultVersion.slug : FALLBACK_WIKI_VERSION
 }
 
 export async function getAvailableVersions(): Promise<WikiVersion[]> {
-  const versionSlugs = [...new Set(wikiFiles.map(file => file.version))]
-    .filter(slug => slug && slug !== "images" && slug !== "assets");
+  const versionSlugs = [
+    ...new Set(wikiFiles.map((file) => file.version)),
+  ].filter((slug) => slug && slug !== 'images' && slug !== 'assets')
 
-  const stableSlugs = versionSlugs.filter(slug => isStableTagName(slug));
-  const defaultSlug = stableSlugs.length > 0
-    ? stableSlugs.sort(compareTagNamesDesc)[0]
-    : versionSlugs.includes(FALLBACK_WIKI_VERSION)
-      ? FALLBACK_WIKI_VERSION
-      : versionSlugs[0];
+  const stableSlugs = versionSlugs.filter((slug) => isStableTagName(slug))
+  const defaultSlug =
+    stableSlugs.length > 0
+      ? stableSlugs.sort(compareTagNamesDesc)[0]
+      : versionSlugs.includes(FALLBACK_WIKI_VERSION)
+        ? FALLBACK_WIKI_VERSION
+        : versionSlugs[0]
 
   return versionSlugs
-    .map(slug => ({
+    .map((slug) => ({
       name: formatVersionName(slug),
       slug,
       isDefault: slug === defaultSlug,
     }))
     .sort((a, b) => {
-      if (a.isDefault)
-        return -1;
-      if (b.isDefault)
-        return 1;
-      return b.name.localeCompare(a.name);
-    });
+      if (a.isDefault) return -1
+      if (b.isDefault) return 1
+      return b.name.localeCompare(a.name)
+    })
 }
 
 export async function getWikiPageWithVersion(
   slug: string[],
   version?: string,
 ): Promise<WikiPage | null> {
-  const actualVersion = version || (await getDefaultWikiVersion());
-  const decodedSlug = normalizeSlug(slug);
-  const file = findWikiFile(decodedSlug, actualVersion);
+  const actualVersion = version || (await getDefaultWikiVersion())
+  const decodedSlug = normalizeSlug(slug)
+  const file = findWikiFile(decodedSlug, actualVersion)
 
-  if (!file)
-    return null;
+  if (!file) return null
 
-  const parsed = parseFrontmatter(file.raw);
-  const content = parsed.content;
-  const data = parsed.data;
+  const parsed = parseFrontmatter(file.raw)
+  const content = parsed.content
+  const data = parsed.data
 
   const processedContent = await unified()
     .use(remarkParse)
@@ -132,24 +130,24 @@ export async function getWikiPageWithVersion(
     .use(remarkRehype)
     .use(rehypePrettyCode, {
       theme: {
-        dark: "github-dark",
-        light: "github-light",
+        dark: 'github-dark',
+        light: 'github-light',
       },
     })
     .use(rehypeCodeGroup, {})
     .use(rehypeStringify)
-    .process(content);
+    .process(content)
 
-  let htmlContent = processedContent.toString();
+  let htmlContent = processedContent.toString()
 
-  htmlContent = htmlContent.replace(/<head>[\s\S]*?<\/head>/, "");
-  htmlContent = transformCallouts(htmlContent);
-  htmlContent = addHeadingAnchors(htmlContent);
-  htmlContent = fixWikiLinks(htmlContent, actualVersion);
+  htmlContent = htmlContent.replace(/<head>[\s\S]*?<\/head>/, '')
+  htmlContent = transformCallouts(htmlContent)
+  htmlContent = addHeadingAnchors(htmlContent)
+  htmlContent = fixWikiLinks(htmlContent, actualVersion)
 
-  const effectiveSlug = [...decodedSlug];
+  const effectiveSlug = [...decodedSlug]
   if (data.permalink && effectiveSlug.length > 0) {
-    effectiveSlug[effectiveSlug.length - 1] = data.permalink;
+    effectiveSlug[effectiveSlug.length - 1] = data.permalink
   }
 
   return {
@@ -159,27 +157,27 @@ export async function getWikiPageWithVersion(
     frontmatter: { ...data },
     lastModified: new Date(0),
     version: actualVersion,
-  };
+  }
 }
 
 export async function getWikiNavigationWithVersion(
   version?: string,
 ): Promise<WikiNavItem[]> {
-  const actualVersion = version || (await getDefaultWikiVersion());
-  const files = wikiFiles.filter(file => file.version === actualVersion);
+  const actualVersion = version || (await getDefaultWikiVersion())
+  const files = wikiFiles.filter((file) => file.version === actualVersion)
 
-  const root: WikiNavItem[] = [];
+  const root: WikiNavItem[] = []
 
   for (const file of files) {
-    const slug = getEffectiveSlug(file);
-    const dirs = slug.slice(0, -1);
-    let level = root;
+    const slug = getEffectiveSlug(file)
+    const dirs = slug.slice(0, -1)
+    let level = root
 
     for (let i = 0; i < dirs.length; i++) {
-      const dirSlug = dirs.slice(0, i + 1);
+      const dirSlug = dirs.slice(0, i + 1)
       let dir = level.find(
-        item => !item.isFile && item.slug.join("/") === dirSlug.join("/"),
-      );
+        (item) => !item.isFile && item.slug.join('/') === dirSlug.join('/'),
+      )
 
       if (!dir) {
         dir = {
@@ -187,99 +185,94 @@ export async function getWikiNavigationWithVersion(
           slug: dirSlug,
           isFile: false,
           children: [],
-        };
-        level.push(dir);
+        }
+        level.push(dir)
       }
 
-      level = dir.children ?? [];
+      level = dir.children ?? []
     }
 
-    const fileBase = slug[slug.length - 1] ?? "README";
+    const fileBase = slug[slug.length - 1] ?? 'README'
     level.push({
       title:
-        typeof file.frontmatter.sidebarTitle === "string"
+        typeof file.frontmatter.sidebarTitle === 'string'
           ? file.frontmatter.sidebarTitle
-          : typeof file.frontmatter.title === "string"
+          : typeof file.frontmatter.title === 'string'
             ? file.frontmatter.title
             : formatTitle(fileBase),
       slug,
       isFile: true,
-    });
+    })
   }
 
   const sortItems = (items: WikiNavItem[]): WikiNavItem[] =>
     items
-      .map(item => ({
+      .map((item) => ({
         ...item,
         children: item.children ? sortItems(item.children) : undefined,
       }))
       .sort((a, b) => {
         if (
-          a.title.toLowerCase().includes("readme")
-          && !b.title.toLowerCase().includes("readme")
+          a.title.toLowerCase().includes('readme') &&
+          !b.title.toLowerCase().includes('readme')
         ) {
-          return -1;
+          return -1
         }
         if (
-          !a.title.toLowerCase().includes("readme")
-          && b.title.toLowerCase().includes("readme")
+          !a.title.toLowerCase().includes('readme') &&
+          b.title.toLowerCase().includes('readme')
         ) {
-          return 1;
+          return 1
         }
-        if (a.isFile && !b.isFile)
-          return -1;
-        if (!a.isFile && b.isFile)
-          return 1;
-        return a.title.localeCompare(b.title);
-      });
+        if (a.isFile && !b.isFile) return -1
+        if (!a.isFile && b.isFile) return 1
+        return a.title.localeCompare(b.title)
+      })
 
-  return sortItems(root);
+  return sortItems(root)
 }
 
 export async function searchWikiPages(
   query: string,
   version?: string,
 ): Promise<WikiSearchResult[]> {
-  const allPages = await getAllWikiPagesForVersion(version);
-  const lowercaseQuery = query.toLowerCase();
-  const results: WikiSearchResult[] = [];
+  const allPages = await getAllWikiPagesForVersion(version)
+  const lowercaseQuery = query.toLowerCase()
+  const results: WikiSearchResult[] = []
 
   for (const page of allPages) {
-    const titleMatch = page.title.toLowerCase().includes(lowercaseQuery);
-    const contentMatch = page.content.toLowerCase().includes(lowercaseQuery);
+    const titleMatch = page.title.toLowerCase().includes(lowercaseQuery)
+    const contentMatch = page.content.toLowerCase().includes(lowercaseQuery)
 
     if (titleMatch || contentMatch) {
-      let snippet = "";
-      let highlightedSnippet = "";
-      let matchType: "title" | "content" = "title";
-      let matchPosition: number | undefined;
+      let snippet = ''
+      let highlightedSnippet = ''
+      let matchType: 'title' | 'content' = 'title'
+      let matchPosition: number | undefined
 
       if (titleMatch) {
-        snippet = page.title;
-        highlightedSnippet = highlightText(page.title, query);
-        matchType = "title";
-      }
-      else if (contentMatch) {
-        const plainTextContent = stripHtml(page.content);
+        snippet = page.title
+        highlightedSnippet = highlightText(page.title, query)
+        matchType = 'title'
+      } else if (contentMatch) {
+        const plainTextContent = stripHtml(page.content)
         const matchIndex = plainTextContent
           .toLowerCase()
-          .indexOf(lowercaseQuery);
-        matchPosition = matchIndex;
+          .indexOf(lowercaseQuery)
+        matchPosition = matchIndex
 
-        const start = Math.max(0, matchIndex - 100);
+        const start = Math.max(0, matchIndex - 100)
         const end = Math.min(
           plainTextContent.length,
           matchIndex + query.length + 100,
-        );
-        snippet = plainTextContent.substring(start, end);
+        )
+        snippet = plainTextContent.substring(start, end)
 
-        if (start > 0)
-          snippet = `...${snippet}`;
-        if (end < plainTextContent.length)
-          snippet = `${snippet}...`;
+        if (start > 0) snippet = `...${snippet}`
+        if (end < plainTextContent.length) snippet = `${snippet}...`
 
-        highlightedSnippet = highlightText(snippet, query);
-        matchType = "content";
+        highlightedSnippet = highlightText(snippet, query)
+        matchType = 'content'
       }
 
       results.push({
@@ -288,86 +281,86 @@ export async function searchWikiPages(
         highlightedSnippet,
         matchType,
         matchPosition,
-      });
+      })
     }
   }
 
-  return results;
+  return results
 }
 
 export async function getAllWikiPagesForVersion(
   version?: string,
 ): Promise<WikiPage[]> {
-  const actualVersion = version || (await getDefaultWikiVersion());
-  const pages: WikiPage[] = [];
+  const actualVersion = version || (await getDefaultWikiVersion())
+  const pages: WikiPage[] = []
 
-  for (const file of wikiFiles.filter(file => file.version === actualVersion)) {
-    const page = await getWikiPageWithVersion(file.slug, actualVersion);
+  for (const file of wikiFiles.filter(
+    (file) => file.version === actualVersion,
+  )) {
+    const page = await getWikiPageWithVersion(file.slug, actualVersion)
     if (page) {
-      pages.push(page);
+      pages.push(page)
     }
   }
 
-  return pages;
+  return pages
 }
 
 function findWikiFile(slug: string[], version: string): WikiFile | undefined {
-  const files = wikiFiles.filter(file => file.version === version);
-  const candidates = getSlugCandidates(slug);
+  const files = wikiFiles.filter((file) => file.version === version)
+  const candidates = getSlugCandidates(slug)
 
   for (const candidate of candidates) {
-    const direct = files.find(file => slugsEqual(file.slug, candidate));
-    if (direct)
-      return direct;
+    const direct = files.find((file) => slugsEqual(file.slug, candidate))
+    if (direct) return direct
   }
 
-  const parent = slug.slice(0, -1);
-  const last = slug[slug.length - 1];
+  const parent = slug.slice(0, -1)
+  const last = slug[slug.length - 1]
 
   return files.find((file) => {
-    if (!slugsEqual(file.slug.slice(0, -1), parent))
-      return false;
-    return file.frontmatter.permalink === last;
-  });
+    if (!slugsEqual(file.slug.slice(0, -1), parent)) return false
+    return file.frontmatter.permalink === last
+  })
 }
 
 function getSlugCandidates(slug: string[]): string[][] {
-  if (slug.length === 0 || (slug.length === 1 && slug[0] === "")) {
-    return [["README"]];
+  if (slug.length === 0 || (slug.length === 1 && slug[0] === '')) {
+    return [['README']]
   }
 
-  return [slug, [...slug, "README"]];
+  return [slug, [...slug, 'README']]
 }
 
 function normalizeSlug(slug: string[]): string[] {
   return slug
-    .filter(segment => segment !== "")
-    .map(segment => decodeURIComponent(segment));
+    .filter((segment) => segment !== '')
+    .map((segment) => decodeURIComponent(segment))
 }
 
 function slugsEqual(a: string[], b: string[]): boolean {
-  return a.length === b.length && a.every((part, index) => part === b[index]);
+  return a.length === b.length && a.every((part, index) => part === b[index])
 }
 
 function getEffectiveSlug(file: WikiFile): string[] {
-  const slug = [...file.slug];
+  const slug = [...file.slug]
   if (file.frontmatter.permalink && slug.length > 0) {
-    slug[slug.length - 1] = file.frontmatter.permalink;
+    slug[slug.length - 1] = file.frontmatter.permalink
   }
-  return slug;
+  return slug
 }
 
 function transformCallouts(htmlContent: string): string {
   return htmlContent.replace(
     /<blockquote>\s*<p>\s*\[!(WARNING|INFO|NOTE|TIP|IMPORTANT|CAUTION)\]\s*(.*?)<\/p>\s*([\s\S]*?)<\/blockquote>/g,
     (_match: string, type: string, title: string, content: string) => {
-      const typeClass = type.toLowerCase();
-      const icon = getCalloutIcon(type);
-      const titleText = title.trim() || type;
+      const typeClass = type.toLowerCase()
+      const icon = getCalloutIcon(type)
+      const titleText = title.trim() || type
 
-      let cleanContent = content.trim();
-      if (cleanContent.startsWith("<p>") && cleanContent.endsWith("</p>")) {
-        cleanContent = cleanContent.slice(3, -4);
+      let cleanContent = content.trim()
+      if (cleanContent.startsWith('<p>') && cleanContent.endsWith('</p>')) {
+        cleanContent = cleanContent.slice(3, -4)
       }
 
       return `<div class="callout callout-${typeClass}">
@@ -376,9 +369,9 @@ function transformCallouts(htmlContent: string): string {
           <span class="callout-title">${titleText}</span>
         </div>
         <div class="callout-content">${cleanContent}</div>
-      </div>`;
+      </div>`
     },
-  );
+  )
 }
 
 function addHeadingAnchors(htmlContent: string): string {
@@ -387,145 +380,141 @@ function addHeadingAnchors(htmlContent: string): string {
     (_match: string, level: string, text: string) => {
       const id = text
         .toLowerCase()
-        .replace(/[^\w\s-]/g, "")
-        .replace(/\s+/g, "-")
-        .trim();
-      return `<h${level} id="${id}"><a href="#${id}" class="heading-anchor">${text}</a></h${level}>`;
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .trim()
+      return `<h${level} id="${id}"><a href="#${id}" class="heading-anchor">${text}</a></h${level}>`
     },
-  );
+  )
 }
 
 function fixWikiLinks(htmlContent: string, version: string): string {
   const mdLinksFixed = htmlContent.replace(
     /<a href="([^"]*\.md)"([^>]*)>/g,
     (_match: string, href: string, attributes: string) => {
-      const cleanHref = href.replace(/\.md$/, "");
-      return `<a href="/wiki/${version}/${cleanHref}"${attributes}>`;
+      const cleanHref = href.replace(/\.md$/, '')
+      return `<a href="/wiki/${version}/${cleanHref}"${attributes}>`
     },
-  );
+  )
 
   return mdLinksFixed.replace(
     /<a href="([^"#][^"]*)"([^>]*)>/g,
     (_match: string, href: string, attributes: string) => {
       if (
-        href.startsWith("http")
-        || href.startsWith("#")
-        || href.startsWith("/wiki/")
-        || href.startsWith("mailto:")
+        href.startsWith('http') ||
+        href.startsWith('#') ||
+        href.startsWith('/wiki/') ||
+        href.startsWith('mailto:')
       ) {
-        return _match;
+        return _match
       }
 
-      return `<a href="/wiki/${version}/${href}"${attributes}>`;
+      return `<a href="/wiki/${version}/${href}"${attributes}>`
     },
-  );
+  )
 }
 
 function formatVersionName(slug: string): string {
-  return slug.replace(/[-_]/g, " ");
+  return slug.replace(/[-_]/g, ' ')
 }
 
 function getTitleFromSlug(slug: string[]): string {
-  if (slug.length === 0)
-    return "README";
-  const lastSegment = decodeURIComponent(slug[slug.length - 1]);
-  return formatTitle(lastSegment);
+  if (slug.length === 0) return 'README'
+  const lastSegment = decodeURIComponent(slug[slug.length - 1])
+  return formatTitle(lastSegment)
 }
 
 function formatTitle(name: string): string {
-  return name.replace(/[-_]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+  return name.replace(/[-_]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
 }
 
 function isStableTagName(name: string): boolean {
-  if (name.includes("-"))
-    return false;
-  const normalized = name.startsWith("v") ? name.slice(1) : name;
-  return /^\d+(?:\.\d+)*$/.test(normalized);
+  if (name.includes('-')) return false
+  const normalized = name.startsWith('v') ? name.slice(1) : name
+  return /^\d+(?:\.\d+)*$/.test(normalized)
 }
 
 function parseTagNumbers(name: string): number[] {
-  const normalized = name.startsWith("v") ? name.slice(1) : name;
-  return normalized.split(".").map(n => Number.parseInt(n, 10) || 0);
+  const normalized = name.startsWith('v') ? name.slice(1) : name
+  return normalized.split('.').map((n) => Number.parseInt(n, 10) || 0)
 }
 
 function compareTagNamesDesc(a: string, b: string): number {
-  const aNums = parseTagNumbers(a);
-  const bNums = parseTagNumbers(b);
-  const maxLen = Math.max(aNums.length, bNums.length);
+  const aNums = parseTagNumbers(a)
+  const bNums = parseTagNumbers(b)
+  const maxLen = Math.max(aNums.length, bNums.length)
   for (let i = 0; i < maxLen; i++) {
-    const aVal = aNums[i] ?? 0;
-    const bVal = bNums[i] ?? 0;
-    if (aVal !== bVal)
-      return bVal - aVal;
+    const aVal = aNums[i] ?? 0
+    const bVal = bNums[i] ?? 0
+    if (aVal !== bVal) return bVal - aVal
   }
-  return 0;
+  return 0
 }
 
 function stripHtml(html: string): string {
   return html
-    .replace(/<[^>]*>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function highlightText(text: string, query: string): string {
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const regex = new RegExp(`(${escapedQuery})`, "gi");
-  return text.replace(regex, "<mark>$1</mark>");
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(${escapedQuery})`, 'gi')
+  return text.replace(regex, '<mark>$1</mark>')
 }
 
 function parseFrontmatter(raw: string): {
-  data: WikiFrontmatter;
-  content: string;
+  data: WikiFrontmatter
+  content: string
 } {
-  if (!raw.startsWith("---")) {
-    return { data: {}, content: raw };
+  if (!raw.startsWith('---')) {
+    return { data: {}, content: raw }
   }
 
-  const end = raw.indexOf("\n---", 3);
+  const end = raw.indexOf('\n---', 3)
   if (end === -1) {
-    return { data: {}, content: raw };
+    return { data: {}, content: raw }
   }
 
-  const frontmatter = raw.slice(3, end).trim();
-  const contentStart = raw.indexOf("\n", end + 4);
-  const content = contentStart === -1 ? "" : raw.slice(contentStart + 1);
-  const data: WikiFrontmatter = {};
+  const frontmatter = raw.slice(3, end).trim()
+  const contentStart = raw.indexOf('\n', end + 4)
+  const content = contentStart === -1 ? '' : raw.slice(contentStart + 1)
+  const data: WikiFrontmatter = {}
 
-  for (const line of frontmatter.split("\n")) {
-    const separator = line.indexOf(":");
-    if (separator === -1)
-      continue;
+  for (const line of frontmatter.split('\n')) {
+    const separator = line.indexOf(':')
+    if (separator === -1) continue
 
-    const key = line.slice(0, separator).trim();
+    const key = line.slice(0, separator).trim()
     const value = line
       .slice(separator + 1)
       .trim()
-      .replace(/^["']|["']$/g, "");
+      .replace(/^["']|["']$/g, '')
 
     if (key) {
-      data[key] = value;
+      data[key] = value
     }
   }
 
-  return { data, content };
+  return { data, content }
 }
 
 function getCalloutIcon(type: string): string {
   switch (type.toUpperCase()) {
-    case "WARNING":
-      return "!";
-    case "INFO":
-      return "i";
-    case "NOTE":
-      return "N";
-    case "TIP":
-      return "Tip";
-    case "IMPORTANT":
-      return "!";
-    case "CAUTION":
-      return "!";
+    case 'WARNING':
+      return '!'
+    case 'INFO':
+      return 'i'
+    case 'NOTE':
+      return 'N'
+    case 'TIP':
+      return 'Tip'
+    case 'IMPORTANT':
+      return '!'
+    case 'CAUTION':
+      return '!'
     default:
-      return "i";
+      return 'i'
   }
 }

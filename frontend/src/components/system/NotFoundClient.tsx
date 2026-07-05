@@ -1,7 +1,7 @@
-"use client";
+'use client'
 
-import Link from "@/components/app-link";
-import { Button } from "@/components/ui/button";
+import Link from '@/components/app-link'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
@@ -9,7 +9,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card'
 
 export default function NotFoundClient() {
   return (
@@ -26,8 +26,7 @@ export default function NotFoundClient() {
         <CardContent className="gap-2 text-center">
           <p>Oops! The page you are looking for doesn't exist.</p>
           <p>
-            You can check
-            {" "}
+            You can check{' '}
             <Link
               href="https://status.coregame.sh"
               className="text-primary hover:underline"
@@ -35,8 +34,7 @@ export default function NotFoundClient() {
               rel="noopener noreferrer"
             >
               status.coregame.sh
-            </Link>
-            {" "}
+            </Link>{' '}
             for any known issues.
           </p>
         </CardContent>
@@ -44,32 +42,32 @@ export default function NotFoundClient() {
           <Button
             variant="destructive"
             onClick={() => {
-              const base
-                = "https://github.com/42core-team/website_relaunch/issues/new";
+              const base =
+                'https://github.com/42core-team/website_relaunch/issues/new'
               const title = encodeURIComponent(
                 `Bug: 404 on ${location.pathname}`,
-              );
+              )
               const body = encodeURIComponent(
-                `Please help us fix this 404 by filling out the details below.\n\n`
-                + `- Broken URL: ${location.href}\n`
-                + `- Referrer: ${document.referrer || "N/A"}\n`
-                + `- Expected behavior:\n`
-                + `- Actual behavior (error message or what you saw):\n`
-                + `- Screenshot(s): Drag-and-drop or paste here\n`
-                + `- Browser: ${navigator.userAgent}\n`
-                + `- OS: \n`
-                + `- Device: \n`
-                + `- Time (UTC): ${new Date()
-                  .toISOString()
-                  .replace("T", " ")
-                  .replace("Z", " UTC")}\n\n`
-                  + `Additional context:\n`,
-              );
+                `Please help us fix this 404 by filling out the details below.\n\n` +
+                  `- Broken URL: ${location.href}\n` +
+                  `- Referrer: ${document.referrer || 'N/A'}\n` +
+                  `- Expected behavior:\n` +
+                  `- Actual behavior (error message or what you saw):\n` +
+                  `- Screenshot(s): Drag-and-drop or paste here\n` +
+                  `- Browser: ${navigator.userAgent}\n` +
+                  `- OS: \n` +
+                  `- Device: \n` +
+                  `- Time (UTC): ${new Date()
+                    .toISOString()
+                    .replace('T', ' ')
+                    .replace('Z', ' UTC')}\n\n` +
+                  `Additional context:\n`,
+              )
               window.open(
                 `${base}?labels=bug&title=${title}&body=${body}`,
-                "_blank",
-                "noopener,noreferrer",
-              );
+                '_blank',
+                'noopener,noreferrer',
+              )
             }}
           >
             Open an issue
@@ -77,5 +75,5 @@ export default function NotFoundClient() {
         </CardFooter>
       </Card>
     </div>
-  );
+  )
 }

@@ -1,32 +1,31 @@
-"use client";
+'use client'
 
-import { useSession } from "@/lib/auth";
-import { useRouter } from "@/lib/router-hooks";
-import { Suspense, useEffect } from "react";
-import { title } from "@/components/primitives";
-import SocialAccountsDisplay from "@/components/social-accounts-display";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User } from "@/components/user";
+import { useSession } from '@/lib/auth'
+import { useRouter } from '@/lib/router-hooks'
+import { Suspense, useEffect } from 'react'
+import { title } from '@/components/primitives'
+import SocialAccountsDisplay from '@/components/social-accounts-display'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { User } from '@/components/user'
 
 function ProfileContent() {
-  const router = useRouter();
-  const { data: session, status } = useSession();
+  const router = useRouter()
+  const { data: session, status } = useSession()
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.replace("/");
+    if (status === 'unauthenticated') {
+      router.replace('/')
     }
-  }, [status, router]);
+  }, [status, router])
 
-  if (status === "loading") {
+  if (status === 'loading') {
     return (
       <div className="flex min-h-[200px] items-center justify-center">
         <div className="text-muted-foreground">Loading...</div>
       </div>
-    );
+    )
   }
-  if (!session)
-    return null;
+  if (!session) return null
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -47,8 +46,8 @@ function ProfileContent() {
               name={session.user.name}
               description={session.user.email}
               avatarProps={{
-                src: session.user.profilePicture || "/placeholder-avatar.png",
-                size: "lg",
+                src: session.user.profilePicture || '/placeholder-avatar.png',
+                size: 'lg',
                 isBordered: true,
               }}
               className="justify-start gap-4"
@@ -59,19 +58,19 @@ function ProfileContent() {
         <SocialAccountsDisplay />
       </div>
     </div>
-  );
+  )
 }
 
 export default function ProfileClient() {
   return (
     <Suspense
-      fallback={(
+      fallback={
         <div className="flex min-h-[200px] items-center justify-center">
           <div className="text-muted-foreground">Loading...</div>
         </div>
-      )}
+      }
     >
       <ProfileContent />
     </Suspense>
-  );
+  )
 }

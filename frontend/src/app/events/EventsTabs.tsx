@@ -1,24 +1,24 @@
-"use client";
+'use client'
 
-import type { Event } from "@/app/actions/event";
-import EventsTable from "@/app/events/EventTable";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { Event } from '@/app/actions/event'
+import EventsTable from '@/app/events/EventTable'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function EventsTabs({
   myEvents,
   allEvents,
   isLoggedIn,
 }: Readonly<{
-  myEvents: Event[];
-  allEvents: Event[];
-  isLoggedIn: boolean;
+  myEvents: Event[]
+  allEvents: Event[]
+  isLoggedIn: boolean
 }>) {
   if (!isLoggedIn) {
-    return <EventsTable events={allEvents} />;
+    return <EventsTable events={allEvents} />
   }
   return (
     <Tabs
-      defaultValue={myEvents.length ? "my" : "all"}
+      defaultValue={myEvents.length ? 'my' : 'all'}
       className="w-full ps-1.5 pb-0.5"
     >
       <TabsList aria-label="Events tabs">
@@ -34,5 +34,5 @@ export default function EventsTabs({
         <EventsTable events={allEvents} />
       </TabsContent>
     </Tabs>
-  );
+  )
 }

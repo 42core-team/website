@@ -1,1 +1,1 @@
-export { default as MatchNode } from "./MatchNode";
+export { default as MatchNode } from './MatchNode'

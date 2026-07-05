@@ -1,4 +1,4 @@
 export enum WhitelistPlatform {
-  GITHUB = "GITHUB",
-  FORTYTWO = "FORTYTWO",
+  GITHUB = 'GITHUB',
+  FORTYTWO = 'FORTYTWO',
 }

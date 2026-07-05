@@ -1,100 +1,94 @@
-"use client";
+'use client'
 
-import type { SocialAccount } from "@/app/actions/social-accounts";
-import { useSession } from "@/lib/auth";
-import { useCallback, useEffect, useState } from "react";
+import type { SocialAccount } from '@/app/actions/social-accounts'
+import { useSession } from '@/lib/auth'
+import { useCallback, useEffect, useState } from 'react'
 import {
   getSocialAccounts,
-
   unlinkSocialAccount,
-} from "@/app/actions/social-accounts";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { use42Linking } from "@/hooks/use42Linking";
-import { OAUTH_PROVIDERS } from "@/lib/constants/oauth";
+} from '@/app/actions/social-accounts'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { use42Linking } from '@/hooks/use42Linking'
+import { OAUTH_PROVIDERS } from '@/lib/constants/oauth'
 import {
   getPlatformIcon,
   getPlatformName,
-} from "@/lib/constants/platform-icons";
+} from '@/lib/constants/platform-icons'
 
 export default function SocialAccountsDisplay() {
-  const { data: session } = useSession();
-  const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [_unlinkingAccount, setUnlinkingAccount] = useState<string | null>(null);
+  const { data: session } = useSession()
+  const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([])
+  const [loading, setLoading] = useState(true)
+  const [_unlinkingAccount, setUnlinkingAccount] = useState<string | null>(null)
 
   const loadSocialAccounts = useCallback(async () => {
-    if (!session?.user.id)
-      return;
+    if (!session?.user.id) return
 
     try {
-      const accounts = await getSocialAccounts();
-      setSocialAccounts(accounts);
+      const accounts = await getSocialAccounts()
+      setSocialAccounts(accounts)
+    } catch (error) {
+      console.error('Error loading social accounts:', error)
+    } finally {
+      setLoading(false)
     }
-    catch (error) {
-      console.error("Error loading social accounts:", error);
-    }
-    finally {
-      setLoading(false);
-    }
-  }, [session?.user.id]);
+  }, [session?.user.id])
 
   const { message, isInitiating, initiate42OAuth, clearMessage } = use42Linking(
     loadSocialAccounts, // Use the stable callback
-  );
+  )
 
   useEffect(() => {
     if (session?.user.id) {
-      loadSocialAccounts();
+      loadSocialAccounts()
     }
-  }, [session, loadSocialAccounts]);
+  }, [session, loadSocialAccounts])
 
   // Clear any lingering error messages when we detect a new 42 account
   useEffect(() => {
     const has42Account = socialAccounts.some(
-      account => account.platform === OAUTH_PROVIDERS.FORTY_TWO,
-    );
-    if (has42Account && message?.type === "error") {
+      (account) => account.platform === OAUTH_PROVIDERS.FORTY_TWO,
+    )
+    if (has42Account && message?.type === 'error') {
       // Clear error message after account is successfully linked
-      clearMessage();
+      clearMessage()
     }
-  }, [socialAccounts, message, clearMessage]);
+  }, [socialAccounts, message, clearMessage])
 
   const handleUnlink = async (platform: string) => {
     if (
-      !session?.user.id
-      || !confirm("Are you sure you want to unlink this account?")
+      !session?.user.id ||
+      !confirm('Are you sure you want to unlink this account?')
     ) {
-      return;
+      return
     }
 
-    setUnlinkingAccount(platform);
+    setUnlinkingAccount(platform)
     try {
-      await unlinkSocialAccount(platform);
-      setSocialAccounts(accounts =>
-        accounts.filter(account => account.platform !== platform),
-      );
+      await unlinkSocialAccount(platform)
+      setSocialAccounts((accounts) =>
+        accounts.filter((account) => account.platform !== platform),
+      )
+    } catch (error) {
+      console.error('Error unlinking account:', error)
+      alert('Failed to unlink account. Please try again.')
+    } finally {
+      setUnlinkingAccount(null)
     }
-    catch (error) {
-      console.error("Error unlinking account:", error);
-      alert("Failed to unlink account. Please try again.");
-    }
-    finally {
-      setUnlinkingAccount(null);
-    }
-  };
+  }
 
   const get42Account = () =>
     socialAccounts.find(
-      account => account.platform === OAUTH_PROVIDERS.FORTY_TWO,
-    );
+      (account) => account.platform === OAUTH_PROVIDERS.FORTY_TWO,
+    )
 
   if (loading) {
     return (
       <div className="flex min-h-[100px] items-center justify-center">
         <div className="text-muted-foreground">Loading social accounts...</div>
       </div>
-    );
+    )
   }
 
   return (
@@ -103,45 +97,42 @@ export default function SocialAccountsDisplay() {
         <CardTitle>Linked Accounts</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {socialAccounts.length === 0
-          ? (
-              <p className="text-muted-foreground">
-                No social accounts linked yet.
-              </p>
-            )
-          : (
-              <div className="space-y-3">
-                {socialAccounts.map(account => (
-                  <div
-                    key={account.id}
-                    className="flex items-center justify-between rounded-lg border p-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center text-2xl">
-                        {getPlatformIcon(account.platform)}
-                      </div>
-                      <div>
-                        <p className="font-medium">
-                          {getPlatformName(account.platform)}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          @
-                          {account.username}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      color="danger"
-                      onClick={() => handleUnlink(account.platform)}
-                      // TODO: isLoading={unlinkingAccount === account.platform}
-                    >
-                      Unlink
-                    </Button>
+        {socialAccounts.length === 0 ? (
+          <p className="text-muted-foreground">
+            No social accounts linked yet.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {socialAccounts.map((account) => (
+              <div
+                key={account.id}
+                className="flex items-center justify-between rounded-lg border p-3"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center text-2xl">
+                    {getPlatformIcon(account.platform)}
                   </div>
-                ))}
+                  <div>
+                    <p className="font-medium">
+                      {getPlatformName(account.platform)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      @{account.username}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  color="danger"
+                  onClick={() => handleUnlink(account.platform)}
+                  // TODO: isLoading={unlinkingAccount === account.platform}
+                >
+                  Unlink
+                </Button>
               </div>
-            )}
+            ))}
+          </div>
+        )}
 
         {!get42Account() && (
           <div className="border-t pt-4">
@@ -182,16 +173,18 @@ export default function SocialAccountsDisplay() {
                 //   </svg>
                 // }
               >
-                {isInitiating ? "Connecting..." : "Connect"}
+                {isInitiating ? 'Connecting...' : 'Connect'}
               </Button>
             </div>
           </div>
         )}
 
-        {message && message.type === "error" && (
+        {message && message.type === 'error' && (
           <div className="bg-danger-50 border-danger-200 dark:bg-danger-100/10 rounded-lg border p-4">
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 shrink-0 text-lg text-destructive">⚠️</span>
+              <span className="mt-0.5 shrink-0 text-lg text-destructive">
+                ⚠️
+              </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-destructive">
                   Connection Failed
@@ -223,5 +216,5 @@ export default function SocialAccountsDisplay() {
         )}
       </CardContent>
     </Card>
-  );
+  )
 }
