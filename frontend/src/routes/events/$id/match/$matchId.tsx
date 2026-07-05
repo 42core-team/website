@@ -106,7 +106,7 @@ function getMatchVisualizerUrl(
   if (!visualizerUrl || !replaysBucketUrl) return null
 
   const url = new URL(visualizerUrl)
-  url.searchParams.set('replays', `${replaysBucketUrl}/${matchId}.json`)
+  url.searchParams.set('replays', `${replaysBucketUrl}/${matchId}/replay.json`)
   url.searchParams.set('dynamicSpeed', 'on')
   url.searchParams.set('autoplay', 'start')
   if (phase) url.searchParams.set('mode', phase)
