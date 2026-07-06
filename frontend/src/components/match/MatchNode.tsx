@@ -2,6 +2,7 @@
 
 import type { Match } from '@/app/actions/tournament-model'
 import { motion } from 'framer-motion'
+import { Trophy } from 'lucide-react'
 import { useParams, useRouter } from '@/lib/router-hooks'
 import { memo } from 'react'
 import { Handle, Position } from 'reactflow'
@@ -174,7 +175,7 @@ function MatchNode({ data }: MatchNodeProps) {
                       {formatTeamName(team.name)}
                     </span>
                     {team.id === match.winner?.id && (
-                      <span className="ml-1 text-green-600">👑</span>
+                      <Trophy className="ml-1 inline size-3 text-amber-500" />
                     )}
                   </div>
                   {!hideScore &&

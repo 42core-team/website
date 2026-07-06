@@ -1,4 +1,5 @@
 import type { Match } from '@/app/actions/tournament-model'
+import { Trophy } from 'lucide-react'
 import Link from '@/components/app-link'
 import { MatchPhase, MatchState } from '@/app/actions/tournament-model'
 import { Badge } from '@/components/ui/badge'
@@ -105,7 +106,7 @@ export default function QueueMatchesList(props: {
                         >
                           {match.teams[0].name}
                           {match.winner?.id === match.teams[0].id && (
-                            <span className="ml-2">👑</span>
+                            <Trophy className="ml-2 inline size-4 text-amber-500" />
                           )}
                         </Link>
                       )}
@@ -157,7 +158,7 @@ export default function QueueMatchesList(props: {
                           )}
                         >
                           {match.winner?.id === match.teams[1].id && (
-                            <span className="mr-2">👑</span>
+                            <Trophy className="mr-2 inline size-4 text-amber-500" />
                           )}
                           {match.teams[1].name}
                         </Link>
