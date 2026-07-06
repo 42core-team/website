@@ -2,11 +2,9 @@ import type { Team, TeamMember } from '@/app/actions/team'
 
 import { DialogTrigger } from '@radix-ui/react-dialog'
 import { Plus } from 'lucide-react'
-import Link from '@/components/app-link'
 import { useParams } from '@/lib/router-hooks'
 import { useState } from 'react'
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,8 +18,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
 import TeamInviteModal from './TeamInviteModal'
+import TeamMemberDisplay from './TeamMemberDisplay'
 
 interface TeamInfoSectionProps {
   myTeam: Team
@@ -133,36 +131,11 @@ export function TeamInfoSection({
           <div className="flex flex-wrap items-start gap-3">
             {teamMembers.length > 0 ? (
               teamMembers.map((member) => (
-                <Link
+                <TeamMemberDisplay
                   key={member.id}
-                  href={`https://github.com/${member.username}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="no-icon group w-full max-w-32 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-                  aria-label={`Open ${member.username}'s GitHub profile`}
-                >
-                  <div className="flex flex-col items-center rounded-xl bg-content1/50 p-4 shadow-sm ring-1 ring-default-200 transition hover:shadow-md hover:ring-primary/60">
-                    <Avatar
-                      className={cn(
-                        'mb-2',
-                        member.isEventAdmin
-                          ? 'outline-2 outline-solid outline-orange-500'
-                          : '',
-                      )}
-                    >
-                      <AvatarImage
-                        src={member.profilePicture}
-                        alt={member.name}
-                      />
-                      <AvatarFallback>
-                        {member.name.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="external-link w-full truncate text-center text-sm font-medium group-hover:text-primary">
-                      {member.username}
-                    </span>
-                  </div>
-                </Link>
+                  member={member}
+                  highlightAdmin
+                />
               ))
             ) : (
               <p className="col-span-full text-center text-muted-foreground">
