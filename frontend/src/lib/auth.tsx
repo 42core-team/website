@@ -28,7 +28,6 @@ export function useSession() {
   const query = useQuery({
     queryKey: ['auth', 'session'],
     queryFn: fetchCurrentUser,
-    staleTime: 60_000,
     retry: false,
   })
 

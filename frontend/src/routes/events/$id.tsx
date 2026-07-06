@@ -9,6 +9,7 @@ import {
   isUserRegisteredForEvent,
 } from '@/app/actions/event'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
+import GithubLoginButton from '@/components/github'
 import EventInfoNotice from '@/components/event-info-notice'
 import EventNavbar from '@/components/event-navbar'
 import TimeBadge from '@/components/timeBadge'
@@ -46,24 +47,25 @@ function EventRoute() {
       location.pathname === `/events/${id}` ||
       location.pathname === `/events/${id}/`,
   })
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const userId = session?.user.id
 
   const eventQuery = useQuery({
     queryKey: ['event', id],
     queryFn: async () => getEventById(id),
+    enabled: Boolean(userId),
   })
 
   const teamsCountQuery = useQuery({
     queryKey: ['event', id, 'teams-count'],
     queryFn: () => getTeamsCountForEvent(id),
-    enabled: eventQuery.isSuccess,
+    enabled: Boolean(userId) && eventQuery.isSuccess,
   })
 
   const participantsCountQuery = useQuery({
     queryKey: ['event', id, 'participants-count'],
     queryFn: () => getParticipantsCountForEvent(id),
-    enabled: eventQuery.isSuccess,
+    enabled: Boolean(userId) && eventQuery.isSuccess,
   })
 
   const isUserRegisteredQuery = useQuery({
@@ -84,10 +86,28 @@ function EventRoute() {
     enabled: Boolean(userId) && Boolean(isUserRegisteredQuery.data),
   })
 
-  if (eventQuery.isPending) {
+  if (status === 'loading' || (userId && eventQuery.isPending)) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center">
         <Spinner size="lg" />
+      </main>
+    )
+  }
+
+  if (status === 'unauthenticated') {
+    return (
+      <main className="container mx-auto flex min-h-[60vh] items-center justify-center px-4 py-16">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Authentication required</CardTitle>
+            <CardDescription>
+              Please log in with GitHub to view this event.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <GithubLoginButton />
+          </CardContent>
+        </Card>
       </main>
     )
   }
@@ -98,6 +118,10 @@ function EventRoute() {
         <p className="text-center text-destructive">No event data found.</p>
       </main>
     )
+  }
+
+  if (!eventQuery.data) {
+    return null
   }
 
   const event = eventQuery.data
