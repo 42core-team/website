@@ -69,7 +69,7 @@ ingressRedirect:
     cert-manager.io/cluster-issuer: letsencrypt-prod
   fromHost: www.example.com
   toHost: example.com
-  code: '308'
+  code: "308"
   tls:
     enabled: true
     secretName: www-example-com-tls
@@ -85,7 +85,7 @@ ingressRedirect:
     cert-manager.io/cluster-issuer: letsencrypt-prod
   fromHost: www.coregame.sh
   toHost: coregame.sh
-  code: '308'
+  code: "308"
   tls:
     enabled: true
     secretName: www-coregame-de-tls

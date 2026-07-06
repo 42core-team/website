@@ -15,7 +15,7 @@
     "test": "vitest run",
     "lint": "eslint",
     "tscheck": "tsc --noEmit",
-    "format": "prettier --write . && eslint --fix",
+    "format": "prettier --write src && eslint --fix",
     "check": "prettier --check ."
   },
   "dependencies": {

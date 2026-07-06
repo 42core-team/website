@@ -19,27 +19,27 @@ resources:
 env:
   NODE_ENV: production
   # NextAuth Configuration
-  VITE_AUTH_URL: 'https://coregame.sh'
+  VITE_AUTH_URL: "https://coregame.sh"
   # GitHub OAuth Configuration
   CLIENT_ID_GITHUB: prod-github-client-id
   # 42 OAuth Configuration - public variable
   VITE_FORTY_TWO_CLIENT_ID: prod-42-client-id
   # Backend API Configuration
-  BACKEND_URL: 'http://api-main'
-  VITE_VISUALIZER_URL: 'https://visualizer.coregame.sh'
-  VITE_BACKEND_PUBLIC_URL: 'https://api.coregame.sh'
-  VITE_S3_REPLAYS_BUCKET_URL: 'https://s3.coregame.sh/core-replays'
+  BACKEND_URL: "http://api-main"
+  VITE_VISUALIZER_URL: "https://visualizer.coregame.sh"
+  VITE_BACKEND_PUBLIC_URL: "https://api.coregame.sh"
+  VITE_S3_REPLAYS_BUCKET_URL: "https://s3.coregame.sh/core-replays"
   # Plausible analytics domain defaults for prod
   PLAUSIBLE_DOMAIN: coregame.sh
-  PLAUSIBLE_CUSTOM_DOMAIN: 'https://plausible.coregame.sh'
-  AUTH_COOKIE_NAME: 'token'
+  PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.sh"
+  AUTH_COOKIE_NAME: "token"
 
 ingress:
   enabled: true
   className: nginx
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
   #    nginx.ingress.kubernetes.io/limit-rps: "10"
   #    nginx.ingress.kubernetes.io/limit-burst: "20"
   #    nginx.ingress.kubernetes.io/limit-connections: "50"
@@ -60,7 +60,7 @@ ingressRedirect:
     cert-manager.io/cluster-issuer: letsencrypt-prod
   fromHost: www.coregame.sh
   toHost: coregame.sh
-  code: '308'
+  code: "308"
   tls:
     enabled: true
     secretName: www-coregame-de-tls
