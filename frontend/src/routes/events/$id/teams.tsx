@@ -6,7 +6,10 @@ import {
   useLocation,
   useNavigate,
 } from '@tanstack/react-router'
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
+import { useState } from 'react'
 import { getTeamsForEventTable } from '@/app/actions/team'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import {
@@ -22,6 +25,52 @@ export const Route = createFileRoute('/events/$id/teams')({
   component: TeamsRoute,
 })
 
+type SortColumn = 'name' | 'membersCount' | 'queueScore' | 'createdAt'
+type SortDirection = 'asc' | 'desc'
+
+interface SortableTableHeadProps {
+  children: string
+  column: SortColumn
+  sortColumn: SortColumn
+  sortDirection: SortDirection
+  onSort: (column: SortColumn) => void
+}
+
+function SortableTableHead({
+  children,
+  column,
+  sortColumn,
+  sortDirection,
+  onSort,
+}: SortableTableHeadProps) {
+  const isSorted = sortColumn === column
+  const SortIcon = isSorted
+    ? sortDirection === 'asc'
+      ? ArrowUp
+      : ArrowDown
+    : ArrowUpDown
+
+  const ariaSort = isSorted
+    ? sortDirection === 'asc'
+      ? 'ascending'
+      : 'descending'
+    : 'none'
+
+  return (
+    <TableHead aria-sort={ariaSort}>
+      <Button
+        aria-label={`Sort by ${children}`}
+        className="-ml-3 h-8 px-3"
+        onClick={() => onSort(column)}
+        variant="ghost"
+      >
+        {children}
+        <SortIcon className="text-muted-foreground" />
+      </Button>
+    </TableHead>
+  )
+}
+
 function TeamsRoute() {
   const { id } = Route.useParams()
   const isTeamsOverview = useLocation({
@@ -30,13 +79,27 @@ function TeamsRoute() {
       location.pathname === `/events/${id}/teams/`,
   })
   const navigate = useNavigate()
+  const [sortColumn, setSortColumn] = useState<SortColumn>('name')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const teamsQuery = useQuery({
-    queryKey: ['event', id, 'teams'],
-    queryFn: () => getTeamsForEventTable(id),
+    queryKey: ['event', id, 'teams', sortColumn, sortDirection],
+    queryFn: () =>
+      getTeamsForEventTable(id, undefined, sortColumn, sortDirection),
+    placeholderData: (previousData) => previousData,
   })
 
   if (!isTeamsOverview) {
     return <Outlet />
+  }
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+
+    setSortColumn(column)
+    setSortDirection('asc')
   }
 
   if (teamsQuery.isPending) {
@@ -65,10 +128,38 @@ function TeamsRoute() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Members</TableHead>
-                <TableHead>Queue Score</TableHead>
-                <TableHead>Created</TableHead>
+                <SortableTableHead
+                  column="name"
+                  onSort={handleSort}
+                  sortColumn={sortColumn}
+                  sortDirection={sortDirection}
+                >
+                  Name
+                </SortableTableHead>
+                <SortableTableHead
+                  column="membersCount"
+                  onSort={handleSort}
+                  sortColumn={sortColumn}
+                  sortDirection={sortDirection}
+                >
+                  Members
+                </SortableTableHead>
+                <SortableTableHead
+                  column="queueScore"
+                  onSort={handleSort}
+                  sortColumn={sortColumn}
+                  sortDirection={sortDirection}
+                >
+                  Queue Score
+                </SortableTableHead>
+                <SortableTableHead
+                  column="createdAt"
+                  onSort={handleSort}
+                  sortColumn={sortColumn}
+                  sortDirection={sortDirection}
+                >
+                  Created
+                </SortableTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
