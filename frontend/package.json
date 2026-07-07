@@ -6,8 +6,9 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "prebuild": "bun scripts/clone-wiki-branches.cjs && bun scripts/fetch-releases.cjs",
+    "prebuild": "bun scripts/clone-wiki-branches.cjs && bun scripts/fetch-releases.cjs && bun scripts/fetch-visualizer-assets.js",
     "clone:wiki": "node scripts/clone-wiki-branches.cjs",
+    "fetch:visualizer-assets": "bun scripts/fetch-visualizer-assets.js",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
     "build": "vite build",

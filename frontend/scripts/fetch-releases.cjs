@@ -1,5 +1,6 @@
 const fs = require('node:fs')
 const path = require('node:path')
+const axios = require('axios')
 
 const PER_PAGE = 100
 const OUT_DIR = path.join(__dirname, '../content/changelog')

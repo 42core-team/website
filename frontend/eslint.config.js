@@ -18,6 +18,7 @@ export default [
     ignores: [
       'eslint.config.js',
       'prettier.config.js',
+      'scripts/**',
       'src/components/QueueMatches*.tsx',
       'src/components/match/**',
       'src/components/team/**',
