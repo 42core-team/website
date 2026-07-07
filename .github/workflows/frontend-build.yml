@@ -54,26 +54,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          version: 10
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 25
-          cache: "pnpm"
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          bun-version: latest
 
       - name: Install dependencies
         working-directory: ./frontend
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Lint code
         working-directory: ./frontend
         run: |
-          pnpm lint
+          bun lint
           git diff --exit-code ..
 
       - name: Cancel workflow on failure
