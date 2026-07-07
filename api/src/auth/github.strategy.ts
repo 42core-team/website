@@ -62,7 +62,7 @@ export class GithubOAuthStrategy extends PassportStrategy(
 
       done(null, user);
     } catch (err) {
-      done(err, undefined);
+      done(err instanceof Error ? err : new Error(String(err)), undefined);
     }
   }
 }

@@ -13,7 +13,7 @@ import { GithubApiModule } from "./github-api/github-api.module";
 import { ScheduleModule } from "@nestjs/schedule";
 import { StatsModule } from "./stats/stats.module";
 import { LoggerModule } from "nestjs-pino";
-import { Request } from "express";
+import { IncomingMessage } from "http";
 
 @Module({
   imports: [
@@ -37,8 +37,8 @@ import { Request } from "express";
                 },
               }
             : undefined,
-        customProps: (req: Request) => {
-          const customReq = req as Request & { user?: { id: string } };
+        customProps: (req: IncomingMessage) => {
+          const customReq = req as IncomingMessage & { user?: { id: string } };
           const user = customReq.user;
           return {
             userId: user?.id,
