@@ -1,9 +1,13 @@
-# Ignore wiki content since it will be cloned during build
+# Generated during the Docker build
+content/
+public/generated/
+
 .env
 .env.example
 .claude
 .idea
 .next
+dist/
 helm/
 node_modules/
 next-env.d.ts

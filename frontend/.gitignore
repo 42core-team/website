@@ -1,5 +1,6 @@
 node_modules
 content
+public/generated/
 .DS_Store
 dist
 dist-ssr
