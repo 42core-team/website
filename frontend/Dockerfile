@@ -1,15 +1,17 @@
-# Multi-stage build for TanStack Start/Vite production with Bun
-FROM oven/bun:1-alpine AS base
+# syntax=docker/dockerfile:1
 
-# Dependencies stage
-FROM base AS deps
+FROM oven/bun:1-alpine AS deps
 WORKDIR /app
+
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --frozen-lockfile
 
-# Builder stage
-FROM base AS builder
+FROM oven/bun:1-alpine AS builder
 WORKDIR /app
+
+RUN apk add --no-cache git nodejs openssh
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
@@ -20,15 +22,13 @@ ARG VITE_S3_REPLAYS_BUCKET_URL
 ARG CURRENT_BRANCH
 ENV CURRENT_BRANCH=$CURRENT_BRANCH
 
-RUN apk add --no-cache git nodejs openssh
 RUN STATIC_BUILD=true \
     VITE_BACKEND_PUBLIC_URL="${VITE_BACKEND_PUBLIC_URL}" \
     VITE_VISUALIZER_URL="${VITE_VISUALIZER_URL}" \
     VITE_FORTY_TWO_CLIENT_ID="${VITE_FORTY_TWO_CLIENT_ID}" \
     VITE_S3_REPLAYS_BUCKET_URL="${VITE_S3_REPLAYS_BUCKET_URL}" \
-    node node_modules/vite/bin/vite.js build
+    bun run build
 
-# Production image
 FROM nginx:1.29-alpine AS runner
 
 EXPOSE 3000
