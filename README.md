@@ -1,94 +1,126 @@
 <a href="https://coregame.sh">
-<img src="https://status.coregame.sh/badge/web/status?labelColor=&color=&style=for-the-badge&label=coregame.sh"/>
+  <img src="https://status.coregame.sh/badge/web/status?labelColor=&color=&style=for-the-badge&label=coregame.sh" alt="coregame.sh status" />
 </a>
 
-The CORE Game website built with Next.js, NestJS, and Go microservices for managing tournaments, teams, and game execution.
+# CORE Game
 
-## Architecture Overview
+The CORE Game website is a tournament, team, and game-execution platform built with a React frontend, NestJS services, and a Go Kubernetes service.
 
-This project consists of multiple microservices:
+## Architecture overview
 
-* **[Frontend](frontend/README.md)** - Next.js web application
-* **[API Service](api/README.md)** - Main backend API (NestJS + PostgreSQL)
-* **[GitHub Service](github-service/README.md)** - Repository management microservice
-* **[K8s Service](k8s-service/README.md)** - Game execution in Kubernetes clusters
+This monorepo contains four application services:
 
-## Quick Start
+- **[Frontend](frontend/README.md)** — React application powered by TanStack Start and Vite
+- **[API service](api/README.md)** — Main NestJS API backed by PostgreSQL
+- **[GitHub service](github-service/README.md)** — NestJS microservice for repository and team management
+- **[K8s service](k8s-service/README.md)** — Go service for running games in Kubernetes and storing replays
+
+Local development also runs PostgreSQL, RabbitMQ, and SeaweedFS inside a k3d cluster.
+
+## Quick start
 
 ### Prerequisites
 
-* **Docker** (running)
-* **k3d** — [k3d.io](https://k3d.io/stable/#installation)
-* **Tilt** — [docs.tilt.dev/install.html](https://docs.tilt.dev/install.html)
-* **Helm** — [helm.sh/docs/intro/install](https://helm.sh/docs/intro/install)
-* **kubectl** — [kubernetes.io/docs/tasks/tools](https://kubernetes.io/docs/tasks/tools)
+- **Docker** — installed and running
+- **[k3d](https://k3d.io/stable/#installation)**
+- **[Tilt](https://docs.tilt.dev/install.html)**
+- **[Helm](https://helm.sh/docs/intro/install)**
+- **[kubectl](https://kubernetes.io/docs/tasks/tools)**
 
-On macOS you can install all at once:
-```bash
-brew install k3d helm kubectl && brew install tilt-dev/tap/tilt
-```
-
-### Start
+On macOS, install the command-line prerequisites with:
 
 ```bash
-make dev
+brew install k3d helm kubectl
+brew install tilt-dev/tap/tilt
 ```
 
-This will:
-1. Create a local k3d cluster (or start it if it already exists)
-2. Guide you through setting up OAuth credentials in `.env.tilt`
-3. Launch Tilt, which builds and deploys all services into the cluster
+Docker Desktop must be installed and started separately.
 
-Once running, services are available at:
+### Start the development environment
 
-| Service | URL |
-|---|---|
-| Frontend | http://localhost:3000 |
-| API | http://localhost:4000 |
-| RabbitMQ UI | http://localhost:15672 (guest / guest) |
-| SeaweedFS S3 | http://localhost:9000 |
-| PostgreSQL | localhost:5432 (postgres / postgres) |
+From the repository root, run:
 
-### OAuth Setup
+```bash
+make
+```
 
-On first run, `make dev` will ask for OAuth credentials and save them to `.env.tilt` (gitignored).
-You need at least a **GitHub OAuth App**:
+This command:
 
-* Create one at: https://github.com/settings/developers → "New OAuth App"
-* Homepage URL: `http://localhost:3000`
-* Callback URL: `http://localhost:4000/auth/github/callback`
+1. Configures the repository's Git hooks.
+2. Creates the `core-dev` k3d cluster, or starts it if it already exists.
+3. Writes the cluster configuration to `kubeconfig.yaml`.
+4. Guides you through creating `.env.tilt` for local OAuth credentials.
+5. Starts Tilt, which builds and deploys the services into the cluster.
 
-42 Network OAuth is optional.
+Once Tilt reports the resources as ready, the local services are available at:
+
+| Service | URL or address |
+| --- | --- |
+| Frontend | <http://localhost:3000> |
+| API | <http://localhost:4000> |
+| RabbitMQ | `localhost:5672` |
+| RabbitMQ management UI | <http://localhost:15672> (`guest` / `guest`) |
+| SeaweedFS S3 API | <http://localhost:9000> |
+| SeaweedFS master UI | <http://localhost:9001> |
+| SeaweedFS filer UI | <http://localhost:9002> |
+| K8s service | <http://localhost:9003> |
+| PostgreSQL | `localhost:5432` (`postgres` / `postgres`) |
+
+The local PostgreSQL connection string is:
+
+```text
+postgresql://postgres:postgres@localhost:5432/postgres
+```
+
+### OAuth setup
+
+The application can start without OAuth credentials, but login will not work until at least one provider is configured. On the first `make dev`, the setup script can collect the credentials and save them in the gitignored `.env.tilt` file.
+
+For GitHub login, create a [GitHub OAuth App](https://github.com/settings/developers) with:
+
+- Homepage URL: `http://localhost:3000`
+- Authorization callback URL: `http://localhost:4000/auth/github/callback`
+
+For optional 42 Network login, create an OAuth application with this redirect URI:
+
+```text
+http://localhost:4000/auth/42/callback
+```
+
+To change the credentials later, edit `.env.tilt`, or delete it and run `make dev` again.
 
 ### Other commands
 
 ```bash
-make stop    # Stop the cluster (preserves data)
-make clean   # Delete the cluster entirely
+make stop     # Stop the cluster while preserving its data
+make cluster  # Create the cluster without starting Tilt
+make clean    # Delete the cluster and generated kubeconfig
 ```
 
-## Service Dependencies
+## Service dependencies
 
-### Core Services (Required)
+### Core application
 
-* **Frontend** ← **API Service** ← **PostgreSQL**
+```text
+Frontend -> API service -> PostgreSQL
+```
 
-### Extended Features
+### Extended features
 
-* **GitHub Integration** requires **RabbitMQ** + **GitHub Service**
-* **Game Execution** requires **Kubernetes** + **K8s Service** + **S3 Storage**
+- GitHub integration requires RabbitMQ and the GitHub service.
+- Game execution requires RabbitMQ, the K8s service, Kubernetes, and S3-compatible storage.
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test locally using `make dev`
-5. Submit a pull request
+1. Fork the repository.
+2. Create a feature branch.
+3. Make and verify your changes.
+4. Test the application locally with `make dev`.
+5. Submit a pull request.
 
 ## Support
 
 For issues and questions:
 
-* Check individual service READMEs for specific setup issues
-* Open an issue in this repository
+- Check the individual service READMEs for service-specific setup and commands.
+- Open an issue in this repository.

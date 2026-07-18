@@ -17,10 +17,10 @@ This Helm chart deploys the CORE frontend application to Kubernetes.
 
 The following environment variables can be configured in the values files:
 
-#### NextAuth Configuration
+#### Vite Auth Configuration
 
-- `NEXTAUTH_URL`: The public URL for NextAuth.js
-- `NEXTAUTH_SECRET`: Secret for NextAuth.js session encryption
+- `VITE_AUTH_URL`: The public URL for authentication
+- `VITE_AUTH_SECRET`: Secret for session encryption
 
 #### GitHub OAuth Configuration
 
@@ -32,15 +32,14 @@ The following environment variables can be configured in the values files:
 - `BACKEND_URL`: Backend API base URL
 - `BACKEND_SECRET`: Backend API authentication secret (stored as Kubernetes secret)
 
-#### Next.js Configuration
+#### Vite Configuration
 
 - `NODE_ENV`: Set to "production" for all environments
-- `NEXT_TELEMETRY_DISABLED`: Disable Next.js telemetry (set to "1")
 
-#### NextAuth Configuration
+#### Vite Auth Configuration
 
-- `NEXTAUTH_URL`: The public URL for NextAuth.js
-- `NEXTAUTH_SECRET`: Secret for NextAuth.js session encryption (stored as Kubernetes secret)
+- `VITE_AUTH_URL`: The public URL for authentication
+- `VITE_AUTH_SECRET`: Secret for session encryption (stored as Kubernetes secret)
 
 ### Ingress rate limiting
 
@@ -106,7 +105,7 @@ Set up the following secrets in GitHub Environments:
 #### Development Environment (`dev`)
 
 - `KUBECONFIG_DATA`: Base64 encoded kubeconfig for dev cluster
-- `NEXTAUTH_SECRET`: Development NextAuth secret (GitHub Secret)
+- `VITE_AUTH_SECRET`: Development authentication secret (GitHub Secret)
 - `CLIENT_ID_GITHUB`: Development GitHub OAuth client ID (Environment Variable)
 - `CLIENT_SECRET_GITHUB`: Development GitHub OAuth client secret (GitHub Secret)
 - `BACKEND_URL`: Development backend API URL (Environment Variable)
@@ -115,7 +114,7 @@ Set up the following secrets in GitHub Environments:
 #### Production Environment (`prod`)
 
 - `KUBECONFIG_DATA`: Base64 encoded kubeconfig for prod cluster
-- `NEXTAUTH_SECRET`: Production NextAuth secret (GitHub Secret)
+- `VITE_AUTH_SECRET`: Production authentication secret (GitHub Secret)
 - `CLIENT_ID_GITHUB`: Production GitHub OAuth client ID (Environment Variable)
 - `CLIENT_SECRET_GITHUB`: Production GitHub OAuth client secret (GitHub Secret)
 - `BACKEND_URL`: Production backend API URL (Environment Variable)
@@ -157,7 +156,6 @@ The deployment is automated via GitHub Actions:
 ## Monitoring
 
 - Pod health via Kubernetes probes
-- Application metrics via Next.js telemetry (disabled)
 - Ingress metrics via nginx-ingress
 
 ## Troubleshooting

@@ -30,13 +30,14 @@ This repository is a monorepo containing multiple services. Please follow these 
     pnpm test -- -t "should do something"
     ```
 
-### `frontend/` (Next.js)
-*   **Build:** `pnpm build` (Runs `next build`)
-*   **Dev:** `pnpm dev`
-*   **Lint:** `pnpm lint`
+### `frontend/` (vite.js)
+*   **Build:** `bun run build`
+*   **Dev:** `bun run dev`
+*   **Lint:** `bun lint`
+*   **check** `bun run tscheck`
 *   **Run Single Test:** (Assuming standard Jest/Vitest setup if present, otherwise rely on linting/build)
     ```bash
-    pnpm test -- path/to/file
+    bun run test -- path/to/file
     ```
 
 ### `k8s-service/` (Go)

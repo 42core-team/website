@@ -19,16 +19,19 @@ service:
 
 env:
   NODE_ENV: development
-  NEXTAUTH_URL: "http://localhost:3000"
+  VITE_AUTH_URL: "http://localhost:3000"
   AUTH_COOKIE_NAME: localtoken
   BACKEND_URL: "http://api:4000"
-  NEXT_PUBLIC_BACKEND_PUBLIC_URL: "http://localhost:4000"
-  NEXT_PUBLIC_VISUALIZER_URL: "https://dev.visualizer.coregame.sh"
+  VITE_BACKEND_PUBLIC_URL: "http://localhost:4000"
+  VITE_VISUALIZER_URL: "https://dev.visualizer.coregame.sh"
+  PLAUSIBLE_DOMAIN: localhost
+  PLAUSIBLE_CUSTOM_DOMAIN: ""
   CURRENT_BRANCH: dev
-  NEXT_PUBLIC_S3_REPLAYS_BUCKET_URL: "http://localhost:9000/core-replays"
+  VITE_S3_REPLAYS_BUCKET_URL: "http://localhost:9000/core-replays"
+  VITE_FORTY_TWO_CLIENT_ID: local-42-client-id
 
 secrets:
-  NEXTAUTH_SECRET: local-dev-jwt-secret
+  VITE_AUTH_SECRET: local-dev-jwt-secret
   # CLIENT_GITHUB_SECRET injected via --set from .env.tilt
   CLIENT_GITHUB_SECRET: ""
 

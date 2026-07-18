@@ -1,0 +1,215 @@
+import type { Team, TeamMember } from '@/app/actions/team'
+
+import { DialogTrigger } from '@radix-ui/react-dialog'
+import { Plus } from 'lucide-react'
+import { useParams } from '@/lib/router-hooks'
+import { useState } from 'react'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Skeleton } from '@/components/ui/skeleton'
+import TeamInviteModal from './TeamInviteModal'
+import TeamMemberDisplay from './TeamMemberDisplay'
+
+interface TeamInfoSectionProps {
+  myTeam: Team
+  onLeaveTeam: () => Promise<boolean>
+  isLeaving: boolean
+  teamMembers: TeamMember[]
+  githubOrg: string
+  isRepoPending: boolean
+  isRepoCreating: boolean
+}
+
+export function TeamInfoSection({
+  myTeam,
+  onLeaveTeam,
+  isLeaving,
+  teamMembers,
+  isRepoPending,
+  isRepoCreating,
+  githubOrg,
+}: Readonly<TeamInfoSectionProps>) {
+  const eventId = useParams().id as string
+  const [isOpen, setIsOpen] = useState(false)
+  const [leaveError, setLeaveError] = useState<string | null>(null)
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false)
+
+  const getRepoUrl = () => {
+    return `https://github.com/${githubOrg}/${myTeam.repo}`
+  }
+
+  const handleConfirmLeave = async () => {
+    setLeaveError(null)
+    const success = await onLeaveTeam()
+    if (!success) {
+      setLeaveError(
+        'Failed to leave team. Try refreshing the page or trying again later.',
+      )
+      return
+    }
+
+    setIsLeaveDialogOpen(false)
+  }
+
+  return (
+    <Card className="rounded-lg border">
+      <CardHeader>
+        <CardTitle className="text-2xl font-bold">
+          Team: {myTeam.name}
+        </CardTitle>
+        {myTeam.locked && <Badge variant="destructive">Locked</Badge>}
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <p className="text-sm text-muted-foreground">Repository</p>
+            <div className="font-medium">
+              {myTeam.repo && githubOrg ? (
+                <a
+                  href={getRepoUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {myTeam.repo}
+                </a>
+              ) : myTeam.repo ? (
+                <span>{myTeam.repo}</span>
+              ) : isRepoPending ? (
+                <p className="text-sm text-gray-200">
+                  Repository will be created when the event starts.
+                </p>
+              ) : isRepoCreating ? (
+                <p className="text-sm text-gray-200">
+                  Repository is being created...
+                </p>
+              ) : (
+                <Skeleton className="m-2 h-5 w-72 rounded-md" />
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Created</p>
+            <p className="font-medium">
+              {new Date(myTeam.createdAt || '').toLocaleDateString()}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Queue score</p>
+            <p className="font-medium">{myTeam.queueScore}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Updated</p>
+            <p className="font-medium">
+              {new Date(myTeam.updatedAt || '').toLocaleDateString()}
+            </p>
+          </div>
+        </div>
+
+        {/* Team Members Section */}
+        <div className="rounded-lg border p-4">
+          <div className="mb-1.5 flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Team Members</h3>
+            {!myTeam.locked && (
+              <Button size="sm" onClick={() => setIsOpen(true)}>
+                <Plus className="size-4" />
+                Invite Others
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-wrap items-start gap-3">
+            {teamMembers.length > 0 ? (
+              teamMembers.map((member) => (
+                <TeamMemberDisplay
+                  key={member.id}
+                  member={member}
+                  highlightAdmin
+                />
+              ))
+            ) : (
+              <p className="col-span-full text-center text-muted-foreground">
+                No team members found
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Team Management Compartment */}
+        <div>
+          {leaveError && (
+            <div className="bg-danger-50 text-destructive-700 border-danger-200 mb-4 rounded-md border px-4 py-3">
+              {leaveError}
+            </div>
+          )}
+          <div className="flex items-center justify-end">
+            {!myTeam.locked && (
+              <Dialog
+                open={isLeaveDialogOpen}
+                onOpenChange={setIsLeaveDialogOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button variant="destructive" disabled={isLeaving}>
+                    Leave Team
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle className="text-xl font-semibold">
+                      Leave Team
+                    </DialogTitle>
+                  </DialogHeader>
+                  <DialogDescription asChild>
+                    <div>
+                      Are you sure you want to leave this team? This action
+                      cannot be undone.
+                      {teamMembers.length === 1 && (
+                        <div className="mt-2 text-destructive">
+                          Warning: You are the last member of this team. Leaving
+                          will delete the team.
+                        </div>
+                      )}
+                    </div>
+                  </DialogDescription>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button className="mr-2">Cancel</Button>
+                    </DialogClose>
+                    <Button
+                      type="submit"
+                      variant="destructive"
+                      onClick={handleConfirmLeave}
+                      isLoading={isLeaving}
+                    >
+                      Leave Team
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
+        </div>
+
+        {/* Invite Modal */}
+        <TeamInviteModal
+          isOpen={isOpen}
+          onClose={() => setIsOpen(false)}
+          teamId={myTeam.id}
+          eventId={eventId}
+        />
+      </CardContent>
+    </Card>
+  )
+}
+
+export default TeamInfoSection
