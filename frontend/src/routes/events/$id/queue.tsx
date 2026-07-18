@@ -7,7 +7,6 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import {
   getQueueMatches,
-  getQueueState,
   getTeamsForEventTable,
   joinQueue,
   startDirectMatch,
@@ -15,7 +14,6 @@ import {
 import { MatchState } from '@/app/actions/tournament-model'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import QueueMatchesList from '@/components/QueueMatchesList'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -46,12 +44,7 @@ function QueueRoute() {
   const myTeamQuery = useQuery({
     queryKey: myTeamQueryKey(id),
     queryFn: () => myTeamQueryFn(id),
-  })
-  const queueStateQuery = useQuery({
-    queryKey: ['event', id, 'queue-state'],
-    queryFn: () => getQueueState(id),
     refetchInterval: 2000,
-    enabled: Boolean(myTeamQuery.data),
   })
   const queueMatchesQuery = useQuery({
     queryKey: ['event', id, 'queue-matches'],
@@ -66,9 +59,6 @@ function QueueRoute() {
   })
   const refreshQueueData = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: ['event', id, 'queue-state'],
-      }),
       queryClient.invalidateQueries({
         queryKey: ['event', id, 'queue-matches'],
       }),
@@ -121,8 +111,7 @@ function QueueRoute() {
     )
   }
 
-  const queueState = queueStateQuery.data
-  const credits = queueState?.credits ?? myTeamQuery.data.credits
+  const credits = myTeamQuery.data.credits
   const canJoinQueue = credits >= 1
   const canStartDirectMatch = credits >= 2
   const queueMatches = queueMatchesQuery.data ?? []
@@ -150,16 +139,6 @@ function QueueRoute() {
               </div>
               <div>
                 <p className="font-semibold">{myTeamQuery.data.name}</p>
-                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <Badge variant="secondary">Ready</Badge>
-                  {activeQueueMatches.length > 0 && (
-                    <Badge>
-                      {activeQueueMatches.length} event{' '}
-                      {activeQueueMatches.length === 1 ? 'match' : 'matches'}{' '}
-                      playing
-                    </Badge>
-                  )}
-                </div>
               </div>
             </div>
             <Button
@@ -188,14 +167,6 @@ function QueueRoute() {
                 <p className="text-xl font-semibold">{credits}</p>
                 <p className="text-xs text-muted-foreground">
                   Earns 1 credit every 15 minutes
-                  {queueState?.nextCreditAt
-                    ? ` · next at ${new Date(
-                        queueState.nextCreditAt,
-                      ).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}`
-                    : ''}
                 </p>
               </div>
             </div>

@@ -1,4 +1,3 @@
-import type { QueueState } from '@/app/actions/team.model'
 import type { Match } from '@/app/actions/tournament-model'
 import axiosInstance from '@/app/actions/axios'
 
@@ -44,12 +43,6 @@ export async function getQueueMatches(eventId: string) {
 export async function getQueueMatchesAdmin(eventId: string) {
   return (await axiosInstance.get(`/match/queue/${eventId}/admin`))
     .data as Match[]
-}
-
-export async function getQueueState(eventId: string): Promise<QueueState> {
-  return (
-    await axiosInstance.get<QueueState>(`team/event/${eventId}/queue/state`)
-  ).data
 }
 
 export async function joinQueue(eventId: string): Promise<{ matchId: string }> {
