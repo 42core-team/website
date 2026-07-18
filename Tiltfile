@@ -179,10 +179,11 @@ docker_build('frontend', './frontend',
     ignore     = ['helm', '.next', '.env*'],
     live_update = [
         sync('./frontend/src/',        '/app/src'),
+        sync('./frontend/content',     '/app/content'),
         sync('./frontend/public',     '/app/public'),
         run(
-            'cd /app && pnpm install --frozen-lockfile',
-            trigger = ['./frontend/package.json', './frontend/pnpm-lock.yaml'],
+            'cd /app && bun install --frozen-lockfile',
+            trigger = ['./frontend/package.json', './frontend/bun.lock'],
         ),
     ],
 )

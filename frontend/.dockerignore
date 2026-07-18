@@ -1,5 +1,5 @@
-# Generated during the Docker build
-content/
+# Generated during the Docker build in production; included for Tilt dev because
+# Dockerfile.dev does not fetch wiki/changelog content.
 public/generated/
 
 .env
