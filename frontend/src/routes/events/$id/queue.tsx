@@ -41,6 +41,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 
@@ -60,6 +68,7 @@ function QueueRoute() {
   const [activeQueueMatchId, setActiveQueueMatchId] = useState<string | null>(
     null,
   )
+  const [isOpponentDialogOpen, setIsOpponentDialogOpen] = useState(false)
   const myTeamQuery = useQuery({
     queryKey: myTeamQueryKey(id),
     queryFn: () => myTeamQueryFn(id),
@@ -78,7 +87,7 @@ function QueueRoute() {
   const opponentsQuery = useQuery({
     queryKey: ['event', id, 'teams', 'queue-opponents'],
     queryFn: () => getTeamsForEventTable(id),
-    enabled: Boolean(myTeamQuery.data),
+    enabled: Boolean(myTeamQuery.data) && isOpponentDialogOpen,
   })
   const challengesQuery = useQuery({
     queryKey: ['event', id, 'queue-challenges'],
@@ -155,6 +164,7 @@ function QueueRoute() {
   const challengeMutation = useMutation({
     mutationFn: (targetTeamId: string) => challengeTeam(id, targetTeamId),
     onSuccess: async (challenge) => {
+      setIsOpponentDialogOpen(false)
       await refreshQueueData()
       toast.success(
         challenge.matchId
@@ -379,67 +389,81 @@ function QueueRoute() {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Choose an opponent</CardTitle>
-          <CardDescription>
-            Public teams start immediately. Private teams receive a request to
-            accept or decline. Your credit is spent only when the match starts.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {opponentsQuery.isPending ? (
-            <div className="flex justify-center py-6">
-              <Spinner />
-            </div>
-          ) : opponents.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              No other teams are available in this event yet.
-            </p>
-          ) : (
-            opponents.map((opponent: Team) => {
-              const hasPendingRequest = outgoingChallenges.some(
-                (challenge) => challenge.target.id === opponent.id,
-              )
-              return (
-                <div
-                  key={opponent.id}
-                  className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{opponent.name}</p>
-                      <Badge variant="outline">
-                        {opponent.isPublic ? 'Public' : 'Private'}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Queue score {opponent.queueScore}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant={opponent.isPublic ? 'default' : 'outline'}
-                    disabled={
-                      !canStartMatch ||
-                      hasPendingRequest ||
-                      challengeMutation.isPending
-                    }
-                    onClick={() => challengeMutation.mutate(opponent.id)}
-                  >
-                    <Send className="size-4" />
-                    {hasPendingRequest
-                      ? 'Request pending'
-                      : opponent.isPublic
-                        ? 'Play · 1 credit'
-                        : 'Request match'}
-                  </Button>
+      <div className="flex justify-end">
+        <Dialog
+          open={isOpponentDialogOpen}
+          onOpenChange={setIsOpponentDialogOpen}
+        >
+          <DialogTrigger asChild>
+            <Button variant="outline">
+              <Swords className="size-4" />
+              Choose opponent
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Choose an opponent</DialogTitle>
+              <DialogDescription>
+                Public teams start immediately. Private teams receive a request
+                to accept or decline. Your credit is spent only when the match
+                starts.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+              {opponentsQuery.isPending ? (
+                <div className="flex justify-center py-10">
+                  <Spinner />
                 </div>
-              )
-            })
-          )}
-        </CardContent>
-      </Card>
+              ) : opponents.length === 0 ? (
+                <p className="py-10 text-center text-sm text-muted-foreground">
+                  No other teams are available in this event yet.
+                </p>
+              ) : (
+                opponents.map((opponent: Team) => {
+                  const hasPendingRequest = outgoingChallenges.some(
+                    (challenge) => challenge.target.id === opponent.id,
+                  )
+                  return (
+                    <div
+                      key={opponent.id}
+                      className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{opponent.name}</p>
+                          <Badge variant="outline">
+                            {opponent.isPublic ? 'Public' : 'Private'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Queue score {opponent.queueScore}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={opponent.isPublic ? 'default' : 'outline'}
+                        disabled={
+                          !canStartMatch ||
+                          hasPendingRequest ||
+                          challengeMutation.isPending
+                        }
+                        onClick={() => challengeMutation.mutate(opponent.id)}
+                      >
+                        <Send className="size-4" />
+                        {hasPendingRequest
+                          ? 'Request pending'
+                          : opponent.isPublic
+                            ? 'Play · 1 credit'
+                            : 'Request match'}
+                      </Button>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       <QueueMatchesList eventId={id} matches={queueMatchesQuery.data ?? []} />
     </main>
