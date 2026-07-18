@@ -7,6 +7,7 @@ import {
   ManyToMany,
   ManyToOne,
   PrimaryGeneratedColumn,
+  RelationId,
   UpdateDateColumn,
 } from "typeorm";
 import { EventEntity } from "../../event/entities/event.entity";
@@ -44,9 +45,21 @@ export class TeamEntity {
   @Column({ default: false })
   inQueue: boolean;
 
+  @Column({ default: 0 })
+  credits: number;
+
+  @Column({ default: false })
+  isPublic: boolean;
+
+  @Column({ nullable: true, type: "timestamp" })
+  lastCreditGrantedAt: Date | null;
+
   @Exclude()
   @ManyToOne(() => EventEntity, (event) => event.teams)
   event: EventEntity;
+
+  @RelationId((team: TeamEntity) => team.event)
+  eventId: string;
 
   @ManyToOne(() => EventStarterTemplateEntity, { nullable: true })
   starterTemplate: EventStarterTemplateEntity;

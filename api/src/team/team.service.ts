@@ -10,6 +10,7 @@ import { TeamEntity } from "./entities/team.entity";
 import {
   DataSource,
   EntityManager,
+  In,
   IsNull,
   LessThanOrEqual,
   Repository,
@@ -21,13 +22,25 @@ import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations"
 import { MatchService } from "../match/match.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { LockKeys } from "../constants";
-import { MatchEntity } from "../match/entites/match.entity";
+import {
+  MatchEntity,
+  MatchPhase,
+  MatchState,
+} from "../match/entites/match.entity";
+import { MatchStatsEntity } from "../match/entites/matchStats.entity";
+import {
+  TeamChallengeEntity,
+  TeamChallengeStatus,
+} from "./entities/team-challenge.entity";
+import { accrueQueueCredits, QUEUE_CREDIT_INTERVAL_MS } from "./team-credits";
 
 @Injectable()
 export class TeamService {
   constructor(
     @InjectRepository(TeamEntity)
     private readonly teamRepository: Repository<TeamEntity>,
+    @InjectRepository(TeamChallengeEntity)
+    private readonly teamChallengeRepository: Repository<TeamChallengeEntity>,
     private readonly githubApiService: GithubApiService,
     @Inject(forwardRef(() => EventService))
     private readonly eventService: EventService,
@@ -39,6 +52,38 @@ export class TeamService {
   ) {}
 
   logger = new Logger("TeamService");
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async grantPublicTeamCredits() {
+    const lockKey = LockKeys.GRANT_TEAM_QUEUE_CREDITS;
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+
+    try {
+      const gotLock = await queryRunner.query(
+        "SELECT pg_try_advisory_lock($1)",
+        [lockKey],
+      );
+
+      if (!gotLock[0].pg_try_advisory_lock) return;
+
+      try {
+        await queryRunner.query(`
+          UPDATE "teams"
+          SET
+            "credits" = "credits" + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - "lastCreditGrantedAt")) / 900)::integer,
+            "lastCreditGrantedAt" = "lastCreditGrantedAt" + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - "lastCreditGrantedAt")) / 900)::integer * INTERVAL '15 minutes'
+          WHERE "isPublic" = true
+            AND "deletedAt" IS NULL
+            AND "lastCreditGrantedAt" <= CURRENT_TIMESTAMP - INTERVAL '15 minutes'
+        `);
+      } finally {
+        await queryRunner.query("SELECT pg_advisory_unlock($1)", [lockKey]);
+      }
+    } finally {
+      await queryRunner.release();
+    }
+  }
 
   @Cron(CronExpression.EVERY_MINUTE)
   async autoCreateRepos() {
@@ -401,6 +446,7 @@ export class TeamService {
         "team.buchholzPoints",
         "team.hadBye",
         "team.queueScore",
+        "team.isPublic",
         "team.createdAt",
         "team.updatedAt",
       ]);
@@ -418,6 +464,7 @@ export class TeamService {
           "team.locked",
           "team.hadBye",
           "team.queueScore",
+          "team.isPublic",
           "team.createdAt",
           "team.updatedAt",
           "team.score",
@@ -516,7 +563,28 @@ export class TeamService {
   }
 
   async joinQueue(teamId: string) {
-    return this.teamRepository.update(teamId, { inQueue: true });
+    return this.dataSource.transaction(async (entityManager) => {
+      const team = await entityManager.findOneOrFail(TeamEntity, {
+        where: { id: teamId },
+        lock: { mode: "pessimistic_write" },
+      });
+
+      accrueQueueCredits(team);
+      if (team.inQueue)
+        throw new BadRequestException("You are already in the queue.");
+      if (await this.hasActiveQueueMatch([teamId], entityManager))
+        throw new BadRequestException(
+          "Your team already has a match in progress.",
+        );
+      if (team.credits < 1)
+        throw new BadRequestException(
+          "Your team needs at least one credit to join the queue.",
+        );
+
+      team.credits -= 1;
+      team.inQueue = true;
+      return entityManager.save(team);
+    });
   }
 
   async getTeamsForEvent(
@@ -563,21 +631,309 @@ export class TeamService {
   }
 
   async getQueueState(teamId: string) {
-    const team = await this.getTeamById(teamId, {
-      event: true,
+    const team = await this.dataSource.transaction(async (entityManager) => {
+      const lockedTeam = await entityManager.findOneOrFail(TeamEntity, {
+        where: { id: teamId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (accrueQueueCredits(lockedTeam) > 0)
+        await entityManager.save(lockedTeam);
+      return lockedTeam;
     });
 
     const match = await this.matchService.getLastQueueMatchForTeam(teamId);
     const queueCount = await this.teamRepository.countBy({
       inQueue: true,
       event: {
-        id: team.event.id,
+        id: team.eventId,
       },
     });
     return {
       match: match,
       queueCount: queueCount,
       inQueue: team.inQueue,
+      credits: team.credits,
+      isPublic: team.isPublic,
+      nextCreditAt:
+        team.isPublic && team.lastCreditGrantedAt
+          ? new Date(
+              team.lastCreditGrantedAt.getTime() + QUEUE_CREDIT_INTERVAL_MS,
+            )
+          : null,
+    };
+  }
+
+  async setTeamVisibility(teamId: string, isPublic: boolean) {
+    return this.dataSource.transaction(async (entityManager) => {
+      const team = await entityManager.findOneOrFail(TeamEntity, {
+        where: { id: teamId },
+        lock: { mode: "pessimistic_write" },
+      });
+
+      accrueQueueCredits(team);
+      if (team.isPublic !== isPublic) {
+        team.isPublic = isPublic;
+        team.lastCreditGrantedAt = isPublic ? new Date() : null;
+      }
+      return entityManager.save(team);
+    });
+  }
+
+  async createChallenge(challengerId: string, targetId: string) {
+    if (challengerId === targetId)
+      throw new BadRequestException("A team cannot challenge itself.");
+
+    const challenge = await this.dataSource.transaction(
+      async (entityManager) => {
+        const teams = await entityManager.find(TeamEntity, {
+          where: { id: In([challengerId, targetId]) },
+          order: { id: "ASC" },
+          lock: { mode: "pessimistic_write" },
+        });
+        const challenger = teams.find((team) => team.id === challengerId);
+        const target = teams.find((team) => team.id === targetId);
+        if (!challenger || !target)
+          throw new BadRequestException("The selected team was not found.");
+        if (challenger.eventId !== target.eventId)
+          throw new BadRequestException(
+            "Teams can only challenge opponents in the same event.",
+          );
+        if (challenger.inQueue || target.inQueue)
+          throw new BadRequestException(
+            "Neither team can be waiting in the queue when challenged.",
+          );
+        if (
+          await this.hasActiveQueueMatch(
+            [challengerId, targetId],
+            entityManager,
+          )
+        )
+          throw new BadRequestException(
+            "One of these teams already has a match in progress.",
+          );
+
+        accrueQueueCredits(challenger);
+        if (challenger.credits < 1)
+          throw new BadRequestException(
+            "Your team needs at least one credit to challenge an opponent.",
+          );
+        await entityManager.save(challenger);
+
+        const challengeRepository =
+          entityManager.getRepository(TeamChallengeEntity);
+        const existing = await challengeRepository.findOne({
+          where: {
+            challenger: { id: challengerId },
+            target: { id: targetId },
+            status: TeamChallengeStatus.PENDING,
+          },
+          relations: { challenger: true, target: true, match: true },
+        });
+        if (existing && !target.isPublic)
+          throw new BadRequestException(
+            "A challenge request for this team is already pending.",
+          );
+
+        if (!target.isPublic) {
+          return challengeRepository.save(
+            challengeRepository.create({
+              challenger,
+              target,
+              status: TeamChallengeStatus.PENDING,
+              match: null,
+              respondedAt: null,
+            }),
+          );
+        }
+
+        challenger.credits -= 1;
+        await entityManager.save(challenger);
+        const acceptedChallenge =
+          existing ??
+          challengeRepository.create({ challenger, target, match: null });
+        acceptedChallenge.status = TeamChallengeStatus.ACCEPTED;
+        acceptedChallenge.respondedAt = new Date();
+        acceptedChallenge.match = await this.createQueueMatch(
+          [challenger.id, target.id],
+          entityManager,
+        );
+        return challengeRepository.save(acceptedChallenge);
+      },
+    );
+
+    if (challenge.status === TeamChallengeStatus.ACCEPTED)
+      return this.startChallengeMatch(challenge.id);
+    return this.serializeChallenge(challenge);
+  }
+
+  async getPendingChallenges(teamId: string) {
+    const challenges = await this.teamChallengeRepository.find({
+      where: [
+        {
+          challenger: { id: teamId },
+          status: TeamChallengeStatus.PENDING,
+        },
+        { target: { id: teamId }, status: TeamChallengeStatus.PENDING },
+      ],
+      relations: { challenger: true, target: true, match: true },
+      order: { createdAt: "DESC" },
+    });
+    return challenges.map((challenge) => this.serializeChallenge(challenge));
+  }
+
+  async acceptChallenge(teamId: string, challengeId: string) {
+    await this.dataSource.transaction(async (entityManager) => {
+      const challengeRepository =
+        entityManager.getRepository(TeamChallengeEntity);
+      const initialChallenge = await challengeRepository.findOne({
+        where: { id: challengeId },
+      });
+      if (!initialChallenge)
+        throw new BadRequestException("This challenge is no longer pending.");
+
+      const teams = await entityManager.find(TeamEntity, {
+        where: {
+          id: In([initialChallenge.challengerId, initialChallenge.targetId]),
+        },
+        order: { id: "ASC" },
+        lock: { mode: "pessimistic_write" },
+      });
+      const challenge = await challengeRepository.findOne({
+        where: { id: challengeId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (!challenge || challenge.status !== TeamChallengeStatus.PENDING)
+        throw new BadRequestException("This challenge is no longer pending.");
+      if (challenge.targetId !== teamId)
+        throw new BadRequestException(
+          "Only the challenged team can accept this request.",
+        );
+
+      const challenger = teams.find(
+        (team) => team.id === challenge.challengerId,
+      );
+      const target = teams.find((team) => team.id === challenge.targetId);
+      if (!challenger || !target)
+        throw new BadRequestException("One of the teams no longer exists.");
+      if (challenger.inQueue || target.inQueue)
+        throw new BadRequestException(
+          "Neither team can be waiting in the queue when a challenge starts.",
+        );
+      if (
+        await this.hasActiveQueueMatch(
+          [challenger.id, target.id],
+          entityManager,
+        )
+      )
+        throw new BadRequestException(
+          "One of these teams already has a match in progress.",
+        );
+
+      accrueQueueCredits(challenger);
+      if (challenger.credits < 1)
+        throw new BadRequestException(
+          "The challenging team no longer has a credit available.",
+        );
+      challenger.credits -= 1;
+      await entityManager.save(challenger);
+
+      challenge.status = TeamChallengeStatus.ACCEPTED;
+      challenge.respondedAt = new Date();
+      challenge.match = await this.createQueueMatch(
+        [challenger.id, target.id],
+        entityManager,
+      );
+      await challengeRepository.save(challenge);
+    });
+
+    return this.startChallengeMatch(challengeId);
+  }
+
+  async declineChallenge(teamId: string, challengeId: string) {
+    await this.dataSource.transaction(async (entityManager) => {
+      const challenge = await entityManager.findOne(TeamChallengeEntity, {
+        where: { id: challengeId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (!challenge || challenge.status !== TeamChallengeStatus.PENDING)
+        throw new BadRequestException("This challenge is no longer pending.");
+      if (challenge.targetId !== teamId)
+        throw new BadRequestException(
+          "Only the challenged team can decline this request.",
+        );
+
+      challenge.status = TeamChallengeStatus.DECLINED;
+      challenge.respondedAt = new Date();
+      await entityManager.save(challenge);
+    });
+
+    return this.serializeChallenge(
+      await this.teamChallengeRepository.findOneOrFail({
+        where: { id: challengeId },
+        relations: { challenger: true, target: true, match: true },
+      }),
+    );
+  }
+
+  private async startChallengeMatch(challengeId: string) {
+    const challenge = await this.teamChallengeRepository.findOneOrFail({
+      where: { id: challengeId },
+      relations: { challenger: true, target: true, match: true },
+    });
+    if (!challenge.match)
+      throw new BadRequestException("The accepted challenge has no match.");
+    if (challenge.match.state === MatchState.PLANNED)
+      await this.matchService.startMatch(challenge.match.id);
+    return this.serializeChallenge(challenge);
+  }
+
+  private createQueueMatch(teamIds: string[], entityManager: EntityManager) {
+    const matchRepository = entityManager.getRepository(MatchEntity);
+    return matchRepository.save(
+      matchRepository.create({
+        teams: teamIds.map((id) => ({ id })),
+        round: 0,
+        phase: MatchPhase.QUEUE,
+        state: MatchState.PLANNED,
+        stats: new MatchStatsEntity(),
+      }),
+    );
+  }
+
+  private async hasActiveQueueMatch(
+    teamIds: string[],
+    entityManager: EntityManager,
+  ) {
+    return (
+      (await entityManager
+        .getRepository(MatchEntity)
+        .createQueryBuilder("match")
+        .innerJoin("match.teams", "team")
+        .where("team.id IN (:...teamIds)", { teamIds })
+        .andWhere("match.phase = :phase", { phase: MatchPhase.QUEUE })
+        .andWhere("match.state IN (:...states)", {
+          states: [MatchState.PLANNED, MatchState.IN_PROGRESS],
+        })
+        .getCount()) > 0
+    );
+  }
+
+  private serializeChallenge(challenge: TeamChallengeEntity) {
+    return {
+      id: challenge.id,
+      status: challenge.status,
+      createdAt: challenge.createdAt,
+      respondedAt: challenge.respondedAt,
+      challenger: {
+        id: challenge.challenger.id,
+        name: challenge.challenger.name,
+      },
+      target: {
+        id: challenge.target.id,
+        name: challenge.target.name,
+        isPublic: challenge.target.isPublic,
+      },
+      matchId: challenge.match?.id ?? null,
     };
   }
 

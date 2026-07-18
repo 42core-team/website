@@ -1,4 +1,4 @@
-import type { QueueState } from '@/app/actions/team.model'
+import type { QueueState, TeamChallenge } from '@/app/actions/team.model'
 import type { Match } from '@/app/actions/tournament-model'
 import axiosInstance from '@/app/actions/axios'
 
@@ -7,6 +7,8 @@ export interface Team {
   name: string
   repo: string
   inQueue: boolean
+  credits: number
+  isPublic: boolean
   score: number
   buchholzPoints: number
   hadBye: boolean
@@ -60,6 +62,55 @@ export async function leaveQueue(eventId: string): Promise<void> {
   await axiosInstance.put(`team/event/${eventId}/queue/leave`)
 }
 
+export async function setTeamQueueVisibility(
+  eventId: string,
+  isPublic: boolean,
+): Promise<void> {
+  await axiosInstance.put(`team/event/${eventId}/queue/visibility`, {
+    isPublic,
+  })
+}
+
+export async function getPendingTeamChallenges(
+  eventId: string,
+): Promise<TeamChallenge[]> {
+  return (await axiosInstance.get(`team/event/${eventId}/queue/challenges`))
+    .data
+}
+
+export async function challengeTeam(
+  eventId: string,
+  targetTeamId: string,
+): Promise<TeamChallenge> {
+  return (
+    await axiosInstance.post(
+      `team/event/${eventId}/queue/challenges/${targetTeamId}`,
+    )
+  ).data
+}
+
+export async function acceptTeamChallenge(
+  eventId: string,
+  challengeId: string,
+): Promise<TeamChallenge> {
+  return (
+    await axiosInstance.put(
+      `team/event/${eventId}/queue/challenges/${challengeId}/accept`,
+    )
+  ).data
+}
+
+export async function declineTeamChallenge(
+  eventId: string,
+  challengeId: string,
+): Promise<TeamChallenge> {
+  return (
+    await axiosInstance.put(
+      `team/event/${eventId}/queue/challenges/${challengeId}/decline`,
+    )
+  ).data
+}
+
 export async function getTeamById(teamId: string): Promise<Team | null> {
   const team = (await axiosInstance.get(`team/${teamId}`)).data
 
@@ -76,6 +127,8 @@ export async function getTeamById(teamId: string): Promise<Team | null> {
         queueScore: team.queueScore,
         createdAt: team.createdAt,
         inQueue: team.inQueue,
+        credits: team.credits ?? 0,
+        isPublic: team.isPublic ?? false,
         updatedAt: team.updatedAt,
       }
     : null
@@ -101,6 +154,8 @@ export async function getMyEventTeam(eventId: string): Promise<Team | null> {
     hadBye: team.hadBye || false,
     queueScore: team.queueScore,
     inQueue: team.inQueue,
+    credits: team.credits ?? 0,
+    isPublic: team.isPublic ?? false,
     createdAt: team.createdAt,
     updatedAt: team.updatedAt,
   }
@@ -231,5 +286,7 @@ export async function getTeamsForEventTable(
     queueScore: team.queueScore ?? 0,
     createdAt: team.createdAt,
     updatedAt: team.updatedAt,
+    isPublic: team.isPublic ?? false,
+    credits: team.credits ?? 0,
   }))
 }

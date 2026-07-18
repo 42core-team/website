@@ -9,10 +9,11 @@ import { UserModule } from "../user/user.module";
 import { MatchModule } from "../match/match.module";
 import { TeamEventsController } from "./team.events.controller";
 import { MyTeamGuards, TeamNotLockedGuard } from "../guards/TeamGuard";
+import { TeamChallengeEntity } from "./entities/team-challenge.entity";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TeamEntity]),
+    TypeOrmModule.forFeature([TeamEntity, TeamChallengeEntity]),
     GithubApiModule,
     forwardRef(() => EventModule),
     forwardRef(() => MatchModule),
