@@ -23,7 +23,7 @@ export default function QueueMatchesList(props: {
         )}
       >
         <p className="font-medium text-muted-foreground">
-          No past matches found
+          No queue matches found
         </p>
       </div>
     )
@@ -192,7 +192,7 @@ export default function QueueMatchesList(props: {
                 !isInsideCard && 'sm:border-l border-border/40',
               )}
             >
-              {match.id && (
+              {match.id && match.state === MatchState.FINISHED ? (
                 <Link href={`/events/${eventId}/match/${match.id}`}>
                   <Button
                     size="sm"
@@ -202,6 +202,15 @@ export default function QueueMatchesList(props: {
                     Replay
                   </Button>
                 </Link>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="text-xs font-bold uppercase"
+                  disabled
+                >
+                  Playing
+                </Button>
               )}
             </div>
           </div>

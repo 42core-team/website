@@ -572,10 +572,6 @@ export class TeamService {
         throw new BadRequestException("The team is not part of this event.");
 
       accrueQueueCredits(team);
-      if (await this.hasActiveQueueMatch([teamId], entityManager))
-        throw new BadRequestException(
-          "Your team already has a match in progress.",
-        );
       if (team.credits < 1)
         throw new BadRequestException(
           "Your team needs at least one credit to join the queue.",
@@ -663,9 +659,7 @@ export class TeamService {
       return lockedTeam;
     });
 
-    const match = await this.matchService.getLastQueueMatchForTeam(teamId);
     return {
-      match: match,
       credits: team.credits,
       nextCreditAt: new Date(
         team.lastCreditGrantedAt.getTime() + QUEUE_CREDIT_INTERVAL_MS,
@@ -690,15 +684,6 @@ export class TeamService {
       if (challenger.eventId !== target.eventId)
         throw new BadRequestException(
           "Teams can only play opponents in the same event.",
-        );
-      if (
-        await this.hasActiveQueueMatch(
-          [challenger.id, target.id],
-          entityManager,
-        )
-      )
-        throw new BadRequestException(
-          "One of these teams already has a match in progress.",
         );
 
       accrueQueueCredits(challenger);
@@ -754,26 +739,6 @@ export class TeamService {
     if (candidates.length === 0) return null;
 
     const matchRepository = entityManager.getRepository(MatchEntity);
-    const candidateIds = candidates.map((candidate) => candidate.id);
-    const activeCandidateRows: Array<{ teamId: string }> = await matchRepository
-      .createQueryBuilder("match")
-      .innerJoin("match.teams", "candidate")
-      .select("candidate.id", "teamId")
-      .distinct(true)
-      .where("candidate.id IN (:...candidateIds)", { candidateIds })
-      .andWhere("match.phase = :phase", { phase: MatchPhase.QUEUE })
-      .andWhere("match.state IN (:...states)", {
-        states: [MatchState.PLANNED, MatchState.IN_PROGRESS],
-      })
-      .getRawMany();
-    const activeCandidateIds = new Set(
-      activeCandidateRows.map((row) => row.teamId),
-    );
-    const availableCandidates = candidates.filter(
-      (candidate) => !activeCandidateIds.has(candidate.id),
-    );
-    if (availableCandidates.length === 0) return null;
-
     const recentMatches = await matchRepository.find({
       where: {
         teams: { id: team.id },
@@ -792,9 +757,7 @@ export class TeamService {
       ),
     );
 
-    const availableCandidateIds = availableCandidates.map(
-      (candidate) => candidate.id,
-    );
+    const candidateIds = candidates.map((candidate) => candidate.id);
     const activityRows: Array<{
       teamId: string;
       lastQueueMatchAt: Date | string;
@@ -804,7 +767,7 @@ export class TeamService {
       .select("candidate.id", "teamId")
       .addSelect('MAX(match."createdAt")', "lastQueueMatchAt")
       .where("candidate.id IN (:...candidateIds)", {
-        candidateIds: availableCandidateIds,
+        candidateIds,
       })
       .andWhere("match.phase = :phase", { phase: MatchPhase.QUEUE })
       .andWhere("match.state = :state", { state: MatchState.FINISHED })
@@ -816,14 +779,14 @@ export class TeamService {
 
     const rankedCandidates = rankQueueOpponents(
       team.queueScore,
-      availableCandidates.map((candidate): QueueOpponentCandidate => ({
+      candidates.map((candidate): QueueOpponentCandidate => ({
         id: candidate.id,
         elo: candidate.queueScore,
         lastQueueMatchAt: activityByTeamId.get(candidate.id) ?? null,
         wasRecentOpponent: recentOpponentIds.has(candidate.id),
       })),
     );
-    const opponent = availableCandidates.find(
+    const opponent = candidates.find(
       (candidate) => candidate.id === rankedCandidates[0].id,
     );
     if (!opponent) return null;
@@ -842,24 +805,6 @@ export class TeamService {
     await entityManager.query(
       "SELECT pg_advisory_xact_lock($1, hashtext($2))",
       [LockKeys.QUEUE_MATCHMAKING, eventId],
-    );
-  }
-
-  private async hasActiveQueueMatch(
-    teamIds: string[],
-    entityManager: EntityManager,
-  ) {
-    return (
-      (await entityManager
-        .getRepository(MatchEntity)
-        .createQueryBuilder("match")
-        .innerJoin("match.teams", "team")
-        .where("team.id IN (:...teamIds)", { teamIds })
-        .andWhere("match.phase = :phase", { phase: MatchPhase.QUEUE })
-        .andWhere("match.state IN (:...states)", {
-          states: [MatchState.PLANNED, MatchState.IN_PROGRESS],
-        })
-        .getCount()) > 0
     );
   }
 

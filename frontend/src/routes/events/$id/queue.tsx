@@ -1,9 +1,9 @@
 import type { Team } from '@/app/actions/team'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import type { AxiosError } from 'axios'
 import { Coins, LogIn, Search, Swords } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import {
   getQueueMatches,
@@ -40,11 +40,7 @@ function getErrorMessage(error: Error) {
 
 function QueueRoute() {
   const { id } = Route.useParams()
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [activeQueueMatchId, setActiveQueueMatchId] = useState<string | null>(
-    null,
-  )
   const [isOpponentDialogOpen, setIsOpponentDialogOpen] = useState(false)
   const [opponentSearch, setOpponentSearch] = useState('')
   const myTeamQuery = useQuery({
@@ -60,6 +56,7 @@ function QueueRoute() {
   const queueMatchesQuery = useQuery({
     queryKey: ['event', id, 'queue-matches'],
     queryFn: () => getQueueMatches(id),
+    refetchInterval: 2000,
     enabled: Boolean(myTeamQuery.data),
   })
   const opponentsQuery = useQuery({
@@ -67,34 +64,13 @@ function QueueRoute() {
     queryFn: () => getTeamsForEventTable(id),
     enabled: Boolean(myTeamQuery.data) && isOpponentDialogOpen,
   })
-  const queueMatch = queueStateQuery.data?.match
-  const isQueueMatchRunning = Boolean(
-    queueMatch?.id && queueMatch.state !== MatchState.FINISHED,
-  )
-
-  useEffect(() => {
-    if (isQueueMatchRunning && queueMatch?.id) {
-      setActiveQueueMatchId(queueMatch.id)
-      return
-    }
-
-    if (
-      queueMatch?.id &&
-      queueMatch.state === MatchState.FINISHED &&
-      queueMatch.id === activeQueueMatchId
-    ) {
-      void navigate({
-        to: '/events/$id/match/$matchId',
-        params: { id, matchId: queueMatch.id },
-        replace: true,
-      })
-    }
-  }, [activeQueueMatchId, id, isQueueMatchRunning, navigate, queueMatch])
-
   const refreshQueueData = async () => {
     await Promise.all([
       queryClient.invalidateQueries({
         queryKey: ['event', id, 'queue-state'],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ['event', id, 'queue-matches'],
       }),
       queryClient.invalidateQueries({ queryKey: myTeamQueryKey(id) }),
     ])
@@ -102,8 +78,7 @@ function QueueRoute() {
 
   const joinQueueMutation = useMutation({
     mutationFn: async () => joinQueue(id),
-    onSuccess: async ({ matchId }) => {
-      setActiveQueueMatchId(matchId)
+    onSuccess: async () => {
       await refreshQueueData()
       toast.success('Opponent found. Your match is starting.')
     },
@@ -148,9 +123,15 @@ function QueueRoute() {
 
   const queueState = queueStateQuery.data
   const credits = queueState?.credits ?? myTeamQuery.data.credits
-  const canJoinQueue = credits >= 1 && !isQueueMatchRunning
-  const canStartDirectMatch = credits >= 2 && !isQueueMatchRunning
-  const queueStatus = isQueueMatchRunning ? 'Match Running' : 'Ready'
+  const canJoinQueue = credits >= 1
+  const canStartDirectMatch = credits >= 2
+  const queueMatches = queueMatchesQuery.data ?? []
+  const activeQueueMatches = queueMatches.filter(
+    (match) => match.state === MatchState.IN_PROGRESS,
+  )
+  const finishedQueueMatches = queueMatches.filter(
+    (match) => match.state === MatchState.FINISHED,
+  )
   const normalizedOpponentSearch = opponentSearch.trim().toLocaleLowerCase()
   const opponents = (opponentsQuery.data ?? []).filter(
     (team: Team) =>
@@ -160,21 +141,6 @@ function QueueRoute() {
 
   return (
     <main className="container mx-auto max-w-4xl space-y-6 px-4 py-8">
-      {isQueueMatchRunning && (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 p-6 text-center">
-            <Spinner />
-            <div>
-              <p className="font-semibold">Match is running</p>
-              <p className="text-sm text-muted-foreground">
-                Keep this page open. You will be redirected to the match replay
-                when it finishes.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       <Card>
         <CardContent className="flex flex-col gap-5 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -185,37 +151,33 @@ function QueueRoute() {
               <div>
                 <p className="font-semibold">{myTeamQuery.data.name}</p>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <Badge
-                    variant={isQueueMatchRunning ? 'default' : 'secondary'}
-                  >
-                    {queueStatus}
-                  </Badge>
+                  <Badge variant="secondary">Ready</Badge>
+                  {activeQueueMatches.length > 0 && (
+                    <Badge>
+                      {activeQueueMatches.length} event{' '}
+                      {activeQueueMatches.length === 1 ? 'match' : 'matches'}{' '}
+                      playing
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
-            {isQueueMatchRunning ? (
-              <Button disabled>
-                <Spinner />
-                Match Running
-              </Button>
-            ) : (
-              <Button
-                disabled={!canJoinQueue || joinQueueMutation.isPending}
-                onClick={() => joinQueueMutation.mutate()}
-              >
-                {joinQueueMutation.isPending ? (
-                  <>
-                    <Spinner />
-                    Finding opponent
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="size-4" />
-                    Join Queue · 1 credit
-                  </>
-                )}
-              </Button>
-            )}
+            <Button
+              disabled={!canJoinQueue || joinQueueMutation.isPending}
+              onClick={() => joinQueueMutation.mutate()}
+            >
+              {joinQueueMutation.isPending ? (
+                <>
+                  <Spinner />
+                  Finding opponent
+                </>
+              ) : (
+                <>
+                  <LogIn className="size-4" />
+                  Join Queue · 1 credit
+                </>
+              )}
+            </Button>
           </div>
 
           <div className="border-t pt-5">
@@ -315,7 +277,17 @@ function QueueRoute() {
         </Dialog>
       </div>
 
-      <QueueMatchesList eventId={id} matches={queueMatchesQuery.data ?? []} />
+      {activeQueueMatches.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xl font-semibold">Currently playing</h2>
+          <QueueMatchesList eventId={id} matches={activeQueueMatches} />
+        </section>
+      )}
+
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Your match history</h2>
+        <QueueMatchesList eventId={id} matches={finishedQueueMatches} />
+      </section>
     </main>
   )
 }

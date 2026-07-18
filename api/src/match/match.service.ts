@@ -837,20 +837,6 @@ export class MatchService {
     });
   }
 
-  getLastQueueMatchForTeam(teamId: string) {
-    return this.matchRepository.findOne({
-      where: {
-        teams: {
-          id: teamId,
-        },
-        phase: MatchPhase.QUEUE,
-      },
-      order: {
-        createdAt: "DESC",
-      },
-    });
-  }
-
   async getMatchesForTeam(teamId: string) {
     const matchesToQuery = (
       await this.matchRepository.find({
@@ -927,22 +913,44 @@ export class MatchService {
       })
     ).map((match) => match.id);
 
-    return this.matchRepository.find({
-      where: {
-        id: In(matchesToQuery),
+    const relations = {
+      results: {
+        team: true,
       },
-      relations: {
-        results: {
-          team: true,
+      teams: true,
+      winner: true,
+    } as const;
+    const [activeMatches, finishedMatches] = await Promise.all([
+      this.matchRepository.find({
+        where: {
+          teams: {
+            event: {
+              id: eventId,
+            },
+          },
+          phase: MatchPhase.QUEUE,
+          state: MatchState.IN_PROGRESS,
         },
-        teams: true,
-        winner: true,
-      },
-      take: 20,
-      order: {
-        createdAt: "DESC",
-      },
-    });
+        relations,
+        order: {
+          createdAt: "DESC",
+        },
+      }),
+      matchesToQuery.length === 0
+        ? Promise.resolve([])
+        : this.matchRepository.find({
+            where: {
+              id: In(matchesToQuery),
+            },
+            relations,
+            take: 20,
+            order: {
+              createdAt: "DESC",
+            },
+          }),
+    ]);
+
+    return [...activeMatches, ...finishedMatches];
   }
 
   async getAllQueueMatches(eventId: string) {
