@@ -171,7 +171,8 @@ function MyTeamRoute() {
   if (
     eventQuery.isPending ||
     myTeamQuery.isPending ||
-    isRegisteredQuery.isPending
+    isRegisteredQuery.isPending ||
+    fortyTwoAccountQuery.isLoading
   ) {
     return (
       <main className="flex min-h-[45vh] items-center justify-center">
