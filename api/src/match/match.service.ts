@@ -65,31 +65,13 @@ export class MatchService {
           const events = await this.eventService.getAllEventsForQueue();
           await Promise.all(
             events.map(async (event) => {
-              let teamsInQueue = await this.teamService.getTeamsInQueue(
-                event.id,
-              );
-              while (teamsInQueue.length >= 2) {
-                const team1 =
-                  teamsInQueue[Math.floor(Math.random() * teamsInQueue.length)];
-                teamsInQueue = teamsInQueue.filter(
-                  (team) => team.id !== team1.id,
-                );
-                const team2 =
-                  teamsInQueue[Math.floor(Math.random() * teamsInQueue.length)];
-                teamsInQueue = teamsInQueue.filter(
-                  (team) => team.id !== team2.id,
-                );
+              let match = await this.teamService.createNextQueueMatch(event.id);
+              while (match) {
                 this.logger.log(
-                  `Creating queue match for teams ${team1.name} and ${team2.name} in event ${event.name}.`,
-                );
-                const match = await this.createMatch(
-                  [team1.id, team2.id],
-                  0,
-                  MatchPhase.QUEUE,
+                  `Starting scored queue match ${match.id} in event ${event.name}.`,
                 );
                 await this.startMatch(match.id);
-                await this.teamService.removeFromQueue(team1.id);
-                await this.teamService.removeFromQueue(team2.id);
+                match = await this.teamService.createNextQueueMatch(event.id);
               }
             }),
           );

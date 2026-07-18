@@ -271,7 +271,11 @@ export class TeamController {
 
   @UseGuards(JwtAuthGuard, MyTeamGuards)
   @Put(`event/:${EVENT_ID_PARAM}/queue/join`)
-  async joinQueue(@Team() team: TeamEntity, @UserId() userId: string) {
+  async joinQueue(
+    @Team() team: TeamEntity,
+    @EventId eventId: string,
+    @UserId() userId: string,
+  ) {
     if (team.inQueue)
       throw new BadRequestException("You are already in the queue.");
 
@@ -284,7 +288,7 @@ export class TeamController {
       userId,
     });
 
-    return this.teamService.joinQueue(team.id);
+    return this.teamService.joinQueue(team.id, eventId);
   }
 
   @UseGuards(JwtAuthGuard, MyTeamGuards)
