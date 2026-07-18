@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { QueryFailedError, Repository } from "typeorm";
 import {
+  FortyTwoCursusStatus,
   SocialAccountEntity,
   SOCIAL_ACCOUNT_PLATFORM_USER_ID_UNIQUE_CONSTRAINT,
   SocialPlatform,
@@ -57,8 +58,7 @@ export class SocialAccountService {
     platform: SocialPlatform;
     username: string;
     platformUserId: string;
-    isPiscineStudent?: boolean;
-    isCursusStudent?: boolean;
+    cursusStatus?: FortyTwoCursusStatus;
     campusId: number | null;
     campusName: string | null;
   }): Promise<SocialAccountEntity> {
@@ -80,10 +80,8 @@ export class SocialAccountService {
     if (existing) {
       existing.username = params.username;
       existing.platformUserId = params.platformUserId;
-      if (params.isPiscineStudent !== undefined)
-        existing.isPiscineStudent = params.isPiscineStudent;
-      if (params.isCursusStudent !== undefined)
-        existing.isCursusStudent = params.isCursusStudent;
+      if (params.cursusStatus !== undefined)
+        existing.cursusStatus = params.cursusStatus;
       existing.campusId = params.campusId;
       existing.campusName = params.campusName;
       return this.saveSocialAccount(existing);
@@ -94,8 +92,7 @@ export class SocialAccountService {
       platform: params.platform,
       username: params.username,
       platformUserId: params.platformUserId,
-      isPiscineStudent: params.isPiscineStudent ?? false,
-      isCursusStudent: params.isCursusStudent ?? false,
+      cursusStatus: params.cursusStatus ?? FortyTwoCursusStatus.NONE,
       campusId: params.campusId,
       campusName: params.campusName,
     });

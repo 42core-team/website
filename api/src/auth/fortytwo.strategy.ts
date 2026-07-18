@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { PassportStrategy } from "@nestjs/passport";
 import { ConfigService } from "@nestjs/config";
 import { Strategy } from "passport-oauth2";
+import { FortyTwoCursusStatus } from "../user/entities/social-account.entity";
 
 export interface FortyTwoProfile {
   id: number;
@@ -69,19 +70,20 @@ export class FortyTwoOAuthStrategy extends PassportStrategy(Strategy, "42") {
       const cursusSlugs = (data.cursus_users ?? [])
         .map((cu) => cu.cursus?.slug)
         .filter((slug): slug is string => !!slug);
-      const isCursusStudent = cursusSlugs.includes("42cursus");
       // 42 never removes the old piscine cursus_user record once a student
-      // progresses to 42cursus, so "piscine student" must exclude cursus students.
-      const isPiscineStudent =
-        cursusSlugs.includes("c-piscine") && !isCursusStudent;
+      // progresses to 42cursus, so cursus status wins over piscine history.
+      const cursusStatus = cursusSlugs.includes("42cursus")
+        ? FortyTwoCursusStatus.CURSUS
+        : cursusSlugs.includes("c-piscine")
+          ? FortyTwoCursusStatus.PISCINE
+          : FortyTwoCursusStatus.NONE;
 
       done(null, {
         fortyTwoAccount: {
           platformUserId,
           username,
           email,
-          isCursusStudent,
-          isPiscineStudent,
+          cursusStatus,
           ...primaryCampus,
         },
       });

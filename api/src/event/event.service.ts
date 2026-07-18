@@ -33,7 +33,10 @@ import { EventVersionDto } from "./dtos/eventVersionDto";
 import { LockKeys } from "../constants";
 import { WhitelistPlatform } from "./entities/event-whitelist.entity";
 import { SocialAccountService } from "../user/social-account.service";
-import { SocialPlatform } from "../user/entities/social-account.entity";
+import {
+  FortyTwoCursusStatus,
+  SocialPlatform,
+} from "../user/entities/social-account.entity";
 
 @Injectable()
 export class EventService {
@@ -407,8 +410,8 @@ export class EventService {
     if (!fortyTwoAccount) return false;
 
     if (audience === EventAudience.PISCINE)
-      return fortyTwoAccount.isPiscineStudent;
-    return fortyTwoAccount.isCursusStudent;
+      return fortyTwoAccount.cursusStatus === FortyTwoCursusStatus.PISCINE;
+    return fortyTwoAccount.cursusStatus === FortyTwoCursusStatus.CURSUS;
   }
 
   async isUserRegisteredForEvent(eventId: string, userId: string) {

@@ -21,7 +21,10 @@ import { UserService } from "../user/user.service";
 import { UserId } from "../guards/UserGuard";
 import * as CryptoJS from "crypto-js";
 import { SocialAccountService } from "../user/social-account.service";
-import { SocialPlatform } from "../user/entities/social-account.entity";
+import {
+  FortyTwoCursusStatus,
+  SocialPlatform,
+} from "../user/entities/social-account.entity";
 
 @Controller("auth")
 export class AuthController {
@@ -70,8 +73,7 @@ export class AuthController {
           platformUserId: string;
           username: string;
           email: string;
-          isPiscineStudent: boolean;
-          isCursusStudent: boolean;
+          cursusStatus: FortyTwoCursusStatus;
           campusId: number | null;
           campusName: string | null;
         };
@@ -97,8 +99,7 @@ export class AuthController {
         platform: SocialPlatform.FORTYTWO,
         platformUserId: request.user.fortyTwoAccount.platformUserId,
         username: request.user.fortyTwoAccount.username,
-        isPiscineStudent: request.user.fortyTwoAccount.isPiscineStudent,
-        isCursusStudent: request.user.fortyTwoAccount.isCursusStudent,
+        cursusStatus: request.user.fortyTwoAccount.cursusStatus,
         campusId: request.user.fortyTwoAccount.campusId,
         campusName: request.user.fortyTwoAccount.campusName,
       });
