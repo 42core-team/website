@@ -3,6 +3,7 @@ import { TeamService } from "../team/team.service";
 import { InjectRepository } from "@nestjs/typeorm";
 import { MatchEntity, MatchPhase, MatchState } from "./entites/match.entity";
 import { MatchStatsEntity } from "./entites/matchStats.entity";
+import { getCreditWagerRefund } from "./match-credit-wager";
 import { DataSource, In, Not, Repository } from "typeorm";
 import { Swiss } from "tournament-pairings";
 import { EventService } from "../event/event.service";
@@ -130,6 +131,7 @@ export class MatchService {
           event: true,
         },
         winner: true,
+        creditWagerTeam: true,
       },
     });
 
@@ -199,6 +201,10 @@ export class MatchService {
           } as MatchTeamResultEntity;
         });
       }
+
+      const creditRefund = getCreditWagerRefund(match, winner.id);
+      if (creditRefund > 0)
+        await this.teamService.increaseTeamCredits(winner.id, creditRefund);
     }
     await this.matchRepository.save(match);
     this.logger.log(
@@ -366,7 +372,7 @@ export class MatchService {
     match.state = MatchState.IN_PROGRESS;
     await this.matchRepository.save(match);
 
-    if (this.configService.get<string>("RANDOM_GAME_RESULTS") === 'true') {
+    if (this.configService.get<string>("RANDOM_GAME_RESULTS") === "true") {
       const botIdMapping: Record<string, string> = {};
       match.teams.forEach((team) => {
         botIdMapping[team.id] = team.id;

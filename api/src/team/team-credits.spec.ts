@@ -3,10 +3,9 @@ import { accrueQueueCredits, QUEUE_CREDIT_INTERVAL_MS } from "./team-credits";
 describe("accrueQueueCredits", () => {
   const startedAt = new Date("2026-07-18T10:00:00.000Z");
 
-  it("grants one credit for every complete public interval", () => {
+  it("grants one credit for every complete interval", () => {
     const team = {
       credits: 0,
-      isPublic: true,
       lastCreditGrantedAt: startedAt,
     };
 
@@ -25,7 +24,6 @@ describe("accrueQueueCredits", () => {
   it("does not grant partial intervals", () => {
     const team = {
       credits: 0,
-      isPublic: true,
       lastCreditGrantedAt: startedAt,
     };
 
@@ -39,19 +37,21 @@ describe("accrueQueueCredits", () => {
     expect(team.lastCreditGrantedAt).toEqual(startedAt);
   });
 
-  it("does not grant credits while a team is private", () => {
+  it("preserves remainder time after granting credits", () => {
     const team = {
-      credits: 0,
-      isPublic: false,
+      credits: 3,
       lastCreditGrantedAt: startedAt,
     };
 
     expect(
       accrueQueueCredits(
         team,
-        new Date(startedAt.getTime() + QUEUE_CREDIT_INTERVAL_MS * 10),
+        new Date(startedAt.getTime() + QUEUE_CREDIT_INTERVAL_MS * 2.5),
       ),
-    ).toBe(0);
-    expect(team.credits).toBe(0);
+    ).toBe(2);
+    expect(team.credits).toBe(5);
+    expect(team.lastCreditGrantedAt).toEqual(
+      new Date(startedAt.getTime() + QUEUE_CREDIT_INTERVAL_MS * 2),
+    );
   });
 });

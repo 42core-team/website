@@ -29,7 +29,6 @@ import {
 import { EVENT_ID_PARAM, TEAM_ID_PARAM } from "../guards/GuardConstants";
 import { TeamEntity } from "./entities/team.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { UpdateTeamVisibilityDto } from "./dtos/update-team-visibility.dto";
 
 @Controller("team")
 export class TeamController {
@@ -310,33 +309,8 @@ export class TeamController {
   }
 
   @UseGuards(JwtAuthGuard, MyTeamGuards)
-  @Put(`event/:${EVENT_ID_PARAM}/queue/visibility`)
-  async setQueueVisibility(
-    @Team() team: TeamEntity,
-    @Body() updateTeamVisibilityDto: UpdateTeamVisibilityDto,
-    @UserId() userId: string,
-  ) {
-    this.logger.log({
-      action: "set_team_queue_visibility",
-      teamId: team.id,
-      userId,
-      isPublic: updateTeamVisibilityDto.isPublic,
-    });
-    return this.teamService.setTeamVisibility(
-      team.id,
-      updateTeamVisibilityDto.isPublic,
-    );
-  }
-
-  @UseGuards(JwtAuthGuard, MyTeamGuards)
-  @Get(`event/:${EVENT_ID_PARAM}/queue/challenges`)
-  async getPendingChallenges(@Team() team: TeamEntity) {
-    return this.teamService.getPendingChallenges(team.id);
-  }
-
-  @UseGuards(JwtAuthGuard, MyTeamGuards)
-  @Post(`event/:${EVENT_ID_PARAM}/queue/challenges/:targetTeamId`)
-  async challengeTeam(
+  @Post(`event/:${EVENT_ID_PARAM}/queue/direct/:targetTeamId`)
+  async startDirectMatch(
     @Team() team: TeamEntity,
     @Param("targetTeamId", new ParseUUIDPipe()) targetTeamId: string,
     @UserId() userId: string,
@@ -345,43 +319,11 @@ export class TeamController {
       throw new BadRequestException("The event has not started yet.");
 
     this.logger.log({
-      action: "challenge_team",
-      challengerId: team.id,
+      action: "start_direct_match",
+      initiatingTeamId: team.id,
       targetTeamId,
       userId,
     });
-    return this.teamService.createChallenge(team.id, targetTeamId);
-  }
-
-  @UseGuards(JwtAuthGuard, MyTeamGuards)
-  @Put(`event/:${EVENT_ID_PARAM}/queue/challenges/:challengeId/accept`)
-  async acceptChallenge(
-    @Team() team: TeamEntity,
-    @Param("challengeId", new ParseUUIDPipe()) challengeId: string,
-    @UserId() userId: string,
-  ) {
-    this.logger.log({
-      action: "accept_team_challenge",
-      challengeId,
-      teamId: team.id,
-      userId,
-    });
-    return this.teamService.acceptChallenge(team.id, challengeId);
-  }
-
-  @UseGuards(JwtAuthGuard, MyTeamGuards)
-  @Put(`event/:${EVENT_ID_PARAM}/queue/challenges/:challengeId/decline`)
-  async declineChallenge(
-    @Team() team: TeamEntity,
-    @Param("challengeId", new ParseUUIDPipe()) challengeId: string,
-    @UserId() userId: string,
-  ) {
-    this.logger.log({
-      action: "decline_team_challenge",
-      challengeId,
-      teamId: team.id,
-      userId,
-    });
-    return this.teamService.declineChallenge(team.id, challengeId);
+    return this.teamService.createDirectMatch(team.id, targetTeamId);
   }
 }

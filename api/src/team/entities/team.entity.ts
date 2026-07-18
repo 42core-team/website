@@ -48,11 +48,8 @@ export class TeamEntity {
   @Column({ default: 0 })
   credits: number;
 
-  @Column({ default: false })
-  isPublic: boolean;
-
-  @Column({ nullable: true, type: "timestamp" })
-  lastCreditGrantedAt: Date | null;
+  @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
+  lastCreditGrantedAt: Date;
 
   @Exclude()
   @ManyToOne(() => EventEntity, (event) => event.teams)

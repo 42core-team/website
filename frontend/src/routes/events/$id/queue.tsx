@@ -1,47 +1,24 @@
 import type { Team } from '@/app/actions/team'
-import type { TeamChallenge } from '@/app/actions/team.model'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import type { AxiosError } from 'axios'
-import {
-  Check,
-  Coins,
-  Eye,
-  EyeOff,
-  LogIn,
-  LogOut,
-  Search,
-  Send,
-  Swords,
-  Users,
-  X,
-} from 'lucide-react'
+import { Coins, LogIn, LogOut, Search, Swords, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  acceptTeamChallenge,
-  challengeTeam,
-  declineTeamChallenge,
-  getPendingTeamChallenges,
   getQueueMatches,
   getQueueState,
   getTeamsForEventTable,
   joinQueue,
   leaveQueue,
-  setTeamQueueVisibility,
+  startDirectMatch,
 } from '@/app/actions/team'
 import { MatchState } from '@/app/actions/tournament-model'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import QueueMatchesList from '@/components/QueueMatchesList'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -52,7 +29,6 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import { Switch } from '@/components/ui/switch'
 
 export const Route = createFileRoute('/events/$id/queue')({
   component: QueueRoute,
@@ -92,13 +68,6 @@ function QueueRoute() {
     queryFn: () => getTeamsForEventTable(id),
     enabled: Boolean(myTeamQuery.data) && isOpponentDialogOpen,
   })
-  const challengesQuery = useQuery({
-    queryKey: ['event', id, 'queue-challenges'],
-    queryFn: () => getPendingTeamChallenges(id),
-    refetchInterval: 2000,
-    enabled: Boolean(myTeamQuery.data),
-  })
-
   const queueMatch = queueStateQuery.data?.match
   const isQueueMatchRunning = Boolean(
     queueMatch?.id && queueMatch.state !== MatchState.FINISHED,
@@ -128,9 +97,6 @@ function QueueRoute() {
       queryClient.invalidateQueries({
         queryKey: ['event', id, 'queue-state'],
       }),
-      queryClient.invalidateQueries({
-        queryKey: ['event', id, 'queue-challenges'],
-      }),
       queryClient.invalidateQueries({ queryKey: myTeamQueryKey(id) }),
     ])
   }
@@ -146,51 +112,14 @@ function QueueRoute() {
     onSettled: refreshQueueData,
   })
 
-  const visibilityMutation = useMutation({
-    mutationFn: (isPublic: boolean) => setTeamQueueVisibility(id, isPublic),
-    onSuccess: async (_, isPublic) => {
-      await Promise.all([
-        refreshQueueData(),
-        queryClient.invalidateQueries({
-          queryKey: ['event', id, 'teams', 'queue-opponents'],
-        }),
-      ])
-      toast.success(
-        isPublic
-          ? 'Your team is public and will earn one credit every 15 minutes.'
-          : 'Your team is private. New challenges now require approval.',
-      )
-    },
-    onError: (error: Error) => toast.error(getErrorMessage(error)),
-  })
-
-  const challengeMutation = useMutation({
-    mutationFn: (targetTeamId: string) => challengeTeam(id, targetTeamId),
-    onSuccess: async (challenge) => {
+  const directMatchMutation = useMutation({
+    mutationFn: (targetTeamId: string) => startDirectMatch(id, targetTeamId),
+    onSuccess: async () => {
       setIsOpponentDialogOpen(false)
       setOpponentSearch('')
       await refreshQueueData()
-      toast.success(
-        challenge.matchId
-          ? 'Challenge accepted automatically. The match is starting.'
-          : 'Challenge request sent.',
-      )
+      toast.success('Direct match is starting. Your team staked 2 credits.')
     },
-    onError: (error: Error) => toast.error(getErrorMessage(error)),
-  })
-
-  const acceptChallengeMutation = useMutation({
-    mutationFn: (challengeId: string) => acceptTeamChallenge(id, challengeId),
-    onSuccess: async () => {
-      await refreshQueueData()
-      toast.success('Challenge accepted. The match is starting.')
-    },
-    onError: (error: Error) => toast.error(getErrorMessage(error)),
-  })
-
-  const declineChallengeMutation = useMutation({
-    mutationFn: (challengeId: string) => declineTeamChallenge(id, challengeId),
-    onSuccess: refreshQueueData,
     onError: (error: Error) => toast.error(getErrorMessage(error)),
   })
 
@@ -219,10 +148,10 @@ function QueueRoute() {
 
   const queueState = queueStateQuery.data
   const credits = queueState?.credits ?? myTeamQuery.data.credits
-  const isPublic = queueState?.isPublic ?? myTeamQuery.data.isPublic
   const inQueue = queueState?.inQueue ?? false
   const canLeaveQueue = inQueue && !isQueueMatchRunning
-  const canStartMatch = credits > 0 && !inQueue && !isQueueMatchRunning
+  const canJoinQueue = credits >= 1 && !inQueue && !isQueueMatchRunning
+  const canStartDirectMatch = credits >= 2 && !inQueue && !isQueueMatchRunning
   const queueStatus = isQueueMatchRunning
     ? 'Match Running'
     : inQueue
@@ -233,12 +162,6 @@ function QueueRoute() {
     (team: Team) =>
       team.id !== myTeamQuery.data?.id &&
       team.name.toLocaleLowerCase().includes(normalizedOpponentSearch),
-  )
-  const incomingChallenges = (challengesQuery.data ?? []).filter(
-    (challenge) => challenge.target.id === myTeamQuery.data?.id,
-  )
-  const outgoingChallenges = (challengesQuery.data ?? []).filter(
-    (challenge) => challenge.challenger.id === myTeamQuery.data?.id,
   )
 
   return (
@@ -300,7 +223,7 @@ function QueueRoute() {
               </Button>
             ) : (
               <Button
-                disabled={!canStartMatch || joinQueueMutation.isPending}
+                disabled={!canJoinQueue || joinQueueMutation.isPending}
                 onClick={() => joinQueueMutation.mutate()}
               >
                 <LogIn className="size-4" />
@@ -309,92 +232,28 @@ function QueueRoute() {
             )}
           </div>
 
-          <div className="grid gap-4 border-t pt-5 sm:grid-cols-2">
+          <div className="border-t pt-5">
             <div className="flex items-center gap-3 rounded-lg border p-4">
               <Coins className="size-5 text-amber-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Queue credits</p>
                 <p className="text-xl font-semibold">{credits}</p>
+                <p className="text-xs text-muted-foreground">
+                  Earns 1 credit every 15 minutes
+                  {queueState?.nextCreditAt
+                    ? ` · next at ${new Date(
+                        queueState.nextCreditAt,
+                      ).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}`
+                    : ''}
+                </p>
               </div>
             </div>
-            <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border p-4">
-              <div className="flex items-center gap-3">
-                {isPublic ? (
-                  <Eye className="size-5 text-primary" />
-                ) : (
-                  <EyeOff className="size-5 text-muted-foreground" />
-                )}
-                <div>
-                  <p className="font-medium">
-                    {isPublic ? 'Public team' : 'Private team'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {isPublic
-                      ? `Earns 1 credit every 15 minutes${
-                          queueState?.nextCreditAt
-                            ? ` · next at ${new Date(
-                                queueState.nextCreditAt,
-                              ).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}`
-                            : ''
-                        }`
-                      : 'Challenge requests require your approval'}
-                  </p>
-                </div>
-              </div>
-              <Switch
-                checked={isPublic}
-                disabled={visibilityMutation.isPending}
-                onCheckedChange={(checked) =>
-                  visibilityMutation.mutate(checked)
-                }
-                aria-label="Make team public"
-              />
-            </label>
           </div>
         </CardContent>
       </Card>
-
-      {(incomingChallenges.length > 0 || outgoingChallenges.length > 0) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Challenge requests</CardTitle>
-            <CardDescription>
-              Private teams choose whether to accept direct matches.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {incomingChallenges.map((challenge) => (
-              <IncomingChallenge
-                key={challenge.id}
-                challenge={challenge}
-                isPending={
-                  acceptChallengeMutation.isPending ||
-                  declineChallengeMutation.isPending
-                }
-                onAccept={() => acceptChallengeMutation.mutate(challenge.id)}
-                onDecline={() => declineChallengeMutation.mutate(challenge.id)}
-              />
-            ))}
-            {outgoingChallenges.map((challenge) => (
-              <div
-                key={challenge.id}
-                className="flex items-center justify-between rounded-lg border p-4"
-              >
-                <div>
-                  <p className="font-medium">{challenge.target.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Waiting for their response
-                  </p>
-                </div>
-                <Badge variant="secondary">Pending</Badge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
 
       <div className="flex justify-end">
         <Dialog
@@ -414,9 +273,8 @@ function QueueRoute() {
             <DialogHeader>
               <DialogTitle>Choose an opponent</DialogTitle>
               <DialogDescription>
-                Public teams start immediately. Private teams receive a request
-                to accept or decline. Your credit is spent only when the match
-                starts.
+                A direct match starts immediately and stakes 2 credits. Win to
+                get the 2-credit stake back; lose and the stake is forfeited.
               </DialogDescription>
             </DialogHeader>
             <div className="relative">
@@ -441,46 +299,29 @@ function QueueRoute() {
                     : 'No other teams are available in this event yet.'}
                 </p>
               ) : (
-                opponents.map((opponent: Team) => {
-                  const hasPendingRequest = outgoingChallenges.some(
-                    (challenge) => challenge.target.id === opponent.id,
-                  )
-                  return (
-                    <div
-                      key={opponent.id}
-                      className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{opponent.name}</p>
-                          <Badge variant="outline">
-                            {opponent.isPublic ? 'Public' : 'Private'}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Queue score {opponent.queueScore}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant={opponent.isPublic ? 'default' : 'outline'}
-                        disabled={
-                          !canStartMatch ||
-                          hasPendingRequest ||
-                          challengeMutation.isPending
-                        }
-                        onClick={() => challengeMutation.mutate(opponent.id)}
-                      >
-                        <Send className="size-4" />
-                        {hasPendingRequest
-                          ? 'Request pending'
-                          : opponent.isPublic
-                            ? 'Play · 1 credit'
-                            : 'Request match'}
-                      </Button>
+                opponents.map((opponent: Team) => (
+                  <div
+                    key={opponent.id}
+                    className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div>
+                      <p className="font-medium">{opponent.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Queue score {opponent.queueScore}
+                      </p>
                     </div>
-                  )
-                })
+                    <Button
+                      size="sm"
+                      disabled={
+                        !canStartDirectMatch || directMatchMutation.isPending
+                      }
+                      onClick={() => directMatchMutation.mutate(opponent.id)}
+                    >
+                      <Swords className="size-4" />
+                      Play · 2 credits
+                    </Button>
+                  </div>
+                ))
               )}
             </div>
           </DialogContent>
@@ -489,43 +330,5 @@ function QueueRoute() {
 
       <QueueMatchesList eventId={id} matches={queueMatchesQuery.data ?? []} />
     </main>
-  )
-}
-
-function IncomingChallenge({
-  challenge,
-  isPending,
-  onAccept,
-  onDecline,
-}: {
-  challenge: TeamChallenge
-  isPending: boolean
-  onAccept: () => void
-  onDecline: () => void
-}) {
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="font-medium">{challenge.challenger.name}</p>
-        <p className="text-sm text-muted-foreground">
-          wants to play against your team
-        </p>
-      </div>
-      <div className="flex gap-2">
-        <Button size="sm" disabled={isPending} onClick={onAccept}>
-          <Check className="size-4" />
-          Accept
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={isPending}
-          onClick={onDecline}
-        >
-          <X className="size-4" />
-          Decline
-        </Button>
-      </div>
-    </div>
   )
 }

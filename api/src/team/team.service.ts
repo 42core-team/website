@@ -28,19 +28,15 @@ import {
   MatchState,
 } from "../match/entites/match.entity";
 import { MatchStatsEntity } from "../match/entites/matchStats.entity";
-import {
-  TeamChallengeEntity,
-  TeamChallengeStatus,
-} from "./entities/team-challenge.entity";
 import { accrueQueueCredits, QUEUE_CREDIT_INTERVAL_MS } from "./team-credits";
+
+const DIRECT_MATCH_WAGER = 2;
 
 @Injectable()
 export class TeamService {
   constructor(
     @InjectRepository(TeamEntity)
     private readonly teamRepository: Repository<TeamEntity>,
-    @InjectRepository(TeamChallengeEntity)
-    private readonly teamChallengeRepository: Repository<TeamChallengeEntity>,
     private readonly githubApiService: GithubApiService,
     @Inject(forwardRef(() => EventService))
     private readonly eventService: EventService,
@@ -54,7 +50,7 @@ export class TeamService {
   logger = new Logger("TeamService");
 
   @Cron(CronExpression.EVERY_MINUTE)
-  async grantPublicTeamCredits() {
+  async grantTeamCredits() {
     const lockKey = LockKeys.GRANT_TEAM_QUEUE_CREDITS;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -73,8 +69,7 @@ export class TeamService {
           SET
             "credits" = "credits" + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - "lastCreditGrantedAt")) / 900)::integer,
             "lastCreditGrantedAt" = "lastCreditGrantedAt" + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - "lastCreditGrantedAt")) / 900)::integer * INTERVAL '15 minutes'
-          WHERE "isPublic" = true
-            AND "deletedAt" IS NULL
+          WHERE "deletedAt" IS NULL
             AND "lastCreditGrantedAt" <= CURRENT_TIMESTAMP - INTERVAL '15 minutes'
         `);
       } finally {
@@ -446,7 +441,6 @@ export class TeamService {
         "team.buchholzPoints",
         "team.hadBye",
         "team.queueScore",
-        "team.isPublic",
         "team.createdAt",
         "team.updatedAt",
       ]);
@@ -464,7 +458,6 @@ export class TeamService {
           "team.locked",
           "team.hadBye",
           "team.queueScore",
-          "team.isPublic",
           "team.createdAt",
           "team.updatedAt",
           "team.score",
@@ -626,6 +619,10 @@ export class TeamService {
     return this.teamRepository.increment({ id: teamId }, "score", score);
   }
 
+  increaseTeamCredits(teamId: string, credits: number) {
+    return this.teamRepository.increment({ id: teamId }, "credits", credits);
+  }
+
   setHadBye(teamId: string, hadBye: boolean) {
     return this.teamRepository.update(teamId, { hadBye });
   }
@@ -653,171 +650,33 @@ export class TeamService {
       queueCount: queueCount,
       inQueue: team.inQueue,
       credits: team.credits,
-      isPublic: team.isPublic,
-      nextCreditAt:
-        team.isPublic && team.lastCreditGrantedAt
-          ? new Date(
-              team.lastCreditGrantedAt.getTime() + QUEUE_CREDIT_INTERVAL_MS,
-            )
-          : null,
+      nextCreditAt: new Date(
+        team.lastCreditGrantedAt.getTime() + QUEUE_CREDIT_INTERVAL_MS,
+      ),
     };
   }
 
-  async setTeamVisibility(teamId: string, isPublic: boolean) {
-    return this.dataSource.transaction(async (entityManager) => {
-      const team = await entityManager.findOneOrFail(TeamEntity, {
-        where: { id: teamId },
-        lock: { mode: "pessimistic_write" },
-      });
-
-      accrueQueueCredits(team);
-      if (team.isPublic !== isPublic) {
-        team.isPublic = isPublic;
-        team.lastCreditGrantedAt = isPublic ? new Date() : null;
-      }
-      return entityManager.save(team);
-    });
-  }
-
-  async createChallenge(challengerId: string, targetId: string) {
+  async createDirectMatch(challengerId: string, targetId: string) {
     if (challengerId === targetId)
-      throw new BadRequestException("A team cannot challenge itself.");
+      throw new BadRequestException("A team cannot play against itself.");
 
-    const challenge = await this.dataSource.transaction(
-      async (entityManager) => {
-        const teams = await entityManager.find(TeamEntity, {
-          where: { id: In([challengerId, targetId]) },
-          order: { id: "ASC" },
-          lock: { mode: "pessimistic_write" },
-        });
-        const challenger = teams.find((team) => team.id === challengerId);
-        const target = teams.find((team) => team.id === targetId);
-        if (!challenger || !target)
-          throw new BadRequestException("The selected team was not found.");
-        if (challenger.eventId !== target.eventId)
-          throw new BadRequestException(
-            "Teams can only challenge opponents in the same event.",
-          );
-        if (challenger.inQueue || target.inQueue)
-          throw new BadRequestException(
-            "Neither team can be waiting in the queue when challenged.",
-          );
-        if (
-          await this.hasActiveQueueMatch(
-            [challengerId, targetId],
-            entityManager,
-          )
-        )
-          throw new BadRequestException(
-            "One of these teams already has a match in progress.",
-          );
-
-        accrueQueueCredits(challenger);
-        if (challenger.credits < 1)
-          throw new BadRequestException(
-            "Your team needs at least one credit to challenge an opponent.",
-          );
-        await entityManager.save(challenger);
-
-        const challengeRepository =
-          entityManager.getRepository(TeamChallengeEntity);
-        const existing = await challengeRepository.findOne({
-          where: {
-            challenger: { id: challengerId },
-            target: { id: targetId },
-            status: TeamChallengeStatus.PENDING,
-          },
-          relations: { challenger: true, target: true, match: true },
-        });
-        if (existing && !target.isPublic)
-          throw new BadRequestException(
-            "A challenge request for this team is already pending.",
-          );
-
-        if (!target.isPublic) {
-          return challengeRepository.save(
-            challengeRepository.create({
-              challenger,
-              target,
-              status: TeamChallengeStatus.PENDING,
-              match: null,
-              respondedAt: null,
-            }),
-          );
-        }
-
-        challenger.credits -= 1;
-        await entityManager.save(challenger);
-        const acceptedChallenge =
-          existing ??
-          challengeRepository.create({ challenger, target, match: null });
-        acceptedChallenge.status = TeamChallengeStatus.ACCEPTED;
-        acceptedChallenge.respondedAt = new Date();
-        acceptedChallenge.match = await this.createQueueMatch(
-          [challenger.id, target.id],
-          entityManager,
-        );
-        return challengeRepository.save(acceptedChallenge);
-      },
-    );
-
-    if (challenge.status === TeamChallengeStatus.ACCEPTED)
-      return this.startChallengeMatch(challenge.id);
-    return this.serializeChallenge(challenge);
-  }
-
-  async getPendingChallenges(teamId: string) {
-    const challenges = await this.teamChallengeRepository.find({
-      where: [
-        {
-          challenger: { id: teamId },
-          status: TeamChallengeStatus.PENDING,
-        },
-        { target: { id: teamId }, status: TeamChallengeStatus.PENDING },
-      ],
-      relations: { challenger: true, target: true, match: true },
-      order: { createdAt: "DESC" },
-    });
-    return challenges.map((challenge) => this.serializeChallenge(challenge));
-  }
-
-  async acceptChallenge(teamId: string, challengeId: string) {
-    await this.dataSource.transaction(async (entityManager) => {
-      const challengeRepository =
-        entityManager.getRepository(TeamChallengeEntity);
-      const initialChallenge = await challengeRepository.findOne({
-        where: { id: challengeId },
-      });
-      if (!initialChallenge)
-        throw new BadRequestException("This challenge is no longer pending.");
-
+    const match = await this.dataSource.transaction(async (entityManager) => {
       const teams = await entityManager.find(TeamEntity, {
-        where: {
-          id: In([initialChallenge.challengerId, initialChallenge.targetId]),
-        },
+        where: { id: In([challengerId, targetId]) },
         order: { id: "ASC" },
         lock: { mode: "pessimistic_write" },
       });
-      const challenge = await challengeRepository.findOne({
-        where: { id: challengeId },
-        lock: { mode: "pessimistic_write" },
-      });
-      if (!challenge || challenge.status !== TeamChallengeStatus.PENDING)
-        throw new BadRequestException("This challenge is no longer pending.");
-      if (challenge.targetId !== teamId)
-        throw new BadRequestException(
-          "Only the challenged team can accept this request.",
-        );
-
-      const challenger = teams.find(
-        (team) => team.id === challenge.challengerId,
-      );
-      const target = teams.find((team) => team.id === challenge.targetId);
+      const challenger = teams.find((team) => team.id === challengerId);
+      const target = teams.find((team) => team.id === targetId);
       if (!challenger || !target)
-        throw new BadRequestException("One of the teams no longer exists.");
+        throw new BadRequestException("The selected team was not found.");
+      if (challenger.eventId !== target.eventId)
+        throw new BadRequestException(
+          "Teams can only play opponents in the same event.",
+        );
       if (challenger.inQueue || target.inQueue)
         throw new BadRequestException(
-          "Neither team can be waiting in the queue when a challenge starts.",
+          "Neither team can be waiting in the queue when a direct match starts.",
         );
       if (
         await this.hasActiveQueueMatch(
@@ -830,64 +689,29 @@ export class TeamService {
         );
 
       accrueQueueCredits(challenger);
-      if (challenger.credits < 1)
+      if (challenger.credits < DIRECT_MATCH_WAGER)
         throw new BadRequestException(
-          "The challenging team no longer has a credit available.",
+          `Your team needs at least ${DIRECT_MATCH_WAGER} credits to play a direct match.`,
         );
-      challenger.credits -= 1;
+      challenger.credits -= DIRECT_MATCH_WAGER;
       await entityManager.save(challenger);
 
-      challenge.status = TeamChallengeStatus.ACCEPTED;
-      challenge.respondedAt = new Date();
-      challenge.match = await this.createQueueMatch(
+      return this.createQueueMatch(
         [challenger.id, target.id],
         entityManager,
+        challenger,
       );
-      await challengeRepository.save(challenge);
     });
 
-    return this.startChallengeMatch(challengeId);
+    await this.matchService.startMatch(match.id);
+    return { matchId: match.id };
   }
 
-  async declineChallenge(teamId: string, challengeId: string) {
-    await this.dataSource.transaction(async (entityManager) => {
-      const challenge = await entityManager.findOne(TeamChallengeEntity, {
-        where: { id: challengeId },
-        lock: { mode: "pessimistic_write" },
-      });
-      if (!challenge || challenge.status !== TeamChallengeStatus.PENDING)
-        throw new BadRequestException("This challenge is no longer pending.");
-      if (challenge.targetId !== teamId)
-        throw new BadRequestException(
-          "Only the challenged team can decline this request.",
-        );
-
-      challenge.status = TeamChallengeStatus.DECLINED;
-      challenge.respondedAt = new Date();
-      await entityManager.save(challenge);
-    });
-
-    return this.serializeChallenge(
-      await this.teamChallengeRepository.findOneOrFail({
-        where: { id: challengeId },
-        relations: { challenger: true, target: true, match: true },
-      }),
-    );
-  }
-
-  private async startChallengeMatch(challengeId: string) {
-    const challenge = await this.teamChallengeRepository.findOneOrFail({
-      where: { id: challengeId },
-      relations: { challenger: true, target: true, match: true },
-    });
-    if (!challenge.match)
-      throw new BadRequestException("The accepted challenge has no match.");
-    if (challenge.match.state === MatchState.PLANNED)
-      await this.matchService.startMatch(challenge.match.id);
-    return this.serializeChallenge(challenge);
-  }
-
-  private createQueueMatch(teamIds: string[], entityManager: EntityManager) {
+  private createQueueMatch(
+    teamIds: string[],
+    entityManager: EntityManager,
+    creditWagerTeam: TeamEntity,
+  ) {
     const matchRepository = entityManager.getRepository(MatchEntity);
     return matchRepository.save(
       matchRepository.create({
@@ -895,6 +719,8 @@ export class TeamService {
         round: 0,
         phase: MatchPhase.QUEUE,
         state: MatchState.PLANNED,
+        creditWager: DIRECT_MATCH_WAGER,
+        creditWagerTeam,
         stats: new MatchStatsEntity(),
       }),
     );
@@ -916,25 +742,6 @@ export class TeamService {
         })
         .getCount()) > 0
     );
-  }
-
-  private serializeChallenge(challenge: TeamChallengeEntity) {
-    return {
-      id: challenge.id,
-      status: challenge.status,
-      createdAt: challenge.createdAt,
-      respondedAt: challenge.respondedAt,
-      challenger: {
-        id: challenge.challenger.id,
-        name: challenge.challenger.name,
-      },
-      target: {
-        id: challenge.target.id,
-        name: challenge.target.name,
-        isPublic: challenge.target.isPublic,
-      },
-      matchId: challenge.match?.id ?? null,
-    };
   }
 
   async removeFromQueue(teamId: string) {
