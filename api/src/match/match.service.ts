@@ -15,7 +15,28 @@ import { ConfigService } from "@nestjs/config";
 import { TeamEntity } from "../team/entities/team.entity";
 import { GithubApiService } from "../github-api/github-api.service";
 import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations";
+import { FindOptionsSelect } from "typeorm/find-options/FindOptionsSelect";
 import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
+
+const QUEUE_MATCH_SELECT: FindOptionsSelect<MatchEntity> = {
+  id: true,
+  state: true,
+  phase: true,
+  createdAt: true,
+  teams: {
+    id: true,
+    name: true,
+  },
+  winner: {
+    id: true,
+    name: true,
+  },
+};
+
+const QUEUE_MATCH_RELATIONS: FindOptionsRelations<MatchEntity> = {
+  teams: true,
+  winner: true,
+};
 
 @Injectable()
 export class MatchService {
@@ -913,15 +934,9 @@ export class MatchService {
       })
     ).map((match) => match.id);
 
-    const relations = {
-      results: {
-        team: true,
-      },
-      teams: true,
-      winner: true,
-    } as const;
     const [activeMatches, finishedMatches] = await Promise.all([
       this.matchRepository.find({
+        select: QUEUE_MATCH_SELECT,
         where: {
           teams: {
             event: {
@@ -931,7 +946,7 @@ export class MatchService {
           phase: MatchPhase.QUEUE,
           state: MatchState.IN_PROGRESS,
         },
-        relations,
+        relations: QUEUE_MATCH_RELATIONS,
         order: {
           createdAt: "DESC",
         },
@@ -939,10 +954,11 @@ export class MatchService {
       matchesToQuery.length === 0
         ? Promise.resolve([])
         : this.matchRepository.find({
+            select: QUEUE_MATCH_SELECT,
             where: {
               id: In(matchesToQuery),
             },
-            relations,
+            relations: QUEUE_MATCH_RELATIONS,
             take: 20,
             order: {
               createdAt: "DESC",
@@ -950,11 +966,14 @@ export class MatchService {
           }),
     ]);
 
-    return [...activeMatches, ...finishedMatches];
+    return [...activeMatches, ...finishedMatches].map((match) =>
+      this.serializeQueueMatch(match),
+    );
   }
 
   async getAllQueueMatches(eventId: string) {
-    return this.matchRepository.find({
+    const matches = await this.matchRepository.find({
+      select: QUEUE_MATCH_SELECT,
       where: {
         teams: {
           event: {
@@ -963,18 +982,27 @@ export class MatchService {
         },
         phase: MatchPhase.QUEUE,
       },
-      relations: {
-        results: {
-          team: true,
-        },
-        teams: true,
-        winner: true,
-      },
+      relations: QUEUE_MATCH_RELATIONS,
       take: 100,
       order: {
         createdAt: "DESC",
       },
     });
+
+    return matches.map((match) => this.serializeQueueMatch(match));
+  }
+
+  private serializeQueueMatch(match: MatchEntity) {
+    return {
+      id: match.id,
+      state: match.state,
+      phase: match.phase,
+      createdAt: match.createdAt,
+      teams: match.teams.map(({ id, name }) => ({ id, name })),
+      winner: match.winner
+        ? { id: match.winner.id, name: match.winner.name }
+        : null,
+    };
   }
 
   async getMatchLogs(

@@ -1,4 +1,4 @@
-import type { Team } from '@/app/actions/team'
+import type { QueueOpponent } from '@/app/actions/team'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import type { AxiosError } from 'axios'
@@ -7,12 +7,12 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import {
   getQueueMatches,
-  getTeamsForEventTable,
+  getQueueOpponents,
+  getQueueSummary,
   joinQueue,
   startDirectMatch,
 } from '@/app/actions/team'
 import { MatchState } from '@/app/actions/tournament-model'
-import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import QueueMatchesList from '@/components/QueueMatchesList'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -31,6 +31,8 @@ export const Route = createFileRoute('/events/$id/queue')({
   component: QueueRoute,
 })
 
+const QUEUE_REFETCH_INTERVAL_MS = 5000
+
 function getErrorMessage(error: Error) {
   const axiosError = error as AxiosError<{ message?: string }>
   return axiosError.response?.data.message ?? error.message
@@ -41,28 +43,30 @@ function QueueRoute() {
   const queryClient = useQueryClient()
   const [isOpponentDialogOpen, setIsOpponentDialogOpen] = useState(false)
   const [opponentSearch, setOpponentSearch] = useState('')
-  const myTeamQuery = useQuery({
-    queryKey: myTeamQueryKey(id),
-    queryFn: () => myTeamQueryFn(id),
-    refetchInterval: 2000,
+  const queueSummaryQuery = useQuery({
+    queryKey: ['event', id, 'queue-summary'],
+    queryFn: () => getQueueSummary(id),
+    refetchInterval: QUEUE_REFETCH_INTERVAL_MS,
   })
   const queueMatchesQuery = useQuery({
     queryKey: ['event', id, 'queue-matches'],
     queryFn: () => getQueueMatches(id),
-    refetchInterval: 2000,
-    enabled: Boolean(myTeamQuery.data),
+    refetchInterval: QUEUE_REFETCH_INTERVAL_MS,
+    enabled: Boolean(queueSummaryQuery.data),
   })
   const opponentsQuery = useQuery({
-    queryKey: ['event', id, 'teams', 'queue-opponents'],
-    queryFn: () => getTeamsForEventTable(id),
-    enabled: Boolean(myTeamQuery.data) && isOpponentDialogOpen,
+    queryKey: ['event', id, 'queue-opponents'],
+    queryFn: () => getQueueOpponents(id),
+    enabled: Boolean(queueSummaryQuery.data) && isOpponentDialogOpen,
   })
   const refreshQueueData = async () => {
     await Promise.all([
       queryClient.invalidateQueries({
         queryKey: ['event', id, 'queue-matches'],
       }),
-      queryClient.invalidateQueries({ queryKey: myTeamQueryKey(id) }),
+      queryClient.invalidateQueries({
+        queryKey: ['event', id, 'queue-summary'],
+      }),
     ])
   }
 
@@ -88,7 +92,7 @@ function QueueRoute() {
     onError: (error: Error) => toast.error(getErrorMessage(error)),
   })
 
-  if (myTeamQuery.isPending) {
+  if (queueSummaryQuery.isPending) {
     return (
       <main className="flex min-h-[45vh] items-center justify-center">
         <Spinner />
@@ -96,7 +100,7 @@ function QueueRoute() {
     )
   }
 
-  if (!myTeamQuery.data) {
+  if (!queueSummaryQuery.data) {
     return (
       <main className="container mx-auto max-w-3xl px-4 py-8">
         <Card>
@@ -111,7 +115,7 @@ function QueueRoute() {
     )
   }
 
-  const credits = myTeamQuery.data.credits
+  const credits = queueSummaryQuery.data.credits
   const canJoinQueue = credits >= 1
   const canStartDirectMatch = credits >= 2
   const queueMatches = queueMatchesQuery.data ?? []
@@ -122,10 +126,8 @@ function QueueRoute() {
     (match) => match.state === MatchState.FINISHED,
   )
   const normalizedOpponentSearch = opponentSearch.trim().toLocaleLowerCase()
-  const opponents = (opponentsQuery.data ?? []).filter(
-    (team: Team) =>
-      team.id !== myTeamQuery.data?.id &&
-      team.name.toLocaleLowerCase().includes(normalizedOpponentSearch),
+  const opponents = (opponentsQuery.data ?? []).filter((team: QueueOpponent) =>
+    team.name.toLocaleLowerCase().includes(normalizedOpponentSearch),
   )
 
   return (
@@ -138,7 +140,7 @@ function QueueRoute() {
                 <Swords className="size-5 text-muted-foreground" />
               </div>
               <div>
-                <p className="font-semibold">{myTeamQuery.data.name}</p>
+                <p className="font-semibold">{queueSummaryQuery.data.name}</p>
               </div>
             </div>
             <Button
@@ -219,16 +221,13 @@ function QueueRoute() {
                     : 'No other teams are available in this event yet.'}
                 </p>
               ) : (
-                opponents.map((opponent: Team) => (
+                opponents.map((opponent: QueueOpponent) => (
                   <div
                     key={opponent.id}
                     className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div>
                       <p className="font-medium">{opponent.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Queue score {opponent.queueScore}
-                      </p>
                     </div>
                     <Button
                       size="sm"

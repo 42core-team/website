@@ -29,7 +29,7 @@ import {
   MatchState,
 } from "../match/entites/match.entity";
 import { MatchStatsEntity } from "../match/entites/matchStats.entity";
-import { accrueQueueCredits, QUEUE_CREDIT_INTERVAL_MS } from "./team-credits";
+import { accrueQueueCredits } from "./team-credits";
 import { EventEntity } from "../event/entities/event.entity";
 import { rankQueueOpponents } from "./queue-matchmaking";
 import type { QueueOpponentCandidate } from "./queue-matchmaking";
@@ -648,23 +648,42 @@ export class TeamService {
     return this.teamRepository.update(teamId, { hadBye });
   }
 
-  async getQueueState(teamId: string) {
-    const team = await this.dataSource.transaction(async (entityManager) => {
+  async getQueueSummary(eventId: string, userId: string) {
+    const teamReference = await this.teamRepository.findOne({
+      select: { id: true },
+      where: {
+        event: { id: eventId },
+        users: { id: userId },
+      },
+    });
+    if (!teamReference) return null;
+
+    return this.dataSource.transaction(async (entityManager) => {
       const lockedTeam = await entityManager.findOneOrFail(TeamEntity, {
-        where: { id: teamId },
+        where: { id: teamReference.id },
         lock: { mode: "pessimistic_write" },
       });
       if (accrueQueueCredits(lockedTeam) > 0)
         await entityManager.save(lockedTeam);
-      return lockedTeam;
+      return {
+        id: lockedTeam.id,
+        name: lockedTeam.name,
+        credits: lockedTeam.credits,
+      };
+    });
+  }
+
+  async getQueueOpponents(eventId: string, teamId: string) {
+    const opponents = await this.teamRepository.find({
+      select: { id: true, name: true },
+      where: {
+        id: Not(teamId),
+        event: { id: eventId },
+      },
+      order: { name: "ASC" },
     });
 
-    return {
-      credits: team.credits,
-      nextCreditAt: new Date(
-        team.lastCreditGrantedAt.getTime() + QUEUE_CREDIT_INTERVAL_MS,
-      ),
-    };
+    return opponents.map(({ id, name }) => ({ id, name }));
   }
 
   async createDirectMatch(challengerId: string, targetId: string) {

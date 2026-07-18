@@ -43,6 +43,31 @@ export interface Match {
   }[]
 }
 
+export interface QueueMatch {
+  id?: string
+  state: MatchState
+  phase: MatchPhase
+  createdAt: string
+  teams: {
+    id: string
+    name: string
+    deletedAt?: string | null
+  }[]
+  winner?: {
+    id: string
+    name: string
+    deletedAt?: string | null
+  } | null
+  results?: {
+    team: {
+      id: string
+      name: string
+      deletedAt?: string | null
+    }
+    score: number
+  }[]
+}
+
 export type MatchLogs = {
   container: string
   team: string

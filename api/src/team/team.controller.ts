@@ -288,10 +288,16 @@ export class TeamController {
     return this.teamService.joinQueue(team.id, eventId);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get(`event/:${EVENT_ID_PARAM}/queue/summary`)
+  getQueueSummary(@EventId eventId: string, @UserId() userId: string) {
+    return this.teamService.getQueueSummary(eventId, userId);
+  }
+
   @UseGuards(JwtAuthGuard, MyTeamGuards)
-  @Get(`event/:${EVENT_ID_PARAM}/queue/state`)
-  async getQueueState(@Team() team: TeamEntity) {
-    return this.teamService.getQueueState(team.id);
+  @Get(`event/:${EVENT_ID_PARAM}/queue/opponents`)
+  getQueueOpponents(@EventId eventId: string, @Team() team: TeamEntity) {
+    return this.teamService.getQueueOpponents(eventId, team.id);
   }
 
   @UseGuards(JwtAuthGuard, MyTeamGuards)
