@@ -3,19 +3,19 @@ import { getCreditWagerRefund } from "./match-credit-wager";
 describe("getCreditWagerRefund", () => {
   const initiatingTeam = { id: "initiating-team" };
 
-  it("returns the full stake when the initiating team wins", () => {
+  it("returns the one-credit stake when the initiating team wins", () => {
     expect(
       getCreditWagerRefund(
-        { creditWager: 2, creditWagerTeam: initiatingTeam },
+        { creditWager: 1, creditWagerTeam: initiatingTeam },
         initiatingTeam.id,
       ),
-    ).toBe(2);
+    ).toBe(1);
   });
 
   it("does not refund the stake when the initiating team loses", () => {
     expect(
       getCreditWagerRefund(
-        { creditWager: 2, creditWagerTeam: initiatingTeam },
+        { creditWager: 1, creditWagerTeam: initiatingTeam },
         "opponent-team",
       ),
     ).toBe(0);

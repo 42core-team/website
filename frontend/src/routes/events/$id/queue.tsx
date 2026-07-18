@@ -118,7 +118,9 @@ function QueueRoute() {
       setIsOpponentDialogOpen(false)
       setOpponentSearch('')
       await refreshQueueData()
-      toast.success('Direct match is starting. Your team staked 2 credits.')
+      toast.success(
+        'Direct match is starting. You paid 1 credit and staked 1 credit.',
+      )
     },
     onError: (error: Error) => toast.error(getErrorMessage(error)),
   })
@@ -273,8 +275,9 @@ function QueueRoute() {
             <DialogHeader>
               <DialogTitle>Choose an opponent</DialogTitle>
               <DialogDescription>
-                A direct match starts immediately and stakes 2 credits. Win to
-                get the 2-credit stake back; lose and the stake is forfeited.
+                A direct match requires 2 credits: 1 is always paid and 1 is
+                staked. Win to get the staked credit back; lose and both credits
+                are spent.
               </DialogDescription>
             </DialogHeader>
             <div className="relative">

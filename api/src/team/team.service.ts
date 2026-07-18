@@ -30,7 +30,8 @@ import {
 import { MatchStatsEntity } from "../match/entites/matchStats.entity";
 import { accrueQueueCredits, QUEUE_CREDIT_INTERVAL_MS } from "./team-credits";
 
-const DIRECT_MATCH_WAGER = 2;
+const DIRECT_MATCH_COST = 2;
+const DIRECT_MATCH_STAKE = 1;
 
 @Injectable()
 export class TeamService {
@@ -689,11 +690,11 @@ export class TeamService {
         );
 
       accrueQueueCredits(challenger);
-      if (challenger.credits < DIRECT_MATCH_WAGER)
+      if (challenger.credits < DIRECT_MATCH_COST)
         throw new BadRequestException(
-          `Your team needs at least ${DIRECT_MATCH_WAGER} credits to play a direct match.`,
+          `Your team needs at least ${DIRECT_MATCH_COST} credits to play a direct match.`,
         );
-      challenger.credits -= DIRECT_MATCH_WAGER;
+      challenger.credits -= DIRECT_MATCH_COST;
       await entityManager.save(challenger);
 
       return this.createQueueMatch(
@@ -719,7 +720,7 @@ export class TeamService {
         round: 0,
         phase: MatchPhase.QUEUE,
         state: MatchState.PLANNED,
-        creditWager: DIRECT_MATCH_WAGER,
+        creditWager: DIRECT_MATCH_STAKE,
         creditWagerTeam,
         stats: new MatchStatsEntity(),
       }),
