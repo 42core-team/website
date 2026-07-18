@@ -77,7 +77,7 @@ export function TeamCreationSection({
                 title="Join the Competition"
               >
                 Invite your team members, push your changes, and start testing
-                your bot's logic in the queue.
+                your bot's logic in match making.
               </Feature>
             </div>
 

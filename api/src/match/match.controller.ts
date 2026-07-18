@@ -118,7 +118,7 @@ export class MatchController {
   ) {
     if (!(await this.eventService.isEventAdmin(eventId, userId)))
       throw new UnauthorizedException(
-        "You are not authorized to view all queue matches.",
+        "You are not authorized to view all match making matches.",
       );
     return await this.matchService.getAllQueueMatches(eventId);
   }
@@ -249,7 +249,7 @@ export class MatchController {
   ) {
     if (!(await this.eventService.isEventAdmin(eventId, userId)))
       throw new UnauthorizedException(
-        "You are not authorized to view queue match stats.",
+        "You are not authorized to view match making stats.",
       );
 
     let start: Date | undefined = undefined;

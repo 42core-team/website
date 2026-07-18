@@ -23,7 +23,7 @@ export default function QueueMatchesList(props: {
         )}
       >
         <p className="font-medium text-muted-foreground">
-          No queue matches found
+          No match making matches found
         </p>
       </div>
     )
@@ -66,7 +66,7 @@ export default function QueueMatchesList(props: {
                   variant="outline"
                   className="border-border/50 px-1.5 text-[10px] font-bold text-muted-foreground uppercase"
                 >
-                  {match.phase === MatchPhase.QUEUE && 'Queue'}
+                  {match.phase === MatchPhase.QUEUE && 'Match Making'}
                   {match.phase === MatchPhase.SWISS && 'Swiss'}
                   {match.phase === MatchPhase.ELIMINATION && 'Tournament'}
                 </Badge>

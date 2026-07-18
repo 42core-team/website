@@ -1,8 +1,17 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { getTeamById, getTeamMembers } from '@/app/actions/team'
+import type { AxiosError } from 'axios'
+import { Swords } from 'lucide-react'
+import { toast } from 'sonner'
+import {
+  getTeamById,
+  getTeamMembers,
+  startDirectMatch,
+} from '@/app/actions/team'
 import { getMatchesForTeam } from '@/app/actions/tournament'
+import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import { TeamMatchHistory, TeamPublicProfile } from '@/components/team'
+import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 
 export const Route = createFileRoute('/events/$id/teams/$teamId')({
@@ -11,6 +20,7 @@ export const Route = createFileRoute('/events/$id/teams/$teamId')({
 
 function TeamRoute() {
   const { id, teamId } = Route.useParams()
+  const queryClient = useQueryClient()
   const teamQuery = useQuery({
     queryKey: ['team', teamId],
     queryFn: () => getTeamById(teamId),
@@ -22,6 +32,31 @@ function TeamRoute() {
   const matchesQuery = useQuery({
     queryKey: ['team', teamId, 'matches'],
     queryFn: () => getMatchesForTeam(teamId),
+  })
+  const myTeamQuery = useQuery({
+    queryKey: myTeamQueryKey(id),
+    queryFn: () => myTeamQueryFn(id),
+  })
+  const attackMutation = useMutation({
+    mutationFn: () => startDirectMatch(id, teamId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ['event', id, 'queue-summary'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['event', id, 'queue-matches'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['team', teamId, 'matches'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['team', myTeamQuery.data?.id, 'matches'],
+        }),
+      ])
+      toast.success('Attack started. You paid 1 credit and staked 1 credit.')
+    },
+    onError: (error: Error) => toast.error(getErrorMessage(error)),
   })
 
   if (teamQuery.isPending) {
@@ -40,9 +75,29 @@ function TeamRoute() {
     )
   }
 
+  const canAttack =
+    Boolean(myTeamQuery.data) && myTeamQuery.data?.id !== teamQuery.data.id
+
   return (
     <main className="container mx-auto max-w-7xl px-4 py-8">
-      <TeamPublicProfile members={membersQuery.data ?? []} />
+      <TeamPublicProfile
+        members={membersQuery.data ?? []}
+        teamName={teamQuery.data.name}
+        action={
+          canAttack ? (
+            <Button
+              className="w-full sm:w-auto"
+              disabled={attackMutation.isPending}
+              onClick={() => attackMutation.mutate()}
+            >
+              {attackMutation.isPending ? <Spinner /> : <Swords />}
+              {attackMutation.isPending
+                ? 'Starting attack'
+                : 'Attack this team · 2 credits'}
+            </Button>
+          ) : undefined
+        }
+      />
       <div className="mt-6">
         <TeamMatchHistory
           eventId={id}
@@ -53,4 +108,9 @@ function TeamRoute() {
       </div>
     </main>
   )
+}
+
+function getErrorMessage(error: Error) {
+  const axiosError = error as AxiosError<{ message?: string }>
+  return axiosError.response?.data.message ?? error.message
 }

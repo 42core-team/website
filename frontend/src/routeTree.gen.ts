@@ -23,7 +23,6 @@ import { Route as EventsCreateRouteImport } from './routes/events/create'
 import { Route as EventsIdRouteImport } from './routes/events/$id'
 import { Route as EventsIdUnitBuilderRouteImport } from './routes/events/$id/unit-builder'
 import { Route as EventsIdTeamsRouteImport } from './routes/events/$id/teams'
-import { Route as EventsIdQueueMatchesRouteImport } from './routes/events/$id/queue-matches'
 import { Route as EventsIdQueueRouteImport } from './routes/events/$id/queue'
 import { Route as EventsIdMyTeamRouteImport } from './routes/events/$id/my-team'
 import { Route as EventsIdGroupsRouteImport } from './routes/events/$id/groups'
@@ -102,11 +101,6 @@ const EventsIdTeamsRoute = EventsIdTeamsRouteImport.update({
   path: '/teams',
   getParentRoute: () => EventsIdRoute,
 } as any)
-const EventsIdQueueMatchesRoute = EventsIdQueueMatchesRouteImport.update({
-  id: '/queue-matches',
-  path: '/queue-matches',
-  getParentRoute: () => EventsIdRoute,
-} as any)
 const EventsIdQueueRoute = EventsIdQueueRouteImport.update({
   id: '/queue',
   path: '/queue',
@@ -161,7 +155,6 @@ export interface FileRoutesByFullPath {
   '/events/$id/groups': typeof EventsIdGroupsRoute
   '/events/$id/my-team': typeof EventsIdMyTeamRoute
   '/events/$id/queue': typeof EventsIdQueueRoute
-  '/events/$id/queue-matches': typeof EventsIdQueueMatchesRoute
   '/events/$id/teams': typeof EventsIdTeamsRouteWithChildren
   '/events/$id/unit-builder': typeof EventsIdUnitBuilderRoute
   '/events/$id/match/$matchId': typeof EventsIdMatchMatchIdRoute
@@ -185,7 +178,6 @@ export interface FileRoutesByTo {
   '/events/$id/groups': typeof EventsIdGroupsRoute
   '/events/$id/my-team': typeof EventsIdMyTeamRoute
   '/events/$id/queue': typeof EventsIdQueueRoute
-  '/events/$id/queue-matches': typeof EventsIdQueueMatchesRoute
   '/events/$id/teams': typeof EventsIdTeamsRouteWithChildren
   '/events/$id/unit-builder': typeof EventsIdUnitBuilderRoute
   '/events/$id/match/$matchId': typeof EventsIdMatchMatchIdRoute
@@ -210,7 +202,6 @@ export interface FileRoutesById {
   '/events/$id/groups': typeof EventsIdGroupsRoute
   '/events/$id/my-team': typeof EventsIdMyTeamRoute
   '/events/$id/queue': typeof EventsIdQueueRoute
-  '/events/$id/queue-matches': typeof EventsIdQueueMatchesRoute
   '/events/$id/teams': typeof EventsIdTeamsRouteWithChildren
   '/events/$id/unit-builder': typeof EventsIdUnitBuilderRoute
   '/events/$id/match/$matchId': typeof EventsIdMatchMatchIdRoute
@@ -236,7 +227,6 @@ export interface FileRouteTypes {
     | '/events/$id/groups'
     | '/events/$id/my-team'
     | '/events/$id/queue'
-    | '/events/$id/queue-matches'
     | '/events/$id/teams'
     | '/events/$id/unit-builder'
     | '/events/$id/match/$matchId'
@@ -260,7 +250,6 @@ export interface FileRouteTypes {
     | '/events/$id/groups'
     | '/events/$id/my-team'
     | '/events/$id/queue'
-    | '/events/$id/queue-matches'
     | '/events/$id/teams'
     | '/events/$id/unit-builder'
     | '/events/$id/match/$matchId'
@@ -284,7 +273,6 @@ export interface FileRouteTypes {
     | '/events/$id/groups'
     | '/events/$id/my-team'
     | '/events/$id/queue'
-    | '/events/$id/queue-matches'
     | '/events/$id/teams'
     | '/events/$id/unit-builder'
     | '/events/$id/match/$matchId'
@@ -403,13 +391,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsIdTeamsRouteImport
       parentRoute: typeof EventsIdRoute
     }
-    '/events/$id/queue-matches': {
-      id: '/events/$id/queue-matches'
-      path: '/queue-matches'
-      fullPath: '/events/$id/queue-matches'
-      preLoaderRoute: typeof EventsIdQueueMatchesRouteImport
-      parentRoute: typeof EventsIdRoute
-    }
     '/events/$id/queue': {
       id: '/events/$id/queue'
       path: '/queue'
@@ -480,7 +461,6 @@ interface EventsIdRouteChildren {
   EventsIdGroupsRoute: typeof EventsIdGroupsRoute
   EventsIdMyTeamRoute: typeof EventsIdMyTeamRoute
   EventsIdQueueRoute: typeof EventsIdQueueRoute
-  EventsIdQueueMatchesRoute: typeof EventsIdQueueMatchesRoute
   EventsIdTeamsRoute: typeof EventsIdTeamsRouteWithChildren
   EventsIdUnitBuilderRoute: typeof EventsIdUnitBuilderRoute
   EventsIdMatchMatchIdRoute: typeof EventsIdMatchMatchIdRoute
@@ -492,7 +472,6 @@ const EventsIdRouteChildren: EventsIdRouteChildren = {
   EventsIdGroupsRoute: EventsIdGroupsRoute,
   EventsIdMyTeamRoute: EventsIdMyTeamRoute,
   EventsIdQueueRoute: EventsIdQueueRoute,
-  EventsIdQueueMatchesRoute: EventsIdQueueMatchesRoute,
   EventsIdTeamsRoute: EventsIdTeamsRouteWithChildren,
   EventsIdUnitBuilderRoute: EventsIdUnitBuilderRoute,
   EventsIdMatchMatchIdRoute: EventsIdMatchMatchIdRoute,

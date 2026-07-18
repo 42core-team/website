@@ -11,8 +11,8 @@ import {
 import {
   UserEntity,
   UserEventPermissionEntity,
-} from "../../user/entities/user.entity";
-import { TeamEntity } from "../../team/entities/team.entity";
+} from "src/user/entities/user.entity";
+import { TeamEntity } from "src/team/entities/team.entity";
 import { Exclude } from "class-transformer";
 import { EventStarterTemplateEntity } from "./event-starter-template.entity";
 import { EventWhitelistEntity } from "./event-whitelist.entity";
@@ -58,6 +58,12 @@ export class EventEntity {
 
   @Column({ default: true })
   processQueue: boolean;
+
+  @Column({ default: 5 })
+  maxQueueCredits: number;
+
+  @Column({ default: 15 })
+  queueCreditIntervalMinutes: number;
 
   @Column({ type: "timestamp", nullable: true })
   lockedAt: Date | null;

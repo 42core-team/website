@@ -5,6 +5,9 @@ export interface QueueTeamSummary {
   id: string
   name: string
   credits: number
+  maxCredits: number
+  creditIntervalMs: number
+  nextCreditAt: string | null
 }
 
 export interface QueueOpponent {

@@ -70,12 +70,19 @@ export class TeamService {
 
       try {
         await queryRunner.query(`
-          UPDATE "teams"
+          UPDATE "teams" AS team
           SET
-            "credits" = "credits" + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - "lastCreditGrantedAt")) / 900)::integer,
-            "lastCreditGrantedAt" = "lastCreditGrantedAt" + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - "lastCreditGrantedAt")) / 900)::integer * INTERVAL '15 minutes'
-          WHERE "deletedAt" IS NULL
-            AND "lastCreditGrantedAt" <= CURRENT_TIMESTAMP - INTERVAL '15 minutes'
+            "credits" = LEAST(
+              team."credits" + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - team."lastCreditGrantedAt")) / (event."queueCreditIntervalMinutes" * 60))::integer,
+              event."maxQueueCredits"
+            ),
+            "lastCreditGrantedAt" = team."lastCreditGrantedAt"
+              + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - team."lastCreditGrantedAt")) / (event."queueCreditIntervalMinutes" * 60))::integer
+              * event."queueCreditIntervalMinutes" * INTERVAL '1 minute'
+          FROM "events" AS event
+          WHERE team."eventId" = event."id"
+            AND team."deletedAt" IS NULL
+            AND team."lastCreditGrantedAt" <= CURRENT_TIMESTAMP - event."queueCreditIntervalMinutes" * INTERVAL '1 minute'
         `);
       } finally {
         await queryRunner.query("SELECT pg_advisory_unlock($1)", [lockKey]);
@@ -571,20 +578,24 @@ export class TeamService {
       if (team.eventId !== eventId)
         throw new BadRequestException("The team is not part of this event.");
 
-      accrueQueueCredits(team);
-      if (team.credits < 1)
-        throw new BadRequestException(
-          "Your team needs at least one credit to join the queue.",
-        );
-
       const event = await entityManager.findOneOrFail(EventEntity, {
         where: { id: eventId },
       });
+      accrueQueueCredits(
+        team,
+        event.maxQueueCredits,
+        event.queueCreditIntervalMinutes * 60 * 1000,
+      );
+      if (team.credits < 1)
+        throw new BadRequestException(
+          "Your team needs at least one credit to start match making.",
+        );
+
       const now = new Date();
       if (!event.processQueue)
-        throw new BadRequestException("Queue matchmaking is disabled.");
+        throw new BadRequestException("Match making is disabled.");
       if (event.startDate > now || event.endDate < now)
-        throw new BadRequestException("Queue matchmaking is not available.");
+        throw new BadRequestException("Match making is not available.");
 
       const match = await this.createBestQueueMatch(team, entityManager);
       if (!match)
@@ -644,6 +655,16 @@ export class TeamService {
     return this.teamRepository.increment({ id: teamId }, "credits", credits);
   }
 
+  capCreditsForEvent(eventId: string, maxCredits: number) {
+    return this.teamRepository
+      .createQueryBuilder()
+      .update(TeamEntity)
+      .set({ credits: () => 'LEAST("credits", :maxCredits)' })
+      .where('"eventId" = :eventId', { eventId })
+      .setParameter("maxCredits", maxCredits)
+      .execute();
+  }
+
   setHadBye(teamId: string, hadBye: boolean) {
     return this.teamRepository.update(teamId, { hadBye });
   }
@@ -663,12 +684,35 @@ export class TeamService {
         where: { id: teamReference.id },
         lock: { mode: "pessimistic_write" },
       });
-      if (accrueQueueCredits(lockedTeam) > 0)
+      const event = await entityManager.findOneOrFail(EventEntity, {
+        select: {
+          id: true,
+          maxQueueCredits: true,
+          queueCreditIntervalMinutes: true,
+        },
+        where: { id: eventId },
+      });
+      const previousCredits = lockedTeam.credits;
+      const previousCreditGrantedAt = lockedTeam.lastCreditGrantedAt.getTime();
+      const creditIntervalMs = event.queueCreditIntervalMinutes * 60 * 1000;
+      accrueQueueCredits(lockedTeam, event.maxQueueCredits, creditIntervalMs);
+      if (
+        lockedTeam.credits !== previousCredits ||
+        lockedTeam.lastCreditGrantedAt.getTime() !== previousCreditGrantedAt
+      )
         await entityManager.save(lockedTeam);
       return {
         id: lockedTeam.id,
         name: lockedTeam.name,
         credits: lockedTeam.credits,
+        maxCredits: event.maxQueueCredits,
+        creditIntervalMs,
+        nextCreditAt:
+          lockedTeam.credits < event.maxQueueCredits
+            ? new Date(
+                lockedTeam.lastCreditGrantedAt.getTime() + creditIntervalMs,
+              )
+            : null,
       };
     });
   }
@@ -705,7 +749,19 @@ export class TeamService {
           "Teams can only play opponents in the same event.",
         );
 
-      accrueQueueCredits(challenger);
+      const event = await entityManager.findOneOrFail(EventEntity, {
+        select: {
+          id: true,
+          maxQueueCredits: true,
+          queueCreditIntervalMinutes: true,
+        },
+        where: { id: challenger.eventId },
+      });
+      accrueQueueCredits(
+        challenger,
+        event.maxQueueCredits,
+        event.queueCreditIntervalMinutes * 60 * 1000,
+      );
       if (challenger.credits < DIRECT_MATCH_COST)
         throw new BadRequestException(
           `Your team needs at least ${DIRECT_MATCH_COST} credits to play a direct match.`,

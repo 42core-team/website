@@ -464,6 +464,8 @@ export class EventService {
     settings: {
       canCreateTeam?: boolean;
       processQueue?: boolean;
+      maxQueueCredits?: number;
+      queueCreditIntervalMinutes?: number;
       isPrivate?: boolean;
       name?: string;
       description?: string;
@@ -526,7 +528,12 @@ export class EventService {
       ).toString();
     }
 
-    const numberFields = ["minTeamSize", "maxTeamSize"] as const;
+    const numberFields = [
+      "minTeamSize",
+      "maxTeamSize",
+      "maxQueueCredits",
+      "queueCreditIntervalMinutes",
+    ] as const;
     for (const field of numberFields) {
       if (typeof settings[field] === "number") {
         update[field] = settings[field];
@@ -548,7 +555,14 @@ export class EventService {
       };
     }
 
-    return this.eventRepository.update(eventId, update);
+    const result = await this.eventRepository.update(eventId, update);
+    if (typeof settings.maxQueueCredits === "number") {
+      await this.teamService.capCreditsForEvent(
+        eventId,
+        settings.maxQueueCredits,
+      );
+    }
+    return result;
   }
 
   async getEventAdmins(eventId: string) {
