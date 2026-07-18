@@ -13,6 +13,12 @@ import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import { TeamMatchHistory, TeamPublicProfile } from '@/components/team'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 export const Route = createFileRoute('/events/$id/teams/$teamId')({
   component: TeamRoute,
@@ -85,16 +91,31 @@ function TeamRoute() {
         teamName={teamQuery.data.name}
         action={
           canAttack ? (
-            <Button
-              className="w-full sm:w-auto"
-              disabled={attackMutation.isPending}
-              onClick={() => attackMutation.mutate()}
-            >
-              {attackMutation.isPending ? <Spinner /> : <Swords />}
-              {attackMutation.isPending
-                ? 'Starting attack'
-                : 'Attack this team · 2 credits'}
-            </Button>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    className="w-full sm:w-auto"
+                    disabled={attackMutation.isPending}
+                    onClick={() => attackMutation.mutate()}
+                  >
+                    {attackMutation.isPending ? <Spinner /> : <Swords />}
+                    {attackMutation.isPending
+                      ? 'Starting attack'
+                      : 'Attack this team · 2 credits'}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  align="end"
+                  className="max-w-xs text-pretty"
+                >
+                  A direct match requires 2 credits: 1 is always paid and 1 is
+                  staked. Win to get the staked credit back; lose and both
+                  credits are spent.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           ) : undefined
         }
       />
