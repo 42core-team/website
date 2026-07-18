@@ -21,6 +21,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as WikiSplatRouteImport } from './routes/wiki.$'
 import { Route as EventsCreateRouteImport } from './routes/events/create'
 import { Route as EventsIdRouteImport } from './routes/events/$id'
+import { Route as EventsIdUnitBuilderRouteImport } from './routes/events/$id/unit-builder'
 import { Route as EventsIdTeamsRouteImport } from './routes/events/$id/teams'
 import { Route as EventsIdQueueMatchesRouteImport } from './routes/events/$id/queue-matches'
 import { Route as EventsIdQueueRouteImport } from './routes/events/$id/queue'
@@ -91,6 +92,11 @@ const EventsIdRoute = EventsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => EventsRoute,
 } as any)
+const EventsIdUnitBuilderRoute = EventsIdUnitBuilderRouteImport.update({
+  id: '/unit-builder',
+  path: '/unit-builder',
+  getParentRoute: () => EventsIdRoute,
+} as any)
 const EventsIdTeamsRoute = EventsIdTeamsRouteImport.update({
   id: '/teams',
   path: '/teams',
@@ -157,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/events/$id/queue': typeof EventsIdQueueRoute
   '/events/$id/queue-matches': typeof EventsIdQueueMatchesRoute
   '/events/$id/teams': typeof EventsIdTeamsRouteWithChildren
+  '/events/$id/unit-builder': typeof EventsIdUnitBuilderRoute
   '/events/$id/match/$matchId': typeof EventsIdMatchMatchIdRoute
   '/events/$id/teams/$teamId': typeof EventsIdTeamsTeamIdRoute
 }
@@ -180,6 +187,7 @@ export interface FileRoutesByTo {
   '/events/$id/queue': typeof EventsIdQueueRoute
   '/events/$id/queue-matches': typeof EventsIdQueueMatchesRoute
   '/events/$id/teams': typeof EventsIdTeamsRouteWithChildren
+  '/events/$id/unit-builder': typeof EventsIdUnitBuilderRoute
   '/events/$id/match/$matchId': typeof EventsIdMatchMatchIdRoute
   '/events/$id/teams/$teamId': typeof EventsIdTeamsTeamIdRoute
 }
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/events/$id/queue': typeof EventsIdQueueRoute
   '/events/$id/queue-matches': typeof EventsIdQueueMatchesRoute
   '/events/$id/teams': typeof EventsIdTeamsRouteWithChildren
+  '/events/$id/unit-builder': typeof EventsIdUnitBuilderRoute
   '/events/$id/match/$matchId': typeof EventsIdMatchMatchIdRoute
   '/events/$id/teams/$teamId': typeof EventsIdTeamsTeamIdRoute
 }
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
     | '/events/$id/queue'
     | '/events/$id/queue-matches'
     | '/events/$id/teams'
+    | '/events/$id/unit-builder'
     | '/events/$id/match/$matchId'
     | '/events/$id/teams/$teamId'
   fileRoutesByTo: FileRoutesByTo
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/events/$id/queue'
     | '/events/$id/queue-matches'
     | '/events/$id/teams'
+    | '/events/$id/unit-builder'
     | '/events/$id/match/$matchId'
     | '/events/$id/teams/$teamId'
   id:
@@ -275,6 +286,7 @@ export interface FileRouteTypes {
     | '/events/$id/queue'
     | '/events/$id/queue-matches'
     | '/events/$id/teams'
+    | '/events/$id/unit-builder'
     | '/events/$id/match/$matchId'
     | '/events/$id/teams/$teamId'
   fileRoutesById: FileRoutesById
@@ -377,6 +389,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsIdRouteImport
       parentRoute: typeof EventsRoute
     }
+    '/events/$id/unit-builder': {
+      id: '/events/$id/unit-builder'
+      path: '/unit-builder'
+      fullPath: '/events/$id/unit-builder'
+      preLoaderRoute: typeof EventsIdUnitBuilderRouteImport
+      parentRoute: typeof EventsIdRoute
+    }
     '/events/$id/teams': {
       id: '/events/$id/teams'
       path: '/teams'
@@ -463,6 +482,7 @@ interface EventsIdRouteChildren {
   EventsIdQueueRoute: typeof EventsIdQueueRoute
   EventsIdQueueMatchesRoute: typeof EventsIdQueueMatchesRoute
   EventsIdTeamsRoute: typeof EventsIdTeamsRouteWithChildren
+  EventsIdUnitBuilderRoute: typeof EventsIdUnitBuilderRoute
   EventsIdMatchMatchIdRoute: typeof EventsIdMatchMatchIdRoute
 }
 
@@ -474,6 +494,7 @@ const EventsIdRouteChildren: EventsIdRouteChildren = {
   EventsIdQueueRoute: EventsIdQueueRoute,
   EventsIdQueueMatchesRoute: EventsIdQueueMatchesRoute,
   EventsIdTeamsRoute: EventsIdTeamsRouteWithChildren,
+  EventsIdUnitBuilderRoute: EventsIdUnitBuilderRoute,
   EventsIdMatchMatchIdRoute: EventsIdMatchMatchIdRoute,
 }
 
@@ -518,12 +539,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
