@@ -386,8 +386,9 @@ export default function DatenschtutzPage() {
         <p>
           Wenn Sie sich über 42 OAuth auf unserer Website anmelden, werden die
           folgenden Daten von Ihrem 42-Konto erfasst und verarbeitet: Nutzer Id
-          und Username. Diese Daten werden ausschließlich zur Authentifizierung
-          und zur Bereitstellung der Funktionen unserer Website verwendet. Eine
+          und Username sowie die ID und der Name Ihres primären Campus. Diese
+          Daten werden ausschließlich zur Authentifizierung und zur
+          Bereitstellung der Funktionen unserer Website verwendet. Eine
           Weitergabe an Dritte erfolgt nicht.
         </p>
         <p>

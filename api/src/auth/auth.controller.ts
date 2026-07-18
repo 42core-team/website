@@ -70,6 +70,8 @@ export class AuthController {
           platformUserId: string;
           username: string;
           email: string;
+          campusId: number | null;
+          campusName: string | null;
         };
       };
     },
@@ -93,6 +95,8 @@ export class AuthController {
         platform: SocialPlatform.FORTYTWO,
         platformUserId: request.user.fortyTwoAccount.platformUserId,
         username: request.user.fortyTwoAccount.username,
+        campusId: request.user.fortyTwoAccount.campusId,
+        campusName: request.user.fortyTwoAccount.campusName,
       });
 
       this.logger.log({ action: "fortytwo_link", userId });
