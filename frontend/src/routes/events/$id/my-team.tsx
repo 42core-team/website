@@ -16,6 +16,7 @@ import {
 import { getMatchesForTeam } from '@/app/actions/tournament'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import {
+  LocationTags,
   TeamCreationSection,
   TeamInfoSection,
   TeamMatchHistory,
@@ -231,7 +232,7 @@ function PendingInvites({
   onAccept,
   onDecline,
 }: {
-  invites: { id: string; name: string }[]
+  invites: Team[]
   onAccept: (teamId: string) => void
   onDecline: (teamId: string) => void
 }) {
@@ -248,7 +249,10 @@ function PendingInvites({
             key={invite.id}
             className="flex items-center justify-between rounded-md border p-3"
           >
-            <span className="font-medium">{invite.name}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium">{invite.name}</span>
+              <LocationTags tags={invite.tags} />
+            </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={() => onAccept(invite.id)}>
                 Accept

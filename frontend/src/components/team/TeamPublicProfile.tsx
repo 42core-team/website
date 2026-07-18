@@ -1,15 +1,18 @@
-import type { TeamMember } from '@/app/actions/team'
+import type { Team, TeamMember } from '@/app/actions/team'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRouter } from '@/lib/router-hooks'
 import TeamMemberDisplay from './TeamMemberDisplay'
+import LocationTags from './LocationTags'
 
 interface TeamPublicProfileProps {
+  team: Team
   members: TeamMember[]
 }
 
 export default function TeamPublicProfile({
+  team,
   members,
 }: Readonly<TeamPublicProfileProps>) {
   const router = useRouter()
@@ -25,18 +28,26 @@ export default function TeamPublicProfile({
         >
           <ArrowLeft />
         </Button>
-        <CardTitle className="flex h-9 items-center">Members</CardTitle>
+        <div className="flex flex-wrap items-center gap-2">
+          <CardTitle className="flex h-9 items-center">
+            Team: {team.name}
+          </CardTitle>
+          <LocationTags tags={team.tags} />
+        </div>
       </CardHeader>
-      <CardContent className="flex flex-wrap gap-3">
-        {members.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No team members found.
-          </p>
-        ) : (
-          members.map((member) => (
-            <TeamMemberDisplay key={member.id} member={member} />
-          ))
-        )}
+      <CardContent>
+        <h3 className="mb-3 text-lg font-semibold">Members</h3>
+        <div className="flex flex-wrap gap-3">
+          {members.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No team members found.
+            </p>
+          ) : (
+            members.map((member) => (
+              <TeamMemberDisplay key={member.id} member={member} />
+            ))
+          )}
+        </div>
       </CardContent>
     </Card>
   )

@@ -29,6 +29,7 @@ import {
 import { EVENT_ID_PARAM, TEAM_ID_PARAM } from "../guards/GuardConstants";
 import { TeamEntity } from "./entities/team.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { getLocationTags } from "../user/location-tags";
 
 @Controller("team")
 export class TeamController {
@@ -42,7 +43,7 @@ export class TeamController {
 
   @Get(":id")
   getTeamById(@Param("id", new ParseUUIDPipe()) id: string) {
-    return this.teamService.getTeamById(id);
+    return this.teamService.getTeamByIdWithTags(id);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -68,7 +69,7 @@ export class TeamController {
   @UseGuards(JwtAuthGuard)
   @Get(`event/:${EVENT_ID_PARAM}/my`)
   getMyTeamForEvent(@EventId eventId: string, @UserId("id") userId: string) {
-    return this.teamService.getTeamOfUserForEvent(eventId, userId);
+    return this.teamService.getTeamOfUserForEventWithTags(eventId, userId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -141,6 +142,7 @@ export class TeamController {
         username: user.username,
         profilePicture: user.profilePicture,
         isEventAdmin,
+        tags: getLocationTags(user.socialAccounts),
         socialAccounts: user.socialAccounts.map((sa) => ({
           platform: sa.platform,
           username: sa.username,

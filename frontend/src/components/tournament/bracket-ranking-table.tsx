@@ -6,6 +6,7 @@ import { Award, Medal, Trophy } from 'lucide-react'
 import { useMemo } from 'react'
 import { MatchState } from '@/app/actions/tournament-model'
 import { MatchHistoryBadges } from '@/components/match/MatchHistoryBadges'
+import { LocationTags } from '@/components/team'
 import {
   Table,
   TableBody,
@@ -87,11 +88,7 @@ export function BracketRankingTable({
         .sort((a, b) => a.round - b.round)
         .map((match) => ({
           id: match.id ?? '',
-          result: match.winner
-            ? match.winner.id === teamId
-              ? 'W'
-              : 'L'
-            : 'T',
+          result: match.winner ? (match.winner.id === teamId ? 'W' : 'L') : 'T',
         }))
         .filter((match) => match.id)
 
@@ -137,9 +134,7 @@ export function BracketRankingTable({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[100px] text-center">Standing</TableHead>
-            <TableHead className="w-[100px] text-center">
-              Swiss Rank
-            </TableHead>
+            <TableHead className="w-[100px] text-center">Swiss Rank</TableHead>
             <TableHead className="pl-8">Name</TableHead>
             <TableHead className="pr-7 text-right">Match History</TableHead>
           </TableRow>
@@ -195,7 +190,12 @@ export function BracketRankingTable({
                   <TableCell className="text-center text-muted-foreground">
                     {team.swissRank}
                   </TableCell>
-                  <TableCell className="pl-8">{team.name}</TableCell>
+                  <TableCell className="pl-8">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span>{team.name}</span>
+                      <LocationTags tags={team.tags} />
+                    </div>
+                  </TableCell>
                   <TableCell className="pr-6 text-right">
                     <div className="flex justify-end gap-1">
                       <MatchHistoryBadges

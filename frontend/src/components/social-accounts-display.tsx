@@ -2,6 +2,7 @@
 
 import type { SocialAccount } from '@/app/actions/social-accounts'
 import { useSession } from '@/lib/auth'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import {
   getSocialAccounts,
@@ -18,6 +19,7 @@ import {
 
 export default function SocialAccountsDisplay() {
   const { data: session } = useSession()
+  const queryClient = useQueryClient()
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [_unlinkingAccount, setUnlinkingAccount] = useState<string | null>(null)
@@ -35,9 +37,20 @@ export default function SocialAccountsDisplay() {
     }
   }, [session?.user.id])
 
-  const { message, isInitiating, initiate42OAuth, clearMessage } = use42Linking(
-    loadSocialAccounts, // Use the stable callback
-  )
+  const invalidateLocationTagQueries = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['team'] }),
+      queryClient.invalidateQueries({ queryKey: ['event'] }),
+    ])
+  }, [queryClient])
+
+  const handleLinkSuccess = useCallback(async () => {
+    await loadSocialAccounts()
+    await invalidateLocationTagQueries()
+  }, [invalidateLocationTagQueries, loadSocialAccounts])
+
+  const { message, isInitiating, initiate42OAuth, clearMessage } =
+    use42Linking(handleLinkSuccess)
 
   useEffect(() => {
     if (session?.user.id) {
@@ -70,6 +83,7 @@ export default function SocialAccountsDisplay() {
       setSocialAccounts((accounts) =>
         accounts.filter((account) => account.platform !== platform),
       )
+      await invalidateLocationTagQueries()
     } catch (error) {
       console.error('Error unlinking account:', error)
       alert('Failed to unlink account. Please try again.')

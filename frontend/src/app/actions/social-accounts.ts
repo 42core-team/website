@@ -5,6 +5,8 @@ export interface SocialAccount {
   platform: string
   username: string
   platformUserId: string
+  campusId: number | null
+  campusName: string | null
   userId: string
   createdAt: string
   updatedAt: string

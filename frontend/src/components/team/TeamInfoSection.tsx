@@ -20,6 +20,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import TeamInviteModal from './TeamInviteModal'
 import TeamMemberDisplay from './TeamMemberDisplay'
+import LocationTags from './LocationTags'
 
 interface TeamInfoSectionProps {
   myTeam: Team
@@ -65,9 +66,12 @@ export function TeamInfoSection({
   return (
     <Card className="rounded-lg border">
       <CardHeader>
-        <CardTitle className="text-2xl font-bold">
-          Team: {myTeam.name}
-        </CardTitle>
+        <div className="flex flex-wrap items-center gap-2">
+          <CardTitle className="text-2xl font-bold">
+            Team: {myTeam.name}
+          </CardTitle>
+          <LocationTags tags={myTeam.tags} />
+        </div>
         {myTeam.locked && <Badge variant="destructive">Locked</Badge>}
       </CardHeader>
       <CardContent className="flex flex-col gap-2">

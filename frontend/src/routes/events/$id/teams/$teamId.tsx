@@ -42,7 +42,10 @@ function TeamRoute() {
 
   return (
     <main className="container mx-auto max-w-7xl px-4 py-8">
-      <TeamPublicProfile members={membersQuery.data ?? []} />
+      <TeamPublicProfile
+        team={teamQuery.data}
+        members={membersQuery.data ?? []}
+      />
       <div className="mt-6">
         <TeamMatchHistory
           eventId={id}
