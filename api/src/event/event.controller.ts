@@ -24,6 +24,7 @@ import { AddToWhitelistDto, BulkDeleteWhitelistDto } from "./dtos/whitelistDto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { UserId } from "../guards/UserGuard";
 import { SocialPlatform } from "src/user/entities/social-account.entity";
+import { EventAudience } from "./entities/event.entity";
 
 @Controller("event")
 export class EventController {
@@ -122,6 +123,7 @@ export class EventController {
       createEventDto.gameConfig,
       createEventDto.serverConfig,
       createEventDto.isPrivate,
+      createEventDto.audience,
     );
   }
 
@@ -173,13 +175,33 @@ export class EventController {
 
     const event = await this.eventService.getEventById(eventId);
 
-    if (event.isPrivate) {
-      const user = await this.userService.getUserWithSocialAccounts(userId);
-      const socialAccounts = user.socialAccounts || [];
-      const fortyTwoAccount = socialAccounts.find(
-        (sa) => sa.platform === SocialPlatform.FORTYTWO,
-      );
+    const user = await this.userService.getUserWithSocialAccounts(userId);
+    const socialAccounts = user.socialAccounts || [];
+    const fortyTwoAccount = socialAccounts.find(
+      (sa) => sa.platform === SocialPlatform.FORTYTWO,
+    );
 
+    if (event.audience !== EventAudience.BOTH) {
+      if (!fortyTwoAccount) {
+        throw new UnauthorizedException(
+          "You must link your 42 intra account to join this event.",
+        );
+      }
+
+      const isEligible = await this.eventService.isUserEligibleForEventAudience(
+        event.audience,
+        userId,
+      );
+      if (!isEligible) {
+        throw new UnauthorizedException(
+          event.audience === EventAudience.PISCINE
+            ? "This event is only open to piscine students."
+            : "This event is only open to 42cursus students.",
+        );
+      }
+    }
+
+    if (event.isPrivate) {
       const isWhitelisted = await this.eventService.isUserWhitelisted(
         eventId,
         user.username,

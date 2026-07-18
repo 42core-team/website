@@ -6,6 +6,8 @@ export interface SocialAccount {
   username: string
   platformUserId: string
   userId: string
+  isPiscineStudent?: boolean
+  isCursusStudent?: boolean
   createdAt: string
   updatedAt: string
 }

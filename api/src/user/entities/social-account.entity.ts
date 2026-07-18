@@ -38,6 +38,12 @@ export class SocialAccountEntity {
   @Column()
   userId: string; // Reference to our user
 
+  @Column({ default: false })
+  isPiscineStudent: boolean; // 42 intra: enrolled in a piscine cursus
+
+  @Column({ default: false })
+  isCursusStudent: boolean; // 42 intra: enrolled in the 42cursus
+
   @ManyToOne(() => UserEntity, (user) => user.socialAccounts, {
     onDelete: "CASCADE",
   })

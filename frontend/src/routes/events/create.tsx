@@ -21,10 +21,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useSession } from '@/lib/auth'
+import { EventAudience } from '@/lib/constants/event-audience'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/events/create')({
@@ -56,6 +64,7 @@ const formSchema = z
     gameConfig: z.string().min(1, 'Game config is required'),
     serverConfig: z.string().min(1, 'Server config is required'),
     isPrivate: z.boolean(),
+    audience: z.enum(EventAudience),
   })
   .refine((value) => value.maxTeamSize >= value.minTeamSize, {
     message: 'Max team size must be at least the min team size',
@@ -86,6 +95,7 @@ const defaultValues: FormValues = {
   gameConfig: '',
   serverConfig: '',
   isPrivate: false,
+  audience: EventAudience.BOTH,
 }
 
 function parseGitHubRepo(url: string): { owner: string; repo: string } | null {
@@ -251,6 +261,7 @@ function CreateEventRoute() {
         gameConfig: values.gameConfig,
         serverConfig: values.serverConfig,
         isPrivate: values.isPrivate,
+        audience: values.audience,
       }
 
       return createEvent(payload)
@@ -545,6 +556,35 @@ function CreateEventRoute() {
                       onCheckedChange={field.handleChange}
                     />
                   </div>
+                )}
+              />
+
+              <form.Field
+                name="audience"
+                children={(field) => (
+                  <TextField errors={field.state.meta.errors} label="Audience">
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(value: EventAudience) =>
+                        field.handleChange(value)
+                      }
+                    >
+                      <SelectTrigger id={field.name}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={EventAudience.BOTH}>
+                          Piscine &amp; 42cursus
+                        </SelectItem>
+                        <SelectItem value={EventAudience.PISCINE}>
+                          Piscine only
+                        </SelectItem>
+                        <SelectItem value={EventAudience.CURSUS}>
+                          42cursus only
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TextField>
                 )}
               />
             </div>

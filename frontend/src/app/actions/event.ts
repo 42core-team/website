@@ -1,3 +1,4 @@
+import type { EventAudience } from '@/lib/constants/event-audience'
 import type { WhitelistPlatform } from '@/lib/constants/whitelist'
 
 import axiosInstance from '@/app/actions/axios'
@@ -28,6 +29,7 @@ export interface Event {
   gameConfig?: string
   serverConfig?: string
   isPrivate: boolean
+  audience: EventAudience
   githubOrgSecret?: string
   starterTemplates?: EventStarterTemplate[]
 }
@@ -106,6 +108,7 @@ export interface EventCreateParams {
   gameConfig: string
   serverConfig: string
   isPrivate: boolean
+  audience: EventAudience
 }
 
 // Create a new event

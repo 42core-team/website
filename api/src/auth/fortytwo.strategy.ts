@@ -11,6 +11,7 @@ interface FortyTwoProfile {
   email: string | null;
   image_url: string | null;
   displayname: string | null;
+  cursus_users?: { cursus?: { slug?: string } }[];
 }
 
 @Injectable()
@@ -50,11 +51,24 @@ export class FortyTwoOAuthStrategy extends PassportStrategy(Strategy, "42") {
       const username = data.login;
       const email = data.email ?? undefined;
 
+      // 42 intra has no single "role" field; membership is derived from the
+      // cursus slugs returned on the user's profile.
+      const cursusSlugs = (data.cursus_users ?? [])
+        .map((cu) => cu.cursus?.slug)
+        .filter((slug): slug is string => !!slug);
+      const isCursusStudent = cursusSlugs.includes("42cursus");
+      // 42 never removes the old piscine cursus_user record once a student
+      // progresses to 42cursus, so "piscine student" must exclude cursus students.
+      const isPiscineStudent =
+        cursusSlugs.includes("c-piscine") && !isCursusStudent;
+
       done(null, {
         fortyTwoAccount: {
           platformUserId,
           username,
           email,
+          isCursusStudent,
+          isPiscineStudent,
         },
       });
     } catch (err) {

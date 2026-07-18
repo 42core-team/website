@@ -4,7 +4,12 @@ import { createFileRoute } from '@tanstack/react-router'
 import type { AxiosError } from 'axios'
 import { useState } from 'react'
 import axiosInstance from '@/app/actions/axios'
-import { getEventById, getEventGithubOrg } from '@/app/actions/event'
+import {
+  getEventById,
+  getEventGithubOrg,
+  isUserRegisteredForEvent,
+} from '@/app/actions/event'
+import { getSocialAccountByPlatform } from '@/app/actions/social-accounts'
 import {
   acceptTeamInvite,
   declineTeamInvite,
@@ -24,6 +29,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
+import { EventAudience } from '@/lib/constants/event-audience'
+import { OAUTH_PROVIDERS } from '@/lib/constants/oauth'
 import { validateTeamName } from '@/lib/utils/validation'
 
 export const Route = createFileRoute('/events/$id/my-team')({
@@ -41,6 +48,18 @@ function MyTeamRoute() {
   const eventQuery = useQuery({
     queryKey: ['event', id],
     queryFn: async () => getEventById(id),
+  })
+  const isRegisteredQuery = useQuery({
+    queryKey: ['event', id, 'is-user-registered'],
+    queryFn: async () => isUserRegisteredForEvent(id),
+  })
+  const fortyTwoAccountQuery = useQuery({
+    queryKey: ['social-accounts', OAUTH_PROVIDERS.FORTY_TWO],
+    queryFn: () => getSocialAccountByPlatform(OAUTH_PROVIDERS.FORTY_TWO),
+    enabled:
+      eventQuery.data?.audience !== undefined &&
+      eventQuery.data.audience !== EventAudience.BOTH &&
+      isRegisteredQuery.data === false,
   })
   const myTeamQuery = useQuery<Team | null>({
     queryKey: myTeamQueryKey(id),
@@ -149,7 +168,11 @@ function MyTeamRoute() {
     },
   })
 
-  if (eventQuery.isPending || myTeamQuery.isPending) {
+  if (
+    eventQuery.isPending ||
+    myTeamQuery.isPending ||
+    isRegisteredQuery.isPending
+  ) {
     return (
       <main className="flex min-h-[45vh] items-center justify-center">
         <Spinner />
@@ -163,6 +186,28 @@ function MyTeamRoute() {
         <Alert variant="destructive">
           <AlertTitle>Event unavailable</AlertTitle>
           <AlertDescription>Could not load event details.</AlertDescription>
+        </Alert>
+      </main>
+    )
+  }
+
+  if (!isRegisteredQuery.data) {
+    const audience = eventQuery.data.audience
+    const audienceLabel =
+      audience === EventAudience.PISCINE ? 'piscine' : '42cursus'
+
+    const description =
+      audience !== EventAudience.BOTH
+        ? fortyTwoAccountQuery.data
+          ? `This event is only open to ${audienceLabel} students, and your linked 42 intra account doesn't meet that requirement.`
+          : `This event is only open to ${audienceLabel} students. Link your 42 intra account in your profile settings to check your eligibility.`
+        : "You haven't joined this event yet. Head to the Info tab to join."
+
+    return (
+      <main className="container mx-auto max-w-4xl px-4 py-8">
+        <Alert>
+          <AlertTitle>Team unavailable</AlertTitle>
+          <AlertDescription>{description}</AlertDescription>
         </Alert>
       </main>
     )
