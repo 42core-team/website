@@ -1,26 +1,37 @@
 import { Injectable } from "@nestjs/common";
 import { PassportStrategy } from "@nestjs/passport";
 import { ConfigService } from "@nestjs/config";
-import { UserService } from "../user/user.service";
-import { SocialAccountService } from "../user/social-account.service";
 import { Strategy } from "passport-oauth2";
 
-interface FortyTwoProfile {
+export interface FortyTwoProfile {
   id: number;
   login: string;
   email: string | null;
   image_url: string | null;
   displayname: string | null;
   cursus_users?: { cursus?: { slug?: string } }[];
+  campus?: Array<{ id: number; name: string }>;
+  campus_users?: Array<{ campus_id: number; is_primary: boolean }>;
+
+export function getPrimaryCampus(profile: FortyTwoProfile): {
+  campusId: number | null;
+  campusName: string | null;
+} {
+  const primaryCampusUser = profile.campus_users?.find(
+    (campusUser) => campusUser.is_primary,
+  );
+  const primaryCampus = profile.campus?.find(
+    (campus) => campus.id === primaryCampusUser?.campus_id,
+  );
+
+  return primaryCampus
+    ? { campusId: primaryCampus.id, campusName: primaryCampus.name }
+    : { campusId: null, campusName: null };
 }
 
 @Injectable()
 export class FortyTwoOAuthStrategy extends PassportStrategy(Strategy, "42") {
-  constructor(
-    config: ConfigService,
-    private readonly users: UserService,
-    private readonly socialAccounts: SocialAccountService,
-  ) {
+  constructor(config: ConfigService) {
     super({
       authorizationURL: "https://api.intra.42.fr/oauth/authorize",
       tokenURL: "https://api.intra.42.fr/oauth/token",
@@ -50,6 +61,7 @@ export class FortyTwoOAuthStrategy extends PassportStrategy(Strategy, "42") {
       const platformUserId = String(data.id);
       const username = data.login;
       const email = data.email ?? undefined;
+      const primaryCampus = getPrimaryCampus(data);
 
       // 42 intra has no single "role" field; membership is derived from the
       // cursus slugs returned on the user's profile.
@@ -67,6 +79,9 @@ export class FortyTwoOAuthStrategy extends PassportStrategy(Strategy, "42") {
           platformUserId,
           username,
           email,
+          isCursusStudent,
+          isPiscineStudent,
+          ...primaryCampus,
           isCursusStudent,
           isPiscineStudent,
         },

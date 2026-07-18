@@ -1,29 +1,36 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ExternalLink } from 'lucide-react'
+import { getEventById } from '@/app/actions/event'
 import { getLogsOfMatch, getMatchById } from '@/app/actions/tournament'
 import MatchLogsDisplay from '@/components/match/MatchLogsDisplay'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { getS3ReplaysBucketUrl, getVisualizerUrl } from '@/lib/env'
+import { buildMatchVisualizerUrl } from '@/lib/visualizer-url'
 
 export const Route = createFileRoute('/events/$id/match/$matchId')({
   component: MatchRoute,
 })
 
 function MatchRoute() {
-  const { matchId } = Route.useParams()
+  const { id, matchId } = Route.useParams()
   const matchQuery = useQuery({
     queryKey: ['match', matchId],
     queryFn: async () => getMatchById(matchId),
   })
-  const visualizerUrl = matchQuery.data
-    ? getMatchVisualizerUrl(
-        matchId,
-        matchQuery.data.phase,
-        matchQuery.data.round,
-      )
-    : getMatchVisualizerUrl(matchId)
+  const eventQuery = useQuery({
+    queryKey: ['event', id],
+    queryFn: async () => getEventById(id),
+  })
+  const visualizerUrl = buildMatchVisualizerUrl({
+    visualizerUrl: getVisualizerUrl(),
+    replaysBucketUrl: getS3ReplaysBucketUrl(),
+    matchId,
+    visualizerDockerImage: eventQuery.data?.visualizerDockerImage,
+    phase: matchQuery.data?.phase,
+    round: matchQuery.data?.round,
+  })
   const logsQuery = useQuery({
     queryKey: ['match', matchId, 'logs'],
     queryFn: async () => getLogsOfMatch(matchId),
@@ -74,24 +81,4 @@ function MatchRoute() {
       </div>
     </main>
   )
-}
-
-function getMatchVisualizerUrl(
-  matchId: string,
-  phase?: string,
-  round?: number,
-) {
-  const visualizerUrl = getVisualizerUrl()
-  const replaysBucketUrl = getS3ReplaysBucketUrl()
-
-  if (!visualizerUrl || !replaysBucketUrl) return null
-
-  const url = new URL(visualizerUrl)
-  url.searchParams.set('replays', `${replaysBucketUrl}/${matchId}/replay.json`)
-  url.searchParams.set('dynamicSpeed', 'on')
-  url.searchParams.set('autoplay', 'start')
-  if (phase) url.searchParams.set('mode', phase)
-  if (typeof round === 'number') url.searchParams.set('round', String(round))
-
-  return url.toString()
 }

@@ -46,6 +46,8 @@ describe("SocialAccountService", () => {
         platform: SocialPlatform.FORTYTWO,
         platformUserId: "42-user-id",
         username: "new-login",
+        campusId: 12,
+        campusName: "Berlin",
       }),
     ).rejects.toThrow(ConflictException);
   });
@@ -57,6 +59,8 @@ describe("SocialAccountService", () => {
       platform: SocialPlatform.FORTYTWO,
       platformUserId: "42-user-id",
       username: "old-login",
+      campusId: 1,
+      campusName: "Paris",
     } as SocialAccountEntity;
 
     repository.findOne
@@ -72,13 +76,68 @@ describe("SocialAccountService", () => {
         platform: SocialPlatform.FORTYTWO,
         platformUserId: "42-user-id",
         username: "updated-login",
+        campusId: 12,
+        campusName: "Berlin",
       }),
     ).resolves.toMatchObject({
       id: "social-account-1",
       userId: "current-user",
       platformUserId: "42-user-id",
       username: "updated-login",
+      campusId: 12,
+      campusName: "Berlin",
     });
+  });
+
+  it("persists campus data when creating a new link", async () => {
+    repository.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+    repository.save.mockImplementation(
+      async (entity: SocialAccountEntity) => entity,
+    );
+
+    await service.upsertSocialAccountForUser({
+      userId: "current-user",
+      platform: SocialPlatform.FORTYTWO,
+      platformUserId: "42-user-id",
+      username: "new-login",
+      campusId: 12,
+      campusName: "Berlin",
+    });
+
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ campusId: 12, campusName: "Berlin" }),
+    );
+  });
+
+  it("clears stale campus data when reconnecting without a primary campus", async () => {
+    const existingAccount = {
+      id: "social-account-1",
+      userId: "current-user",
+      platform: SocialPlatform.FORTYTWO,
+      platformUserId: "42-user-id",
+      username: "old-login",
+      campusId: 12,
+      campusName: "Berlin",
+    } as SocialAccountEntity;
+    repository.findOne
+      .mockResolvedValueOnce(existingAccount)
+      .mockResolvedValueOnce(existingAccount);
+    repository.save.mockImplementation(
+      async (entity: SocialAccountEntity) => entity,
+    );
+
+    await service.upsertSocialAccountForUser({
+      userId: "current-user",
+      platform: SocialPlatform.FORTYTWO,
+      platformUserId: "42-user-id",
+      username: "new-login",
+      campusId: null,
+      campusName: null,
+    });
+
+    expect(repository.save).toHaveBeenCalledWith(
+      expect.objectContaining({ campusId: null, campusName: null }),
+    );
   });
 
   it("returns a conflict when the database rejects a duplicate provider identity", async () => {
@@ -102,6 +161,8 @@ describe("SocialAccountService", () => {
         platform: SocialPlatform.FORTYTWO,
         platformUserId: "42-user-id",
         username: "new-login",
+        campusId: 12,
+        campusName: "Berlin",
       }),
     ).rejects.toThrow(ConflictException);
   });

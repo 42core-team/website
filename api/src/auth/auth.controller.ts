@@ -72,6 +72,8 @@ export class AuthController {
           email: string;
           isPiscineStudent: boolean;
           isCursusStudent: boolean;
+          campusId: number | null;
+          campusName: string | null;
         };
       };
     },
@@ -97,6 +99,8 @@ export class AuthController {
         username: request.user.fortyTwoAccount.username,
         isPiscineStudent: request.user.fortyTwoAccount.isPiscineStudent,
         isCursusStudent: request.user.fortyTwoAccount.isCursusStudent,
+        campusId: request.user.fortyTwoAccount.campusId,
+        campusName: request.user.fortyTwoAccount.campusName,
       });
 
       this.logger.log({ action: "fortytwo_link", userId });

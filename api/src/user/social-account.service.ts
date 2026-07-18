@@ -59,6 +59,8 @@ export class SocialAccountService {
     platformUserId: string;
     isPiscineStudent?: boolean;
     isCursusStudent?: boolean;
+    campusId: number | null;
+    campusName: string | null;
   }): Promise<SocialAccountEntity> {
     const linkedAccount = await this.socialAccountRepository.findOne({
       where: {
@@ -82,6 +84,8 @@ export class SocialAccountService {
         existing.isPiscineStudent = params.isPiscineStudent;
       if (params.isCursusStudent !== undefined)
         existing.isCursusStudent = params.isCursusStudent;
+      existing.campusId = params.campusId;
+      existing.campusName = params.campusName;
       return this.saveSocialAccount(existing);
     }
 
@@ -90,6 +94,10 @@ export class SocialAccountService {
       platform: params.platform,
       username: params.username,
       platformUserId: params.platformUserId,
+      isPiscineStudent: params.isPiscineStudent ?? false,
+      isCursusStudent: params.isCursusStudent ?? false,
+      campusId: params.campusId,
+      campusName: params.campusName,
       isPiscineStudent: params.isPiscineStudent ?? false,
       isCursusStudent: params.isCursusStudent ?? false,
     });
