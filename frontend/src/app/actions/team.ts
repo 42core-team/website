@@ -6,7 +6,6 @@ export interface Team {
   id: string
   name: string
   repo: string
-  inQueue: boolean
   credits: number
   score: number
   buchholzPoints: number
@@ -53,12 +52,8 @@ export async function getQueueState(eventId: string): Promise<QueueState> {
   ).data
 }
 
-export async function joinQueue(eventId: string): Promise<void> {
-  await axiosInstance.put(`team/event/${eventId}/queue/join`)
-}
-
-export async function leaveQueue(eventId: string): Promise<void> {
-  await axiosInstance.put(`team/event/${eventId}/queue/leave`)
+export async function joinQueue(eventId: string): Promise<{ matchId: string }> {
+  return (await axiosInstance.put(`team/event/${eventId}/queue/join`)).data
 }
 
 export async function startDirectMatch(
@@ -87,7 +82,6 @@ export async function getTeamById(teamId: string): Promise<Team | null> {
         hadBye: team.hadBye || false,
         queueScore: team.queueScore,
         createdAt: team.createdAt,
-        inQueue: team.inQueue,
         credits: team.credits ?? 0,
         updatedAt: team.updatedAt,
       }
@@ -113,7 +107,6 @@ export async function getMyEventTeam(eventId: string): Promise<Team | null> {
     buchholzPoints: team.buchholzPoints || 0,
     hadBye: team.hadBye || false,
     queueScore: team.queueScore,
-    inQueue: team.inQueue,
     credits: team.credits ?? 0,
     createdAt: team.createdAt,
     updatedAt: team.updatedAt,

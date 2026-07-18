@@ -2,7 +2,7 @@ import type { Team } from '@/app/actions/team'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import type { AxiosError } from 'axios'
-import { Coins, LogIn, LogOut, Search, Swords, Users } from 'lucide-react'
+import { Coins, LogIn, Search, Swords } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -10,7 +10,6 @@ import {
   getQueueState,
   getTeamsForEventTable,
   joinQueue,
-  leaveQueue,
   startDirectMatch,
 } from '@/app/actions/team'
 import { MatchState } from '@/app/actions/tournament-model'
@@ -103,13 +102,12 @@ function QueueRoute() {
 
   const joinQueueMutation = useMutation({
     mutationFn: async () => joinQueue(id),
-    onSuccess: refreshQueueData,
+    onSuccess: async ({ matchId }) => {
+      setActiveQueueMatchId(matchId)
+      await refreshQueueData()
+      toast.success('Opponent found. Your match is starting.')
+    },
     onError: (error: Error) => toast.error(getErrorMessage(error)),
-  })
-
-  const leaveQueueMutation = useMutation({
-    mutationFn: async () => leaveQueue(id),
-    onSettled: refreshQueueData,
   })
 
   const directMatchMutation = useMutation({
@@ -150,15 +148,9 @@ function QueueRoute() {
 
   const queueState = queueStateQuery.data
   const credits = queueState?.credits ?? myTeamQuery.data.credits
-  const inQueue = queueState?.inQueue ?? false
-  const canLeaveQueue = inQueue && !isQueueMatchRunning
-  const canJoinQueue = credits >= 1 && !inQueue && !isQueueMatchRunning
-  const canStartDirectMatch = credits >= 2 && !inQueue && !isQueueMatchRunning
-  const queueStatus = isQueueMatchRunning
-    ? 'Match Running'
-    : inQueue
-      ? 'In Queue'
-      : 'Idle'
+  const canJoinQueue = credits >= 1 && !isQueueMatchRunning
+  const canStartDirectMatch = credits >= 2 && !isQueueMatchRunning
+  const queueStatus = isQueueMatchRunning ? 'Match Running' : 'Ready'
   const normalizedOpponentSearch = opponentSearch.trim().toLocaleLowerCase()
   const opponents = (opponentsQuery.data ?? []).filter(
     (team: Team) =>
@@ -194,31 +186,14 @@ function QueueRoute() {
                 <p className="font-semibold">{myTeamQuery.data.name}</p>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <Badge
-                    variant={
-                      inQueue || isQueueMatchRunning ? 'default' : 'secondary'
-                    }
+                    variant={isQueueMatchRunning ? 'default' : 'secondary'}
                   >
                     {queueStatus}
                   </Badge>
-                  {queueState && (
-                    <span className="flex items-center gap-1">
-                      <Users className="size-3.5" />
-                      {queueState.queueCount} waiting
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
-            {canLeaveQueue ? (
-              <Button
-                variant="destructive"
-                disabled={leaveQueueMutation.isPending}
-                onClick={() => leaveQueueMutation.mutate()}
-              >
-                <LogOut className="size-4" />
-                Leave Queue
-              </Button>
-            ) : isQueueMatchRunning ? (
+            {isQueueMatchRunning ? (
               <Button disabled>
                 <Spinner />
                 Match Running
@@ -228,8 +203,17 @@ function QueueRoute() {
                 disabled={!canJoinQueue || joinQueueMutation.isPending}
                 onClick={() => joinQueueMutation.mutate()}
               >
-                <LogIn className="size-4" />
-                Join Queue · 1 credit
+                {joinQueueMutation.isPending ? (
+                  <>
+                    <Spinner />
+                    Finding opponent
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="size-4" />
+                    Join Queue · 1 credit
+                  </>
+                )}
               </Button>
             )}
           </div>

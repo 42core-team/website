@@ -42,9 +42,6 @@ export class TeamEntity {
   @Column({ default: 1000 })
   queueScore: number;
 
-  @Column({ default: false })
-  inQueue: boolean;
-
   @Column({ default: 0 })
   credits: number;
 

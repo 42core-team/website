@@ -13,11 +13,9 @@ import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
 import { getRabbitmqConfig } from "../main";
 import { ConfigService } from "@nestjs/config";
 import { TeamEntity } from "../team/entities/team.entity";
-import { Cron, CronExpression } from "@nestjs/schedule";
 import { GithubApiService } from "../github-api/github-api.service";
 import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations";
 import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
-import { LockKeys } from "../constants";
 
 @Injectable()
 export class MatchService {
@@ -46,42 +44,6 @@ export class MatchService {
     this.gameQueue = ClientProxyFactory.create(
       getRabbitmqConfig(configService, "game_queue"),
     );
-  }
-
-  @Cron(CronExpression.EVERY_5_SECONDS)
-  async processQueueMatches() {
-    const lockKey = LockKeys.PROCESS_QUEUE_MATCHES;
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-
-    try {
-      const gotLock = await queryRunner.query(
-        "SELECT pg_try_advisory_lock($1)",
-        [lockKey],
-      );
-
-      if (gotLock[0].pg_try_advisory_lock) {
-        try {
-          const events = await this.eventService.getAllEventsForQueue();
-          await Promise.all(
-            events.map(async (event) => {
-              let match = await this.teamService.createNextQueueMatch(event.id);
-              while (match) {
-                this.logger.log(
-                  `Starting scored queue match ${match.id} in event ${event.name}.`,
-                );
-                await this.startMatch(match.id);
-                match = await this.teamService.createNextQueueMatch(event.id);
-              }
-            }),
-          );
-        } finally {
-          await queryRunner.query("SELECT pg_advisory_unlock($1)", [lockKey]);
-        }
-      }
-    } finally {
-      await queryRunner.release();
-    }
   }
 
   async processMatchResult(

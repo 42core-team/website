@@ -276,9 +276,6 @@ export class TeamController {
     @EventId eventId: string,
     @UserId() userId: string,
   ) {
-    if (team.inQueue)
-      throw new BadRequestException("You are already in the queue.");
-
     if (!(await this.eventService.hasEventStartedForTeam(team.id)))
       throw new BadRequestException("The event has not started yet.");
 
@@ -289,21 +286,6 @@ export class TeamController {
     });
 
     return this.teamService.joinQueue(team.id, eventId);
-  }
-
-  @UseGuards(JwtAuthGuard, MyTeamGuards)
-  @Put(`event/:${EVENT_ID_PARAM}/queue/leave`)
-  async leaveQueue(@Team() team: TeamEntity, @UserId() userId: string) {
-    if (!team.inQueue)
-      throw new BadRequestException("You are not in the queue.");
-
-    this.logger.log({
-      action: "attempt_leave_queue",
-      teamId: team.id,
-      userId,
-    });
-
-    return this.teamService.leaveQueue(team.id);
   }
 
   @UseGuards(JwtAuthGuard, MyTeamGuards)
