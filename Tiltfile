@@ -104,7 +104,7 @@ k8s_resource('s3-proxy',
 
 docker_build('api', './api',
     dockerfile = './api/Dockerfile.dev',
-    ignore     = ['helm', 'dist', '.env*', '*.md'],
+    ignore     = ['helm', 'dist', 'db', '.env*', '*.md'],
     live_update = [
         sync('./api/src', '/app/src'),
         run(
