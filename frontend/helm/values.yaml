@@ -94,7 +94,7 @@ ingressRedirect:
 livenessProbe:
   enabled: true
   httpGet:
-    path: /api/health
+    path: /healthz
     port: http
   initialDelaySeconds: 30
   periodSeconds: 10
