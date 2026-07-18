@@ -12,6 +12,7 @@ export interface FortyTwoProfile {
   cursus_users?: { cursus?: { slug?: string } }[];
   campus?: Array<{ id: number; name: string }>;
   campus_users?: Array<{ campus_id: number; is_primary: boolean }>;
+}
 
 export function getPrimaryCampus(profile: FortyTwoProfile): {
   campusId: number | null;
@@ -82,8 +83,6 @@ export class FortyTwoOAuthStrategy extends PassportStrategy(Strategy, "42") {
           isCursusStudent,
           isPiscineStudent,
           ...primaryCampus,
-          isCursusStudent,
-          isPiscineStudent,
         },
       });
     } catch (err) {

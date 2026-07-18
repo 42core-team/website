@@ -98,8 +98,6 @@ export class SocialAccountService {
       isCursusStudent: params.isCursusStudent ?? false,
       campusId: params.campusId,
       campusName: params.campusName,
-      isPiscineStudent: params.isPiscineStudent ?? false,
-      isCursusStudent: params.isCursusStudent ?? false,
     });
     return this.saveSocialAccount(entity);
   }
