@@ -10,6 +10,7 @@ import {
   EyeOff,
   LogIn,
   LogOut,
+  Search,
   Send,
   Swords,
   Users,
@@ -49,6 +50,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 
@@ -69,6 +71,7 @@ function QueueRoute() {
     null,
   )
   const [isOpponentDialogOpen, setIsOpponentDialogOpen] = useState(false)
+  const [opponentSearch, setOpponentSearch] = useState('')
   const myTeamQuery = useQuery({
     queryKey: myTeamQueryKey(id),
     queryFn: () => myTeamQueryFn(id),
@@ -165,6 +168,7 @@ function QueueRoute() {
     mutationFn: (targetTeamId: string) => challengeTeam(id, targetTeamId),
     onSuccess: async (challenge) => {
       setIsOpponentDialogOpen(false)
+      setOpponentSearch('')
       await refreshQueueData()
       toast.success(
         challenge.matchId
@@ -224,8 +228,11 @@ function QueueRoute() {
     : inQueue
       ? 'In Queue'
       : 'Idle'
+  const normalizedOpponentSearch = opponentSearch.trim().toLocaleLowerCase()
   const opponents = (opponentsQuery.data ?? []).filter(
-    (team: Team) => team.id !== myTeamQuery.data?.id,
+    (team: Team) =>
+      team.id !== myTeamQuery.data?.id &&
+      team.name.toLocaleLowerCase().includes(normalizedOpponentSearch),
   )
   const incomingChallenges = (challengesQuery.data ?? []).filter(
     (challenge) => challenge.target.id === myTeamQuery.data?.id,
@@ -392,7 +399,10 @@ function QueueRoute() {
       <div className="flex justify-end">
         <Dialog
           open={isOpponentDialogOpen}
-          onOpenChange={setIsOpponentDialogOpen}
+          onOpenChange={(open) => {
+            setIsOpponentDialogOpen(open)
+            if (!open) setOpponentSearch('')
+          }}
         >
           <DialogTrigger asChild>
             <Button variant="outline">
@@ -409,6 +419,16 @@ function QueueRoute() {
                 starts.
               </DialogDescription>
             </DialogHeader>
+            <div className="relative">
+              <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={opponentSearch}
+                onChange={(event) => setOpponentSearch(event.target.value)}
+                placeholder="Search teams by name..."
+                className="pl-9"
+                aria-label="Search teams by name"
+              />
+            </div>
             <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
               {opponentsQuery.isPending ? (
                 <div className="flex justify-center py-10">
@@ -416,7 +436,9 @@ function QueueRoute() {
                 </div>
               ) : opponents.length === 0 ? (
                 <p className="py-10 text-center text-sm text-muted-foreground">
-                  No other teams are available in this event yet.
+                  {normalizedOpponentSearch
+                    ? 'No teams match your search.'
+                    : 'No other teams are available in this event yet.'}
                 </p>
               ) : (
                 opponents.map((opponent: Team) => {
