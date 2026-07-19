@@ -9,6 +9,7 @@ import { MatchEventsController } from "./match.events.controller";
 import { GithubApiModule } from "../github-api/github-api.module";
 import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
 import { MatchStatsEntity } from "./entites/matchStats.entity";
+import { GamblingModule } from "../gambling/gambling.module";
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { MatchStatsEntity } from "./entites/matchStats.entity";
     forwardRef(() => TeamModule),
     forwardRef(() => EventModule),
     forwardRef(() => GithubApiModule),
+    forwardRef(() => GamblingModule),
   ],
   controllers: [MatchController, MatchEventsController],
   providers: [MatchService],
