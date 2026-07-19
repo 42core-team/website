@@ -24,6 +24,10 @@ import {
   GamblingRoundEntity,
   GamblingRoundPhase,
 } from "./entities/gambling-round.entity";
+import {
+  toGamblingBetSummary,
+  toSettledGamblingBetSummary,
+} from "./gambling-bet-summary";
 import { getMaximumGamblingBet } from "./gambling-credits";
 import { calculateGamblingPayouts } from "./gambling-payout";
 
@@ -103,11 +107,10 @@ export class GamblingService {
 
     const bets = await this.betRepository.find({
       where: { round: { id: round.id } },
-      relations: { bettorTeam: true, predictedWinner: true },
       order: { createdAt: "ASC" },
     });
     const myBet = myTeam
-      ? bets.find((bet) => bet.bettorTeam.id === myTeam.id)
+      ? bets.find((bet) => bet.bettorTeamId === myTeam.id)
       : undefined;
     const latestResultBet =
       latestResult && myTeam
@@ -116,18 +119,17 @@ export class GamblingService {
               round: { id: latestResult.id },
               bettorTeam: { id: myTeam.id },
             },
-            relations: { predictedWinner: true },
           })
         : null;
     const pools = {
       teamOne: round.teamOne
         ? bets
-            .filter((bet) => bet.predictedWinner.id === round.teamOne?.id)
+            .filter((bet) => bet.predictedWinnerId === round.teamOne?.id)
             .reduce((sum, bet) => sum + bet.amount, 0)
         : 0,
       teamTwo: round.teamTwo
         ? bets
-            .filter((bet) => bet.predictedWinner.id === round.teamTwo?.id)
+            .filter((bet) => bet.predictedWinnerId === round.teamTwo?.id)
             .reduce((sum, bet) => sum + bet.amount, 0)
         : 0,
     };
@@ -148,13 +150,7 @@ export class GamblingService {
             isEntered: entries.some((entry) => entry.team.id === myTeam.id),
           }
         : null,
-      myBet: myBet
-        ? {
-            predictedWinnerId: myBet.predictedWinner.id,
-            amount: myBet.amount,
-            payout: myBet.payout,
-          }
-        : null,
+      myBet: myBet ? toGamblingBetSummary(myBet) : null,
       latestResult: latestResult
         ? {
             id: latestResult.id,
@@ -165,15 +161,10 @@ export class GamblingService {
             winnerTeamPayout: latestResult.winnerTeamPayout,
             matchId: latestResult.match?.id ?? null,
             myBet: latestResultBet
-              ? {
-                  predictedWinnerId: latestResultBet.predictedWinner.id,
-                  amount: latestResultBet.amount,
-                  payout: latestResultBet.payout,
-                  net: latestResultBet.payout - latestResultBet.amount,
-                  wasCorrect:
-                    latestResultBet.predictedWinner.id ===
-                    latestResult.winner?.id,
-                }
+              ? toSettledGamblingBetSummary(
+                  latestResultBet,
+                  latestResult.winner?.id ?? null,
+                )
               : null,
           }
         : null,
@@ -317,7 +308,6 @@ export class GamblingService {
   private getRoundBets(manager: EntityManager, roundId: string) {
     return manager.find(GamblingBetEntity, {
       where: { round: { id: roundId } },
-      relations: { predictedWinner: true, bettorTeam: true },
       order: { createdAt: "ASC" },
     });
   }
@@ -327,7 +317,7 @@ export class GamblingService {
       bets.map((bet) => ({
         id: bet.id,
         amount: bet.amount,
-        predictedWinnerId: bet.predictedWinner.id,
+        predictedWinnerId: bet.predictedWinnerId,
       })),
       winnerId,
     );
@@ -343,7 +333,7 @@ export class GamblingService {
     for (const bet of bets) {
       const betPayout = payout.payouts.get(bet.id) ?? 0;
       bet.payout = betPayout;
-      await this.creditTeam(manager, bet.bettorTeam.id, betPayout);
+      await this.creditTeam(manager, bet.bettorTeamId, betPayout);
     }
     await manager.save(bets);
   }

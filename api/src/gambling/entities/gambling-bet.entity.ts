@@ -4,6 +4,7 @@ import {
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
+  RelationId,
   Unique,
 } from "typeorm";
 import { TeamEntity } from "src/team/entities/team.entity";
@@ -22,10 +23,16 @@ export class GamblingBetEntity {
   round: GamblingRoundEntity;
 
   @ManyToOne(() => TeamEntity, { nullable: false, onDelete: "CASCADE" })
-  bettorTeam: TeamEntity;
+  bettorTeam: TeamEntity | null;
+
+  @RelationId((bet: GamblingBetEntity) => bet.bettorTeam)
+  bettorTeamId: string;
 
   @ManyToOne(() => TeamEntity, { nullable: false, onDelete: "CASCADE" })
-  predictedWinner: TeamEntity;
+  predictedWinner: TeamEntity | null;
+
+  @RelationId((bet: GamblingBetEntity) => bet.predictedWinner)
+  predictedWinnerId: string;
 
   @Column({ type: "int" })
   amount: number;
