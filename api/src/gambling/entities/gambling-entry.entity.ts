@@ -18,7 +18,7 @@ export class GamblingEntryEntity {
   event: EventEntity;
 
   @ManyToOne(() => TeamEntity, { nullable: false, onDelete: "CASCADE" })
-  team: TeamEntity;
+  team: TeamEntity | null;
 
   @CreateDateColumn()
   createdAt: Date;

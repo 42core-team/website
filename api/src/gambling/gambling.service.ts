@@ -29,6 +29,7 @@ import {
   toSettledGamblingBetSummary,
 } from "./gambling-bet-summary";
 import { getMaximumGamblingBet } from "./gambling-credits";
+import { toGamblingEntrySummaries } from "./gambling-entry-summary";
 import { calculateGamblingPayouts } from "./gambling-payout";
 
 const PHASE_DURATION_MS = 30 * 60 * 1000;
@@ -105,6 +106,7 @@ export class GamblingService {
 
     if (!round) throw new BadRequestException("Gambling round not found.");
 
+    const entrySummaries = toGamblingEntrySummaries(entries);
     const bets = await this.betRepository.find({
       where: { round: { id: round.id } },
       order: { createdAt: "ASC" },
@@ -136,10 +138,7 @@ export class GamblingService {
 
     return {
       round: this.toRoundSummary(round, pools.teamOne + pools.teamTwo),
-      entries: entries.map((entry) => ({
-        id: entry.team.id,
-        name: entry.team.name,
-      })),
+      entries: entrySummaries,
       pools,
       myTeam: myTeam
         ? {
@@ -147,7 +146,7 @@ export class GamblingService {
             name: myTeam.name,
             credits: myTeam.credits,
             maxCredits: event.maxQueueCredits,
-            isEntered: entries.some((entry) => entry.team.id === myTeam.id),
+            isEntered: entrySummaries.some((entry) => entry.id === myTeam.id),
           }
         : null,
       myBet: myBet ? toGamblingBetSummary(myBet) : null,
@@ -429,7 +428,9 @@ export class GamblingService {
       .getRepository(GamblingEntryEntity)
       .createQueryBuilder("entry")
       .select('"entry"."teamId"', "teamId")
+      .innerJoin("entry.team", "team")
       .where('"entry"."eventId" = :eventId', { eventId })
+      .andWhere('"team"."deletedAt" IS NULL')
       .orderBy("RANDOM()")
       .limit(2)
       .getRawMany<{ teamId: string }>();
