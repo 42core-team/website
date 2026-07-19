@@ -5,6 +5,7 @@ import type { Match } from '@/app/actions/tournament-model'
 import { Fragment } from 'react'
 import { MatchState } from '@/app/actions/tournament-model'
 import { MatchHistoryBadges } from '@/components/match/MatchHistoryBadges'
+import { LocationTags } from '@/components/team'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -46,11 +47,7 @@ export function GroupPhaseRankingTable({
       .sort((a, b) => a.round - b.round)
       .map((match) => ({
         id: match.id ?? '',
-        result: match.winner
-          ? match.winner.id === teamId
-            ? 'W'
-            : 'L'
-          : 'T',
+        result: match.winner ? (match.winner.id === teamId ? 'W' : 'L') : 'T',
       }))
       .filter((match) => match.id)
 
@@ -92,7 +89,12 @@ export function GroupPhaseRankingTable({
                     }
                   >
                     <TableCell>{rank}</TableCell>
-                    <TableCell>{team.name}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>{team.name}</span>
+                        <LocationTags tags={team.tags} />
+                      </div>
+                    </TableCell>
                     <TableCell className="text-center font-bold">
                       {team.score.toFixed(1)}
                     </TableCell>

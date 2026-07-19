@@ -87,8 +87,8 @@ function TeamRoute() {
   return (
     <main className="container mx-auto max-w-7xl px-4 py-8">
       <TeamPublicProfile
+        team={teamQuery.data}
         members={membersQuery.data ?? []}
-        teamName={teamQuery.data.name}
         action={
           canAttack ? (
             <TooltipProvider delayDuration={200}>

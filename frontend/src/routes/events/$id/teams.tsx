@@ -9,6 +9,7 @@ import {
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { useState } from 'react'
 import { getTeamsForEventTable } from '@/app/actions/team'
+import { LocationTags } from '@/components/team'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
@@ -187,7 +188,12 @@ function TeamsRoute() {
                     key={team.id}
                     className="hover:bg-muted/50 cursor-pointer"
                   >
-                    <TableCell className="font-medium">{team.name}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{team.name}</span>
+                        <LocationTags tags={team.tags} />
+                      </div>
+                    </TableCell>
                     <TableCell>{team.membersCount ?? '-'}</TableCell>
                     <TableCell>{team.queueScore}</TableCell>
                     <TableCell>

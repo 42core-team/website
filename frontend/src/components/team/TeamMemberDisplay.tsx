@@ -3,6 +3,7 @@ import Image from '@/components/app-image'
 import { GithubIcon } from '@/components/icons'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
+import LocationTags from './LocationTags'
 
 interface TeamMemberDisplayProps {
   member: TeamMember
@@ -73,6 +74,7 @@ export default function TeamMemberDisplay({
             </span>
           )}
         </p>
+        <LocationTags tags={member.tags} className="mt-1" />
       </div>
     </div>
   )

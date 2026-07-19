@@ -30,10 +30,14 @@ import {
   MatchState,
 } from "../match/entites/match.entity";
 import { MatchStatsEntity } from "../match/entites/matchStats.entity";
-import { accrueQueueCredits } from "./team-credits";
 import { EventEntity } from "../event/entities/event.entity";
+import { groupLocationTagsByOwner } from "../user/location-tags";
+import type { OwnedLocationTagSource } from "../user/location-tags";
+import { accrueQueueCredits } from "./team-credits";
 import { rankQueueOpponents } from "./queue-matchmaking";
 import type { QueueOpponentCandidate } from "./queue-matchmaking";
+
+export type TaggedTeam = TeamEntity & { tags: string[] };
 
 const DIRECT_MATCH_COST = 2;
 const DIRECT_MATCH_STAKE = 1;
@@ -149,6 +153,12 @@ export class TeamService {
     });
   }
 
+  async getTeamByIdWithTags(id: string): Promise<TaggedTeam> {
+    const team = await this.getTeamById(id);
+    const tagsByTeam = await this.getLocationTagsForTeams([id]);
+    return { ...team, tags: tagsByTeam.get(id) ?? [] };
+  }
+
   getTeamOfUserForEvent(
     eventId: string,
     userId: string,
@@ -165,6 +175,35 @@ export class TeamService {
       },
       relations,
     });
+  }
+
+  async getTeamOfUserForEventWithTags(
+    eventId: string,
+    userId: string,
+  ): Promise<TaggedTeam | null> {
+    const team = await this.getTeamOfUserForEvent(eventId, userId);
+    if (!team) return null;
+
+    const tagsByTeam = await this.getLocationTagsForTeams([team.id]);
+    return { ...team, tags: tagsByTeam.get(team.id) ?? [] };
+  }
+
+  async getLocationTagsForTeams(
+    teamIds: string[],
+  ): Promise<Map<string, string[]>> {
+    if (teamIds.length === 0) return new Map();
+
+    const rows = await this.teamRepository
+      .createQueryBuilder("team")
+      .select("team.id", "ownerId")
+      .addSelect("socialAccount.platform", "platform")
+      .addSelect("socialAccount.campusName", "campusName")
+      .innerJoin("team.users", "tagUser")
+      .innerJoin("tagUser.socialAccounts", "socialAccount")
+      .where("team.id IN (:...teamIds)", { teamIds })
+      .getRawMany<OwnedLocationTagSource>();
+
+    return groupLocationTagsByOwner(teamIds, rows);
   }
 
   async lockTeam(teamId: string) {
@@ -401,11 +440,11 @@ export class TeamService {
     });
   }
 
-  getTeamsUserIsInvitedTo(
+  async getTeamsUserIsInvitedTo(
     userId: string,
     eventId: string,
-  ): Promise<TeamEntity[]> {
-    return this.teamRepository.find({
+  ): Promise<TaggedTeam[]> {
+    const teams = await this.teamRepository.find({
       where: {
         event: {
           id: eventId,
@@ -415,6 +454,14 @@ export class TeamService {
         },
       },
     });
+
+    const tagsByTeam = await this.getLocationTagsForTeams(
+      teams.map((team) => team.id),
+    );
+    return teams.map((team) => ({
+      ...team,
+      tags: tagsByTeam.get(team.id) ?? [],
+    }));
   }
 
   isUserInvitedToTeam(userId: string, teamId: string): Promise<boolean> {
@@ -476,6 +523,7 @@ export class TeamService {
     Array<
       TeamEntity & {
         userCount: number;
+        tags: string[];
       }
     >
   > {
@@ -577,6 +625,7 @@ export class TeamService {
       eventId,
       !revealAll,
     );
+    const tagsByTeam = await this.getLocationTagsForTeams(teamIds);
 
     // Map properties from raw if entity is missing them due to partial select
     const teamsWithCounts = await Promise.all(
@@ -587,12 +636,14 @@ export class TeamService {
           userCount: number;
           score: number;
           buchholzPoints: number;
+          tags: string[];
         } = {
           ...team,
           hadBye: team.hadBye,
           userCount: parseInt(raw.user_count, 10) || 0,
           score: 0,
           buchholzPoints: 0,
+          tags: tagsByTeam.get(team.id) ?? [],
         };
 
         if (revealAll) {

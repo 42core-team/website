@@ -19,6 +19,7 @@ export interface Team {
   id: string
   name: string
   repo: string
+  inQueue: boolean
   credits: number
   score: number
   buchholzPoints: number
@@ -30,6 +31,7 @@ export interface Team {
   createdAt?: Date
   updatedAt?: Date
   membersCount?: number
+  tags: string[]
 }
 
 export interface TeamMember {
@@ -40,6 +42,34 @@ export interface TeamMember {
   username: string
   profilePicture?: string
   intraUsername?: string
+  tags: string[]
+}
+
+export interface TeamApiResponse {
+  id: string
+  name: string
+  repo?: string | null
+  inQueue?: boolean
+  score?: number
+  buchholzPoints?: number
+  hadBye?: boolean
+  queueScore?: number
+  locked?: boolean
+  createdAt?: Date
+  updatedAt?: Date
+  userCount?: number
+  credits?: number
+  tags?: string[]
+}
+
+export interface TeamMemberApiResponse {
+  id: string
+  name: string
+  isEventAdmin: boolean
+  username: string
+  profilePicture?: string
+  tags?: string[]
+  socialAccounts?: Array<{ platform: string; username: string }>
 }
 
 export interface UserSearchResult {
@@ -88,24 +118,11 @@ export async function startDirectMatch(
 }
 
 export async function getTeamById(teamId: string): Promise<Team | null> {
-  const team = (await axiosInstance.get(`team/${teamId}`)).data
+  const team = (
+    await axiosInstance.get<TeamApiResponse | null>(`team/${teamId}`)
+  ).data
 
-  // TODO: directly return team object if API response is already in the correct format
-  return team
-    ? {
-        id: team.id,
-        name: team.name,
-        repo: team.repo || '',
-        locked: team.locked,
-        score: team.score,
-        buchholzPoints: team.buchholzPoints || 0,
-        hadBye: team.hadBye || false,
-        queueScore: team.queueScore,
-        createdAt: team.createdAt,
-        credits: team.credits ?? 0,
-        updatedAt: team.updatedAt,
-      }
-    : null
+  return team ? mapTeamResponse(team) : null
 }
 
 export async function hasEventStarted(teamId: string): Promise<boolean> {
@@ -113,24 +130,13 @@ export async function hasEventStarted(teamId: string): Promise<boolean> {
 }
 
 export async function getMyEventTeam(eventId: string): Promise<Team | null> {
-  const team = (await axiosInstance.get(`team/event/${eventId}/my`)).data
+  const team = (
+    await axiosInstance.get<TeamApiResponse | null>(`team/event/${eventId}/my`)
+  ).data
 
   if (!team) return null
 
-  // TODO: directly return team object if API response is already in the correct format
-  return {
-    id: team.id,
-    name: team.name,
-    repo: team.repo || '',
-    locked: team.locked,
-    score: team.score,
-    buchholzPoints: team.buchholzPoints || 0,
-    hadBye: team.hadBye || false,
-    queueScore: team.queueScore,
-    credits: team.credits ?? 0,
-    createdAt: team.createdAt,
-    updatedAt: team.updatedAt,
-  }
+  return mapTeamResponse(team)
 }
 
 export async function updateTeamCredits(
@@ -175,18 +181,26 @@ export async function leaveTeam(eventId: string): Promise<void> {
  * @returns Array of team members
  */
 export async function getTeamMembers(teamId: string): Promise<TeamMember[]> {
-  const members: any[] = (await axiosInstance.get(`team/${teamId}/members`))
-    .data
+  const members = (
+    await axiosInstance.get<TeamMemberApiResponse[]>(`team/${teamId}/members`)
+  ).data
 
-  return members.map((member: any) => ({
+  return members.map(mapTeamMemberResponse)
+}
+
+export function mapTeamMemberResponse(
+  member: TeamMemberApiResponse,
+): TeamMember {
+  return {
     id: member.id,
     name: member.name,
     isEventAdmin: member.isEventAdmin,
     username: member.username,
     profilePicture: member.profilePicture,
-    intraUsername: member.socialAccounts?.find((a: any) => a.platform === '42')
+    intraUsername: member.socialAccounts?.find((a) => a.platform === '42')
       ?.username,
-  }))
+    tags: member.tags ?? [],
+  }
 }
 
 /**
@@ -212,7 +226,11 @@ export async function searchUsersForInvite(
  * @param eventId
  */
 export async function getUserPendingInvites(eventId: string): Promise<Team[]> {
-  return (await axiosInstance.get(`team/event/${eventId}/pending`)).data
+  const teams = (
+    await axiosInstance.get<TeamApiResponse[]>(`team/event/${eventId}/pending`)
+  ).data
+
+  return teams.map(mapTeamResponse)
 }
 
 /**
@@ -256,7 +274,7 @@ export async function getTeamsForEventTable(
   adminReveal: boolean = false,
 ): Promise<Team[]> {
   const teams = (
-    await axiosInstance.get(`team/event/${eventId}/`, {
+    await axiosInstance.get<TeamApiResponse[]>(`team/event/${eventId}/`, {
       params: {
         searchName: searchTeamName,
         sortBy: sortColumn,
@@ -266,17 +284,24 @@ export async function getTeamsForEventTable(
     })
   ).data
 
-  return teams.map((team: any) => ({
+  return teams.map(mapTeamResponse)
+}
+
+export function mapTeamResponse(team: TeamApiResponse): Team {
+  return {
     id: team.id,
     name: team.name,
-    repo: team.repo || '',
-    membersCount: team.userCount,
+    repo: team.repo ?? '',
+    inQueue: team.inQueue ?? false,
     score: team.score ?? 0,
     buchholzPoints: team.buchholzPoints ?? 0,
     hadBye: team.hadBye ?? false,
     queueScore: team.queueScore ?? 0,
+    locked: team.locked,
     createdAt: team.createdAt,
     updatedAt: team.updatedAt,
+    membersCount: team.userCount,
     credits: team.credits ?? 0,
-  }))
+    tags: team.tags ?? [],
+  }
 }
