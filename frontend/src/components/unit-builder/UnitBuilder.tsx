@@ -2,11 +2,10 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import type {
   ComponentConfig,
   ComponentsConfig,
-  RuleViolation,
   UnitPropertyName,
 } from './types'
-import { motion } from 'framer-motion'
-import { Check, Copy, Plus, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Check, Copy, ExternalLink, Plus, X } from 'lucide-react'
 import {
   Fragment,
   useEffect,
@@ -16,18 +15,20 @@ import {
   useState,
 } from 'react'
 import Image from '@/components/app-image'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { findViolation, getTotalCost, getUnitProperties } from './rules'
+import { findViolations, getTotalCost, getUnitProperties } from './rules'
 import { UNIT_PROPERTY_NAMES } from './types'
 import { getUnitAssetPath, getUnitIconSrc } from './visualizer'
 
 const EMPTY_UNIT_NAME = 'unit_name'
 const EMPTY_DISPLAY_NAME = 'Your Unit'
+const UNIT_BUILDER_WIKI_URL = '/wiki/documentation/unit_builder'
 const GOOD_WHEN_SMALLER = new Set<UnitPropertyName>([
   'baseActionCooldown',
   'postSpawnCoreCooldown',
@@ -121,12 +122,6 @@ function impactColor(tone: ImpactTone | undefined) {
 
 function cString(value: string) {
   return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
-}
-
-function showViolation(violation: RuleViolation) {
-  window.alert(
-    `${violation.message}\n\nThe following condition is forbidden, if a unit fulfills it it is not allowed:\n${violation.conditionText}`,
-  )
 }
 
 function UnitIcon({
@@ -260,9 +255,14 @@ function PropertyRow({
       }
       className="flex items-center justify-between rounded-md px-3 py-2"
     >
-      <span className="truncate pr-3 text-sm text-muted-foreground">
+      <a
+        href={UNIT_BUILDER_WIKI_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="truncate pr-3 text-sm text-muted-foreground underline-offset-4 hover:underline"
+      >
         {name}
-      </span>
+      </a>
       <span className="font-mono text-sm font-semibold">{value}</span>
     </motion.div>
   )
@@ -330,6 +330,14 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
   const componentIds = selected.map((component) => component.componentId)
   const unitProperties = getUnitProperties(config, componentIds)
   const totalCost = getTotalCost(config, componentIds)
+  const currentViolations = findViolations(config, componentIds)
+  const visiblePropertyNames = UNIT_PROPERTY_NAMES.filter((name) =>
+    config.components.some((component) =>
+      component.properties.some(
+        (property) => property.name === name && property.modification !== 0,
+      ),
+    ),
+  )
   const assetPath = getUnitAssetPath(config, componentIds)
   const codeUnitName = unitName.trim() || EMPTY_UNIT_NAME
   const displayUnitName = unitName.trim() || EMPTY_DISPLAY_NAME
@@ -406,8 +414,8 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
     else libraryTileRefs.current.delete(key)
   }
 
-  function getSelectionViolation(items: SelectedComponent[]) {
-    return findViolation(
+  function getSelectionViolations(items: SelectedComponent[]) {
+    return findViolations(
       config,
       items.map((component) => component.componentId),
     )
@@ -417,13 +425,6 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
     const previousProperties = getUnitProperties(config, componentIds)
     const previousCost = getTotalCost(config, componentIds)
     const nextIds = next.map((component) => component.componentId)
-    const nextViolation = getSelectionViolation(next)
-
-    if (nextViolation) {
-      showViolation(nextViolation)
-      return false
-    }
-
     const nextProperties = getUnitProperties(config, nextIds)
     const propertyHighlights: Highlights['properties'] = {}
 
@@ -441,18 +442,9 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
       properties: propertyHighlights,
     })
     setSelected(next)
-    return true
   }
 
-  function addComponentWithFlight(
-    component: ComponentConfig,
-    violation: RuleViolation | null,
-  ) {
-    if (violation) {
-      showViolation(violation)
-      return
-    }
-
+  function addComponentWithFlight(component: ComponentConfig) {
     const sourceRect = libraryTileRefs.current
       .get(component.id)
       ?.getBoundingClientRect()
@@ -472,10 +464,7 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
       })
     }
 
-    if (!commit([...selected, item])) {
-      setPendingDropGhost(null)
-      setGhostedLibraryId(null)
-    }
+    commit([...selected, item])
   }
 
   function returnToLibrary(
@@ -499,6 +488,17 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
     })
   }
 
+  function returnToAssembly(drag: ActiveDrag) {
+    setDropGhost({
+      key: drag.item.key,
+      component: drag.component,
+      fromLeft: drag.x - drag.offsetX,
+      fromTop: drag.y - drag.offsetY,
+      toLeft: drag.fromLeft,
+      toTop: drag.fromTop,
+    })
+  }
+
   function removeComponentWithReturn(
     item: SelectedComponent,
     component: ComponentConfig,
@@ -507,9 +507,9 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
     const targetRect = libraryTileRefs.current
       .get(item.componentId)
       ?.getBoundingClientRect()
-    const removed = commit(selected.filter((entry) => entry.key !== item.key))
+    commit(selected.filter((entry) => entry.key !== item.key))
 
-    if (removed && sourceRect && targetRect) {
+    if (sourceRect && targetRect) {
       setDropGhost({
         key: item.key,
         component,
@@ -522,15 +522,17 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
   }
 
   function getAddViolation(componentId: string) {
-    return findViolation(config, [...componentIds, componentId])
+    return findViolations(config, [...componentIds, componentId]).length > 0
   }
 
   function getRemoveViolation(key: string) {
-    return findViolation(
-      config,
-      selected
-        .filter((component) => component.key !== key)
-        .map((component) => component.componentId),
+    return (
+      findViolations(
+        config,
+        selected
+          .filter((component) => component.key !== key)
+          .map((component) => component.componentId),
+      ).length > 0
     )
   }
 
@@ -644,18 +646,12 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
     event: ReactPointerEvent<HTMLElement>,
     item: SelectedComponent,
     component: ComponentConfig,
-    violation: RuleViolation | null,
   ) {
     if (!dragEnabled) return
 
     event.preventDefault()
 
     if (event.button !== 0) return
-
-    if (violation) {
-      showViolation(violation)
-      return
-    }
 
     const rect = event.currentTarget.getBoundingClientRect()
     const drag: ActiveDrag = {
@@ -689,20 +685,10 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
 
     if (drag.target === 'assembly') {
       const next = insertAt(visibleItems, drag.item, drag.insertIndex)
-      const violation = getSelectionViolation(next)
       const targetRect = placeholderRef.current?.getBoundingClientRect()
+      commit(next)
 
-      if (violation) {
-        returnToLibrary(drag)
-        setActiveDrag(null)
-        if (drag.source === 'library') restoreLibraryGhost()
-        window.setTimeout(() => showViolation(violation), 190)
-        return
-      }
-
-      const committed = commit(next)
-
-      if (committed && targetRect) {
+      if (targetRect) {
         setDropGhost({
           key: drag.item.key,
           component: drag.component,
@@ -711,15 +697,14 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
           toLeft: targetRect.left,
           toTop: targetRect.top,
         })
-      } else if (!committed) {
-        returnToLibrary(drag)
       }
     } else if (drag.target === 'library' && drag.source === 'assembly') {
-      const committed = commit(visibleItems)
-
-      if (committed) returnToLibrary(drag)
+      commit(visibleItems)
+      returnToLibrary(drag)
     } else if (drag.source === 'library') {
       returnToLibrary(drag)
+    } else {
+      returnToAssembly(drag)
     }
 
     setActiveDrag(null)
@@ -732,10 +717,12 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
 
     setActiveDrag(null)
 
-    if (drag?.source === 'library') {
+    if (!drag) return
+
+    if (drag.source === 'library') {
       returnToLibrary(drag)
       restoreLibraryGhost()
-    }
+    } else returnToAssembly(drag)
   }
 
   async function copyCall() {
@@ -756,32 +743,37 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
       : null
   const assemblyDropViolation =
     activeDrag?.target === 'assembly' && placeholderIndex !== null
-      ? getSelectionViolation(
+      ? getSelectionViolations(
           insertAt(visibleSelected, activeDrag.item, placeholderIndex),
-        )
-      : null
+        ).length > 0
+      : false
 
   return (
     <div className="mx-auto mt-3 mb-10">
       <header className="mb-5 space-y-1">
-        <h1 className="text-3xl font-bold">4-Step Unit Builder</h1>
-        <p className="max-w-2xl text-sm leading-snug text-muted-foreground">
-          Once you&apos;re done, you can copy it right into your code!
-          <br />
-          For details on how unit assembling works and what each property means,
-          check out the wiki.
-        </p>
+        <h1 className="text-3xl font-bold">5-Step Unit Builder</h1>
       </header>
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem] lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-6">
           <section className="space-y-3">
+            <h2 className="text-lg font-semibold">
+              Step 1: Understand Unit Building
+            </h2>
+            <Button asChild>
+              <a href={UNIT_BUILDER_WIKI_URL} target="_blank" rel="noreferrer">
+                Read the unit builder documentation
+                <ExternalLink />
+              </a>
+            </Button>
+          </section>
+
+          <section className="space-y-3">
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold">Step 1: Name Your Unit</h2>
+              <h2 className="text-lg font-semibold">Step 2: Name Your Unit</h2>
               <p className="max-w-2xl text-sm leading-snug text-muted-foreground">
-                You will be able to filter for your unit using its name when
-                building your bot. The name will also be displayed in the
-                visualizer.
+                You will be able to easily find your unit using its name when
+                building your bot.
               </p>
             </div>
             <div className="flex max-w-sm flex-col gap-2">
@@ -802,44 +794,58 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
           <section className="space-y-4">
             <div className="space-y-1">
               <h2 className="text-lg font-semibold">
-                Step 2: Assemble Its Components
+                Step 3: Assemble Its Components
               </h2>
               <p className="max-w-2xl text-sm leading-snug text-muted-foreground">
-                {(dragEnabled
-                  ? 'Drag up the components into the assembly section to apply them to your unit.'
-                  : 'Use the plus buttons to add components to your unit and the cross buttons to remove them.') +
-                  ' Each component affects multiple of the units properties, which define how your unit will work.'}
+                {
+                  ' Each component affects multiple of the units properties, which define how your unit will work.'
+                }
               </p>
             </div>
 
-            <div
-              ref={assemblyRef}
-              className={cn(
-                'min-h-52 rounded-xl border-2 border-dashed p-4 transition-colors',
-                activeDrag?.target === 'assembly'
-                  ? assemblyDropViolation
-                    ? 'border-red-500 bg-muted/30'
-                    : 'border-emerald-500 bg-muted/30'
-                  : 'border-border bg-muted/30',
-              )}
-            >
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h3 className="text-base font-semibold">Assembly</h3>
-                <Badge variant="outline">
-                  {selected.length} / {config.maxComponentsPerUnit}
-                </Badge>
-              </div>
-              <motion.div layout className="flex min-h-32 flex-wrap gap-3">
-                {visibleSelected.map((item, index) => {
-                  const component = componentById.get(item.componentId)
-                  const violation = getRemoveViolation(item.key)
-                  if (!component) return null
+            <div>
+              <div
+                ref={assemblyRef}
+                className={cn(
+                  'min-h-52 rounded-xl border-2 border-dashed p-4 transition-colors',
+                  activeDrag?.target === 'assembly'
+                    ? assemblyDropViolation
+                      ? 'border-red-500 bg-red-500/5'
+                      : 'border-emerald-500 bg-muted/30'
+                    : currentViolations.length > 0
+                      ? 'border-red-500 bg-red-500/5'
+                      : 'border-border bg-muted/30',
+                )}
+              >
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h3 className="text-base font-semibold">Assembly</h3>
+                  <Badge variant="outline">
+                    {selected.length} / {config.maxComponentsPerUnit}
+                  </Badge>
+                </div>
+                <motion.div layout className="flex min-h-32 flex-wrap gap-3">
+                  {visibleSelected.map((item, index) => {
+                    const component = componentById.get(item.componentId)
+                    const violation = getRemoveViolation(item.key)
+                    if (!component) return null
 
-                  return (
-                    <Fragment key={item.key}>
-                      {placeholderIndex === index && (
+                    return (
+                      <Fragment key={item.key}>
+                        {placeholderIndex === index && (
+                          <motion.div
+                            ref={placeholderRef}
+                            layout
+                            transition={{
+                              layout: {
+                                duration: 0.16,
+                                ease: 'easeOut',
+                              },
+                            }}
+                            className="h-28 w-28 rounded-lg border-2 border-dashed border-border bg-muted/50"
+                          />
+                        )}
                         <motion.div
-                          ref={placeholderRef}
+                          ref={(node) => setAssemblyTileRef(item.key, node)}
                           layout
                           transition={{
                             layout: {
@@ -847,76 +853,96 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
                               ease: 'easeOut',
                             },
                           }}
-                          className="h-28 w-28 rounded-lg border-2 border-dashed border-border bg-muted/50"
-                        />
-                      )}
-                      <motion.div
-                        ref={(node) => setAssemblyTileRef(item.key, node)}
-                        layout
-                        transition={{
-                          layout: {
-                            duration: 0.16,
-                            ease: 'easeOut',
-                          },
-                        }}
-                        onPointerDown={(event) =>
-                          startAssemblyDrag(event, item, component, violation)
-                        }
-                        className={cn(
-                          'group relative',
-                          dragEnabled
-                            ? 'cursor-grab active:cursor-grabbing'
-                            : 'cursor-default',
-                          dragEnabled && violation && 'cursor-not-allowed',
-                          (dropGhost?.key === item.key ||
-                            pendingDropGhost?.key === item.key) &&
-                            'opacity-0',
-                        )}
-                      >
-                        <ComponentTileVisual
-                          component={component}
+                          onPointerDown={(event) =>
+                            startAssemblyDrag(event, item, component)
+                          }
                           className={cn(
-                            dragEnabled &&
-                              'transition-shadow group-hover:shadow-md',
-                            violation && 'opacity-45 grayscale',
-                          )}
-                        />
-                        <button
-                          type="button"
-                          aria-label={`Remove ${titleize(component.id)}`}
-                          onPointerDown={(event) => event.stopPropagation()}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            if (violation) showViolation(violation)
-                            else removeComponentWithReturn(item, component)
-                          }}
-                          className={cn(
-                            'absolute top-2 right-2 rounded-sm p-0.5 transition-opacity duration-75 focus-visible:opacity-100',
+                            'group relative',
                             dragEnabled
-                              ? 'opacity-0 group-hover:opacity-70'
-                              : 'opacity-70',
+                              ? 'cursor-grab active:cursor-grabbing'
+                              : 'cursor-default',
+                            (dropGhost?.key === item.key ||
+                              pendingDropGhost?.key === item.key) &&
+                              'opacity-0',
                           )}
                         >
-                          <X className="size-3" />
-                        </button>
-                      </motion.div>
-                    </Fragment>
-                  )
-                })}
-                {placeholderIndex === visibleSelected.length && (
+                          <ComponentTileVisual
+                            component={component}
+                            className={cn(
+                              dragEnabled &&
+                                'transition-shadow group-hover:shadow-md',
+                              violation && 'opacity-45 grayscale',
+                            )}
+                          />
+                          <button
+                            type="button"
+                            aria-label={`Remove ${titleize(component.id)}`}
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              removeComponentWithReturn(item, component)
+                            }}
+                            className={cn(
+                              'absolute top-2 right-2 rounded-sm p-0.5 transition-opacity duration-75 focus-visible:opacity-100',
+                              dragEnabled
+                                ? 'opacity-0 group-hover:opacity-70'
+                                : 'opacity-70',
+                            )}
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </motion.div>
+                      </Fragment>
+                    )
+                  })}
+                  {placeholderIndex === visibleSelected.length && (
+                    <motion.div
+                      ref={placeholderRef}
+                      layout
+                      transition={{
+                        layout: {
+                          duration: 0.16,
+                          ease: 'easeOut',
+                        },
+                      }}
+                      className="h-28 w-28 rounded-lg border-2 border-dashed border-border bg-muted/50"
+                    />
+                  )}
+                </motion.div>
+              </div>
+
+              <AnimatePresence initial={false}>
+                {currentViolations.length > 0 && (
                   <motion.div
-                    ref={placeholderRef}
-                    layout
-                    transition={{
-                      layout: {
-                        duration: 0.16,
-                        ease: 'easeOut',
-                      },
-                    }}
-                    className="h-28 w-28 rounded-lg border-2 border-dashed border-border bg-muted/50"
-                  />
+                    key="assembly-errors"
+                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                    animate={{ height: 'auto', opacity: 1, marginTop: 12 }}
+                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                    transition={{ duration: 0.22, ease: 'easeInOut' }}
+                    className="overflow-hidden"
+                  >
+                    <Alert variant="destructive" className="p-6">
+                      <AlertTitle className="text-lg">
+                        Invalid unit assembly
+                      </AlertTitle>
+                      <AlertDescription className="mt-3 space-y-4">
+                        {currentViolations.map((violation, index) => (
+                          <div key={`${violation.conditionText}-${index}`}>
+                            <p className="font-semibold">{violation.message}</p>
+                            <p className="mt-1">
+                              The following condition is forbidden; a unit that
+                              fulfills it is not allowed:
+                            </p>
+                            <code className="mt-2 block overflow-x-auto rounded bg-destructive/10 p-2 font-mono text-xs">
+                              {violation.conditionText}
+                            </code>
+                          </div>
+                        ))}
+                      </AlertDescription>
+                    </Alert>
+                  </motion.div>
                 )}
-              </motion.div>
+              </AnimatePresence>
             </div>
 
             <div
@@ -939,21 +965,17 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
                       role="button"
                       tabIndex={0}
                       layout
-                      aria-disabled={Boolean(violation)}
+                      aria-invalid={violation}
                       onPointerDown={(event) =>
                         startLibraryDrag(event, component)
                       }
                       onKeyDown={(event) => {
                         if (event.key !== 'Enter' && event.key !== ' ') return
                         event.preventDefault()
-                        addComponentWithFlight(component, violation)
+                        addComponentWithFlight(component)
                       }}
-                      whileHover={
-                        dragEnabled && !violation ? { y: -3 } : undefined
-                      }
-                      whileTap={
-                        dragEnabled && !violation ? { scale: 0.98 } : undefined
-                      }
+                      whileHover={dragEnabled ? { y: -3 } : undefined}
+                      whileTap={dragEnabled ? { scale: 0.98 } : undefined}
                       className={cn(
                         'group relative rounded-lg border bg-card p-3 text-left shadow-sm transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
                         dragEnabled && 'hover:shadow-md',
@@ -994,7 +1016,7 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
                               onKeyDown={(event) => event.stopPropagation()}
                               onClick={(event) => {
                                 event.stopPropagation()
-                                addComponentWithFlight(component, violation)
+                                addComponentWithFlight(component)
                               }}
                               className="rounded-md border bg-background p-1 opacity-90 shadow-sm transition-opacity duration-75 hover:opacity-100 focus-visible:opacity-100"
                             >
@@ -1017,7 +1039,7 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
           <section className="space-y-3">
             <div className="space-y-1">
               <h2 className="text-lg font-semibold">
-                Step 3: Include It in Your Code
+                Step 4: Include It in Your Code
               </h2>
               <p className="text-sm leading-snug text-muted-foreground">
                 Copy this into your code and your unit will spawn - provided you
@@ -1039,7 +1061,7 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
 
           <section>
             <h2 className="text-lg font-semibold">
-              Step 4: Use {displayUnitName} to Annihilate Your Opponents! 🚀💎🔥
+              Step 5: Use {displayUnitName} to Annihilate Your Opponents! 🚀💎🔥
             </h2>
           </section>
         </div>
@@ -1066,7 +1088,7 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
               <span>Value</span>
             </div>
             <div className="space-y-1">
-              {UNIT_PROPERTY_NAMES.map((name) => (
+              {visiblePropertyNames.map((name) => (
                 <PropertyRow
                   key={name}
                   name={name}

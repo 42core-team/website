@@ -1,12 +1,26 @@
-import type { QueueState } from '@/app/actions/team.model'
-import type { Match } from '@/app/actions/tournament-model'
+import type { QueueMatch } from '@/app/actions/tournament-model'
 import axiosInstance from '@/app/actions/axios'
+
+export interface QueueTeamSummary {
+  id: string
+  name: string
+  credits: number
+  maxCredits: number
+  creditIntervalMs: number
+  nextCreditAt: string | null
+}
+
+export interface QueueOpponent {
+  id: string
+  name: string
+}
 
 export interface Team {
   id: string
   name: string
   repo: string
   inQueue: boolean
+  credits: number
   score: number
   buchholzPoints: number
   hadBye: boolean
@@ -44,6 +58,7 @@ export interface TeamApiResponse {
   createdAt?: Date
   updatedAt?: Date
   userCount?: number
+  credits?: number
   tags?: string[]
 }
 
@@ -66,26 +81,40 @@ export interface UserSearchResult {
 }
 
 export async function getQueueMatches(eventId: string) {
-  return (await axiosInstance.get(`/match/queue/${eventId}/`)).data as Match[]
+  return (await axiosInstance.get(`/match/queue/${eventId}/`))
+    .data as QueueMatch[]
 }
 
 export async function getQueueMatchesAdmin(eventId: string) {
   return (await axiosInstance.get(`/match/queue/${eventId}/admin`))
-    .data as Match[]
+    .data as QueueMatch[]
 }
 
-export async function getQueueState(eventId: string): Promise<QueueState> {
+export async function getQueueSummary(
+  eventId: string,
+): Promise<QueueTeamSummary | null> {
+  return (await axiosInstance.get(`team/event/${eventId}/queue/summary`)).data
+}
+
+export async function getQueueOpponents(
+  eventId: string,
+): Promise<QueueOpponent[]> {
+  return (await axiosInstance.get(`team/event/${eventId}/queue/opponents`)).data
+}
+
+export async function joinQueue(eventId: string): Promise<{ matchId: string }> {
+  return (await axiosInstance.put(`team/event/${eventId}/queue/join`)).data
+}
+
+export async function startDirectMatch(
+  eventId: string,
+  targetTeamId: string,
+): Promise<{ matchId: string }> {
   return (
-    await axiosInstance.get<QueueState>(`team/event/${eventId}/queue/state`)
+    await axiosInstance.post(
+      `team/event/${eventId}/queue/direct/${targetTeamId}`,
+    )
   ).data
-}
-
-export async function joinQueue(eventId: string): Promise<void> {
-  await axiosInstance.put(`team/event/${eventId}/queue/join`)
-}
-
-export async function leaveQueue(eventId: string): Promise<void> {
-  await axiosInstance.put(`team/event/${eventId}/queue/leave`)
 }
 
 export async function getTeamById(teamId: string): Promise<Team | null> {
@@ -253,6 +282,7 @@ export function mapTeamResponse(team: TeamApiResponse): Team {
     createdAt: team.createdAt,
     updatedAt: team.updatedAt,
     membersCount: team.userCount,
+    credits: team.credits ?? 0,
     tags: team.tags ?? [],
   }
 }

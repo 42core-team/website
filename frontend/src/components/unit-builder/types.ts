@@ -61,6 +61,7 @@ export interface InvalidCondition {
 
 export interface ComponentsConfig {
   maxComponentsPerUnit: number
+  unitDefaultCost: number
   unitDefaultProperties: UnitProperties
   components: ComponentConfig[]
   invalidConditions: InvalidCondition[]

@@ -72,7 +72,11 @@ export function readComponentsConfig(gameConfig: string | undefined) {
 
     const source = parsed.components
     const defaults = readUnitProperties(source.unitDefaultProperties)
-    if (!defaults || typeof source.maxComponentsPerUnit !== 'number')
+    if (
+      !defaults ||
+      typeof source.maxComponentsPerUnit !== 'number' ||
+      typeof source.unitDefaultCost !== 'number'
+    )
       return null
 
     if (!Array.isArray(source.components)) return null
@@ -140,6 +144,7 @@ export function readComponentsConfig(gameConfig: string | undefined) {
 
     return {
       maxComponentsPerUnit: source.maxComponentsPerUnit,
+      unitDefaultCost: source.unitDefaultCost,
       unitDefaultProperties: defaults,
       components,
       invalidConditions,

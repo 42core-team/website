@@ -24,6 +24,7 @@ export enum MatchPhase {
   SWISS = "SWISS",
   ELIMINATION = "ELIMINATION",
   QUEUE = "QUEUE",
+  GAMBLING = "GAMBLING",
 }
 
 @Entity("matches")
@@ -39,6 +40,12 @@ export class MatchEntity {
 
   @ManyToOne(() => TeamEntity)
   winner: TeamEntity | null;
+
+  @Column({ default: 0 })
+  creditWager: number;
+
+  @ManyToOne(() => TeamEntity, { nullable: true, onDelete: "SET NULL" })
+  creditWagerTeam: TeamEntity | null;
 
   @Column({ type: "enum", enum: MatchPhase, default: MatchPhase.SWISS })
   phase: MatchPhase;

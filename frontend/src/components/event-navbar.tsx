@@ -49,6 +49,7 @@ export default function EventNavbar({
     const items = [
       { name: 'Info', path: `/events/${eventId}` },
       { name: 'Teams', path: `/events/${eventId}/teams` },
+      { name: 'Gambling', path: `/events/${eventId}/gambling` },
     ]
 
     if (isUserRegistered) {
@@ -62,7 +63,7 @@ export default function EventNavbar({
       }
 
       if (hasStarted && effectiveHasTeam) {
-        items.push({ name: 'Queue', path: `/events/${eventId}/queue` })
+        items.push({ name: 'Match Making', path: `/events/${eventId}/queue` })
       }
     }
 
@@ -72,10 +73,7 @@ export default function EventNavbar({
     )
 
     if (isEventAdmin) {
-      items.push(
-        { name: 'Queue Matches', path: `/events/${eventId}/queue-matches` },
-        { name: 'Dashboard', path: `/events/${eventId}/dashboard` },
-      )
+      items.push({ name: 'Dashboard', path: `/events/${eventId}/dashboard` })
     }
 
     return items

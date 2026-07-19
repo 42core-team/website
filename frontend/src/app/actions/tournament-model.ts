@@ -2,6 +2,7 @@ export enum MatchPhase {
   SWISS = 'SWISS',
   ELIMINATION = 'ELIMINATION',
   QUEUE = 'QUEUE',
+  GAMBLING = 'GAMBLING',
 }
 
 export enum MatchState {
@@ -34,6 +35,31 @@ export interface Match {
     deletedAt?: string | null
   }
   results: {
+    team: {
+      id: string
+      name: string
+      deletedAt?: string | null
+    }
+    score: number
+  }[]
+}
+
+export interface QueueMatch {
+  id?: string
+  state: MatchState
+  phase: MatchPhase
+  createdAt: string
+  teams: {
+    id: string
+    name: string
+    deletedAt?: string | null
+  }[]
+  winner?: {
+    id: string
+    name: string
+    deletedAt?: string | null
+  } | null
+  results?: {
     team: {
       id: string
       name: string

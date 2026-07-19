@@ -110,7 +110,7 @@ export function TeamInfoSection({
             </p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Queue score</p>
+            <p className="text-sm text-muted-foreground">Match Making Rating</p>
             <p className="font-medium">{myTeam.queueScore}</p>
           </div>
           <div>

@@ -13,7 +13,7 @@ type MatchHistoryTab = {
 
 const matchHistoryTabs: MatchHistoryTab[] = [
   { label: 'All Matches', value: 'all' },
-  { label: 'Queue', value: MatchPhase.QUEUE },
+  { label: 'Match Making', value: MatchPhase.QUEUE },
   { label: 'Swiss', value: MatchPhase.SWISS },
   { label: 'Tournament', value: MatchPhase.ELIMINATION },
 ]

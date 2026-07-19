@@ -49,7 +49,7 @@ export function getTotalCost(config: ComponentsConfig, componentIds: string[]) {
 
   return config.components.reduce(
     (total, component) => total + component.cost * (counts[component.id] ?? 0),
-    0,
+    config.unitDefaultCost,
   )
 }
 
@@ -115,15 +115,17 @@ function evalCondition(
   return a === b ? 1 : 0
 }
 
-export function findViolation(
+export function findViolations(
   config: ComponentsConfig,
   componentIds: string[],
-): RuleViolation | null {
+): RuleViolation[] {
+  const violations: RuleViolation[] = []
+
   if (componentIds.length > config.maxComponentsPerUnit) {
-    return {
+    violations.push({
       message: `You may not have more than ${config.maxComponentsPerUnit} components`,
       conditionText: `(component_count_total > ${config.maxComponentsPerUnit})`,
-    }
+    })
   }
 
   const properties = getUnitProperties(config, componentIds)
@@ -138,20 +140,20 @@ export function findViolation(
           componentCounts,
         ) !== 0
       ) {
-        return {
+        violations.push({
           message: invalidCondition.message,
           conditionText: conditionToC(invalidCondition.condition),
-        }
+        })
       }
     } catch (error) {
-      return {
+      violations.push({
         message: `Invalid condition config: ${error instanceof Error ? error.message : 'unknown error'}`,
         conditionText: conditionToC(invalidCondition.condition),
-      }
+      })
     }
   }
 
-  return null
+  return violations
 }
 
 export function getChangedProperties(

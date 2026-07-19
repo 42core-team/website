@@ -151,7 +151,7 @@ function TeamsRoute() {
                   sortColumn={sortColumn}
                   sortDirection={sortDirection}
                 >
-                  Queue Score
+                  Match Making Rating
                 </SortableTableHead>
                 <SortableTableHead
                   column="createdAt"

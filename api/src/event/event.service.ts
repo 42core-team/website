@@ -16,7 +16,6 @@ import {
   In,
   IsNull,
   LessThanOrEqual,
-  MoreThanOrEqual,
   Repository,
   UpdateResult,
 } from "typeorm";
@@ -100,14 +99,6 @@ export class EventService {
     }
 
     return events;
-  }
-
-  getAllEventsForQueue(): Promise<EventEntity[]> {
-    return this.eventRepository.findBy({
-      startDate: LessThanOrEqual(new Date()),
-      endDate: MoreThanOrEqual(new Date()),
-      processQueue: true,
-    });
   }
 
   async getEventsForUser(userId: string): Promise<EventEntity[]> {
@@ -473,6 +464,8 @@ export class EventService {
     settings: {
       canCreateTeam?: boolean;
       processQueue?: boolean;
+      maxQueueCredits?: number;
+      queueCreditIntervalMinutes?: number;
       isPrivate?: boolean;
       name?: string;
       description?: string;
@@ -535,7 +528,12 @@ export class EventService {
       ).toString();
     }
 
-    const numberFields = ["minTeamSize", "maxTeamSize"] as const;
+    const numberFields = [
+      "minTeamSize",
+      "maxTeamSize",
+      "maxQueueCredits",
+      "queueCreditIntervalMinutes",
+    ] as const;
     for (const field of numberFields) {
       if (typeof settings[field] === "number") {
         update[field] = settings[field];
@@ -747,10 +745,7 @@ export class EventService {
     });
   }
 
-  async bulkRemoveFromWhitelist(
-    eventId: string,
-    ids: string[],
-  ): Promise<void> {
+  async bulkRemoveFromWhitelist(eventId: string, ids: string[]): Promise<void> {
     await this.whitelistRepository.delete({
       id: In(ids),
       event: { id: eventId },
@@ -773,7 +768,10 @@ export class EventService {
     }
 
     const conditions: { username: string; platform: WhitelistPlatform }[] = [
-      { username: githubUsername.trim().toLowerCase(), platform: WhitelistPlatform.GITHUB },
+      {
+        username: githubUsername.trim().toLowerCase(),
+        platform: WhitelistPlatform.GITHUB,
+      },
     ];
 
     if (fortyTwoUsername) {
