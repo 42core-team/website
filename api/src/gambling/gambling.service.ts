@@ -28,6 +28,17 @@ import { calculateGamblingPayouts } from "./gambling-payout";
 
 const PHASE_DURATION_MS = 30 * 60 * 1000;
 
+type GamblingAdvanceAction =
+  | { type: "start"; matchId: string }
+  | { type: "settle"; matchId: string; winnerId: string }
+  | null;
+
+interface GamblingSettlementContext {
+  round: GamblingRoundEntity;
+  eventId: string;
+  playedTeamIds: string[];
+}
+
 @Injectable()
 export class GamblingService {
   private readonly logger = new Logger(GamblingService.name);
@@ -242,160 +253,250 @@ export class GamblingService {
 
   async settleMatch(matchId: string, winnerId: string) {
     await this.dataSource.transaction(async (manager) => {
-      const roundReference = await manager.findOne(GamblingRoundEntity, {
-        where: { match: { id: matchId } },
-        relations: { event: true, teamOne: true, teamTwo: true },
-      });
-      if (!roundReference) return;
+      const context = await this.getSettlementContext(manager, matchId);
+      if (!context) return;
 
-      await this.lockEvent(manager, roundReference.event.id);
-      const round = await manager.findOneOrFail(GamblingRoundEntity, {
-        where: { id: roundReference.id },
-        lock: { mode: "pessimistic_write" },
-      });
-      if (round.phase === GamblingRoundPhase.SETTLED) return;
-      if (round.phase !== GamblingRoundPhase.PLAYING)
-        throw new Error(`Gambling round ${round.id} is not playing.`);
-
-      const bets = await manager.find(GamblingBetEntity, {
-        where: { round: { id: round.id } },
-        relations: { predictedWinner: true, bettorTeam: true },
-        order: { createdAt: "ASC" },
-      });
-      const payout = calculateGamblingPayouts(
-        bets.map((bet) => ({
-          id: bet.id,
-          amount: bet.amount,
-          predictedWinnerId: bet.predictedWinner.id,
-        })),
-        winnerId,
-      );
-
-      if (payout.winnerTeamPayout > 0)
-        await manager.increment(
-          TeamEntity,
-          { id: winnerId },
-          "credits",
-          payout.winnerTeamPayout,
-        );
-      for (const bet of bets) {
-        const betPayout = payout.payouts.get(bet.id) ?? 0;
-        bet.payout = betPayout;
-        if (betPayout > 0)
-          await manager.increment(
-            TeamEntity,
-            { id: bet.bettorTeam.id },
-            "credits",
-            betPayout,
-          );
-      }
-
-      round.phase = GamblingRoundPhase.SETTLED;
-      round.phaseEndsAt = null;
-      round.winner = { id: winnerId } as TeamEntity;
-      round.totalPool = payout.totalPool;
-      round.winnerTeamPayout = payout.winnerTeamPayout;
-      await manager.save(bets);
-      await manager.save(round);
-      const playedTeamIds = [
-        roundReference.teamOne?.id,
-        roundReference.teamTwo?.id,
-      ].filter((teamId): teamId is string => Boolean(teamId));
-      if (playedTeamIds.length > 0)
-        await manager
-          .createQueryBuilder()
-          .delete()
-          .from(GamblingEntryEntity)
-          .where('"eventId" = :eventId', {
-            eventId: roundReference.event.id,
-          })
-          .andWhere('"teamId" IN (:...playedTeamIds)', { playedTeamIds })
-          .execute();
-      await this.createJoiningRound(manager, roundReference.event.id);
+      const bets = await this.getRoundBets(manager, context.round.id);
+      const payout = this.calculateRoundPayout(bets, winnerId);
+      await this.applyRoundPayouts(manager, bets, winnerId, payout);
+      await this.completeSettledRound(manager, context, winnerId, payout);
     });
   }
 
   private async advanceEvent(eventId: string) {
-    const action = await this.dataSource.transaction(
-      async (
-        manager,
-      ): Promise<
-        | { type: "start"; matchId: string }
-        | { type: "settle"; matchId: string; winnerId: string }
-        | null
-      > => {
-        await this.lockEvent(manager, eventId);
-        await manager.findOneOrFail(EventEntity, { where: { id: eventId } });
-        let round = await this.getLatestRoundWithManager(manager, eventId);
-        if (!round) round = await this.createJoiningRound(manager, eventId);
-
-        const now = new Date();
-        if (
-          round.phase === GamblingRoundPhase.JOINING &&
-          round.phaseEndsAt &&
-          round.phaseEndsAt <= now
-        ) {
-          const selectedTeamIds = await manager
-            .getRepository(GamblingEntryEntity)
-            .createQueryBuilder("entry")
-            .select('"entry"."teamId"', "teamId")
-            .where('"entry"."eventId" = :eventId', { eventId })
-            .orderBy("RANDOM()")
-            .limit(2)
-            .getRawMany<{ teamId: string }>();
-          if (selectedTeamIds.length < 2) {
-            round.phaseEndsAt = new Date(now.getTime() + PHASE_DURATION_MS);
-          } else {
-            round.phase = GamblingRoundPhase.BETTING;
-            round.phaseEndsAt = new Date(now.getTime() + PHASE_DURATION_MS);
-            round.teamOne = { id: selectedTeamIds[0].teamId } as TeamEntity;
-            round.teamTwo = { id: selectedTeamIds[1].teamId } as TeamEntity;
-          }
-          await manager.save(round);
-        }
-
-        if (
-          round.phase === GamblingRoundPhase.BETTING &&
-          round.phaseEndsAt &&
-          round.phaseEndsAt <= now
-        ) {
-          if (!round.teamOne || !round.teamTwo)
-            throw new Error(`Gambling round ${round.id} has no teams.`);
-          const match = await manager.save(
-            manager.create(MatchEntity, {
-              teams: [{ id: round.teamOne.id }, { id: round.teamTwo.id }],
-              round: 0,
-              phase: MatchPhase.GAMBLING,
-              state: MatchState.PLANNED,
-              stats: new MatchStatsEntity(),
-            }),
-          );
-          round.phase = GamblingRoundPhase.PLAYING;
-          round.phaseEndsAt = null;
-          round.match = match;
-          await manager.save(round);
-          return { type: "start", matchId: match.id };
-        }
-
-        if (
-          round.phase === GamblingRoundPhase.PLAYING &&
-          round.match?.state === MatchState.PLANNED
-        )
-          return { type: "start", matchId: round.match.id };
-        if (
-          round.phase === GamblingRoundPhase.PLAYING &&
-          round.match?.state === MatchState.FINISHED &&
-          round.match.winner
-        )
-          return {
-            type: "settle",
-            matchId: round.match.id,
-            winnerId: round.match.winner.id,
-          };
-        return null;
-      },
+    const action = await this.dataSource.transaction((manager) =>
+      this.getAdvanceAction(manager, eventId),
     );
+    await this.executeAdvanceAction(action);
+  }
 
+  private async getSettlementContext(
+    manager: EntityManager,
+    matchId: string,
+  ): Promise<GamblingSettlementContext | null> {
+    const roundReference = await manager.findOne(GamblingRoundEntity, {
+      where: { match: { id: matchId } },
+      relations: { event: true, teamOne: true, teamTwo: true },
+    });
+    if (!roundReference) return null;
+
+    await this.lockEvent(manager, roundReference.event.id);
+    const round = await manager.findOneOrFail(GamblingRoundEntity, {
+      where: { id: roundReference.id },
+      lock: { mode: "pessimistic_write" },
+    });
+    if (round.phase === GamblingRoundPhase.SETTLED) return null;
+    if (round.phase !== GamblingRoundPhase.PLAYING)
+      throw new Error(`Gambling round ${round.id} is not playing.`);
+
+    return {
+      round,
+      eventId: roundReference.event.id,
+      playedTeamIds: [
+        roundReference.teamOne?.id,
+        roundReference.teamTwo?.id,
+      ].filter((teamId): teamId is string => Boolean(teamId)),
+    };
+  }
+
+  private getRoundBets(manager: EntityManager, roundId: string) {
+    return manager.find(GamblingBetEntity, {
+      where: { round: { id: roundId } },
+      relations: { predictedWinner: true, bettorTeam: true },
+      order: { createdAt: "ASC" },
+    });
+  }
+
+  private calculateRoundPayout(bets: GamblingBetEntity[], winnerId: string) {
+    return calculateGamblingPayouts(
+      bets.map((bet) => ({
+        id: bet.id,
+        amount: bet.amount,
+        predictedWinnerId: bet.predictedWinner.id,
+      })),
+      winnerId,
+    );
+  }
+
+  private async applyRoundPayouts(
+    manager: EntityManager,
+    bets: GamblingBetEntity[],
+    winnerId: string,
+    payout: ReturnType<typeof calculateGamblingPayouts>,
+  ) {
+    await this.creditTeam(manager, winnerId, payout.winnerTeamPayout);
+    for (const bet of bets) {
+      const betPayout = payout.payouts.get(bet.id) ?? 0;
+      bet.payout = betPayout;
+      await this.creditTeam(manager, bet.bettorTeam.id, betPayout);
+    }
+    await manager.save(bets);
+  }
+
+  private async creditTeam(
+    manager: EntityManager,
+    teamId: string,
+    credits: number,
+  ) {
+    if (credits <= 0) return;
+    await manager.increment(TeamEntity, { id: teamId }, "credits", credits);
+  }
+
+  private async completeSettledRound(
+    manager: EntityManager,
+    context: GamblingSettlementContext,
+    winnerId: string,
+    payout: ReturnType<typeof calculateGamblingPayouts>,
+  ) {
+    context.round.phase = GamblingRoundPhase.SETTLED;
+    context.round.phaseEndsAt = null;
+    context.round.winner = { id: winnerId } as TeamEntity;
+    context.round.totalPool = payout.totalPool;
+    context.round.winnerTeamPayout = payout.winnerTeamPayout;
+    await manager.save(context.round);
+    await this.removePlayedTeams(
+      manager,
+      context.eventId,
+      context.playedTeamIds,
+    );
+    await this.createJoiningRound(manager, context.eventId);
+  }
+
+  private async removePlayedTeams(
+    manager: EntityManager,
+    eventId: string,
+    playedTeamIds: string[],
+  ) {
+    if (playedTeamIds.length === 0) return;
+    await manager
+      .createQueryBuilder()
+      .delete()
+      .from(GamblingEntryEntity)
+      .where('"eventId" = :eventId', { eventId })
+      .andWhere('"teamId" IN (:...playedTeamIds)', { playedTeamIds })
+      .execute();
+  }
+
+  private async getAdvanceAction(
+    manager: EntityManager,
+    eventId: string,
+  ): Promise<GamblingAdvanceAction> {
+    await this.lockEvent(manager, eventId);
+    await manager.findOneOrFail(EventEntity, { where: { id: eventId } });
+    const round = await this.getOrCreateCurrentRound(manager, eventId);
+    const now = new Date();
+
+    await this.advanceJoiningRound(manager, round, eventId, now);
+    const bettingAction = await this.advanceBettingRound(manager, round, now);
+    return bettingAction ?? this.getPlayingRoundAction(round);
+  }
+
+  private async getOrCreateCurrentRound(
+    manager: EntityManager,
+    eventId: string,
+  ) {
+    return (
+      (await this.getLatestRoundWithManager(manager, eventId)) ??
+      await this.createJoiningRound(manager, eventId)
+    );
+  }
+
+  private async advanceJoiningRound(
+    manager: EntityManager,
+    round: GamblingRoundEntity,
+    eventId: string,
+    now: Date,
+  ) {
+    if (!this.isExpiredPhase(round, GamblingRoundPhase.JOINING, now)) return;
+
+    const selectedTeamIds = await this.selectRandomTeamIds(manager, eventId);
+    round.phaseEndsAt = new Date(now.getTime() + PHASE_DURATION_MS);
+    if (selectedTeamIds.length === 2) {
+      round.phase = GamblingRoundPhase.BETTING;
+      round.teamOne = { id: selectedTeamIds[0] } as TeamEntity;
+      round.teamTwo = { id: selectedTeamIds[1] } as TeamEntity;
+    }
+    await manager.save(round);
+  }
+
+  private async selectRandomTeamIds(manager: EntityManager, eventId: string) {
+    const rows = await manager
+      .getRepository(GamblingEntryEntity)
+      .createQueryBuilder("entry")
+      .select('"entry"."teamId"', "teamId")
+      .where('"entry"."eventId" = :eventId', { eventId })
+      .orderBy("RANDOM()")
+      .limit(2)
+      .getRawMany<{ teamId: string }>();
+    return rows.map(({ teamId }) => teamId);
+  }
+
+  private async advanceBettingRound(
+    manager: EntityManager,
+    round: GamblingRoundEntity,
+    now: Date,
+  ): Promise<GamblingAdvanceAction> {
+    if (!this.isExpiredPhase(round, GamblingRoundPhase.BETTING, now))
+      return null;
+    if (!round.teamOne || !round.teamTwo)
+      throw new Error(`Gambling round ${round.id} has no teams.`);
+
+    const match = await this.createGamblingMatch(
+      manager,
+      round.teamOne.id,
+      round.teamTwo.id,
+    );
+    round.phase = GamblingRoundPhase.PLAYING;
+    round.phaseEndsAt = null;
+    round.match = match;
+    await manager.save(round);
+    return { type: "start", matchId: match.id };
+  }
+
+  private createGamblingMatch(
+    manager: EntityManager,
+    teamOneId: string,
+    teamTwoId: string,
+  ) {
+    return manager.save(
+      manager.create(MatchEntity, {
+        teams: [{ id: teamOneId }, { id: teamTwoId }],
+        round: 0,
+        phase: MatchPhase.GAMBLING,
+        state: MatchState.PLANNED,
+        stats: new MatchStatsEntity(),
+      }),
+    );
+  }
+
+  private isExpiredPhase(
+    round: GamblingRoundEntity,
+    phase: GamblingRoundPhase,
+    now: Date,
+  ) {
+    return (
+      round.phase === phase &&
+      round.phaseEndsAt !== null &&
+      round.phaseEndsAt <= now
+    );
+  }
+
+  private getPlayingRoundAction(
+    round: GamblingRoundEntity,
+  ): GamblingAdvanceAction {
+    if (round.phase !== GamblingRoundPhase.PLAYING || !round.match) return null;
+    if (round.match.state === MatchState.PLANNED)
+      return { type: "start", matchId: round.match.id };
+    if (round.match.state === MatchState.FINISHED && round.match.winner)
+      return {
+        type: "settle",
+        matchId: round.match.id,
+        winnerId: round.match.winner.id,
+      };
+    return null;
+  }
+
+  private async executeAdvanceAction(action: GamblingAdvanceAction) {
     if (action?.type === "start")
       await this.matchService.startMatch(action.matchId);
     if (action?.type === "settle")
