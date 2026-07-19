@@ -4,6 +4,7 @@ import {
   Inject,
   Injectable,
   Logger,
+  NotFoundException,
 } from "@nestjs/common";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { TeamEntity } from "./entities/team.entity";
@@ -340,6 +341,26 @@ export class TeamService {
       event: true,
     });
 
+    return this.deleteTeamRecord(team);
+  }
+
+  async deleteTeamForEvent(eventId: string, teamId: string) {
+    const team = await this.teamRepository.findOne({
+      where: {
+        id: teamId,
+        event: { id: eventId },
+      },
+      relations: { event: true },
+    });
+
+    if (!team) throw new NotFoundException("Team not found in this event.");
+
+    return this.deleteTeamRecord(team);
+  }
+
+  private async deleteTeamRecord(team: TeamEntity) {
+    const teamId = team.id;
+
     if (team.repo)
       await this.githubApiService.deleteRepository(
         team.repo,
@@ -348,6 +369,29 @@ export class TeamService {
       );
 
     return this.teamRepository.softDelete(teamId);
+  }
+
+  async setTeamCredits(eventId: string, teamId: string, credits: number) {
+    return this.dataSource.transaction(async (entityManager) => {
+      const team = await entityManager.findOne(TeamEntity, {
+        where: {
+          id: teamId,
+          event: { id: eventId },
+        },
+        lock: { mode: "pessimistic_write" },
+      });
+
+      if (!team) throw new NotFoundException("Team not found in this event.");
+
+      team.credits = credits;
+      team.lastCreditGrantedAt = new Date();
+      const updatedTeam = await entityManager.save(team);
+
+      return {
+        id: updatedTeam.id,
+        credits: updatedTeam.credits,
+      };
+    });
   }
 
   async leaveTeam(teamId: string, userId: string) {
@@ -504,6 +548,7 @@ export class TeamService {
         "team.buchholzPoints",
         "team.hadBye",
         "team.queueScore",
+        "team.credits",
         "team.createdAt",
         "team.updatedAt",
       ]);

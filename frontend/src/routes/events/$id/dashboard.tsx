@@ -1,4 +1,5 @@
 import type { Event } from '@/app/actions/event'
+import type { Team } from '@/app/actions/team'
 import type { UserSearchResult } from '@/app/actions/user'
 import type { UseMutationResult } from '@tanstack/react-query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -29,7 +30,13 @@ import {
   setEventTeamsLockDate,
   updateEventSettings,
 } from '@/app/actions/event'
-import { lockEvent, unlockEvent } from '@/app/actions/team'
+import {
+  deleteTeamAsAdmin,
+  getTeamsForEventTable,
+  lockEvent,
+  unlockEvent,
+  updateTeamCredits,
+} from '@/app/actions/team'
 import {
   cleanupAllMatches,
   revealAllMatches,
@@ -50,6 +57,14 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Popover,
   PopoverContent,
@@ -405,6 +420,7 @@ function DashboardRoute() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="operation">Operation</TabsTrigger>
+          <TabsTrigger value="teams">Teams</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="admins">Admins</TabsTrigger>
           <TabsTrigger value="whitelist">Whitelist</TabsTrigger>
@@ -444,6 +460,10 @@ function DashboardRoute() {
             setIsServerConfigExpanded={setIsServerConfigExpanded}
             eventId={id}
           />
+        </TabsContent>
+
+        <TabsContent value="teams" className="space-y-6">
+          <TeamsTab eventId={id} />
         </TabsContent>
 
         <TabsContent value="admins" className="space-y-6">
@@ -1182,6 +1202,234 @@ function AdminsTab({
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function TeamsTab({ eventId }: { eventId: string }) {
+  const queryClient = useQueryClient()
+  const [teamToDelete, setTeamToDelete] = useState<Team | null>(null)
+
+  const teamsQuery = useQuery({
+    queryKey: ['event', eventId, 'teams', 'admin'],
+    queryFn: () =>
+      getTeamsForEventTable(eventId, undefined, 'name', 'asc', true),
+  })
+
+  const updateCreditsMutation = useMutation({
+    mutationFn: ({ teamId, credits }: { teamId: string; credits: number }) =>
+      updateTeamCredits(eventId, teamId, credits),
+    onSuccess: async () => {
+      toast.success('Team credits updated.')
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ['event', eventId, 'teams'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['event', eventId, 'queue-summary'],
+        }),
+      ])
+    },
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'Failed to update team credits.')),
+  })
+
+  const deleteTeamMutation = useMutation({
+    mutationFn: (teamId: string) => deleteTeamAsAdmin(eventId, teamId),
+    onSuccess: async () => {
+      setTeamToDelete(null)
+      toast.success('Team deleted.')
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ['event', eventId, 'teams'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['event', eventId, 'teams-count'],
+        }),
+      ])
+    },
+    onError: (error) =>
+      toast.error(getErrorMessage(error, 'Failed to delete team.')),
+  })
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Team Management</CardTitle>
+          <CardDescription>
+            Set team credit balances or permanently remove teams from this
+            event.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {teamsQuery.isPending ? (
+            <div className="flex items-center justify-center py-8">
+              <Spinner />
+            </div>
+          ) : teamsQuery.isError ? (
+            <p className="py-8 text-center text-destructive">
+              Failed to load teams.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Team</TableHead>
+                  <TableHead>Members</TableHead>
+                  <TableHead>Credits</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {teamsQuery.data.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="py-8 text-center text-muted-foreground"
+                    >
+                      No teams found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  teamsQuery.data.map((team) => (
+                    <TeamManagementRow
+                      key={team.id}
+                      team={team}
+                      isSaving={
+                        updateCreditsMutation.isPending &&
+                        updateCreditsMutation.variables.teamId === team.id
+                      }
+                      isDeleting={
+                        deleteTeamMutation.isPending &&
+                        deleteTeamMutation.variables === team.id
+                      }
+                      onSave={(credits) =>
+                        updateCreditsMutation.mutate({
+                          teamId: team.id,
+                          credits,
+                        })
+                      }
+                      onDelete={() => setTeamToDelete(team)}
+                    />
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={teamToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleteTeamMutation.isPending) setTeamToDelete(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {teamToDelete?.name}?</DialogTitle>
+            <DialogDescription>
+              This removes the team from the event and deletes its repository
+              when one exists. This action cannot be undone from the dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={deleteTeamMutation.isPending}
+              onClick={() => setTeamToDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!teamToDelete || deleteTeamMutation.isPending}
+              onClick={() =>
+                teamToDelete && deleteTeamMutation.mutate(teamToDelete.id)
+              }
+            >
+              {deleteTeamMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              Delete Team
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+function TeamManagementRow({
+  team,
+  isSaving,
+  isDeleting,
+  onSave,
+  onDelete,
+}: {
+  team: Team
+  isSaving: boolean
+  isDeleting: boolean
+  onSave: (credits: number) => void
+  onDelete: () => void
+}) {
+  const [credits, setCredits] = useState(String(team.credits))
+
+  useEffect(() => {
+    setCredits(String(team.credits))
+  }, [team.credits])
+
+  const parsedCredits = Number(credits)
+  const hasValidCredits =
+    credits.trim() !== '' && Number.isInteger(parsedCredits)
+  const hasChanges = hasValidCredits && parsedCredits !== team.credits
+
+  return (
+    <TableRow>
+      <TableCell className="font-medium">{team.name}</TableCell>
+      <TableCell>{team.membersCount ?? '-'}</TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <Input
+            className="w-28"
+            type="number"
+            step={1}
+            aria-label={`Credits for ${team.name}`}
+            value={credits}
+            onChange={(event) => setCredits(event.target.value)}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!hasChanges || isSaving || isDeleting}
+            onClick={() => hasValidCredits && onSave(parsedCredits)}
+          >
+            {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+            Save
+          </Button>
+        </div>
+        {!hasValidCredits && (
+          <p className="mt-1 text-xs text-destructive">Enter a whole number.</p>
+        )}
+      </TableCell>
+      <TableCell className="text-right">
+        <Button
+          size="sm"
+          variant="destructive"
+          disabled={isSaving || isDeleting}
+          onClick={onDelete}
+        >
+          {isDeleting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+          Delete
+        </Button>
+      </TableCell>
+    </TableRow>
   )
 }
 

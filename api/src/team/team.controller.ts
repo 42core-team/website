@@ -9,6 +9,7 @@ import {
   Post,
   Put,
   Query,
+    UnauthorizedException,
   UseGuards,
   Logger,
 } from "@nestjs/common";
@@ -30,6 +31,7 @@ import { EVENT_ID_PARAM, TEAM_ID_PARAM } from "../guards/GuardConstants";
 import { TeamEntity } from "./entities/team.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { getLocationTags } from "../user/location-tags";
+import { UpdateTeamCreditsDto } from "./dtos/updateTeamCreditsDto";
 
 @Controller("team")
 export class TeamController {
@@ -70,6 +72,52 @@ export class TeamController {
   @Get(`event/:${EVENT_ID_PARAM}/my`)
   getMyTeamForEvent(@EventId eventId: string, @UserId("id") userId: string) {
     return this.teamService.getTeamOfUserForEventWithTags(eventId, userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(`event/:${EVENT_ID_PARAM}/admin/:${TEAM_ID_PARAM}/credits`)
+  async updateTeamCredits(
+    @EventId eventId: string,
+    @TeamId teamId: string,
+    @UserId() userId: string,
+    @Body() body: UpdateTeamCreditsDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to update team credits for this event.",
+      );
+
+    this.logger.log({
+      action: "attempt_update_team_credits",
+      userId,
+      eventId,
+      teamId,
+      credits: body.credits,
+    });
+
+    return this.teamService.setTeamCredits(eventId, teamId, body.credits);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(`event/:${EVENT_ID_PARAM}/admin/:${TEAM_ID_PARAM}`)
+  async deleteTeamAsAdmin(
+    @EventId eventId: string,
+    @TeamId teamId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to delete teams for this event.",
+      );
+
+    this.logger.log({
+      action: "attempt_admin_delete_team",
+      userId,
+      eventId,
+      teamId,
+    });
+
+    return this.teamService.deleteTeamForEvent(eventId, teamId);
   }
 
   @UseGuards(JwtAuthGuard)
