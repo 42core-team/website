@@ -1,5 +1,12 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsBoolean, IsNumber, IsOptional, IsString } from "class-validator";
+import {
+  IsBoolean,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from "class-validator";
 
 export class UpdateEventSettingsDto {
   @ApiPropertyOptional()
@@ -11,6 +18,18 @@ export class UpdateEventSettingsDto {
   @IsOptional()
   @IsBoolean()
   processQueue?: boolean;
+
+  @ApiPropertyOptional({ minimum: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxQueueCredits?: number;
+
+  @ApiPropertyOptional({ minimum: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  queueCreditIntervalMinutes?: number;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -271,10 +271,11 @@ export class TeamController {
 
   @UseGuards(JwtAuthGuard, MyTeamGuards)
   @Put(`event/:${EVENT_ID_PARAM}/queue/join`)
-  async joinQueue(@Team() team: TeamEntity, @UserId() userId: string) {
-    if (team.inQueue)
-      throw new BadRequestException("You are already in the queue.");
-
+  async joinQueue(
+    @Team() team: TeamEntity,
+    @EventId eventId: string,
+    @UserId() userId: string,
+  ) {
     if (!(await this.eventService.hasEventStartedForTeam(team.id)))
       throw new BadRequestException("The event has not started yet.");
 
@@ -284,27 +285,37 @@ export class TeamController {
       userId,
     });
 
-    return this.teamService.joinQueue(team.id);
+    return this.teamService.joinQueue(team.id, eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(`event/:${EVENT_ID_PARAM}/queue/summary`)
+  getQueueSummary(@EventId eventId: string, @UserId() userId: string) {
+    return this.teamService.getQueueSummary(eventId, userId);
   }
 
   @UseGuards(JwtAuthGuard, MyTeamGuards)
-  @Put(`event/:${EVENT_ID_PARAM}/queue/leave`)
-  async leaveQueue(@Team() team: TeamEntity, @UserId() userId: string) {
-    if (!team.inQueue)
-      throw new BadRequestException("You are not in the queue.");
+  @Get(`event/:${EVENT_ID_PARAM}/queue/opponents`)
+  getQueueOpponents(@EventId eventId: string, @Team() team: TeamEntity) {
+    return this.teamService.getQueueOpponents(eventId, team.id);
+  }
+
+  @UseGuards(JwtAuthGuard, MyTeamGuards)
+  @Post(`event/:${EVENT_ID_PARAM}/queue/direct/:targetTeamId`)
+  async startDirectMatch(
+    @Team() team: TeamEntity,
+    @Param("targetTeamId", new ParseUUIDPipe()) targetTeamId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.hasEventStartedForTeam(team.id)))
+      throw new BadRequestException("The event has not started yet.");
 
     this.logger.log({
-      action: "attempt_leave_queue",
-      teamId: team.id,
+      action: "start_direct_match",
+      initiatingTeamId: team.id,
+      targetTeamId,
       userId,
     });
-
-    return this.teamService.leaveQueue(team.id);
-  }
-
-  @UseGuards(JwtAuthGuard, MyTeamGuards)
-  @Get(`event/:${EVENT_ID_PARAM}/queue/state`)
-  async getQueueState(@Team() team: TeamEntity) {
-    return this.teamService.getQueueState(team.id);
+    return this.teamService.createDirectMatch(team.id, targetTeamId);
   }
 }

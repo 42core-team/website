@@ -10,8 +10,10 @@ import { TeamEntity } from "./entities/team.entity";
 import {
   DataSource,
   EntityManager,
+  In,
   IsNull,
   LessThanOrEqual,
+  Not,
   Repository,
 } from "typeorm";
 import { GithubApiService } from "../github-api/github-api.service";
@@ -21,7 +23,19 @@ import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations"
 import { MatchService } from "../match/match.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { LockKeys } from "../constants";
-import { MatchEntity } from "../match/entites/match.entity";
+import {
+  MatchEntity,
+  MatchPhase,
+  MatchState,
+} from "../match/entites/match.entity";
+import { MatchStatsEntity } from "../match/entites/matchStats.entity";
+import { accrueQueueCredits } from "./team-credits";
+import { EventEntity } from "../event/entities/event.entity";
+import { rankQueueOpponents } from "./queue-matchmaking";
+import type { QueueOpponentCandidate } from "./queue-matchmaking";
+
+const DIRECT_MATCH_COST = 2;
+const DIRECT_MATCH_STAKE = 1;
 
 @Injectable()
 export class TeamService {
@@ -39,6 +53,47 @@ export class TeamService {
   ) {}
 
   logger = new Logger("TeamService");
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async grantTeamCredits() {
+    const lockKey = LockKeys.GRANT_TEAM_QUEUE_CREDITS;
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+
+    try {
+      const gotLock = await queryRunner.query(
+        "SELECT pg_try_advisory_lock($1)",
+        [lockKey],
+      );
+
+      if (!gotLock[0].pg_try_advisory_lock) return;
+
+      try {
+        await queryRunner.query(`
+          UPDATE "teams" AS team
+          SET
+            "credits" = CASE
+              WHEN team."credits" >= event."maxQueueCredits" THEN team."credits"
+              ELSE LEAST(
+                team."credits" + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - team."lastCreditGrantedAt")) / (event."queueCreditIntervalMinutes" * 60))::integer,
+                event."maxQueueCredits"
+              )
+            END,
+            "lastCreditGrantedAt" = team."lastCreditGrantedAt"
+              + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - team."lastCreditGrantedAt")) / (event."queueCreditIntervalMinutes" * 60))::integer
+              * event."queueCreditIntervalMinutes" * INTERVAL '1 minute'
+          FROM "events" AS event
+          WHERE team."eventId" = event."id"
+            AND team."deletedAt" IS NULL
+            AND team."lastCreditGrantedAt" <= CURRENT_TIMESTAMP - event."queueCreditIntervalMinutes" * INTERVAL '1 minute'
+        `);
+      } finally {
+        await queryRunner.query("SELECT pg_advisory_unlock($1)", [lockKey]);
+      }
+    } finally {
+      await queryRunner.release();
+    }
+  }
 
   @Cron(CronExpression.EVERY_MINUTE)
   async autoCreateRepos() {
@@ -515,8 +570,49 @@ export class TeamService {
     return teamsWithCounts;
   }
 
-  async joinQueue(teamId: string) {
-    return this.teamRepository.update(teamId, { inQueue: true });
+  async joinQueue(teamId: string, eventId: string) {
+    const result = await this.dataSource.transaction(async (entityManager) => {
+      await this.lockQueueEvent(eventId, entityManager);
+
+      const team = await entityManager.findOneOrFail(TeamEntity, {
+        where: { id: teamId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (team.eventId !== eventId)
+        throw new BadRequestException("The team is not part of this event.");
+
+      const event = await entityManager.findOneOrFail(EventEntity, {
+        where: { id: eventId },
+      });
+      accrueQueueCredits(
+        team,
+        event.maxQueueCredits,
+        event.queueCreditIntervalMinutes * 60 * 1000,
+      );
+      if (team.credits < 1)
+        throw new BadRequestException(
+          "Your team needs at least one credit to start match making.",
+        );
+
+      const now = new Date();
+      if (!event.processQueue)
+        throw new BadRequestException("Match making is disabled.");
+      if (event.startDate > now || event.endDate < now)
+        throw new BadRequestException("Match making is not available.");
+
+      const match = await this.createBestQueueMatch(team, entityManager);
+      if (!match)
+        throw new BadRequestException(
+          "No eligible opponent is currently available.",
+        );
+
+      team.credits -= 1;
+      await entityManager.save(team);
+      return match;
+    });
+
+    await this.matchService.startMatch(result.id);
+    return { matchId: result.id };
   }
 
   async getTeamsForEvent(
@@ -558,49 +654,230 @@ export class TeamService {
     return this.teamRepository.increment({ id: teamId }, "score", score);
   }
 
+  increaseTeamCredits(teamId: string, credits: number) {
+    return this.teamRepository.increment({ id: teamId }, "credits", credits);
+  }
+
   setHadBye(teamId: string, hadBye: boolean) {
     return this.teamRepository.update(teamId, { hadBye });
   }
 
-  async getQueueState(teamId: string) {
-    const team = await this.getTeamById(teamId, {
-      event: true,
-    });
-
-    const match = await this.matchService.getLastQueueMatchForTeam(teamId);
-    const queueCount = await this.teamRepository.countBy({
-      inQueue: true,
-      event: {
-        id: team.event.id,
+  async getQueueSummary(eventId: string, userId: string) {
+    const teamReference = await this.teamRepository.findOne({
+      select: { id: true },
+      where: {
+        event: { id: eventId },
+        users: { id: userId },
       },
     });
-    return {
-      match: match,
-      queueCount: queueCount,
-      inQueue: team.inQueue,
-    };
+    if (!teamReference) return null;
+
+    return this.dataSource.transaction(async (entityManager) => {
+      const lockedTeam = await entityManager.findOneOrFail(TeamEntity, {
+        where: { id: teamReference.id },
+        lock: { mode: "pessimistic_write" },
+      });
+      const event = await entityManager.findOneOrFail(EventEntity, {
+        select: {
+          id: true,
+          maxQueueCredits: true,
+          queueCreditIntervalMinutes: true,
+        },
+        where: { id: eventId },
+      });
+      const previousCredits = lockedTeam.credits;
+      const previousCreditGrantedAt = lockedTeam.lastCreditGrantedAt.getTime();
+      const creditIntervalMs = event.queueCreditIntervalMinutes * 60 * 1000;
+      accrueQueueCredits(lockedTeam, event.maxQueueCredits, creditIntervalMs);
+      if (
+        lockedTeam.credits !== previousCredits ||
+        lockedTeam.lastCreditGrantedAt.getTime() !== previousCreditGrantedAt
+      )
+        await entityManager.save(lockedTeam);
+      return {
+        id: lockedTeam.id,
+        name: lockedTeam.name,
+        credits: lockedTeam.credits,
+        maxCredits: event.maxQueueCredits,
+        creditIntervalMs,
+        nextCreditAt:
+          lockedTeam.credits < event.maxQueueCredits
+            ? new Date(
+                lockedTeam.lastCreditGrantedAt.getTime() + creditIntervalMs,
+              )
+            : null,
+      };
+    });
   }
 
-  async removeFromQueue(teamId: string) {
-    return this.teamRepository.update(teamId, { inQueue: false });
+  async getQueueOpponents(eventId: string, teamId: string) {
+    const opponents = await this.teamRepository.find({
+      select: { id: true, name: true },
+      where: {
+        id: Not(teamId),
+        event: { id: eventId },
+      },
+      order: { name: "ASC" },
+    });
+
+    return opponents.map(({ id, name }) => ({ id, name }));
+  }
+
+  async createDirectMatch(challengerId: string, targetId: string) {
+    if (challengerId === targetId)
+      throw new BadRequestException("A team cannot play against itself.");
+
+    const match = await this.dataSource.transaction(async (entityManager) => {
+      const teams = await entityManager.find(TeamEntity, {
+        where: { id: In([challengerId, targetId]) },
+        order: { id: "ASC" },
+        lock: { mode: "pessimistic_write" },
+      });
+      const challenger = teams.find((team) => team.id === challengerId);
+      const target = teams.find((team) => team.id === targetId);
+      if (!challenger || !target)
+        throw new BadRequestException("The selected team was not found.");
+      if (challenger.eventId !== target.eventId)
+        throw new BadRequestException(
+          "Teams can only play opponents in the same event.",
+        );
+
+      const event = await entityManager.findOneOrFail(EventEntity, {
+        select: {
+          id: true,
+          maxQueueCredits: true,
+          queueCreditIntervalMinutes: true,
+        },
+        where: { id: challenger.eventId },
+      });
+      accrueQueueCredits(
+        challenger,
+        event.maxQueueCredits,
+        event.queueCreditIntervalMinutes * 60 * 1000,
+      );
+      if (challenger.credits < DIRECT_MATCH_COST)
+        throw new BadRequestException(
+          `Your team needs at least ${DIRECT_MATCH_COST} credits to play a direct match.`,
+        );
+      challenger.credits -= DIRECT_MATCH_COST;
+      await entityManager.save(challenger);
+
+      return this.createQueueMatch(
+        [challenger.id, target.id],
+        entityManager,
+        challenger,
+      );
+    });
+
+    await this.matchService.startMatch(match.id);
+    return { matchId: match.id };
+  }
+
+  private createQueueMatch(
+    teamIds: string[],
+    entityManager: EntityManager,
+    creditWagerTeam?: TeamEntity,
+  ) {
+    const matchRepository = entityManager.getRepository(MatchEntity);
+    return matchRepository.save(
+      matchRepository.create({
+        teams: teamIds.map((id) => ({ id })),
+        round: 0,
+        phase: MatchPhase.QUEUE,
+        state: MatchState.PLANNED,
+        creditWager: creditWagerTeam ? DIRECT_MATCH_STAKE : 0,
+        creditWagerTeam: creditWagerTeam ?? null,
+        stats: new MatchStatsEntity(),
+      }),
+    );
+  }
+
+  private async createBestQueueMatch(
+    team: TeamEntity,
+    entityManager: EntityManager,
+  ) {
+    const candidates = await entityManager.find(TeamEntity, {
+      where: {
+        id: Not(team.id),
+        event: { id: team.eventId },
+      },
+      order: { id: "ASC" },
+      lock: { mode: "pessimistic_write" },
+    });
+    if (candidates.length === 0) return null;
+
+    const matchRepository = entityManager.getRepository(MatchEntity);
+    const recentMatches = await matchRepository.find({
+      where: {
+        teams: { id: team.id },
+        phase: MatchPhase.QUEUE,
+        state: MatchState.FINISHED,
+      },
+      relations: { teams: true },
+      order: { createdAt: "DESC" },
+      take: 3,
+    });
+    const recentOpponentIds = new Set(
+      recentMatches.flatMap((match) =>
+        match.teams
+          .filter((matchTeam) => matchTeam.id !== team.id)
+          .map((matchTeam) => matchTeam.id),
+      ),
+    );
+
+    const candidateIds = candidates.map((candidate) => candidate.id);
+    const activityRows: Array<{
+      teamId: string;
+      lastQueueMatchAt: Date | string;
+    }> = await matchRepository
+      .createQueryBuilder("match")
+      .innerJoin("match.teams", "candidate")
+      .select("candidate.id", "teamId")
+      .addSelect('MAX(match."createdAt")', "lastQueueMatchAt")
+      .where("candidate.id IN (:...candidateIds)", {
+        candidateIds,
+      })
+      .andWhere("match.phase = :phase", { phase: MatchPhase.QUEUE })
+      .andWhere("match.state = :state", { state: MatchState.FINISHED })
+      .groupBy("candidate.id")
+      .getRawMany();
+    const activityByTeamId = new Map(
+      activityRows.map((row) => [row.teamId, new Date(row.lastQueueMatchAt)]),
+    );
+
+    const rankedCandidates = rankQueueOpponents(
+      team.queueScore,
+      candidates.map((candidate): QueueOpponentCandidate => ({
+        id: candidate.id,
+        elo: candidate.queueScore,
+        lastQueueMatchAt: activityByTeamId.get(candidate.id) ?? null,
+        wasRecentOpponent: recentOpponentIds.has(candidate.id),
+      })),
+    );
+    const opponent = candidates.find(
+      (candidate) => candidate.id === rankedCandidates[0].id,
+    );
+    if (!opponent) return null;
+
+    this.logger.log({
+      action: "queue_match_selected",
+      teamId: team.id,
+      opponentId: opponent.id,
+      opponentScore: rankedCandidates[0].score,
+    });
+
+    return this.createQueueMatch([team.id, opponent.id], entityManager);
+  }
+
+  private async lockQueueEvent(eventId: string, entityManager: EntityManager) {
+    await entityManager.query(
+      "SELECT pg_advisory_xact_lock($1, hashtext($2))",
+      [LockKeys.QUEUE_MATCHMAKING, eventId],
+    );
   }
 
   async setQueueScore(teamId: string, score: number) {
     return this.teamRepository.update(teamId, { queueScore: score });
-  }
-
-  async getTeamsInQueue(eventId: string): Promise<TeamEntity[]> {
-    return this.teamRepository.find({
-      where: {
-        event: {
-          id: eventId,
-        },
-        inQueue: true,
-      },
-      order: {
-        name: "ASC",
-      },
-    });
   }
 
   async setTeamRepository(teamId: string, repositoryName: string) {
@@ -631,10 +908,6 @@ export class TeamService {
     if (!team?.users) return true;
 
     return team?.users.length >= maxUsers;
-  }
-
-  async leaveQueue(teamId: string) {
-    return this.teamRepository.update(teamId, { inQueue: false });
   }
 
   async unlockTeamsForEvent(eventId: string) {

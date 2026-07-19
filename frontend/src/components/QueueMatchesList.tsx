@@ -1,4 +1,4 @@
-import type { Match } from '@/app/actions/tournament-model'
+import type { QueueMatch } from '@/app/actions/tournament-model'
 import { Trophy } from 'lucide-react'
 import Link from '@/components/app-link'
 import { MatchPhase, MatchState } from '@/app/actions/tournament-model'
@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 
 export default function QueueMatchesList(props: {
   eventId: string
-  matches: Match[]
+  matches: QueueMatch[]
   isInsideCard?: boolean
 }) {
   const { eventId, matches, isInsideCard } = props
@@ -23,7 +23,7 @@ export default function QueueMatchesList(props: {
         )}
       >
         <p className="font-medium text-muted-foreground">
-          No past matches found
+          No match making matches found
         </p>
       </div>
     )
@@ -32,6 +32,9 @@ export default function QueueMatchesList(props: {
   const listContent = (
     <div className={cn('flex flex-col', isInsideCard ? 'divide-y' : 'gap-4')}>
       {matches.map((match, index) => {
+        const resultScores = new Map(
+          match.results?.map((result) => [result.team.id, result.score]) ?? [],
+        )
         const content = (
           <div className="flex flex-col items-stretch sm:flex-row">
             {/* Match Meta */}
@@ -63,7 +66,7 @@ export default function QueueMatchesList(props: {
                   variant="outline"
                   className="border-border/50 px-1.5 text-[10px] font-bold text-muted-foreground uppercase"
                 >
-                  {match.phase === MatchPhase.QUEUE && 'Queue'}
+                  {match.phase === MatchPhase.QUEUE && 'Match Making'}
                   {match.phase === MatchPhase.SWISS && 'Swiss'}
                   {match.phase === MatchPhase.ELIMINATION && 'Tournament'}
                 </Badge>
@@ -110,18 +113,18 @@ export default function QueueMatchesList(props: {
                           )}
                         </Link>
                       )}
-                      <span
-                        className={cn(
-                          'text-2xl sm:text-3xl font-bold tracking-tighter',
-                          match.winner?.id === match.teams[0].id
-                            ? 'text-foreground'
-                            : 'text-muted-foreground/40',
-                        )}
-                      >
-                        {match.results.find(
-                          (r) => r.team?.id === match.teams[0].id,
-                        )?.score ?? 0}
-                      </span>
+                      {resultScores.has(match.teams[0].id) && (
+                        <span
+                          className={cn(
+                            'text-2xl sm:text-3xl font-bold tracking-tighter',
+                            match.winner?.id === match.teams[0].id
+                              ? 'text-foreground'
+                              : 'text-muted-foreground/40',
+                          )}
+                        >
+                          {resultScores.get(match.teams[0].id)}
+                        </span>
+                      )}
                     </>
                   ) : (
                     <span className="text-muted-foreground/40 italic">
@@ -163,18 +166,18 @@ export default function QueueMatchesList(props: {
                           {match.teams[1].name}
                         </Link>
                       )}
-                      <span
-                        className={cn(
-                          'text-2xl sm:text-3xl font-bold tracking-tighter',
-                          match.winner?.id === match.teams[1].id
-                            ? 'text-foreground'
-                            : 'text-muted-foreground/40',
-                        )}
-                      >
-                        {match.results.find(
-                          (r) => r.team?.id === match.teams[1].id,
-                        )?.score ?? 0}
-                      </span>
+                      {resultScores.has(match.teams[1].id) && (
+                        <span
+                          className={cn(
+                            'text-2xl sm:text-3xl font-bold tracking-tighter',
+                            match.winner?.id === match.teams[1].id
+                              ? 'text-foreground'
+                              : 'text-muted-foreground/40',
+                          )}
+                        >
+                          {resultScores.get(match.teams[1].id)}
+                        </span>
+                      )}
                     </>
                   ) : (
                     <span className="text-muted-foreground/40 italic">
@@ -192,7 +195,7 @@ export default function QueueMatchesList(props: {
                 !isInsideCard && 'sm:border-l border-border/40',
               )}
             >
-              {match.id && (
+              {match.id && match.state === MatchState.FINISHED ? (
                 <Link href={`/events/${eventId}/match/${match.id}`}>
                   <Button
                     size="sm"
@@ -202,6 +205,15 @@ export default function QueueMatchesList(props: {
                     Replay
                   </Button>
                 </Link>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="text-xs font-bold uppercase"
+                  disabled
+                >
+                  Playing
+                </Button>
               )}
             </div>
           </div>

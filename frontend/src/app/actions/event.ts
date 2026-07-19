@@ -19,6 +19,8 @@ export interface Event {
   canCreateTeam: boolean
   lockedAt: string | null
   processQueue: boolean
+  maxQueueCredits: number
+  queueCreditIntervalMinutes: number
   monorepoUrl?: string
   monorepoVersion?: string
   gameServerDockerImage?: string
@@ -139,6 +141,8 @@ export async function updateEventSettings(
   settings: {
     canCreateTeam?: boolean
     processQueue?: boolean
+    maxQueueCredits?: number
+    queueCreditIntervalMinutes?: number
     isPrivate?: boolean
     name?: string
     description?: string

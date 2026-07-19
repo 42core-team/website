@@ -14,6 +14,7 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { StatsModule } from "./stats/stats.module";
 import { LoggerModule } from "nestjs-pino";
 import { IncomingMessage } from "http";
+import { GamblingModule } from "./gambling/gambling.module";
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { IncomingMessage } from "http";
     MatchModule,
     GithubApiModule,
     StatsModule,
+    GamblingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

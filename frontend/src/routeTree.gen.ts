@@ -23,10 +23,10 @@ import { Route as EventsCreateRouteImport } from './routes/events/create'
 import { Route as EventsIdRouteImport } from './routes/events/$id'
 import { Route as EventsIdUnitBuilderRouteImport } from './routes/events/$id/unit-builder'
 import { Route as EventsIdTeamsRouteImport } from './routes/events/$id/teams'
-import { Route as EventsIdQueueMatchesRouteImport } from './routes/events/$id/queue-matches'
 import { Route as EventsIdQueueRouteImport } from './routes/events/$id/queue'
 import { Route as EventsIdMyTeamRouteImport } from './routes/events/$id/my-team'
 import { Route as EventsIdGroupsRouteImport } from './routes/events/$id/groups'
+import { Route as EventsIdGamblingRouteImport } from './routes/events/$id/gambling'
 import { Route as EventsIdDashboardRouteImport } from './routes/events/$id/dashboard'
 import { Route as EventsIdBracketRouteImport } from './routes/events/$id/bracket'
 import { Route as EventsIdTeamsTeamIdRouteImport } from './routes/events/$id/teams/$teamId'
@@ -102,11 +102,6 @@ const EventsIdTeamsRoute = EventsIdTeamsRouteImport.update({
   path: '/teams',
   getParentRoute: () => EventsIdRoute,
 } as any)
-const EventsIdQueueMatchesRoute = EventsIdQueueMatchesRouteImport.update({
-  id: '/queue-matches',
-  path: '/queue-matches',
-  getParentRoute: () => EventsIdRoute,
-} as any)
 const EventsIdQueueRoute = EventsIdQueueRouteImport.update({
   id: '/queue',
   path: '/queue',
@@ -120,6 +115,11 @@ const EventsIdMyTeamRoute = EventsIdMyTeamRouteImport.update({
 const EventsIdGroupsRoute = EventsIdGroupsRouteImport.update({
   id: '/groups',
   path: '/groups',
+  getParentRoute: () => EventsIdRoute,
+} as any)
+const EventsIdGamblingRoute = EventsIdGamblingRouteImport.update({
+  id: '/gambling',
+  path: '/gambling',
   getParentRoute: () => EventsIdRoute,
 } as any)
 const EventsIdDashboardRoute = EventsIdDashboardRouteImport.update({
@@ -158,10 +158,10 @@ export interface FileRoutesByFullPath {
   '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
+  '/events/$id/gambling': typeof EventsIdGamblingRoute
   '/events/$id/groups': typeof EventsIdGroupsRoute
   '/events/$id/my-team': typeof EventsIdMyTeamRoute
   '/events/$id/queue': typeof EventsIdQueueRoute
-  '/events/$id/queue-matches': typeof EventsIdQueueMatchesRoute
   '/events/$id/teams': typeof EventsIdTeamsRouteWithChildren
   '/events/$id/unit-builder': typeof EventsIdUnitBuilderRoute
   '/events/$id/match/$matchId': typeof EventsIdMatchMatchIdRoute
@@ -182,10 +182,10 @@ export interface FileRoutesByTo {
   '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
+  '/events/$id/gambling': typeof EventsIdGamblingRoute
   '/events/$id/groups': typeof EventsIdGroupsRoute
   '/events/$id/my-team': typeof EventsIdMyTeamRoute
   '/events/$id/queue': typeof EventsIdQueueRoute
-  '/events/$id/queue-matches': typeof EventsIdQueueMatchesRoute
   '/events/$id/teams': typeof EventsIdTeamsRouteWithChildren
   '/events/$id/unit-builder': typeof EventsIdUnitBuilderRoute
   '/events/$id/match/$matchId': typeof EventsIdMatchMatchIdRoute
@@ -207,10 +207,10 @@ export interface FileRoutesById {
   '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
+  '/events/$id/gambling': typeof EventsIdGamblingRoute
   '/events/$id/groups': typeof EventsIdGroupsRoute
   '/events/$id/my-team': typeof EventsIdMyTeamRoute
   '/events/$id/queue': typeof EventsIdQueueRoute
-  '/events/$id/queue-matches': typeof EventsIdQueueMatchesRoute
   '/events/$id/teams': typeof EventsIdTeamsRouteWithChildren
   '/events/$id/unit-builder': typeof EventsIdUnitBuilderRoute
   '/events/$id/match/$matchId': typeof EventsIdMatchMatchIdRoute
@@ -233,10 +233,10 @@ export interface FileRouteTypes {
     | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
+    | '/events/$id/gambling'
     | '/events/$id/groups'
     | '/events/$id/my-team'
     | '/events/$id/queue'
-    | '/events/$id/queue-matches'
     | '/events/$id/teams'
     | '/events/$id/unit-builder'
     | '/events/$id/match/$matchId'
@@ -257,10 +257,10 @@ export interface FileRouteTypes {
     | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
+    | '/events/$id/gambling'
     | '/events/$id/groups'
     | '/events/$id/my-team'
     | '/events/$id/queue'
-    | '/events/$id/queue-matches'
     | '/events/$id/teams'
     | '/events/$id/unit-builder'
     | '/events/$id/match/$matchId'
@@ -281,10 +281,10 @@ export interface FileRouteTypes {
     | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
+    | '/events/$id/gambling'
     | '/events/$id/groups'
     | '/events/$id/my-team'
     | '/events/$id/queue'
-    | '/events/$id/queue-matches'
     | '/events/$id/teams'
     | '/events/$id/unit-builder'
     | '/events/$id/match/$matchId'
@@ -403,13 +403,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsIdTeamsRouteImport
       parentRoute: typeof EventsIdRoute
     }
-    '/events/$id/queue-matches': {
-      id: '/events/$id/queue-matches'
-      path: '/queue-matches'
-      fullPath: '/events/$id/queue-matches'
-      preLoaderRoute: typeof EventsIdQueueMatchesRouteImport
-      parentRoute: typeof EventsIdRoute
-    }
     '/events/$id/queue': {
       id: '/events/$id/queue'
       path: '/queue'
@@ -429,6 +422,13 @@ declare module '@tanstack/react-router' {
       path: '/groups'
       fullPath: '/events/$id/groups'
       preLoaderRoute: typeof EventsIdGroupsRouteImport
+      parentRoute: typeof EventsIdRoute
+    }
+    '/events/$id/gambling': {
+      id: '/events/$id/gambling'
+      path: '/gambling'
+      fullPath: '/events/$id/gambling'
+      preLoaderRoute: typeof EventsIdGamblingRouteImport
       parentRoute: typeof EventsIdRoute
     }
     '/events/$id/dashboard': {
@@ -477,10 +477,10 @@ const EventsIdTeamsRouteWithChildren = EventsIdTeamsRoute._addFileChildren(
 interface EventsIdRouteChildren {
   EventsIdBracketRoute: typeof EventsIdBracketRoute
   EventsIdDashboardRoute: typeof EventsIdDashboardRoute
+  EventsIdGamblingRoute: typeof EventsIdGamblingRoute
   EventsIdGroupsRoute: typeof EventsIdGroupsRoute
   EventsIdMyTeamRoute: typeof EventsIdMyTeamRoute
   EventsIdQueueRoute: typeof EventsIdQueueRoute
-  EventsIdQueueMatchesRoute: typeof EventsIdQueueMatchesRoute
   EventsIdTeamsRoute: typeof EventsIdTeamsRouteWithChildren
   EventsIdUnitBuilderRoute: typeof EventsIdUnitBuilderRoute
   EventsIdMatchMatchIdRoute: typeof EventsIdMatchMatchIdRoute
@@ -489,10 +489,10 @@ interface EventsIdRouteChildren {
 const EventsIdRouteChildren: EventsIdRouteChildren = {
   EventsIdBracketRoute: EventsIdBracketRoute,
   EventsIdDashboardRoute: EventsIdDashboardRoute,
+  EventsIdGamblingRoute: EventsIdGamblingRoute,
   EventsIdGroupsRoute: EventsIdGroupsRoute,
   EventsIdMyTeamRoute: EventsIdMyTeamRoute,
   EventsIdQueueRoute: EventsIdQueueRoute,
-  EventsIdQueueMatchesRoute: EventsIdQueueMatchesRoute,
   EventsIdTeamsRoute: EventsIdTeamsRouteWithChildren,
   EventsIdUnitBuilderRoute: EventsIdUnitBuilderRoute,
   EventsIdMatchMatchIdRoute: EventsIdMatchMatchIdRoute,
@@ -539,3 +539,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

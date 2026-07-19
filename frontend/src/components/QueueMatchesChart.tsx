@@ -21,7 +21,7 @@ ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
 export default function QueueMatchesChart({
   data,
-  title = 'Queue Matches Played',
+  title = 'Match Making Matches Played',
 }: {
   data: QueueMatchesTimeBucket[]
   title?: string

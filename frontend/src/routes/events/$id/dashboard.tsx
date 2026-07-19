@@ -105,6 +105,8 @@ const SETTINGS_FIELDS = [
   'location',
   'canCreateTeam',
   'processQueue',
+  'maxQueueCredits',
+  'queueCreditIntervalMinutes',
   'isPrivate',
   'minTeamSize',
   'maxTeamSize',
@@ -885,6 +887,30 @@ function SettingsTab({
                 updatePendingSetting('maxTeamSize', Number.parseInt(value, 10))
               }
             />
+            <DashboardInput
+              label="Maximum Match Making Credits"
+              type="number"
+              min={1}
+              value={pendingSettings.maxQueueCredits ?? 5}
+              onChange={(value) =>
+                updatePendingSetting(
+                  'maxQueueCredits',
+                  Number.parseInt(value, 10),
+                )
+              }
+            />
+            <DashboardInput
+              label="Minutes Per Match Making Credit"
+              type="number"
+              min={1}
+              value={pendingSettings.queueCreditIntervalMinutes ?? 15}
+              onChange={(value) =>
+                updatePendingSetting(
+                  'queueCreditIntervalMinutes',
+                  Number.parseInt(value, 10),
+                )
+              }
+            />
           </div>
 
           <div className="space-y-4 border-t pt-4">
@@ -900,7 +926,7 @@ function SettingsTab({
               />
               <SettingSwitch
                 id="processQueue"
-                label="Process Queue"
+                label="Enable Match Making"
                 checked={pendingSettings.processQueue || false}
                 onCheckedChange={(value) =>
                   updatePendingSetting('processQueue', value)
@@ -1249,12 +1275,16 @@ function DashboardInput({
   onChange,
   type = 'text',
   placeholder,
+  min,
+  max,
 }: {
   label: string
   value: string | number
   onChange: (value: string) => void
   type?: string
   placeholder?: string
+  min?: number
+  max?: number
 }) {
   return (
     <div className="space-y-2">
@@ -1263,6 +1293,8 @@ function DashboardInput({
         type={type}
         value={value}
         placeholder={placeholder}
+        min={min}
+        max={max}
         onChange={(event) => onChange(event.target.value)}
       />
     </div>
