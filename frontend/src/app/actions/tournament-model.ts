@@ -2,6 +2,7 @@ export enum MatchPhase {
   SWISS = 'SWISS',
   ELIMINATION = 'ELIMINATION',
   QUEUE = 'QUEUE',
+  GAMBLING = 'GAMBLING',
 }
 
 export enum MatchState {

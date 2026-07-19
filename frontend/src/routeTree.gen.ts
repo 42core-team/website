@@ -26,6 +26,7 @@ import { Route as EventsIdTeamsRouteImport } from './routes/events/$id/teams'
 import { Route as EventsIdQueueRouteImport } from './routes/events/$id/queue'
 import { Route as EventsIdMyTeamRouteImport } from './routes/events/$id/my-team'
 import { Route as EventsIdGroupsRouteImport } from './routes/events/$id/groups'
+import { Route as EventsIdGamblingRouteImport } from './routes/events/$id/gambling'
 import { Route as EventsIdDashboardRouteImport } from './routes/events/$id/dashboard'
 import { Route as EventsIdBracketRouteImport } from './routes/events/$id/bracket'
 import { Route as EventsIdTeamsTeamIdRouteImport } from './routes/events/$id/teams/$teamId'
@@ -116,6 +117,11 @@ const EventsIdGroupsRoute = EventsIdGroupsRouteImport.update({
   path: '/groups',
   getParentRoute: () => EventsIdRoute,
 } as any)
+const EventsIdGamblingRoute = EventsIdGamblingRouteImport.update({
+  id: '/gambling',
+  path: '/gambling',
+  getParentRoute: () => EventsIdRoute,
+} as any)
 const EventsIdDashboardRoute = EventsIdDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -152,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
+  '/events/$id/gambling': typeof EventsIdGamblingRoute
   '/events/$id/groups': typeof EventsIdGroupsRoute
   '/events/$id/my-team': typeof EventsIdMyTeamRoute
   '/events/$id/queue': typeof EventsIdQueueRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
+  '/events/$id/gambling': typeof EventsIdGamblingRoute
   '/events/$id/groups': typeof EventsIdGroupsRoute
   '/events/$id/my-team': typeof EventsIdMyTeamRoute
   '/events/$id/queue': typeof EventsIdQueueRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
+  '/events/$id/gambling': typeof EventsIdGamblingRoute
   '/events/$id/groups': typeof EventsIdGroupsRoute
   '/events/$id/my-team': typeof EventsIdMyTeamRoute
   '/events/$id/queue': typeof EventsIdQueueRoute
@@ -224,6 +233,7 @@ export interface FileRouteTypes {
     | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
+    | '/events/$id/gambling'
     | '/events/$id/groups'
     | '/events/$id/my-team'
     | '/events/$id/queue'
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
+    | '/events/$id/gambling'
     | '/events/$id/groups'
     | '/events/$id/my-team'
     | '/events/$id/queue'
@@ -270,6 +281,7 @@ export interface FileRouteTypes {
     | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
+    | '/events/$id/gambling'
     | '/events/$id/groups'
     | '/events/$id/my-team'
     | '/events/$id/queue'
@@ -412,6 +424,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsIdGroupsRouteImport
       parentRoute: typeof EventsIdRoute
     }
+    '/events/$id/gambling': {
+      id: '/events/$id/gambling'
+      path: '/gambling'
+      fullPath: '/events/$id/gambling'
+      preLoaderRoute: typeof EventsIdGamblingRouteImport
+      parentRoute: typeof EventsIdRoute
+    }
     '/events/$id/dashboard': {
       id: '/events/$id/dashboard'
       path: '/dashboard'
@@ -458,6 +477,7 @@ const EventsIdTeamsRouteWithChildren = EventsIdTeamsRoute._addFileChildren(
 interface EventsIdRouteChildren {
   EventsIdBracketRoute: typeof EventsIdBracketRoute
   EventsIdDashboardRoute: typeof EventsIdDashboardRoute
+  EventsIdGamblingRoute: typeof EventsIdGamblingRoute
   EventsIdGroupsRoute: typeof EventsIdGroupsRoute
   EventsIdMyTeamRoute: typeof EventsIdMyTeamRoute
   EventsIdQueueRoute: typeof EventsIdQueueRoute
@@ -469,6 +489,7 @@ interface EventsIdRouteChildren {
 const EventsIdRouteChildren: EventsIdRouteChildren = {
   EventsIdBracketRoute: EventsIdBracketRoute,
   EventsIdDashboardRoute: EventsIdDashboardRoute,
+  EventsIdGamblingRoute: EventsIdGamblingRoute,
   EventsIdGroupsRoute: EventsIdGroupsRoute,
   EventsIdMyTeamRoute: EventsIdMyTeamRoute,
   EventsIdQueueRoute: EventsIdQueueRoute,

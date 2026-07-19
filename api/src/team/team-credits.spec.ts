@@ -101,16 +101,24 @@ describe("accrueQueueCredits", () => {
     );
   });
 
-  it("caps a balance that is already above the configured maximum", () => {
+  it("preserves gambling winnings above the regeneration maximum", () => {
     const team = {
       credits: 8,
       lastCreditGrantedAt: startedAt,
     };
 
     expect(
-      accrueQueueCredits(team, 5, QUEUE_CREDIT_INTERVAL_MS, startedAt),
+      accrueQueueCredits(
+        team,
+        5,
+        QUEUE_CREDIT_INTERVAL_MS,
+        new Date(startedAt.getTime() + QUEUE_CREDIT_INTERVAL_MS * 2),
+      ),
     ).toBe(0);
-    expect(team.credits).toBe(5);
+    expect(team.credits).toBe(8);
+    expect(team.lastCreditGrantedAt).toEqual(
+      new Date(startedAt.getTime() + QUEUE_CREDIT_INTERVAL_MS * 2),
+    );
   });
 
   it("uses the event's configured credit interval", () => {

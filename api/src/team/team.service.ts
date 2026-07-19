@@ -72,10 +72,13 @@ export class TeamService {
         await queryRunner.query(`
           UPDATE "teams" AS team
           SET
-            "credits" = LEAST(
-              team."credits" + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - team."lastCreditGrantedAt")) / (event."queueCreditIntervalMinutes" * 60))::integer,
-              event."maxQueueCredits"
-            ),
+            "credits" = CASE
+              WHEN team."credits" >= event."maxQueueCredits" THEN team."credits"
+              ELSE LEAST(
+                team."credits" + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - team."lastCreditGrantedAt")) / (event."queueCreditIntervalMinutes" * 60))::integer,
+                event."maxQueueCredits"
+              )
+            END,
             "lastCreditGrantedAt" = team."lastCreditGrantedAt"
               + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - team."lastCreditGrantedAt")) / (event."queueCreditIntervalMinutes" * 60))::integer
               * event."queueCreditIntervalMinutes" * INTERVAL '1 minute'
@@ -653,16 +656,6 @@ export class TeamService {
 
   increaseTeamCredits(teamId: string, credits: number) {
     return this.teamRepository.increment({ id: teamId }, "credits", credits);
-  }
-
-  capCreditsForEvent(eventId: string, maxCredits: number) {
-    return this.teamRepository
-      .createQueryBuilder()
-      .update(TeamEntity)
-      .set({ credits: () => 'LEAST("credits", :maxCredits)' })
-      .where('"eventId" = :eventId', { eventId })
-      .setParameter("maxCredits", maxCredits)
-      .execute();
   }
 
   setHadBye(teamId: string, hadBye: boolean) {

@@ -17,6 +17,7 @@ import { GithubApiService } from "../github-api/github-api.service";
 import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations";
 import { FindOptionsSelect } from "typeorm/find-options/FindOptionsSelect";
 import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
+import { GamblingService } from "../gambling/gambling.service";
 
 const QUEUE_MATCH_SELECT: FindOptionsSelect<MatchEntity> = {
   id: true,
@@ -57,6 +58,8 @@ export class MatchService {
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
     private readonly githubApiService: GithubApiService,
+    @Inject(forwardRef(() => GamblingService))
+    private readonly gamblingService: GamblingService,
   ) {
     this.k8sServiceUrl = configService.getOrThrow<string>("K8S_SERVICE_URL");
     this.gameResultsQueue = ClientProxyFactory.create(
@@ -175,6 +178,11 @@ export class MatchService {
     this.logger.log(
       `Match with id ${matchId} finished. Winner: ${winner.name}`,
     );
+
+    if (match.phase === MatchPhase.GAMBLING) {
+      await this.gamblingService.settleMatch(match.id, winner.id);
+      return;
+    }
 
     const event = match.teams[0].event;
     if (!event) {
@@ -318,6 +326,28 @@ export class MatchService {
   }
 
   async startMatch(matchId: string) {
+    const transition = await this.matchRepository
+      .createQueryBuilder()
+      .update(MatchEntity)
+      .set({ state: MatchState.IN_PROGRESS })
+      .where("id = :matchId", { matchId })
+      .andWhere("state = :state", { state: MatchState.PLANNED })
+      .execute();
+
+    if (transition.affected !== 1) {
+      const existingMatch = await this.matchRepository.findOne({
+        select: { id: true, state: true },
+        where: { id: matchId },
+      });
+      if (!existingMatch)
+        throw new Error(`Match with id ${matchId} not found.`);
+      if (existingMatch.state === MatchState.IN_PROGRESS) {
+        this.logger.warn(`Match with id ${matchId} is already in progress.`);
+        return;
+      }
+      throw new Error(`Match with id ${matchId} is not in PLANNED state.`);
+    }
+
     const match = await this.matchRepository.findOne({
       where: { id: matchId },
       relations: {
@@ -330,12 +360,6 @@ export class MatchService {
     });
 
     if (!match) throw new Error(`Match with id ${matchId} not found.`);
-
-    if (match.state !== MatchState.PLANNED)
-      throw new Error(`Match with id ${matchId} is not in PLANNED state.`);
-
-    match.state = MatchState.IN_PROGRESS;
-    await this.matchRepository.save(match);
 
     if (this.configService.get<string>("RANDOM_GAME_RESULTS") === "true") {
       const botIdMapping: Record<string, string> = {};

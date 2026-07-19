@@ -11,12 +11,14 @@ export function accrueQueueCredits(
   creditIntervalMs: number,
   now: Date = new Date(),
 ): number {
-  team.credits = Math.min(team.credits, maxCredits);
   const elapsed = now.getTime() - team.lastCreditGrantedAt.getTime();
   const intervals = Math.floor(elapsed / creditIntervalMs);
   if (intervals <= 0) return 0;
 
-  const granted = Math.min(intervals, Math.max(0, maxCredits - team.credits));
+  const granted =
+    team.credits < maxCredits
+      ? Math.min(intervals, maxCredits - team.credits)
+      : 0;
   team.credits += granted;
   team.lastCreditGrantedAt = new Date(
     team.lastCreditGrantedAt.getTime() + intervals * creditIntervalMs,
