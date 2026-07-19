@@ -24,6 +24,7 @@ import {
   GamblingRoundEntity,
   GamblingRoundPhase,
 } from "./entities/gambling-round.entity";
+import { getMaximumGamblingBet } from "./gambling-credits";
 import { calculateGamblingPayouts } from "./gambling-payout";
 
 const PHASE_DURATION_MS = 30 * 60 * 1000;
@@ -81,7 +82,7 @@ export class GamblingService {
   async getSnapshot(eventId: string, userId: string) {
     await this.advanceEvent(eventId);
 
-    const [round, latestResult, entries, myTeam] = await Promise.all([
+    const [round, latestResult, entries, myTeam, event] = await Promise.all([
       this.getLatestRound(eventId),
       this.getLatestSettledRound(eventId),
       this.entryRepository.find({
@@ -91,6 +92,10 @@ export class GamblingService {
       }),
       this.dataSource.getRepository(TeamEntity).findOne({
         where: { event: { id: eventId }, users: { id: userId } },
+      }),
+      this.dataSource.getRepository(EventEntity).findOneOrFail({
+        select: { id: true, maxQueueCredits: true },
+        where: { id: eventId },
       }),
     ]);
 
@@ -139,6 +144,7 @@ export class GamblingService {
             id: myTeam.id,
             name: myTeam.name,
             credits: myTeam.credits,
+            maxCredits: event.maxQueueCredits,
             isEntered: entries.some((entry) => entry.team.id === myTeam.id),
           }
         : null,
@@ -238,6 +244,15 @@ export class GamblingService {
       if (existingBet)
         throw new BadRequestException(
           "Your team has already placed a bet this round.",
+        );
+
+      const maximumBet = getMaximumGamblingBet(
+        team.credits,
+        round.event.maxQueueCredits,
+      );
+      if (dto.amount > maximumBet)
+        throw new BadRequestException(
+          `Your team can bet at most ${maximumBet} credits. Its balance cannot go below -${round.event.maxQueueCredits}.`,
         );
 
       team.credits -= dto.amount;
@@ -397,7 +412,7 @@ export class GamblingService {
   ) {
     return (
       (await this.getLatestRoundWithManager(manager, eventId)) ??
-      await this.createJoiningRound(manager, eventId)
+      (await this.createJoiningRound(manager, eventId))
     );
   }
 

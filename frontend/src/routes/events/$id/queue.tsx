@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/events/$id/queue')({
   component: QueueRoute,
@@ -297,6 +298,14 @@ function CreditMeter({
 
   return (
     <div className="space-y-1.5 sm:text-right">
+      <p
+        className={cn(
+          'text-sm font-semibold tabular-nums',
+          credits < 0 && 'text-destructive',
+        )}
+      >
+        {credits} / {maxCredits} credits
+      </p>
       <div
         className="flex max-w-sm flex-wrap gap-1.5 sm:justify-end"
         role="img"

@@ -82,12 +82,16 @@ export default function GamblingMatchCard({
     (team) => team.id === snapshot.myTeam?.id,
   )
   const parsedAmount = Number(amount)
+  const maximumBet = snapshot.myTeam
+    ? Math.max(0, snapshot.myTeam.credits + snapshot.myTeam.maxCredits)
+    : 0
   const canPlaceBet =
     round.phase === 'BETTING' &&
     Boolean(selectedTeamId) &&
     selectedTeams.some((team) => team.id === selectedTeamId) &&
     Number.isInteger(parsedAmount) &&
     parsedAmount > 0 &&
+    parsedAmount <= maximumBet &&
     !snapshot.myBet &&
     !isPlayingTeam
 
@@ -178,7 +182,7 @@ export default function GamblingMatchCard({
                   <Input
                     type="number"
                     min="1"
-                    max="1000000"
+                    max={maximumBet}
                     step="1"
                     inputMode="numeric"
                     placeholder="Credits to bet"
@@ -198,9 +202,11 @@ export default function GamblingMatchCard({
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Your balance may go below zero. The winning match team
-                  receives 20% of the pool; the remaining 80% is shared among
-                  correct bettors in proportion to their stakes.
+                  You can bet up to {formatGamblingCredits(maximumBet)} credits;
+                  your balance cannot go below -
+                  {formatGamblingCredits(snapshot.myTeam.maxCredits)}. The
+                  winning match team receives 20% of the pool; the remaining 80%
+                  is shared among correct bettors in proportion to their stakes.
                 </p>
               </>
             )}

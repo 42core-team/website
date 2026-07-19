@@ -29,6 +29,7 @@ export interface GamblingSnapshot {
   myTeam:
     | (GamblingTeam & {
         credits: number
+        maxCredits: number
         isEntered: boolean
       })
     | null
