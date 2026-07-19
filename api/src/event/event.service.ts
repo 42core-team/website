@@ -555,14 +555,7 @@ export class EventService {
       };
     }
 
-    const result = await this.eventRepository.update(eventId, update);
-    if (typeof settings.maxQueueCredits === "number") {
-      await this.teamService.capCreditsForEvent(
-        eventId,
-        settings.maxQueueCredits,
-      );
-    }
-    return result;
+    return this.eventRepository.update(eventId, update);
   }
 
   async getEventAdmins(eventId: string) {

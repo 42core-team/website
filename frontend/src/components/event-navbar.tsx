@@ -49,6 +49,7 @@ export default function EventNavbar({
     const items = [
       { name: 'Info', path: `/events/${eventId}` },
       { name: 'Teams', path: `/events/${eventId}/teams` },
+      { name: 'Gambling', path: `/events/${eventId}/gambling` },
     ]
 
     if (isUserRegistered) {
