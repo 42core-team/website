@@ -6,8 +6,10 @@ import {
   Min,
   IsNotEmpty,
   IsBoolean,
+  IsEnum,
 } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
+import { EventAudience } from "../entities/event.entity";
 
 export class CreateEventDto {
   @ApiProperty()
@@ -88,4 +90,9 @@ export class CreateEventDto {
   @ApiProperty()
   @IsBoolean()
   isPrivate: boolean;
+
+  @ApiProperty({ enum: EventAudience })
+  @IsOptional()
+  @IsEnum(EventAudience)
+  audience?: EventAudience;
 }

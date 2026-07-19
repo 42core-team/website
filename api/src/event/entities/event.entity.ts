@@ -17,6 +17,12 @@ import { Exclude } from "class-transformer";
 import { EventStarterTemplateEntity } from "./event-starter-template.entity";
 import { EventWhitelistEntity } from "./event-whitelist.entity";
 
+export enum EventAudience {
+  PISCINE = "PISCINE",
+  CURSUS = "CURSUS",
+  BOTH = "BOTH",
+}
+
 @Entity("events")
 export class EventEntity {
   @PrimaryGeneratedColumn("uuid")
@@ -97,6 +103,9 @@ export class EventEntity {
 
   @Column({ default: false })
   isPrivate: boolean;
+
+  @Column({ type: "text", default: EventAudience.BOTH })
+  audience: EventAudience;
 
   @JoinTable({ name: "events_users" })
   @ManyToMany(() => UserEntity, (user) => user.events, {

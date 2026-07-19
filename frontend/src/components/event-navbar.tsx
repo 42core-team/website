@@ -49,11 +49,10 @@ export default function EventNavbar({
     const items = [
       { name: 'Info', path: `/events/${eventId}` },
       { name: 'Teams', path: `/events/${eventId}/teams` },
+      { name: 'My Team', path: `/events/${eventId}/my-team` },
     ]
 
     if (isUserRegistered) {
-      items.push({ name: 'My Team', path: `/events/${eventId}/my-team` })
-
       if (hasStarted) {
         items.push({
           name: 'Unit Builder',

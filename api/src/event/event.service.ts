@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { EventEntity } from "./entities/event.entity";
+import { EventAudience, EventEntity } from "./entities/event.entity";
 import { EventStarterTemplateEntity } from "./entities/event-starter-template.entity";
 import { EventWhitelistEntity } from "./entities/event-whitelist.entity";
 import {
@@ -32,6 +32,11 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { EventVersionDto } from "./dtos/eventVersionDto";
 import { LockKeys } from "../constants";
 import { WhitelistPlatform } from "./entities/event-whitelist.entity";
+import { SocialAccountService } from "../user/social-account.service";
+import {
+  FortyTwoCursusStatus,
+  SocialPlatform,
+} from "../user/entities/social-account.entity";
 
 @Injectable()
 export class EventService {
@@ -48,6 +53,7 @@ export class EventService {
     @Inject(forwardRef(() => TeamService))
     private readonly teamService: TeamService,
     private readonly dataSource: DataSource,
+    private readonly socialAccountService: SocialAccountService,
   ) {}
 
   logger = new Logger("EventService");
@@ -271,6 +277,7 @@ export class EventService {
     gameConfig: string,
     serverConfig: string,
     isPrivate: boolean = false,
+    audience: EventAudience = EventAudience.BOTH,
   ) {
     githubOrgSecret = CryptoJS.AES.encrypt(
       githubOrgSecret,
@@ -309,6 +316,7 @@ export class EventService {
       gameConfig,
       serverConfig,
       isPrivate,
+      audience,
     });
   }
 
@@ -388,11 +396,36 @@ export class EventService {
     });
   }
 
+  async isUserEligibleForEventAudience(
+    audience: EventAudience,
+    userId: string,
+  ): Promise<boolean> {
+    if (audience === EventAudience.BOTH) return true;
+
+    const fortyTwoAccount =
+      await this.socialAccountService.getSocialAccountByPlatform(
+        userId,
+        SocialPlatform.FORTYTWO,
+      );
+    if (!fortyTwoAccount) return false;
+
+    if (audience === EventAudience.PISCINE)
+      return fortyTwoAccount.cursusStatus === FortyTwoCursusStatus.PISCINE;
+    return fortyTwoAccount.cursusStatus === FortyTwoCursusStatus.CURSUS;
+  }
+
   async isUserRegisteredForEvent(eventId: string, userId: string) {
+    const event = await this.eventRepository.findOneOrFail({
+      where: { id: eventId },
+    });
+
+    if (!(await this.isUserEligibleForEventAudience(event.audience, userId)))
+      return false;
+
     /**
-     * for public events, all users are considered registered
+     * for public events, all eligible users are considered registered
      */
-    if (await this.isEventPublic(eventId)) return true;
+    if (!event.isPrivate) return true;
     return await this.eventRepository.existsBy({
       id: eventId,
       users: {
@@ -474,6 +507,7 @@ export class EventService {
       canCreateTeam?: boolean;
       processQueue?: boolean;
       isPrivate?: boolean;
+      audience?: EventAudience;
       name?: string;
       description?: string;
       githubOrg?: string;
@@ -526,6 +560,10 @@ export class EventService {
       if (typeof settings[field] === "string") {
         update[field] = settings[field];
       }
+    }
+
+    if (settings.audience) {
+      update.audience = settings.audience;
     }
 
     if (settings.githubOrgSecret) {

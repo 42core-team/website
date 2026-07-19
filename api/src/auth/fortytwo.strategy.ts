@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { PassportStrategy } from "@nestjs/passport";
 import { ConfigService } from "@nestjs/config";
 import { Strategy } from "passport-oauth2";
+import { FortyTwoCursusStatus } from "../user/entities/social-account.entity";
 
 export interface FortyTwoProfile {
   id: number;
@@ -9,6 +10,7 @@ export interface FortyTwoProfile {
   email: string | null;
   image_url: string | null;
   displayname: string | null;
+  cursus_users?: { cursus?: { slug?: string } }[];
   campus?: Array<{ id: number; name: string }>;
   campus_users?: Array<{ campus_id: number; is_primary: boolean }>;
 }
@@ -63,11 +65,25 @@ export class FortyTwoOAuthStrategy extends PassportStrategy(Strategy, "42") {
       const email = data.email ?? undefined;
       const primaryCampus = getPrimaryCampus(data);
 
+      // 42 intra has no single "role" field; membership is derived from the
+      // cursus slugs returned on the user's profile.
+      const cursusSlugs = (data.cursus_users ?? [])
+        .map((cu) => cu.cursus?.slug)
+        .filter((slug): slug is string => !!slug);
+      // 42 never removes the old piscine cursus_user record once a student
+      // progresses to 42cursus, so cursus status wins over piscine history.
+      const cursusStatus = cursusSlugs.includes("42cursus")
+        ? FortyTwoCursusStatus.CURSUS
+        : cursusSlugs.includes("c-piscine")
+          ? FortyTwoCursusStatus.PISCINE
+          : FortyTwoCursusStatus.NONE;
+
       done(null, {
         fortyTwoAccount: {
           platformUserId,
           username,
           email,
+          cursusStatus,
           ...primaryCampus,
         },
       });

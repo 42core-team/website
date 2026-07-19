@@ -13,6 +13,12 @@ export enum SocialPlatform {
   FORTYTWO = "42",
 }
 
+export enum FortyTwoCursusStatus {
+  NONE = "NONE",
+  PISCINE = "PISCINE",
+  CURSUS = "CURSUS",
+}
+
 export const SOCIAL_ACCOUNT_PLATFORM_USER_ID_UNIQUE_CONSTRAINT =
   "UQ_social_accounts_platform_platform_user_id";
 
@@ -43,6 +49,9 @@ export class SocialAccountEntity {
 
   @Column()
   userId: string; // Reference to our user
+
+  @Column({ type: "text", default: FortyTwoCursusStatus.NONE })
+  cursusStatus: FortyTwoCursusStatus;
 
   @ManyToOne(() => UserEntity, (user) => user.socialAccounts, {
     onDelete: "CASCADE",

@@ -1,5 +1,12 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsBoolean, IsNumber, IsOptional, IsString } from "class-validator";
+import {
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from "class-validator";
+import { EventAudience } from "../entities/event.entity";
 
 export class UpdateEventSettingsDto {
   @ApiPropertyOptional()
@@ -16,6 +23,11 @@ export class UpdateEventSettingsDto {
   @IsOptional()
   @IsBoolean()
   isPrivate?: boolean;
+
+  @ApiPropertyOptional({ enum: EventAudience })
+  @IsOptional()
+  @IsEnum(EventAudience)
+  audience?: EventAudience;
 
   @ApiPropertyOptional()
   @IsOptional()

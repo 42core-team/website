@@ -1,3 +1,4 @@
+import type { FortyTwoCursusStatus } from '@/lib/constants/cursus-status'
 import axiosInstance from './axios'
 
 export interface SocialAccount {
@@ -6,6 +7,7 @@ export interface SocialAccount {
   username: string
   platformUserId: string
   userId: string
+  cursusStatus?: FortyTwoCursusStatus
   createdAt: string
   updatedAt: string
 }
