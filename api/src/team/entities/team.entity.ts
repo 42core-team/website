@@ -30,6 +30,18 @@ export class TeamEntity {
   @Column({ nullable: true })
   repo: string;
 
+  @Column({ type: "text", nullable: true })
+  description: string | null;
+
+  @Column({ type: "text", nullable: true })
+  profileImageUrl: string | null;
+
+  @Column({ type: "text", nullable: true })
+  bannerImageUrl: string | null;
+
+  @Column({ type: "text", nullable: true })
+  winningSoundUrl: string | null;
+
   @Column({ nullable: true, type: "timestamp" })
   startedRepoCreationAt: Date | null;
 

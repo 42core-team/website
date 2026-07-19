@@ -32,6 +32,10 @@ export interface Team {
   updatedAt?: Date
   membersCount?: number
   tags: string[]
+  description: string
+  profileImageUrl: string | null
+  bannerImageUrl: string | null
+  winningSoundUrl: string | null
 }
 
 export interface TeamMember {
@@ -60,7 +64,13 @@ export interface TeamApiResponse {
   userCount?: number
   credits?: number
   tags?: string[]
+  description?: string | null
+  profileImageUrl?: string | null
+  bannerImageUrl?: string | null
+  winningSoundUrl?: string | null
 }
+
+export type TeamAssetType = 'profile-image' | 'banner-image' | 'winning-sound'
 
 export interface TeamMemberApiResponse {
   id: string
@@ -156,6 +166,34 @@ export async function deleteTeamAsAdmin(
   teamId: string,
 ): Promise<void> {
   await axiosInstance.delete(`team/event/${eventId}/admin/${teamId}`)
+}
+
+export async function updateTeamCustomization(
+  eventId: string,
+  description: string,
+): Promise<{ description: string | null }> {
+  return (
+    await axiosInstance.put(`team/event/${eventId}/customization`, {
+      description,
+    })
+  ).data
+}
+
+export async function uploadTeamAsset(
+  eventId: string,
+  assetType: TeamAssetType,
+  file: File,
+): Promise<{ assetType: TeamAssetType; url: string }> {
+  const body = new FormData()
+  body.append('file', file)
+
+  return (
+    await axiosInstance.put(
+      `team/event/${eventId}/customization/${assetType}`,
+      body,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    )
+  ).data
 }
 
 export async function lockEvent(eventId: string) {
@@ -303,5 +341,9 @@ export function mapTeamResponse(team: TeamApiResponse): Team {
     membersCount: team.userCount,
     credits: team.credits ?? 0,
     tags: team.tags ?? [],
+    description: team.description ?? '',
+    profileImageUrl: team.profileImageUrl ?? null,
+    bannerImageUrl: team.bannerImageUrl ?? null,
+    winningSoundUrl: team.winningSoundUrl ?? null,
   }
 }

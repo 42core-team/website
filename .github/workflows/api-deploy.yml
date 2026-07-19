@@ -209,6 +209,7 @@ jobs:
             --set env.FORTYTWO_CLIENT_ID="${{ vars.FORTYTWO_CLIENT_ID }}" \
             --set env.FORTYTWO_CLIENT_ID="${{ vars.FORTYTWO_CLIENT_ID }}" \
             --set env.FORTYTWO_CALLBACK_URL="${{ vars.FORTYTWO_CALLBACK_URL }}" \
+            --set env.S3_ENDPOINT="${{ vars.S3_ENDPOINT }}" \
             --set secrets.DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
             --set secrets.DB_URL="${{ secrets.DB_URL }}" \
             --set secrets.API_SECRET_ENCRYPTION_KEY="${{ secrets.API_SECRET_ENCRYPTION_KEY }}" \
@@ -216,6 +217,8 @@ jobs:
             --set secrets.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
             --set secrets.CLIENT_GITHUB_SECRET="${{ secrets.CLIENT_GITHUB_SECRET }}" \
             --set secrets.FORTYTWO_CLIENT_SECRET="${{ secrets.FORTYTWO_CLIENT_SECRET }}" \
+            --set secrets.S3_ACCESS_KEY_ID="${{ secrets.S3_ACCESS_KEY_ID }}" \
+            --set secrets.S3_SECRET_ACCESS_KEY="${{ secrets.S3_SECRET_ACCESS_KEY }}" \
             --wait \
             --timeout=5m \
             --atomic \
