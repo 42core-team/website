@@ -297,9 +297,9 @@ export function WikiNavigation({
                       handleTocClick(tocItem.id, e)
                       onItemClick?.()
                     }}
-                    className={`block w-full cursor-pointer rounded-xs px-2 py-1 text-left text-xs transition-colors hover:bg-default-100 hover:text-primary ${
+                    className={`block w-full cursor-pointer rounded-xs border-l-2 border-transparent px-2 py-1 text-left text-xs transition-colors hover:bg-default-100 hover:text-primary ${
                       activeId === tocItem.id
-                        ? 'border-l-2 border-primary bg-primary-50 font-medium text-primary'
+                        ? 'border-primary bg-primary-50 font-medium text-primary'
                         : 'text-muted-foreground'
                     }`}
                     style={{
