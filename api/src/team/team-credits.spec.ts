@@ -1,4 +1,8 @@
-import { accrueQueueCredits, QUEUE_CREDIT_INTERVAL_MS } from "./team-credits";
+import {
+  accrueQueueCredits,
+  QUEUE_CREDIT_INTERVAL_MS,
+  spendQueueCredits,
+} from "./team-credits";
 
 describe("accrueQueueCredits", () => {
   const startedAt = new Date("2026-07-18T10:00:00.000Z");
@@ -77,11 +81,11 @@ describe("accrueQueueCredits", () => {
     ).toBe(1);
     expect(team.credits).toBe(5);
     expect(team.lastCreditGrantedAt).toEqual(
-      new Date(startedAt.getTime() + QUEUE_CREDIT_INTERVAL_MS * 3),
+      new Date(startedAt.getTime() + QUEUE_CREDIT_INTERVAL_MS),
     );
   });
 
-  it("advances the timer without banking credits while at the maximum", () => {
+  it("pauses the timer while at the maximum", () => {
     const team = {
       credits: 5,
       lastCreditGrantedAt: startedAt,
@@ -96,9 +100,7 @@ describe("accrueQueueCredits", () => {
       ),
     ).toBe(0);
     expect(team.credits).toBe(5);
-    expect(team.lastCreditGrantedAt).toEqual(
-      new Date(startedAt.getTime() + QUEUE_CREDIT_INTERVAL_MS * 2),
-    );
+    expect(team.lastCreditGrantedAt).toEqual(startedAt);
   });
 
   it("preserves gambling winnings above the regeneration maximum", () => {
@@ -116,9 +118,7 @@ describe("accrueQueueCredits", () => {
       ),
     ).toBe(0);
     expect(team.credits).toBe(8);
-    expect(team.lastCreditGrantedAt).toEqual(
-      new Date(startedAt.getTime() + QUEUE_CREDIT_INTERVAL_MS * 2),
-    );
+    expect(team.lastCreditGrantedAt).toEqual(startedAt);
   });
 
   it("uses the event's configured credit interval", () => {
@@ -140,5 +140,46 @@ describe("accrueQueueCredits", () => {
     expect(team.lastCreditGrantedAt).toEqual(
       new Date(startedAt.getTime() + fiveMinutes * 2),
     );
+  });
+});
+
+describe("spendQueueCredits", () => {
+  const startedAt = new Date("2026-07-18T10:00:00.000Z");
+  const spentAt = new Date("2026-07-18T11:00:00.000Z");
+
+  it("restarts the timer when spending moves a full team below the maximum", () => {
+    const team = {
+      credits: 5,
+      lastCreditGrantedAt: startedAt,
+    };
+
+    spendQueueCredits(team, 1, 5, spentAt);
+
+    expect(team.credits).toBe(4);
+    expect(team.lastCreditGrantedAt).toEqual(spentAt);
+  });
+
+  it("keeps the running timer when spending credits below the maximum", () => {
+    const team = {
+      credits: 4,
+      lastCreditGrantedAt: startedAt,
+    };
+
+    spendQueueCredits(team, 1, 5, spentAt);
+
+    expect(team.credits).toBe(3);
+    expect(team.lastCreditGrantedAt).toEqual(startedAt);
+  });
+
+  it("keeps the timer paused while spending leaves credits at the maximum", () => {
+    const team = {
+      credits: 6,
+      lastCreditGrantedAt: startedAt,
+    };
+
+    spendQueueCredits(team, 1, 5, spentAt);
+
+    expect(team.credits).toBe(5);
+    expect(team.lastCreditGrantedAt).toEqual(startedAt);
   });
 });

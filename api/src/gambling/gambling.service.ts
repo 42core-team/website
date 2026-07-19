@@ -16,6 +16,7 @@ import {
 } from "../match/entites/match.entity";
 import { MatchStatsEntity } from "../match/entites/matchStats.entity";
 import { MatchService } from "../match/match.service";
+import { spendQueueCredits } from "../team/team-credits";
 import { TeamEntity } from "../team/entities/team.entity";
 import { PlaceGamblingBetDto } from "./dtos/place-gambling-bet.dto";
 import { GamblingBetEntity } from "./entities/gambling-bet.entity";
@@ -245,7 +246,7 @@ export class GamblingService {
           `Your team can bet at most ${maximumBet} credits. Its balance cannot go below -${round.event.maxQueueCredits}.`,
         );
 
-      team.credits -= dto.amount;
+      spendQueueCredits(team, dto.amount, round.event.maxQueueCredits);
       await manager.save(team);
       await manager.save(GamblingBetEntity, {
         round: { id: round.id },

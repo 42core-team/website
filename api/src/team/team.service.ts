@@ -33,7 +33,7 @@ import { MatchStatsEntity } from "../match/entites/matchStats.entity";
 import { EventEntity } from "../event/entities/event.entity";
 import { groupLocationTagsByOwner } from "../user/location-tags";
 import type { OwnedLocationTagSource } from "../user/location-tags";
-import { accrueQueueCredits } from "./team-credits";
+import { accrueQueueCredits, spendQueueCredits } from "./team-credits";
 import { rankQueueOpponents } from "./queue-matchmaking";
 import type { QueueOpponentCandidate } from "./queue-matchmaking";
 
@@ -77,19 +77,20 @@ export class TeamService {
         await queryRunner.query(`
           UPDATE "teams" AS team
           SET
-            "credits" = CASE
-              WHEN team."credits" >= event."maxQueueCredits" THEN team."credits"
-              ELSE LEAST(
-                team."credits" + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - team."lastCreditGrantedAt")) / (event."queueCreditIntervalMinutes" * 60))::integer,
-                event."maxQueueCredits"
-              )
-            END,
+            "credits" = team."credits" + LEAST(
+              FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - team."lastCreditGrantedAt")) / (event."queueCreditIntervalMinutes" * 60))::integer,
+              event."maxQueueCredits" - team."credits"
+            ),
             "lastCreditGrantedAt" = team."lastCreditGrantedAt"
-              + FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - team."lastCreditGrantedAt")) / (event."queueCreditIntervalMinutes" * 60))::integer
+              + LEAST(
+                FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - team."lastCreditGrantedAt")) / (event."queueCreditIntervalMinutes" * 60))::integer,
+                event."maxQueueCredits" - team."credits"
+              )
               * event."queueCreditIntervalMinutes" * INTERVAL '1 minute'
           FROM "events" AS event
           WHERE team."eventId" = event."id"
             AND team."deletedAt" IS NULL
+            AND team."credits" < event."maxQueueCredits"
             AND team."lastCreditGrantedAt" <= CURRENT_TIMESTAMP - event."queueCreditIntervalMinutes" * INTERVAL '1 minute'
         `);
       } finally {
@@ -702,7 +703,7 @@ export class TeamService {
           "No eligible opponent is currently available.",
         );
 
-      team.credits -= 1;
+      spendQueueCredits(team, 1, event.maxQueueCredits);
       await entityManager.save(team);
       return match;
     });
@@ -855,7 +856,7 @@ export class TeamService {
         throw new BadRequestException(
           `Your team needs at least ${DIRECT_MATCH_COST} credits to play a direct match.`,
         );
-      challenger.credits -= DIRECT_MATCH_COST;
+      spendQueueCredits(challenger, DIRECT_MATCH_COST, event.maxQueueCredits);
       await entityManager.save(challenger);
 
       return this.createQueueMatch(
