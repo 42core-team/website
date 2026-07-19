@@ -133,6 +133,25 @@ export async function getMyEventTeam(eventId: string): Promise<Team | null> {
   }
 }
 
+export async function updateTeamCredits(
+  eventId: string,
+  teamId: string,
+  credits: number,
+): Promise<{ id: string; credits: number }> {
+  return (
+    await axiosInstance.put(`team/event/${eventId}/admin/${teamId}/credits`, {
+      credits,
+    })
+  ).data
+}
+
+export async function deleteTeamAsAdmin(
+  eventId: string,
+  teamId: string,
+): Promise<void> {
+  await axiosInstance.delete(`team/event/${eventId}/admin/${teamId}`)
+}
+
 export async function lockEvent(eventId: string) {
   return (await axiosInstance.put(`event/${eventId}/lock`)).data
 }
@@ -235,7 +254,7 @@ export async function getTeamsForEventTable(
     | undefined = 'name',
   sortDirection: 'asc' | 'desc' = 'asc',
   adminReveal: boolean = false,
-) {
+): Promise<Team[]> {
   const teams = (
     await axiosInstance.get(`team/event/${eventId}/`, {
       params: {
