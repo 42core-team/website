@@ -8,17 +8,17 @@ import {
   getEventWhitelist,
   removeFromWhitelist,
 } from '@/app/actions/event'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/8bit/alert'
+import { Badge } from '@/components/ui/8bit/badge'
+import { Button } from '@/components/ui/8bit/button'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
+} from '@/components/ui/8bit/card'
+import { Checkbox } from '@/components/ui/8bit/checkbox'
 import {
   Dialog,
   DialogClose,
@@ -28,16 +28,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
+} from '@/components/ui/8bit/dialog'
+import { Label } from '@/components/ui/8bit/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
+} from '@/components/ui/8bit/select'
+import { Skeleton } from '@/components/ui/8bit/skeleton'
 import {
   Table,
   TableBody,
@@ -45,8 +45,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Textarea } from '@/components/ui/textarea'
+} from '@/components/ui/8bit/table'
+import { Textarea } from '@/components/ui/8bit/textarea'
 import { WhitelistPlatform } from '@/lib/constants/whitelist'
 
 interface WhitelistManagementProps {

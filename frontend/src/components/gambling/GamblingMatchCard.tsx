@@ -2,17 +2,17 @@ import type { GamblingSnapshot, GamblingTeam } from '@/app/actions/gambling'
 import { CircleDollarSign, Coins, Swords, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import Link from '@/components/app-link'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/8bit/alert'
+import { Button } from '@/components/ui/8bit/button'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Spinner } from '@/components/ui/spinner'
+} from '@/components/ui/8bit/card'
+import { Input } from '@/components/ui/8bit/input'
+import { Spinner } from '@/components/ui/8bit/spinner'
 import { cn } from '@/lib/utils'
 import { formatGamblingCredits } from './gambling-utils'
 

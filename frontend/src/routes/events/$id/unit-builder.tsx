@@ -3,8 +3,8 @@ import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { getEventById, isUserRegisteredForEvent } from '@/app/actions/event'
 import UnitBuilder from '@/components/unit-builder/UnitBuilder'
 import { readComponentsConfig } from '@/components/unit-builder/config'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Spinner } from '@/components/ui/spinner'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/8bit/alert'
+import { Spinner } from '@/components/ui/8bit/spinner'
 
 export const Route = createFileRoute('/events/$id/unit-builder')({
   component: UnitBuilderRoute,

@@ -3,23 +3,23 @@ import { CheckCircle2, Info, Loader2, Terminal } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { getStarterTemplates } from '@/app/actions/event'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/8bit/button'
+import { Card } from '@/components/ui/8bit/card'
+import { Input } from '@/components/ui/8bit/input'
+import { Label } from '@/components/ui/8bit/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from '@/components/ui/8bit/select'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip'
+} from '@/components/ui/8bit/tooltip'
 
 interface TeamCreationSectionProps {
   eventId: string

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Label } from '@/components/ui/label'
+import { Label } from '@/components/ui/8bit/label'
 import { cn } from '@/lib/utils'
 
 const Field = React.forwardRef<

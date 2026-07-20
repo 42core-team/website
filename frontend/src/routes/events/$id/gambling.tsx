@@ -14,8 +14,8 @@ import {
   GamblingSidebar,
   getGamblingErrorMessage,
 } from '@/components/gambling'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Spinner } from '@/components/ui/spinner'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/8bit/alert'
+import { Spinner } from '@/components/ui/8bit/spinner'
 
 export const Route = createFileRoute('/events/$id/gambling')({
   component: GamblingRoute,

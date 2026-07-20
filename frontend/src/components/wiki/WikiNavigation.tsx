@@ -8,7 +8,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/components/ui/accordion'
+} from '@/components/ui/8bit/accordion'
 import { scrollToWikiHeading } from '@/lib/wiki-scroll'
 
 const INDENT_BASE = 8 // px

@@ -15,8 +15,13 @@ import {
 } from '@/app/actions/team'
 import { MatchState } from '@/app/actions/tournament-model'
 import QueueMatchesList from '@/components/QueueMatchesList'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/8bit/button'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/8bit/card'
 import {
   Dialog,
   DialogContent,
@@ -24,9 +29,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Spinner } from '@/components/ui/spinner'
+} from '@/components/ui/8bit/dialog'
+import { Input } from '@/components/ui/8bit/input'
+import { Spinner } from '@/components/ui/8bit/spinner'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/events/$id/queue')({

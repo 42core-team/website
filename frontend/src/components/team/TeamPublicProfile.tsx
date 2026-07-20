@@ -1,8 +1,13 @@
 import type { Team, TeamMember } from '@/app/actions/team'
 import { ArrowLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/8bit/button'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/8bit/card'
 import { useRouter } from '@/lib/router-hooks'
 import TeamMemberDisplay from './TeamMemberDisplay'
 import LocationTags from './LocationTags'

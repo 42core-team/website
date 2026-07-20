@@ -1,4 +1,4 @@
-import { Badge } from '@/components/ui/badge'
+import { Badge } from '@/components/ui/8bit/badge'
 import { cn } from '@/lib/utils'
 
 interface LocationTagsProps {

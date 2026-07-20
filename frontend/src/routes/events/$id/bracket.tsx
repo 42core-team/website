@@ -8,7 +8,7 @@ import {
 } from '@/app/actions/tournament'
 import { AdminRevealSwitch } from '@/components/tournament/admin-reveal-switch'
 import { BracketTabs } from '@/components/tournament/tournament-tabs'
-import { Spinner } from '@/components/ui/spinner'
+import { Spinner } from '@/components/ui/8bit/spinner'
 import { useSearchParams } from '@/lib/router-hooks'
 
 export const Route = createFileRoute('/events/$id/bracket')({
@@ -40,7 +40,11 @@ function BracketRoute() {
       'event',
       id,
       'teams',
-      { sortColumn: 'score', sortDirection: 'desc', adminReveal: isAdminReveal },
+      {
+        sortColumn: 'score',
+        sortDirection: 'desc',
+        adminReveal: isAdminReveal,
+      },
     ],
     queryFn: () =>
       getTeamsForEventTable(id, undefined, 'score', 'desc', isAdminReveal),

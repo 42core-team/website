@@ -10,8 +10,8 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/components/ui/accordion'
-import { Badge } from '@/components/ui/badge'
+} from '@/components/ui/8bit/accordion'
+import { Badge } from '@/components/ui/8bit/badge'
 import {
   Table,
   TableBody,
@@ -19,7 +19,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from '@/components/ui/8bit/table'
 import { cn } from '@/lib/utils'
 import { useParams, useRouter } from '@/lib/router-hooks'
 

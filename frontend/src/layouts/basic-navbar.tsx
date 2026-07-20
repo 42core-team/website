@@ -6,18 +6,22 @@ import { usePathname, useRouter } from '@/lib/router-hooks'
 import { forwardRef, useCallback, useState } from 'react'
 import GithubLoginButton from '@/components/github'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from '@/components/ui/8bit/avatar'
+import { Button } from '@/components/ui/8bit/button'
 import {
   NavigationMenu,
   NavigationMenuItem,
   NavigationMenuList,
-} from '@/components/ui/navigation-menu'
+} from '@/components/ui/8bit/navigation-menu'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover'
+} from '@/components/ui/8bit/popover'
 import { useNavbar } from '@/contexts/NavbarContext'
 import { cn } from '@/lib/utils'
 

@@ -1,14 +1,16 @@
 'use client'
 
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/8bit/label'
+import { Switch } from '@/components/ui/8bit/switch'
 import { usePathname, useRouter, useSearchParams } from '@/lib/router-hooks'
 
 interface AdminRevealSwitchProps {
   disabled?: boolean
 }
 
-export function AdminRevealSwitch({ disabled = false }: AdminRevealSwitchProps) {
+export function AdminRevealSwitch({
+  disabled = false,
+}: AdminRevealSwitchProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()

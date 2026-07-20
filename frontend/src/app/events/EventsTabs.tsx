@@ -2,7 +2,12 @@
 
 import type { Event } from '@/app/actions/event'
 import EventsTable from '@/app/events/EventTable'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/8bit/tabs'
 
 export default function EventsTabs({
   myEvents,

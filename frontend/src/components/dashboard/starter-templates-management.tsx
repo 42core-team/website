@@ -11,15 +11,15 @@ import {
   getStarterTemplates,
   updateStarterTemplate,
 } from '@/app/actions/event'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/8bit/button'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+} from '@/components/ui/8bit/card'
+import { Input } from '@/components/ui/8bit/input'
 import {
   Table,
   TableBody,
@@ -27,7 +27,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from '@/components/ui/8bit/table'
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),

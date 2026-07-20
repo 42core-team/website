@@ -19,8 +19,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
-import { Spinner } from '@/components/ui/spinner'
+} from '@/components/ui/8bit/card'
+import { Spinner } from '@/components/ui/8bit/spinner'
 import { useSession } from '@/lib/auth'
 
 export const Route = createFileRoute('/events/$id')({

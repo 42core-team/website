@@ -5,7 +5,12 @@ import { useRouter } from '@/lib/router-hooks'
 import { Suspense, useEffect } from 'react'
 import { title } from '@/components/primitives'
 import SocialAccountsDisplay from '@/components/social-accounts-display'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/8bit/card'
 import { User } from '@/components/user'
 
 function ProfileContent() {

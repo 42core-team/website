@@ -4,7 +4,7 @@ import { canUserCreateEvent, getEvents, getMyEvents } from '@/app/actions/event'
 import EventsTabs from '@/app/events/EventsTabs'
 import Link from '@/components/app-link'
 import { title } from '@/components/primitives'
-import { Spinner } from '@/components/ui/spinner'
+import { Spinner } from '@/components/ui/8bit/spinner'
 import { useSession } from '@/lib/auth'
 
 export const Route = createFileRoute('/events')({

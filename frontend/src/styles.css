@@ -17,6 +17,7 @@
   font-style: normal;
 }
 
+
 @utility prose {
   code {
     &::before,
@@ -236,4 +237,3 @@ mark {
     @apply bg-background text-foreground;
   }
 }
-

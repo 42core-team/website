@@ -11,14 +11,14 @@ import {
 import { getMatchesForTeam } from '@/app/actions/tournament'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import { TeamMatchHistory, TeamPublicProfile } from '@/components/team'
-import { Button } from '@/components/ui/button'
-import { Spinner } from '@/components/ui/spinner'
+import { Button } from '@/components/ui/8bit/button'
+import { Spinner } from '@/components/ui/8bit/spinner'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip'
+} from '@/components/ui/8bit/tooltip'
 
 export const Route = createFileRoute('/events/$id/teams/$teamId')({
   component: TeamRoute,

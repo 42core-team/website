@@ -5,20 +5,20 @@ import Link from '@/components/app-link'
 import { usePathname } from '@/lib/router-hooks'
 import { useMemo } from 'react'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/8bit/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+} from '@/components/ui/8bit/dropdown-menu'
 import {
   NavigationMenu,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
   navigationMenuTriggerStyle,
-} from '@/components/ui/navigation-menu'
+} from '@/components/ui/8bit/navigation-menu'
 import { cn } from '@/lib/utils'
 
 interface EventNavbarProps {

@@ -14,7 +14,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from '@/components/ui/8bit/table'
 import { cn } from '@/lib/utils'
 import { useRouter, useSearchParams } from '@/lib/router-hooks'
 

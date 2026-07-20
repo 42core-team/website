@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { joinEvent } from '@/app/actions/event'
 import { myTeamQueryKey } from '@/app/events/my-team-queries'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/8bit/badge'
+import { Button } from '@/components/ui/8bit/button'
 
 interface EventJoinNoticeProps {
   userId: string

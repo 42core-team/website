@@ -9,7 +9,12 @@ import { BracketGraphView } from '@/components/tournament/bracket-graph-view'
 import { BracketRankingTable } from '@/components/tournament/bracket-ranking-table'
 import { GroupPhaseGraphView } from '@/components/tournament/group-phase-graph-view'
 import { GroupPhaseRankingTable } from '@/components/tournament/group-phase-ranking-table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/8bit/tabs'
 import { useTabParam } from '@/hooks/useTabParam'
 
 interface GroupPhaseTabsProps {

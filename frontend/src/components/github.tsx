@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/8bit/button'
 import { getBackendBaseUrl } from '@/lib/env'
 import { GithubIcon } from './icons'
 
