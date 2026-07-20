@@ -3,15 +3,15 @@
 import type { Event } from '@/app/actions/event'
 import { useRouter } from '@/lib/router-hooks'
 
-import { Badge } from '@/components/ui/8bit/badge'
 import {
+  Badge,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/8bit/table'
+} from '@/components/ui/themed'
 
 export default function EventsTable({ events }: Readonly<{ events: Event[] }>) {
   const router = useRouter()

@@ -1,14 +1,14 @@
 import type { GamblingSnapshot } from '@/app/actions/gambling'
 import { Coins, DoorOpen, ListPlus, Users } from 'lucide-react'
-import { Button } from '@/components/ui/8bit/button'
 import {
+  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/8bit/card'
-import { Spinner } from '@/components/ui/8bit/spinner'
+  Spinner,
+} from '@/components/ui/themed'
 import { cn } from '@/lib/utils'
 import { formatGamblingCredits } from './gambling-utils'
 

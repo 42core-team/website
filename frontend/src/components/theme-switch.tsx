@@ -1,36 +1,59 @@
-import { Moon, Sun } from 'lucide-react'
+import { Check, Gamepad2, Moon, Sun } from 'lucide-react'
+import type { Theme } from '@/lib/theme'
 import { useTheme } from '@/lib/theme'
 
-import { Button } from '@/components/ui/8bit/button'
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/8bit/dropdown-menu'
+} from '@/components/ui/themed'
 
 export function ThemeSwitch() {
-  const { setTheme } = useTheme()
+  const { setTheme, theme } = useTheme()
+
+  const themes: Array<{
+    icon: typeof Sun
+    label: string
+    value: Theme
+  }> = [
+    { icon: Sun, label: 'White', value: 'light' },
+    { icon: Moon, label: 'Dark', value: 'dark' },
+    { icon: Gamepad2, label: '8bit', value: '8bit' },
+  ]
+
+  const ActiveIcon =
+    themes.find((option) => option.value === theme)?.icon ?? Moon
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon">
-          <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-          <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
-          <span className="sr-only">Toggle theme</span>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={`Choose theme. Current theme: ${theme}`}
+        >
+          <ActiveIcon className="size-[1.2rem]" />
+          <span className="sr-only">Choose theme</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme('light')}>
-          Light
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme('dark')}>
-          Dark
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme('system')}>
-          System
-        </DropdownMenuItem>
+        {themes.map((option) => {
+          const Icon = option.icon
+
+          return (
+            <DropdownMenuItem
+              key={option.value}
+              onClick={() => setTheme(option.value)}
+              className="gap-2"
+            >
+              <Icon className="size-4" />
+              <span className="flex-1">{option.label}</span>
+              {theme === option.value && <Check className="size-4" />}
+            </DropdownMenuItem>
+          )
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   )

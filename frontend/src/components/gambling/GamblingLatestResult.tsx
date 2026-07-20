@@ -1,15 +1,15 @@
 import type { GamblingSnapshot } from '@/app/actions/gambling'
 import { History, Trophy } from 'lucide-react'
 import Link from '@/components/app-link'
-import { Badge } from '@/components/ui/8bit/badge'
-import { Button } from '@/components/ui/8bit/button'
 import {
+  Badge,
+  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/8bit/card'
+} from '@/components/ui/themed'
 import { cn } from '@/lib/utils'
 import { formatGamblingCredits } from './gambling-utils'
 

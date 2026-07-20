@@ -11,19 +11,19 @@ import * as z from 'zod'
 import type { EventCreateParams } from '@/app/actions/event'
 import { canUserCreateEvent, createEvent } from '@/app/actions/event'
 import Link from '@/components/app-link'
-import { Button } from '@/components/ui/8bit/button'
-import { Calendar } from '@/components/ui/8bit/calendar'
-import { Card } from '@/components/ui/8bit/card'
-import { Input } from '@/components/ui/8bit/input'
-import { Label } from '@/components/ui/8bit/label'
 import {
+  Button,
+  Calendar,
+  Card,
+  Input,
+  Label,
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/8bit/popover'
-import { Spinner } from '@/components/ui/8bit/spinner'
-import { Switch } from '@/components/ui/8bit/switch'
-import { Textarea } from '@/components/ui/8bit/textarea'
+  Spinner,
+  Switch,
+  Textarea,
+} from '@/components/ui/themed'
 import { useSession } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 

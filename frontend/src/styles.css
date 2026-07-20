@@ -17,7 +17,6 @@
   font-style: normal;
 }
 
-
 @utility prose {
   code {
     &::before,
@@ -226,6 +225,62 @@ mark {
   --primary-100: oklch(0.3 0 0);
   --primary-600: oklch(0.85 0 0);
   --primary-700: oklch(0.8 0 0);
+}
+
+.theme-8bit {
+  --radius: 0rem;
+  --background: oklch(0.16 0.035 145);
+  --foreground: oklch(0.91 0.17 125);
+  --card: oklch(0.21 0.045 145);
+  --card-foreground: oklch(0.91 0.17 125);
+  --popover: oklch(0.19 0.04 145);
+  --popover-foreground: oklch(0.91 0.17 125);
+  --primary: oklch(0.84 0.19 92);
+  --primary-foreground: oklch(0.16 0.035 145);
+  --secondary: oklch(0.34 0.08 145);
+  --secondary-foreground: oklch(0.94 0.14 125);
+  --muted: oklch(0.25 0.05 145);
+  --muted-foreground: oklch(0.72 0.1 125);
+  --accent: oklch(0.43 0.12 145);
+  --accent-foreground: oklch(0.96 0.12 125);
+  --destructive: oklch(0.68 0.22 28);
+  --border: oklch(0.62 0.13 130);
+  --input: oklch(0.32 0.075 145);
+  --ring: oklch(0.84 0.19 92);
+  --chart-1: oklch(0.84 0.19 92);
+  --chart-2: oklch(0.72 0.17 145);
+  --chart-3: oklch(0.73 0.19 40);
+  --chart-4: oklch(0.7 0.19 300);
+  --chart-5: oklch(0.78 0.14 200);
+  --sidebar: oklch(0.19 0.04 145);
+  --sidebar-foreground: oklch(0.91 0.17 125);
+  --sidebar-primary: oklch(0.84 0.19 92);
+  --sidebar-primary-foreground: oklch(0.16 0.035 145);
+  --sidebar-accent: oklch(0.34 0.08 145);
+  --sidebar-accent-foreground: oklch(0.94 0.14 125);
+  --sidebar-border: oklch(0.62 0.13 130);
+  --sidebar-ring: oklch(0.84 0.19 92);
+  --content1: oklch(0.21 0.045 145);
+  --default-100: oklch(0.25 0.05 145);
+  --default-200: oklch(0.32 0.075 145);
+  --primary-50: oklch(0.24 0.05 145);
+  --primary-100: oklch(0.3 0.07 145);
+  --primary-600: oklch(0.84 0.19 92);
+  --primary-700: oklch(0.76 0.18 92);
+}
+
+.theme-8bit body {
+  background-image:
+    linear-gradient(oklch(0.91 0.17 125 / 4%) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.91 0.17 125 / 4%) 1px, transparent 1px);
+  background-size: 8px 8px;
+  font-family: 'Press Start 2P', 'Original', monospace;
+  image-rendering: pixelated;
+}
+
+.theme-8bit ::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 @layer base {

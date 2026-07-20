@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { Flame, Gem, User } from 'lucide-react'
 import { getGlobalStats } from '@/app/actions/stats'
 import AnimatedNumber from '@/components/animatedNumber'
-import { Badge } from '@/components/ui/8bit/badge'
+import { Badge } from '@/components/ui/themed'
 import { useQuery } from '@tanstack/react-query'
 
 export default function GlobalStats() {

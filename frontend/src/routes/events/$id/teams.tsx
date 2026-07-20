@@ -10,22 +10,20 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { useState } from 'react'
 import { getTeamsForEventTable } from '@/app/actions/team'
 import { LocationTags } from '@/components/team'
-import { Button } from '@/components/ui/8bit/button'
 import {
+  Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from '@/components/ui/8bit/card'
-import { Spinner } from '@/components/ui/8bit/spinner'
-import {
+  Spinner,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/8bit/table'
+} from '@/components/ui/themed'
 
 export const Route = createFileRoute('/events/$id/teams')({
   component: TeamsRoute,

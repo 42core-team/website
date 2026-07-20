@@ -8,18 +8,18 @@ import {
   getEventWhitelist,
   removeFromWhitelist,
 } from '@/app/actions/event'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/8bit/alert'
-import { Badge } from '@/components/ui/8bit/badge'
-import { Button } from '@/components/ui/8bit/button'
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/8bit/card'
-import { Checkbox } from '@/components/ui/8bit/checkbox'
-import {
+  Checkbox,
   Dialog,
   DialogClose,
   DialogContent,
@@ -28,25 +28,21 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/8bit/dialog'
-import { Label } from '@/components/ui/8bit/label'
-import {
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/8bit/select'
-import { Skeleton } from '@/components/ui/8bit/skeleton'
-import {
+  Skeleton,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/8bit/table'
-import { Textarea } from '@/components/ui/8bit/textarea'
+  Textarea,
+} from '@/components/ui/themed'
 import { WhitelistPlatform } from '@/lib/constants/whitelist'
 
 interface WhitelistManagementProps {

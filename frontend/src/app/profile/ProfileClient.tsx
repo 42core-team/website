@@ -10,7 +10,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from '@/components/ui/8bit/card'
+} from '@/components/ui/themed'
 import { User } from '@/components/user'
 
 function ProfileContent() {

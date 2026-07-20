@@ -10,18 +10,14 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from '@/components/ui/8bit/avatar'
-import { Button } from '@/components/ui/8bit/button'
-import {
+  Button,
   NavigationMenu,
   NavigationMenuItem,
   NavigationMenuList,
-} from '@/components/ui/8bit/navigation-menu'
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/8bit/popover'
+} from '@/components/ui/themed'
 import { useNavbar } from '@/contexts/NavbarContext'
 import { cn } from '@/lib/utils'
 

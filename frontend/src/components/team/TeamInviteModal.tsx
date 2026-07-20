@@ -5,21 +5,17 @@ import { toast } from 'sonner'
 import axiosInstance from '@/app/actions/axios'
 
 import { searchUsersForInvite } from '@/app/actions/team'
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from '@/components/ui/8bit/avatar'
-import { Button } from '@/components/ui/8bit/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/themed'
+import { Button } from '@/components/ui/themed'
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/8bit/dialog'
-import { Input } from '@/components/ui/8bit/input'
-import { Label } from '@/components/ui/8bit/label'
+} from '@/components/ui/themed'
+import { Input } from '@/components/ui/themed'
+import { Label } from '@/components/ui/themed'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 interface TeamInviteModalProps {

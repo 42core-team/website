@@ -2,9 +2,9 @@ import type { QueueMatch } from '@/app/actions/tournament-model'
 import { Trophy } from 'lucide-react'
 import Link from '@/components/app-link'
 import { MatchPhase, MatchState } from '@/app/actions/tournament-model'
-import { Badge } from '@/components/ui/8bit/badge'
-import { Button } from '@/components/ui/8bit/button'
-import { Card, CardContent } from '@/components/ui/8bit/card'
+import { Badge } from '@/components/ui/themed'
+import { Button } from '@/components/ui/themed'
+import { Card, CardContent } from '@/components/ui/themed'
 import { cn } from '@/lib/utils'
 
 export default function QueueMatchesList(props: {

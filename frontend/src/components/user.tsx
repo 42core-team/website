@@ -1,8 +1,4 @@
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from '@/components/ui/8bit/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/themed'
 
 interface UserProps {
   name?: string

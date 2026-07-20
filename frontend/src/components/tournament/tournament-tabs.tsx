@@ -14,7 +14,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@/components/ui/8bit/tabs'
+} from '@/components/ui/themed'
 import { useTabParam } from '@/hooks/useTabParam'
 
 interface GroupPhaseTabsProps {

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { getCurrentLiveEvent } from '@/app/actions/event'
 import HomePageClient from '@/components/HomePageClient'
-import { Spinner } from '@/components/ui/8bit/spinner'
+import { Spinner } from '@/components/ui/themed'
 
 export const Route = createFileRoute('/')({
   component: HomeRoute,

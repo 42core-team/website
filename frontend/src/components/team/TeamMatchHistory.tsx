@@ -2,14 +2,14 @@ import type { Match } from '@/app/actions/tournament-model'
 import { History } from 'lucide-react'
 import { MatchPhase } from '@/app/actions/tournament-model'
 import QueueMatchesList from '@/components/QueueMatchesList'
-import { Card, CardHeader } from '@/components/ui/8bit/card'
-import { Spinner } from '@/components/ui/8bit/spinner'
+import { Card, CardHeader } from '@/components/ui/themed'
+import { Spinner } from '@/components/ui/themed'
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@/components/ui/8bit/tabs'
+} from '@/components/ui/themed'
 
 type MatchHistoryTab = {
   label: string

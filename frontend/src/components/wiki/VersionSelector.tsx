@@ -9,7 +9,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/8bit/select'
+} from '@/components/ui/themed'
 import { buildVersionPath } from '@/lib/wiki-navigation'
 
 interface VersionSelectorProps {

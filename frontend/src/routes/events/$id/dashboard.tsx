@@ -46,47 +46,39 @@ import {
 import { searchUsers } from '@/app/actions/user'
 import { StarterTemplatesManagement } from '@/components/dashboard/starter-templates-management'
 import { WhitelistManagement } from '@/components/dashboard/whitelist-management'
-import { Button } from '@/components/ui/8bit/button'
-import { Calendar } from '@/components/ui/8bit/calendar'
 import {
+  Button,
+  Calendar,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/8bit/card'
-import { Input } from '@/components/ui/8bit/input'
-import { Label } from '@/components/ui/8bit/label'
-import {
+  Input,
+  Label,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/8bit/dialog'
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/8bit/popover'
-import { Spinner } from '@/components/ui/8bit/spinner'
-import { Switch } from '@/components/ui/8bit/switch'
-import {
+  Spinner,
+  Switch,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/8bit/table'
-import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@/components/ui/8bit/tabs'
-import { Textarea } from '@/components/ui/8bit/textarea'
+  Textarea,
+} from '@/components/ui/themed'
 import { useTabParam } from '@/hooks/useTabParam'
 import { useSession } from '@/lib/auth'
 import { cn } from '@/lib/utils'

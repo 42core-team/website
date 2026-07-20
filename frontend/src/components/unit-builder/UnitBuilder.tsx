@@ -15,17 +15,19 @@ import {
   useState,
 } from 'react'
 import Image from '@/components/app-image'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/8bit/alert'
-import { Badge } from '@/components/ui/8bit/badge'
-import { Button } from '@/components/ui/8bit/button'
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Badge,
+  Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from '@/components/ui/8bit/card'
-import { Input } from '@/components/ui/8bit/input'
-import { Label } from '@/components/ui/8bit/label'
+  Input,
+  Label,
+} from '@/components/ui/themed'
 import { cn } from '@/lib/utils'
 import { findViolations, getTotalCost, getUnitProperties } from './rules'
 import { UNIT_PROPERTY_NAMES } from './types'

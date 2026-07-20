@@ -8,13 +8,13 @@ import {
   getSocialAccounts,
   unlinkSocialAccount,
 } from '@/app/actions/social-accounts'
-import { Button } from '@/components/ui/8bit/button'
 import {
+  Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from '@/components/ui/8bit/card'
+} from '@/components/ui/themed'
 import { use42Linking } from '@/hooks/use42Linking'
 import { OAUTH_PROVIDERS } from '@/lib/constants/oauth'
 import {

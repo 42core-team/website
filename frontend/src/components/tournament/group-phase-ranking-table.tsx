@@ -6,15 +6,15 @@ import { Fragment } from 'react'
 import { MatchState } from '@/app/actions/tournament-model'
 import { MatchHistoryBadges } from '@/components/match/MatchHistoryBadges'
 import { LocationTags } from '@/components/team'
-import { Badge } from '@/components/ui/8bit/badge'
 import {
+  Badge,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/8bit/table'
+} from '@/components/ui/themed'
 import { useRouter } from '@/lib/router-hooks'
 
 interface GroupPhaseRankingTableProps {

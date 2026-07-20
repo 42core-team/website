@@ -2,13 +2,13 @@
 
 import type { MatchLogs } from '@/app/actions/tournament-model'
 import { useState } from 'react'
-import { Input } from '@/components/ui/8bit/input'
+import { Input } from '@/components/ui/themed'
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@/components/ui/8bit/tabs'
+} from '@/components/ui/themed'
 
 interface MatchLogsDisplayProps {
   logs: MatchLogs

@@ -1,7 +1,6 @@
 'use client'
 
-import { Label } from '@/components/ui/8bit/label'
-import { Switch } from '@/components/ui/8bit/switch'
+import { Label, Switch } from '@/components/ui/themed'
 import { usePathname, useRouter, useSearchParams } from '@/lib/router-hooks'
 
 interface AdminRevealSwitchProps {

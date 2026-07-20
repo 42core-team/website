@@ -9,8 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import GlobalStats from '@/components/GlobalStats'
 import { GithubIcon, WikiIcon } from '@/components/icons'
 import { CoreLogoWhite } from '@/components/social'
-import { Button } from '@/components/ui/8bit/button'
-import { Card, CardHeader, CardTitle } from '@/components/ui/8bit/card'
+import { Button, Card, CardHeader, CardTitle } from '@/components/ui/themed'
 import { getVisualizerUrl } from '@/lib/env'
 
 export default function HomePageClient(props: { currentLiveEvent?: Event }) {

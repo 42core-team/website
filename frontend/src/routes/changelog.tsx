@@ -10,9 +10,9 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/components/ui/8bit/accordion'
-import { Badge } from '@/components/ui/8bit/badge'
-import { Button } from '@/components/ui/8bit/button'
+  Badge,
+  Button,
+} from '@/components/ui/themed'
 import { getPaginatedReleases } from '@/lib/changelog'
 
 const PAGE_SIZE = 42

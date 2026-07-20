@@ -8,7 +8,7 @@ import {
 } from '@/app/actions/tournament'
 import { AdminRevealSwitch } from '@/components/tournament/admin-reveal-switch'
 import { GroupPhaseTabs } from '@/components/tournament/tournament-tabs'
-import { Spinner } from '@/components/ui/8bit/spinner'
+import { Spinner } from '@/components/ui/themed'
 import { useSearchParams } from '@/lib/router-hooks'
 
 export const Route = createFileRoute('/events/$id/groups')({

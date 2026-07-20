@@ -1,4 +1,4 @@
-import { Spinner } from '@/components/ui/8bit/spinner'
+import { Spinner } from '@/components/ui/themed'
 
 export function PageLoader() {
   return (

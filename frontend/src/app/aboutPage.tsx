@@ -6,8 +6,7 @@ import Image from '@/components/app-image'
 import Link from '@/components/app-link'
 import { title } from '@/components/primitives'
 import { CoreLogoWhite } from '@/components/social'
-import { Button } from '@/components/ui/8bit/button'
-import { Card, CardContent } from '@/components/ui/8bit/card'
+import { Button, Card, CardContent } from '@/components/ui/themed'
 
 interface TeamMember {
   name: string

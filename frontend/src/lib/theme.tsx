@@ -1,6 +1,6 @@
 import React from 'react'
 
-type Theme = 'light' | 'dark' | 'system'
+export type Theme = 'light' | 'dark' | '8bit'
 
 interface ThemeContextValue {
   theme: Theme
@@ -13,29 +13,27 @@ const ThemeContext = React.createContext<ThemeContextValue | undefined>(
 )
 
 function resolveTheme(theme: Theme): 'light' | 'dark' {
-  if (theme !== 'system') {
-    return theme
-  }
-
-  if (typeof window === 'undefined') {
-    return 'dark'
-  }
-
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light'
+  return theme === 'light' ? 'light' : 'dark'
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = React.useState<Theme>(() => {
     if (typeof window === 'undefined') {
-      return 'system'
+      return 'dark'
     }
 
     const stored = window.localStorage.getItem('theme')
-    return stored === 'light' || stored === 'dark' || stored === 'system'
-      ? stored
-      : 'system'
+    if (stored === 'light' || stored === 'dark' || stored === '8bit') {
+      return stored
+    }
+
+    if (stored === 'system' || stored === 'auto') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light'
+    }
+
+    return 'dark'
   })
   const [resolvedTheme, setResolvedTheme] = React.useState<'light' | 'dark'>(
     () => resolveTheme(theme),
@@ -51,13 +49,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setResolvedTheme(resolved)
       document.documentElement.classList.toggle('dark', resolved === 'dark')
       document.documentElement.classList.toggle('light', resolved === 'light')
+      document.documentElement.classList.toggle('theme-8bit', theme === '8bit')
+      document.documentElement.dataset.theme = theme
       document.documentElement.style.colorScheme = resolved
     }
 
     applyTheme()
-    const media = window.matchMedia('(prefers-color-scheme: dark)')
-    media.addEventListener('change', applyTheme)
-    return () => media.removeEventListener('change', applyTheme)
   }, [theme])
 
   const setTheme = React.useCallback((nextTheme: Theme) => {
@@ -84,4 +81,8 @@ export function useTheme() {
   }
 
   return value
+}
+
+export function useOptionalTheme() {
+  return React.useContext(ThemeContext)
 }

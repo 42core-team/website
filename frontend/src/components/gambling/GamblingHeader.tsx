@@ -1,7 +1,6 @@
 import type { GamblingPhase, GamblingSnapshot } from '@/app/actions/gambling'
 import { Clock3 } from 'lucide-react'
-import { Badge } from '@/components/ui/8bit/badge'
-import { Card, CardContent } from '@/components/ui/8bit/card'
+import { Badge, Card, CardContent } from '@/components/ui/themed'
 import GamblingCountdown from './GamblingCountdown'
 import { formatGamblingCredits } from './gambling-utils'
 

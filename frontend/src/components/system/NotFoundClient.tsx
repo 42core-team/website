@@ -1,15 +1,15 @@
 'use client'
 
 import Link from '@/components/app-link'
-import { Button } from '@/components/ui/8bit/button'
 import {
+  Button,
   Card,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/8bit/card'
+} from '@/components/ui/themed'
 
 export default function NotFoundClient() {
   return (

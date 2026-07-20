@@ -7,7 +7,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@/components/ui/8bit/tabs'
+} from '@/components/ui/themed'
 
 export default function EventsTabs({
   myEvents,

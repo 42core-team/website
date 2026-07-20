@@ -1,11 +1,7 @@
 import type { TeamMember } from '@/app/actions/team'
 import Image from '@/components/app-image'
 import { GithubIcon } from '@/components/icons'
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from '@/components/ui/8bit/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/themed'
 import { cn } from '@/lib/utils'
 import LocationTags from './LocationTags'
 

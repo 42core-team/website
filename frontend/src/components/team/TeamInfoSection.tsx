@@ -5,14 +5,14 @@ import { Plus } from 'lucide-react'
 import { useParams } from '@/lib/router-hooks'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/8bit/badge'
-import { Button } from '@/components/ui/8bit/button'
+import { Badge } from '@/components/ui/themed'
+import { Button } from '@/components/ui/themed'
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from '@/components/ui/8bit/card'
+} from '@/components/ui/themed'
 import {
   Dialog,
   DialogClose,
@@ -21,8 +21,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/8bit/dialog'
-import { Skeleton } from '@/components/ui/8bit/skeleton'
+} from '@/components/ui/themed'
+import { Skeleton } from '@/components/ui/themed'
 import TeamInviteModal from './TeamInviteModal'
 import TeamMemberDisplay from './TeamMemberDisplay'
 import LocationTags from './LocationTags'

@@ -21,15 +21,17 @@ import {
   TeamInfoSection,
   TeamMatchHistory,
 } from '@/components/team'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/8bit/alert'
-import { Button } from '@/components/ui/8bit/button'
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from '@/components/ui/8bit/card'
-import { Spinner } from '@/components/ui/8bit/spinner'
+  Spinner,
+} from '@/components/ui/themed'
 import { validateTeamName } from '@/lib/utils/validation'
 
 export const Route = createFileRoute('/events/$id/my-team')({
