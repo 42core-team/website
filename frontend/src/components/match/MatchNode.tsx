@@ -109,7 +109,7 @@ function MatchNode({ data }: MatchNodeProps) {
         <Handle
           type="target"
           position={Position.Left}
-          className="h-2 w-2 border-2 border-background !bg-muted-foreground"
+          className="h-2 w-2 border-2 border-background bg-muted-foreground!"
           style={{ left: -4 }}
         />
       )}
@@ -117,7 +117,7 @@ function MatchNode({ data }: MatchNodeProps) {
         <Handle
           type="source"
           position={Position.Right}
-          className="h-2 w-2 border-2 border-background !bg-muted-foreground"
+          className="h-2 w-2 border-2 border-background bg-muted-foreground!"
           style={{ right: -4 }}
         />
       )}

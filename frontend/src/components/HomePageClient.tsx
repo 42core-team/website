@@ -97,7 +97,7 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
                 className="group mx-auto mt-6 block w-full max-w-lg rounded-xl focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none md:mt-8"
               >
                 <Card className="relative h-full w-full overflow-hidden border-white/10 bg-background/60 shadow-2xl backdrop-blur-xl transition-all duration-300 group-hover:-translate-y-1 group-hover:border-primary/50 group-hover:bg-background/80 group-hover:shadow-[0_20px_40px_-15px_rgba(var(--primary),0.3)] group-active:translate-y-0 group-active:scale-[0.98]">
-                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50 transition-opacity group-hover:opacity-100" />
+                  <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/50 to-transparent opacity-50 transition-opacity group-hover:opacity-100" />
                   <CardHeader className="flex flex-row items-center justify-between pb-6">
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-2">

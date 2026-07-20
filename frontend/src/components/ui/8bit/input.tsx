@@ -32,14 +32,14 @@ function Input({ ...props }: BitInputProps) {
   return (
     <div
       className={cn(
-        'relative border-y-6 border-foreground dark:border-ring !p-0 flex items-center',
+        'relative border-y-6 border-foreground dark:border-ring p-0! flex items-center',
         className,
       )}
     >
       <ShadcnInput
         {...props}
         className={cn(
-          'rounded-none ring-0 !w-full',
+          'rounded-none ring-0 w-full!',
           font !== 'normal' && 'retro',
           className,
         )}

@@ -68,7 +68,7 @@ function Button({
       disabled={isLoading || disabled}
     >
       {asChild ? (
-        <span className="relative inline-flex items-center justify-center gap-1.5">
+        <span className="relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap [&>*:first-child]:inline-flex [&>*:first-child]:items-center [&>*:first-child]:gap-1.5 [&>*:first-child]:whitespace-nowrap">
           {children}
 
           {variant !== 'ghost' && variant !== 'link' && size !== 'icon' && (
