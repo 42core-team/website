@@ -1,8 +1,8 @@
 export const UNIT_PROPERTY_NAMES = [
   'hp',
   'baseActionCooldown',
-  'balancePerCooldownStep',
-  'maxBalance',
+  'gemsPerCooldownStep',
+  'maxGems',
   'damageReductionPercent',
   'damageCore',
   'damageUnit',
