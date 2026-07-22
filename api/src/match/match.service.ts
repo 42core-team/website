@@ -1111,30 +1111,64 @@ export class MatchService {
     relations: FindOptionsRelations<MatchEntity> = {},
     userId?: string,
     adminReveal?: boolean,
-  ): Promise<MatchEntity> {
+  ): Promise<MatchEntity & { isPlacementMatch?: boolean }> {
     const match = await this.matchRepository.findOneOrFail({
       where: { id: matchId },
       relations,
     });
+    const matchWithPlacementFlag =
+      await this.addPlacementMatchFlagForMatch(match);
 
-    if (match.isRevealed) return match;
+    if (matchWithPlacementFlag.isRevealed) return matchWithPlacementFlag;
 
     if (userId) {
-      const eventId = match.teams?.[0]?.event?.id;
+      const eventId = matchWithPlacementFlag.teams?.[0]?.event?.id;
       if (
         eventId &&
         (await this.eventService.isEventAdmin(eventId, userId)) &&
         adminReveal
       ) {
-        return match;
+        return matchWithPlacementFlag;
       }
     }
 
     return {
-      ...match,
+      ...matchWithPlacementFlag,
       state: MatchState.PLANNED,
       winner: null,
       results: [],
+    };
+  }
+
+  private async addPlacementMatchFlagForMatch(
+    match: MatchEntity,
+  ): Promise<MatchEntity & { isPlacementMatch?: boolean }> {
+    const eventId = match.teams?.[0]?.event?.id;
+    if (match.phase !== MatchPhase.ELIMINATION || !eventId) return match;
+
+    const tournamentMatches = await this.matchRepository.find({
+      where: {
+        teams: {
+          event: {
+            id: eventId,
+          },
+        },
+        phase: MatchPhase.ELIMINATION,
+      },
+      relations: {
+        teams: true,
+        winner: true,
+      },
+    });
+    const matchWithPlacementFlag = this.addPlacementMatchFlags(
+      tournamentMatches,
+    ).find((tournamentMatch) => tournamentMatch.id === match.id);
+
+    if (!matchWithPlacementFlag?.isPlacementMatch) return match;
+
+    return {
+      ...match,
+      isPlacementMatch: true,
     };
   }
 

@@ -81,6 +81,34 @@ describe('buildMatchVisualizerUrl', () => {
     expect(url.searchParams.get('round')).toBe('0')
   })
 
+  it('passes maxRounds and keeps finals at the championship round', () => {
+    const result = buildMatchVisualizerUrl({
+      ...defaults,
+      phase: 'ELIMINATION',
+      round: 4,
+      maxRounds: 5,
+    })
+    const url = new URL(result!)
+
+    expect(url.searchParams.get('mode')).toBe('ELIMINATION')
+    expect(url.searchParams.get('round')).toBe('4')
+    expect(url.searchParams.get('maxRounds')).toBe('5')
+  })
+
+  it('lowers placement matches by one round for visualizer intensity', () => {
+    const result = buildMatchVisualizerUrl({
+      ...defaults,
+      phase: 'ELIMINATION',
+      round: 4,
+      maxRounds: 5,
+      isPlacementMatch: true,
+    })
+    const url = new URL(result!)
+
+    expect(url.searchParams.get('round')).toBe('3')
+    expect(url.searchParams.get('maxRounds')).toBe('5')
+  })
+
   it('uses the unversioned path when the image has no tag', () => {
     const result = buildMatchVisualizerUrl({
       ...defaults,

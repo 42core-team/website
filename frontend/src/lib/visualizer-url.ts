@@ -5,6 +5,8 @@ export interface MatchVisualizerUrlOptions {
   visualizerDockerImage?: string
   phase?: string
   round?: number
+  maxRounds?: number
+  isPlacementMatch?: boolean
 }
 
 export function extractVisualizerTag(
@@ -37,6 +39,8 @@ export function buildMatchVisualizerUrl({
   visualizerDockerImage,
   phase,
   round,
+  maxRounds,
+  isPlacementMatch,
 }: MatchVisualizerUrlOptions): string | null {
   if (!visualizerUrl || !replaysBucketUrl) return null
 
@@ -53,7 +57,13 @@ export function buildMatchVisualizerUrl({
   url.searchParams.set('dynamicSpeed', 'on')
   url.searchParams.set('autoplay', 'start')
   if (phase) url.searchParams.set('mode', phase)
-  if (typeof round === 'number') url.searchParams.set('round', String(round))
+  if (typeof round === 'number') {
+    const visualizerRound = isPlacementMatch ? Math.max(round - 1, 0) : round
+    url.searchParams.set('round', String(visualizerRound))
+  }
+  if (typeof maxRounds === 'number') {
+    url.searchParams.set('maxRounds', String(maxRounds))
+  }
 
   return url.toString()
 }
