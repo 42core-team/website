@@ -6,8 +6,10 @@ import Image from '@/components/app-image'
 import Link from '@/components/app-link'
 import { title } from '@/components/primitives'
 import { CoreLogoWhite } from '@/components/social'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
 interface TeamMember {
   name: string
@@ -15,6 +17,7 @@ interface TeamMember {
   imgSrc: string
   linkUrl: string
   linkType: 'linkedin' | 'github'
+  former?: boolean
 }
 
 const team: TeamMember[] = [
@@ -47,35 +50,6 @@ const team: TeamMember[] = [
     linkType: 'linkedin',
   },
   {
-    name: 'Johannes Moritz',
-    role: 'Head of money spending',
-    imgSrc:
-      'https://cdn.intra.42.fr/users/b70f90a3f5b8abafd72246cad22bda34/medium_jmoritz.jpg',
-    linkUrl: 'https://www.linkedin.com/in/johannes-moritz',
-    linkType: 'linkedin',
-  },
-  {
-    name: 'Jonas Götz',
-    role: 'Head of Server and Kubernetes',
-    imgSrc: '/team/jgotz.png',
-    linkUrl: 'https://www.linkedin.com/in/jonas-götz-7b66b61bb',
-    linkType: 'linkedin',
-  },
-  {
-    name: 'Florian Fischer',
-    role: 'Visualizer',
-    imgSrc: '/team/flfische.jpg',
-    linkUrl: 'https://www.linkedin.com/in/flo-fischer/',
-    linkType: 'linkedin',
-  },
-  {
-    name: 'Jonas Kauker',
-    role: 'Video',
-    imgSrc: '/team/jkauker.jpg',
-    linkUrl: 'https://www.linkedin.com/in/jonas-kauker-777894258/',
-    linkType: 'linkedin',
-  },
-  {
     name: 'Anakin Pregitzer',
     role: 'Head of Rush',
     imgSrc:
@@ -92,12 +66,46 @@ const team: TeamMember[] = [
     linkType: 'github',
   },
   {
+    name: 'Johannes Moritz',
+    role: 'Head of money spending',
+    imgSrc:
+      'https://cdn.intra.42.fr/users/b70f90a3f5b8abafd72246cad22bda34/medium_jmoritz.jpg',
+    linkUrl: 'https://www.linkedin.com/in/johannes-moritz',
+    linkType: 'linkedin',
+    former: true,
+  },
+  {
+    name: 'Jonas Götz',
+    role: 'Head of Server and Kubernetes',
+    imgSrc: '/team/jgotz.png',
+    linkUrl: 'https://www.linkedin.com/in/jonas-götz-7b66b61bb',
+    linkType: 'linkedin',
+    former: true,
+  },
+  {
+    name: 'Florian Fischer',
+    role: 'Visualizer',
+    imgSrc: '/team/flfische.jpg',
+    linkUrl: 'https://www.linkedin.com/in/flo-fischer/',
+    linkType: 'linkedin',
+    former: true,
+  },
+  {
+    name: 'Jonas Kauker',
+    role: 'Video',
+    imgSrc: '/team/jkauker.jpg',
+    linkUrl: 'https://www.linkedin.com/in/jonas-kauker-777894258/',
+    linkType: 'linkedin',
+    former: true,
+  },
+  {
     name: 'Konrad Mühlbauer',
     role: 'Website',
     imgSrc:
       'https://cdn.intra.42.fr/users/12e74e15f7b4926f9b9c1e1554b6bcd9/medium_kmuhlbau.jpg',
     linkUrl: 'https://www.linkedin.com/in/konrad-muehlbauer/',
     linkType: 'linkedin',
+    former: true,
   },
 ]
 
@@ -129,30 +137,29 @@ export default function AboutPageClient() {
           <div className="space-y-4 [&_p]:text-muted-foreground">
             <h2 className="text-2xl font-bold">The Minds Behind CORE Game</h2>
             <p>
-              At CORE Game, we&rsquo;re more than just coders&mdash;we&rsquo;re
-              innovators, challengers, and problem-solvers. What started as a
-              passion project among students at 42 Heilbronn has evolved into a
-              global coding competition that pushes the limits of strategy, AI,
-              and game development.
+              At CORE Game, we're coders, innovators, challengers, and problem
+              solvers. What started as a passion project among students at 42
+              Heilbronn has evolved into a global coding competition that brings
+              together strategy, software design, and game development.
             </p>
             <p>
               Our mission? To create an environment where learning meets
               competition, and where every line of code tells a story. Whether
               you&rsquo;re here to sharpen your programming skills, engage in
-              high-level AI battles, or just have fun, CORE Game is the ultimate
-              playground for creative minds.
+              strategic battles with a bot you programmed yourself, or just have
+              fun, CORE Game is a playground for creative minds.
             </p>
             <p>
-              But CORE Game is more than just a game&mdash;it&rsquo;s a
-              community. A place where developers from all backgrounds come
-              together to compete, collaborate, and grow. From intense coding
-              duels to deep strategic planning, every match is an opportunity to
-              learn, adapt, and become a better programmer.
+              But CORE Game is more than just a game. It&rsquo;s a community. A
+              place where developers from all backgrounds come together to
+              compete, collaborate, and grow. From intense coding duels to deep
+              strategic planning, every match is an opportunity to learn, adapt,
+              and become a better programmer.
             </p>
             <p>
               So, whether you&rsquo;re here to dominate the leaderboard or just
               see what&rsquo;s possible, welcome to CORE Game. Let&rsquo;s
-              build, battle, and break boundaries&mdash;together.
+              build, battle, and break boundaries together.
             </p>
           </div>
 
@@ -171,10 +178,12 @@ export default function AboutPageClient() {
             <h2 className="text-2xl font-bold">What We Do</h2>
             <p>
               We organize international coding competitions that feel like
-              gaming tournaments. Our platform provides real-time feedback,
+              gaming tournaments. Participants write the complete behavior of
+              their own bots, submit their code, and watch their strategies play
+              out in the arena. Our platform provides match feedback,
               interactive challenges, and a supportive community where
               participants can showcase their skills, learn from others, and
-              push their boundaries.
+              keep improving their solutions.
             </p>
           </div>
 
@@ -214,16 +223,22 @@ export default function AboutPageClient() {
           <h2 className="mb-12 text-center text-3xl font-bold">
             Meet Our Team
           </h2>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid auto-rows-fr grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
             {team.map((m, i) => (
               <motion.div
                 key={m.name}
-                className="mx-auto w-full max-w-sm"
+                className="w-full"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 * (i + 1) }}
               >
-                <Card className="flex h-full flex-col overflow-hidden">
+                <Card
+                  className={cn(
+                    'flex h-full flex-col overflow-hidden',
+                    m.former &&
+                      'border-muted-foreground/20 bg-muted/40 text-muted-foreground shadow-none saturate-0',
+                  )}
+                >
                   <CardContent className="flex h-full flex-col items-center p-6">
                     <div className="relative mb-4 flex h-40 w-40 shrink-0 items-center justify-center">
                       <div className="h-full w-full overflow-hidden rounded-full bg-muted/20">
@@ -232,7 +247,10 @@ export default function AboutPageClient() {
                           alt={`Photo of ${m.name}`}
                           width={200}
                           height={200}
-                          className="h-full w-full object-cover"
+                          className={cn(
+                            'h-full w-full object-cover',
+                            m.former && 'opacity-70 grayscale',
+                          )}
                           style={{ height: '100%' }}
                         />
                       </div>
@@ -240,7 +258,11 @@ export default function AboutPageClient() {
                         href={m.linkUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="no-icon absolute right-0 bottom-0 rounded-full bg-primary p-2 text-primary-foreground transition-transform hover:scale-110"
+                        className={cn(
+                          'no-icon absolute right-0 bottom-0 rounded-full bg-primary p-2 text-primary-foreground transition-transform hover:scale-110',
+                          m.former &&
+                            'bg-muted-foreground text-background hover:bg-foreground',
+                        )}
                         aria-label={`${m.name} profile link`}
                       >
                         {m.linkType === 'github' ? (
@@ -257,6 +279,11 @@ export default function AboutPageClient() {
                     <p className="text-center text-muted-foreground">
                       {m.role}
                     </p>
+                    {m.former && (
+                      <Badge variant="secondary" className="mt-4">
+                        DEPRECATED
+                      </Badge>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
