@@ -1,9 +1,12 @@
 'use client'
 
-import { animate } from 'framer-motion'
+import { animate, useReducedMotion } from 'framer-motion'
 import { useEffect, useRef } from 'react'
 
+const numberFormatter = new Intl.NumberFormat('en-US')
+
 export default function AnimatedNumber({ value }: { value: number }) {
+  const prefersReducedMotion = useReducedMotion()
   const nodeRef = useRef<HTMLSpanElement>(null)
   const prevValueRef = useRef<number | null>(null)
 
@@ -11,19 +14,25 @@ export default function AnimatedNumber({ value }: { value: number }) {
     const node = nodeRef.current
     if (!node) return
 
+    if (prefersReducedMotion) {
+      node.textContent = numberFormatter.format(value)
+      prevValueRef.current = value
+      return
+    }
+
     const startValue = prevValueRef.current === null ? 0 : prevValueRef.current
 
     const controls = animate(startValue, value, {
-      duration: 2,
+      duration: 0.8,
       onUpdate(v) {
-        node.textContent = v.toFixed(0)
+        node.textContent = numberFormatter.format(Math.round(v))
       },
     })
 
     prevValueRef.current = value
 
     return () => controls.stop()
-  }, [value])
+  }, [prefersReducedMotion, value])
 
   return <span ref={nodeRef} />
 }
