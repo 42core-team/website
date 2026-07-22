@@ -33,7 +33,7 @@ function HomeRoute() {
   }
 
   return (
-    <main className="py-8">
+    <main>
       <HomePageClient currentLiveEvent={currentEventQuery.data} />
     </main>
   )

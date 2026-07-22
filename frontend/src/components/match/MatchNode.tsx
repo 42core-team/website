@@ -7,6 +7,7 @@ import { useParams, useRouter } from '@/lib/router-hooks'
 import { memo } from 'react'
 import { Handle, Position } from 'reactflow'
 import { MatchState } from '@/app/actions/tournament-model'
+import { cn } from '@/lib/utils'
 
 interface MatchNodeData {
   match: Match
@@ -16,6 +17,7 @@ interface MatchNodeData {
   showTargetHandle?: boolean
   showSourceHandle?: boolean
   hideScore?: boolean
+  isHighlighted?: boolean
 }
 
 interface MatchNodeProps {
@@ -73,6 +75,7 @@ function MatchNode({ data }: MatchNodeProps) {
     showTargetHandle = false,
     showSourceHandle = false,
     hideScore = false,
+    isHighlighted = false,
   } = data
   const styles = getMatchStateStyles(match.state)
   const icon = getMatchStateIcon(match.state)
@@ -93,7 +96,29 @@ function MatchNode({ data }: MatchNodeProps) {
 
   return (
     <motion.div
-      className="relative cursor-pointer rounded-lg border-2 shadow-xs transition-all duration-200 hover:shadow-sm"
+      className={cn(
+        'relative cursor-pointer rounded-lg border-2 shadow-xs transition-all duration-200 hover:shadow-sm',
+        isHighlighted &&
+          'ring-4 ring-primary/35 ring-offset-2 ring-offset-background',
+      )}
+      aria-current={isHighlighted ? 'step' : undefined}
+      animate={
+        isHighlighted
+          ? {
+              scale: [1, 1.055, 1],
+              boxShadow: [
+                '0 0 0 0 transparent',
+                '0 0 24px 4px color-mix(in oklab, var(--primary) 30%, transparent)',
+                '0 0 0 0 transparent',
+              ],
+            }
+          : { scale: 1, boxShadow: '0 0 0 0 transparent' }
+      }
+      transition={
+        isHighlighted
+          ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' }
+          : { duration: 0.2 }
+      }
       style={{
         width,
         height,

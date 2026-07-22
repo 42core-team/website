@@ -110,10 +110,6 @@ export function TeamInfoSection({
             </p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Match Making Rating</p>
-            <p className="font-medium">{myTeam.queueScore}</p>
-          </div>
-          <div>
             <p className="text-sm text-muted-foreground">Updated</p>
             <p className="font-medium">
               {new Date(myTeam.updatedAt || '').toLocaleDateString()}

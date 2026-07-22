@@ -37,7 +37,9 @@ import { accrueQueueCredits, spendQueueCredits } from "./team-credits";
 import { rankQueueOpponents } from "./queue-matchmaking";
 import type { QueueOpponentCandidate } from "./queue-matchmaking";
 
-export type TaggedTeam = TeamEntity & { tags: string[] };
+export type PublicTaggedTeam = TeamEntity & {
+  tags: string[];
+};
 
 const DIRECT_MATCH_COST = 2;
 const DIRECT_MATCH_STAKE = 1;
@@ -154,10 +156,10 @@ export class TeamService {
     });
   }
 
-  async getTeamByIdWithTags(id: string): Promise<TaggedTeam> {
+  async getTeamByIdWithTags(id: string): Promise<PublicTaggedTeam> {
     const team = await this.getTeamById(id);
     const tagsByTeam = await this.getLocationTagsForTeams([id]);
-    return { ...team, tags: tagsByTeam.get(id) ?? [] };
+    return Object.assign(team, { tags: tagsByTeam.get(id) ?? [] });
   }
 
   getTeamOfUserForEvent(
@@ -181,12 +183,12 @@ export class TeamService {
   async getTeamOfUserForEventWithTags(
     eventId: string,
     userId: string,
-  ): Promise<TaggedTeam | null> {
+  ): Promise<PublicTaggedTeam | null> {
     const team = await this.getTeamOfUserForEvent(eventId, userId);
     if (!team) return null;
 
     const tagsByTeam = await this.getLocationTagsForTeams([team.id]);
-    return { ...team, tags: tagsByTeam.get(team.id) ?? [] };
+    return Object.assign(team, { tags: tagsByTeam.get(team.id) ?? [] });
   }
 
   async getLocationTagsForTeams(
@@ -444,7 +446,7 @@ export class TeamService {
   async getTeamsUserIsInvitedTo(
     userId: string,
     eventId: string,
-  ): Promise<TaggedTeam[]> {
+  ): Promise<PublicTaggedTeam[]> {
     const teams = await this.teamRepository.find({
       where: {
         event: {
@@ -459,10 +461,9 @@ export class TeamService {
     const tagsByTeam = await this.getLocationTagsForTeams(
       teams.map((team) => team.id),
     );
-    return teams.map((team) => ({
-      ...team,
-      tags: tagsByTeam.get(team.id) ?? [],
-    }));
+    return teams.map((team) => {
+      return Object.assign(team, { tags: tagsByTeam.get(team.id) ?? [] });
+    });
   }
 
   isUserInvitedToTeam(userId: string, teamId: string): Promise<boolean> {
@@ -548,7 +549,6 @@ export class TeamService {
         "team.score",
         "team.buchholzPoints",
         "team.hadBye",
-        "team.queueScore",
         "team.credits",
         "team.createdAt",
         "team.updatedAt",
@@ -566,7 +566,6 @@ export class TeamService {
           "team.name",
           "team.locked",
           "team.hadBye",
-          "team.queueScore",
           "team.createdAt",
           "team.updatedAt",
           "team.score",
@@ -590,7 +589,6 @@ export class TeamService {
         "name",
         "locked",
         "score",
-        "queueScore",
         "createdAt",
         "updatedAt",
         "buchholzPoints",

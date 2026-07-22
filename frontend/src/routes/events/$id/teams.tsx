@@ -26,7 +26,7 @@ export const Route = createFileRoute('/events/$id/teams')({
   component: TeamsRoute,
 })
 
-type SortColumn = 'name' | 'membersCount' | 'queueScore' | 'createdAt'
+type SortColumn = 'name' | 'membersCount' | 'createdAt'
 type SortDirection = 'asc' | 'desc'
 
 interface SortableTableHeadProps {
@@ -146,14 +146,6 @@ function TeamsRoute() {
                   Members
                 </SortableTableHead>
                 <SortableTableHead
-                  column="queueScore"
-                  onSort={handleSort}
-                  sortColumn={sortColumn}
-                  sortDirection={sortDirection}
-                >
-                  Match Making Rating
-                </SortableTableHead>
-                <SortableTableHead
                   column="createdAt"
                   onSort={handleSort}
                   sortColumn={sortColumn}
@@ -167,7 +159,7 @@ function TeamsRoute() {
               {teamsQuery.data.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={3}
                     className="text-center text-muted-foreground"
                   >
                     No teams found
@@ -195,7 +187,6 @@ function TeamsRoute() {
                       </div>
                     </TableCell>
                     <TableCell>{team.membersCount ?? '-'}</TableCell>
-                    <TableCell>{team.queueScore}</TableCell>
                     <TableCell>
                       {team.createdAt
                         ? new Date(team.createdAt).toLocaleDateString()

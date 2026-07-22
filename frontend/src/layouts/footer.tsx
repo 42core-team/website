@@ -29,7 +29,7 @@ export default function Footer() {
   }
   return (
     <footer className="w-full border-t">
-      <div className="container mx-auto max-w-7xl px-8 py-12">
+      <div className="container mx-auto max-w-7xl px-4 py-10 sm:px-8 sm:py-12">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           {/* Logo and Description */}
           <div className="col-span-1 md:col-span-2">

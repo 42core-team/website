@@ -24,7 +24,6 @@ export interface Team {
   score: number
   buchholzPoints: number
   hadBye: boolean
-  queueScore: number
   locked?: boolean
   created?: string
   updated?: string
@@ -53,7 +52,6 @@ export interface TeamApiResponse {
   score?: number
   buchholzPoints?: number
   hadBye?: boolean
-  queueScore?: number
   locked?: boolean
   createdAt?: Date
   updatedAt?: Date
@@ -268,7 +266,6 @@ export async function getTeamsForEventTable(
     | 'membersCount'
     | 'score'
     | 'buchholzPoints'
-    | 'queueScore'
     | undefined = 'name',
   sortDirection: 'asc' | 'desc' = 'asc',
   adminReveal: boolean = false,
@@ -296,7 +293,6 @@ export function mapTeamResponse(team: TeamApiResponse): Team {
     score: team.score ?? 0,
     buchholzPoints: team.buchholzPoints ?? 0,
     hadBye: team.hadBye ?? false,
-    queueScore: team.queueScore ?? 0,
     locked: team.locked,
     createdAt: team.createdAt,
     updatedAt: team.updatedAt,

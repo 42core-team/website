@@ -41,12 +41,12 @@ function createMatch(
     updatedAt: '2026-01-01T00:00:00Z',
     isRevealed: state === MatchState.FINISHED,
     teams: [
-      { id: 'alpha', name: 'Alpha', score: 1, queueScore: 0 },
-      { id: 'beta', name: 'Beta', score: 0, queueScore: 0 },
+      { id: 'alpha', name: 'Alpha', score: 1 },
+      { id: 'beta', name: 'Beta', score: 0 },
     ],
     winner:
       state === MatchState.FINISHED
-        ? { id: 'alpha', name: 'Alpha', score: 1, queueScore: 0 }
+        ? { id: 'alpha', name: 'Alpha', score: 1 }
         : undefined,
     results:
       state === MatchState.FINISHED

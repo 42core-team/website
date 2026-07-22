@@ -10,10 +10,10 @@ import {
   RelationId,
   UpdateDateColumn,
 } from "typeorm";
-import { EventEntity } from "../../event/entities/event.entity";
-import { UserEntity } from "../../user/entities/user.entity";
-import { MatchEntity } from "../../match/entites/match.entity";
-import { EventStarterTemplateEntity } from "../../event/entities/event-starter-template.entity";
+import { EventEntity } from "src/event/entities/event.entity";
+import { UserEntity } from "src/user/entities/user.entity";
+import { MatchEntity } from "src/match/entites/match.entity";
+import { EventStarterTemplateEntity } from "src/event/entities/event-starter-template.entity";
 import { Exclude } from "class-transformer";
 
 @Entity("teams")
@@ -39,6 +39,7 @@ export class TeamEntity {
   @Column({ default: 0 })
   buchholzPoints: number;
 
+  @Exclude()
   @Column({ default: 1000 })
   queueScore: number;
 
