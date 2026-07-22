@@ -1,20 +1,67 @@
-import type { Event } from '@/app/actions/event'
-import { motion } from 'framer-motion'
-import { useTheme } from '@/lib/theme'
-
-import Image from '@/components/app-image'
-
-import Link from '@/components/app-link'
 import { useEffect, useMemo, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
+import type { Event } from '@/app/actions/event'
+import Image from '@/components/app-image'
+import Link from '@/components/app-link'
 import GlobalStats from '@/components/GlobalStats'
 import { GithubIcon, WikiIcon } from '@/components/icons'
 import { CoreLogoWhite } from '@/components/social'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { getVisualizerUrl } from '@/lib/env'
+import { useTheme } from '@/lib/theme'
+import { cn } from '@/lib/utils'
+
+const features = [
+  {
+    src: '/images/goblin_archer_idle__0.png',
+    alt: 'Gib Character',
+    title: 'What the Game is About',
+    description:
+      'CORE Game is a competitive coding challenge where you design and program your own bots to battle it out in a dynamic 2D arena. Every decision matters—strategy, efficiency, and adaptability will determine whether your bot rises to victory or falls in defeat. Are you ready to code your way to the top?',
+    direction: 1,
+  },
+  {
+    src: '/images/goblin_basic_idle__0.png',
+    alt: 'Bob Character',
+    title: 'How to Play the Game',
+    description:
+      "Write your own bot, fine-tune its strategy, and deploy it into battle. The game runs autonomously based on the logic you've programmed, so your code is your weapon. Learn from past matches, tweak your tactics, and keep improving—because in CORE Game, the smartest code wins.",
+    direction: -1,
+  },
+  {
+    src: '/images/goblin_tank_idle__0.png',
+    alt: 'Rob Character',
+    title: 'What is Necessary to Play',
+    description:
+      "All you need is basic programming knowledge, a curious mind, and a hunger for competition! Whether you're a beginner or an experienced coder, you can jump in, experiment, and refine your bot as you go. No fancy hardware required—just bring your creativity and a love for coding!",
+    direction: 1,
+  },
+  {
+    src: '/images/goblin_healer_idle__0.png',
+    alt: 'Zob Character',
+    title: 'What We Offer as a Team',
+    description:
+      "We're more than just a game—we're a community of coders, innovators, and problem-solvers. As a team, we provide an engaging platform, regular challenges, and a space to connect with like-minded programmers. Workshops and thrilling competitions we've got everything you need to grow, learn, and have fun!",
+    direction: -1,
+  },
+]
+
+function formatTimeLeft(ms: number) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000))
+  const days = Math.floor(totalSeconds / 86400)
+  const hours = Math.floor((totalSeconds % 86400) / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const pad = (value: number) => String(value).padStart(2, '0')
+  const hhmmss = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+
+  return days > 0 ? `${days}d ${hhmmss}` : hhmmss
+}
 
 export default function HomePageClient(props: { currentLiveEvent?: Event }) {
   const { resolvedTheme } = useTheme()
+  const prefersReducedMotion = useReducedMotion()
   const [isMounted, setIsMounted] = useState(false)
   const [now, setNow] = useState<Date>(new Date())
 
@@ -44,39 +91,40 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
     return `${base}/?${params.toString()}`
   }, [visualizerTheme])
 
-  const formatTimeLeft = (ms: number) => {
-    const totalSeconds = Math.max(0, Math.floor(ms / 1000))
-    const days = Math.floor(totalSeconds / 86400)
-    const hours = Math.floor((totalSeconds % 86400) / 3600)
-    const minutes = Math.floor((totalSeconds % 3600) / 60)
-    const seconds = totalSeconds % 60
-    const pad = (n: number) => String(n).padStart(2, '0')
-    const hhmmss = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
-    return days > 0 ? `${days}d ${hhmmss}` : hhmmss
-  }
-
   const timeLeftMs = props.currentLiveEvent
     ? new Date(props.currentLiveEvent.endDate).getTime() - now.getTime()
     : 0
 
   return (
-    <div>
-      <section className="mb-15 flex flex-col items-center justify-center">
-        {/* Foreground (logo + text + links) */}
-        <div className="mb-25 flex w-full flex-col justify-center text-center">
-          <CoreLogoWhite className="mx-auto h-auto w-[20%]" />
-          <h1 className="mx-auto mt-2 block max-w-2xl text-2xl font-bold text-balance">
+    <div className="overflow-hidden">
+      <section className="px-4 pb-16 pt-6 sm:pb-20 sm:pt-10 lg:pb-28">
+        <div className="mx-auto flex max-w-6xl flex-col items-center text-center">
+          <CoreLogoWhite
+            className="h-auto w-40 text-foreground sm:w-52 md:w-64"
+            aria-label="CORE Game"
+          />
+          <h1 className="mt-5 max-w-3xl text-2xl font-bold leading-tight text-balance sm:text-3xl md:text-4xl">
             Imagine a game contest that brings people from around the world
             together for fun and learning.
           </h1>
-          <div className="mt-6 flex items-center justify-center gap-3">
-            <Button asChild>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            Build a bot, test your strategy, and learn by competing in a dynamic
+            coding arena.
+          </p>
+
+          <div className="mt-7 grid w-full max-w-sm grid-cols-1 gap-3 sm:flex sm:max-w-none sm:justify-center">
+            <Button asChild size="lg" className="min-h-11 w-full sm:w-auto">
               <Link href="/wiki">
                 <WikiIcon size={20} />
                 Documentation
               </Link>
             </Button>
-            <Button asChild variant="outline">
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="min-h-11 w-full sm:w-auto"
+            >
               <Link
                 href="https://github.com/42core-team"
                 target="_blank"
@@ -87,43 +135,50 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
               </Link>
             </Button>
           </div>
+
           {props.currentLiveEvent && timeLeftMs > 0 && (
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="mt-7 w-full max-w-xl sm:mt-9"
+              initial={
+                prefersReducedMotion
+                  ? false
+                  : { scale: 0.95, opacity: 0, y: 10 }
+              }
               animate={{ scale: 1, opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
             >
               <Link
                 href={`/events/${props.currentLiveEvent.id}`}
-                className="group mx-auto mt-6 block w-full max-w-lg rounded-xl focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none md:mt-8"
+                className="group block rounded-xl focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
               >
-                <Card className="relative h-full w-full overflow-hidden border-white/10 bg-background/60 shadow-2xl backdrop-blur-xl transition-all duration-300 group-hover:-translate-y-1 group-hover:border-primary/50 group-hover:bg-background/80 group-hover:shadow-[0_20px_40px_-15px_rgba(var(--primary),0.3)] group-active:translate-y-0 group-active:scale-[0.98]">
+                <Card className="relative overflow-hidden border-white/10 bg-background/60 shadow-xl backdrop-blur-xl transition-all duration-300 group-hover:border-primary/50 group-hover:bg-background/80 group-hover:shadow-2xl group-active:scale-[0.99] motion-safe:sm:group-hover:-translate-y-1">
                   <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50 transition-opacity group-hover:opacity-100" />
-                  <CardHeader className="flex flex-row items-center justify-between pb-6">
-                    <div className="flex flex-col gap-2">
+                  <CardHeader className="flex flex-col gap-5 space-y-0 p-4 text-left sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="relative flex h-2 w-2">
-                          <span className="absolute top-0 left-0 inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75"></span>
-                          <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive"></span>
+                        <span className="relative flex h-2 w-2 shrink-0">
+                          <span className="absolute inset-0 animate-ping rounded-full bg-destructive opacity-75" />
+                          <span className="relative h-2 w-2 rounded-full bg-destructive" />
                         </span>
                         <span className="text-xs font-semibold tracking-widest text-destructive uppercase">
-                          Live
+                          Live now
                         </span>
                       </div>
-                      <CardTitle className="text-xl font-bold tracking-tight text-foreground transition-colors group-hover:text-primary md:text-2xl">
+                      <CardTitle className="mt-2 text-lg font-bold leading-snug tracking-tight text-foreground transition-colors group-hover:text-primary sm:text-2xl">
                         {props.currentLiveEvent.name}
                       </CardTitle>
                     </div>
-                    <div className="flex items-center gap-4 border-l border-border/50 pl-4 transition-colors group-hover:border-primary/30">
-                      <div className="flex flex-col items-end gap-1 text-right">
-                        <span className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase transition-colors group-hover:text-primary/70">
+
+                    <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-4 sm:justify-end sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+                      <div className="flex min-w-0 flex-col sm:items-end sm:text-right">
+                        <span className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
                           Closing in
                         </span>
-                        <span className="font-mono text-base font-bold text-foreground tabular-nums transition-colors group-hover:text-primary">
+                        <span className="font-mono text-sm font-bold text-foreground tabular-nums sm:text-base">
                           {formatTimeLeft(timeLeftMs)}
                         </span>
                       </div>
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary shadow-sm transition-all group-hover:scale-105 group-hover:bg-primary/20 group-hover:text-primary">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-105">
                         <svg
                           className="h-5 w-5"
                           xmlns="http://www.w3.org/2000/svg"
@@ -133,10 +188,11 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
                           strokeWidth="2.5"
                           strokeLinecap="round"
                           strokeLinejoin="round"
+                          aria-hidden="true"
                         >
                           <path d="M5 12h14M12 5l7 7-7 7" />
                         </svg>
-                      </div>
+                      </span>
                     </div>
                   </CardHeader>
                 </Card>
@@ -145,23 +201,19 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
           )}
         </div>
 
-        {/* Visualizer Embed under the logo */}
-        <div className="flex w-full justify-center">
-          <div className="mx-auto w-full max-w-6xl px-4">
-            <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl">
-              {isMounted && (
-                <iframe
-                  key={visualizerUrl}
-                  src={visualizerUrl}
-                  className="min-h-full min-w-full"
-                  allow="autoplay; fullscreen"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  style={{ pointerEvents: 'initial' }}
-                  title="CORE Game Replay"
-                />
-              )}
-            </div>
+        <div className="mx-auto mt-10 w-full max-w-6xl sm:mt-14">
+          <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border bg-muted shadow-lg sm:aspect-video sm:rounded-2xl">
+            {isMounted && (
+              <iframe
+                key={visualizerUrl}
+                src={visualizerUrl}
+                className="h-full w-full border-0"
+                allow="autoplay; fullscreen"
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                title="CORE Game Replay"
+              />
+            )}
           </div>
         </div>
         <noscript>
@@ -169,122 +221,81 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
         </noscript>
       </section>
 
-      {/* Global Stats Section */}
       <GlobalStats />
 
-      <section className="flex min-h-lvh flex-col items-center justify-center gap-16">
-        <motion.div
-          className="flex flex-col gap-32"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          {[
-            {
-              src: '/images/goblin_archer_idle__0.png',
-              alt: 'Gib Character',
-              content: (
-                <div className="flex flex-col items-center gap-4">
-                  <h2 className="text-4xl font-bold">What the Game is About</h2>
-                  <p className="text-2xl"></p>
-                  <p className="text-xl text-muted-foreground">
-                    CORE Game is a competitive coding challenge where you design
-                    and program your own bots to battle it out in a dynamic 2D
-                    arena. Every decision matters—strategy, efficiency, and
-                    adaptability will determine whether your bot rises to
-                    victory or falls in defeat. Are you ready to code your way
-                    to the top?
+      <section
+        className="px-4 py-20 sm:py-24 lg:py-32"
+        aria-labelledby="learn-core-heading"
+      >
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto mb-12 max-w-2xl text-center sm:mb-16">
+            <h2
+              id="learn-core-heading"
+              className="text-3xl font-bold tracking-tight sm:text-4xl"
+            >
+              Learn, build, compete
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
+              Everything you need to turn your code into a contender.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-16 sm:gap-20 lg:gap-28">
+            {features.map((feature, index) => (
+              <motion.article
+                key={feature.alt}
+                className="grid items-center gap-6 md:grid-cols-2 md:gap-12 lg:gap-20"
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 28 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-80px' }}
+                transition={{ duration: 0.65, ease: 'easeOut' }}
+              >
+                <div
+                  className={cn(
+                    'flex min-h-56 items-center justify-center rounded-3xl bg-muted/45 p-6 sm:min-h-72 sm:p-10',
+                    index % 2 === 1 && 'md:order-2',
+                  )}
+                >
+                  <motion.div
+                    initial={
+                      prefersReducedMotion
+                        ? false
+                        : { opacity: 0, x: feature.direction * -24 }
+                    }
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true, margin: '-80px' }}
+                    transition={{ duration: 0.7, ease: 'easeOut' }}
+                  >
+                    <Image
+                      src={feature.src}
+                      alt={feature.alt}
+                      width={800}
+                      height={800}
+                      className="image-rendering-pixel w-36 sm:w-48 lg:w-60"
+                      style={{
+                        imageRendering: 'pixelated',
+                        transform:
+                          feature.direction === 1 ? 'scaleX(-1)' : 'none',
+                      }}
+                    />
+                  </motion.div>
+                </div>
+
+                <div className={cn(index % 2 === 1 && 'md:order-1')}>
+                  <span className="text-sm font-semibold tracking-widest text-muted-foreground uppercase">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <h3 className="mt-3 text-2xl font-bold leading-tight text-balance sm:text-3xl lg:text-4xl">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-4 text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+                    {feature.description}
                   </p>
                 </div>
-              ),
-              delay: 0.2,
-              direction: 1,
-            },
-            {
-              src: '/images/goblin_basic_idle__0.png',
-              alt: 'Bob Character',
-              content: (
-                <div className="flex flex-col items-center gap-4">
-                  <h2 className="text-4xl font-bold">How to Play the Game</h2>
-                  <p className="text-2xl"></p>
-                  <p className="text-xl text-muted-foreground">{`Write your own bot, fine-tune its strategy, and deploy it into battle. The game runs autonomously based on the logic you've programmed, so your code is your weapon. Learn from past matches, tweak your tactics, and keep improving—because in CORE Game, the smartest code wins.`}</p>
-                </div>
-              ),
-              delay: 0.4,
-              direction: -1,
-            },
-            {
-              src: '/images/goblin_tank_idle__0.png',
-              alt: 'Rob Character',
-              content: (
-                <div className="flex flex-col items-center gap-4">
-                  <h2 className="text-4xl font-bold">
-                    What is Necessary to Play
-                  </h2>
-                  <p className="text-2xl"></p>
-                  <p className="text-xl text-muted-foreground">{`All you need is basic programming knowledge, a curious mind, and a hunger for competition! Whether you're a beginner or an experienced coder, you can jump in, experiment, and refine your bot as you go. No fancy hardware required—just bring your creativity and a love for coding!`}</p>
-                </div>
-              ),
-              delay: 0.6,
-              direction: 1,
-            },
-            {
-              src: '/images/goblin_healer_idle__0.png',
-              alt: 'Zob Character',
-              content: (
-                <div className="flex flex-col items-center gap-4">
-                  <h2 className="text-4xl font-bold">
-                    What We Offer as a Team
-                  </h2>
-                  <p className="text-2xl"></p>
-                  <p className="text-xl text-muted-foreground">{`We're more than just a game—we're a community of coders, innovators, and problem-solvers. As a team, we provide an engaging platform, regular challenges, and a space to connect with like-minded programmers. Workshops, mentorship, and thrilling competitions—we've got everything you need to grow, learn, and have fun!`}</p>
-                </div>
-              ),
-              delay: 0.8,
-              direction: -1,
-            },
-          ].map((character) => (
-            <motion.div
-              key={character.alt}
-              className="relative flex min-h-lvh flex-col items-center justify-center"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: false, margin: '-100px' }}
-              transition={{ duration: 1.2 }}
-            >
-              <div className="absolute left-1/2 z-10 w-[50vw] -translate-x-1/2">
-                {character.content}
-              </div>
-              <motion.div
-                initial={{ opacity: 0, x: 0 }}
-                whileInView={{
-                  opacity: 1,
-                  x:
-                    character.direction *
-                    (typeof window !== 'undefined'
-                      ? window.innerWidth * 0.47
-                      : 600),
-                  rotate: character.direction * 15,
-                }}
-                viewport={{ once: false, margin: '-100px' }}
-                transition={{ duration: 1.2, ease: 'easeOut' }}
-              >
-                <Image
-                  src={character.src}
-                  alt={character.alt}
-                  width={800}
-                  height={800}
-                  className="image-rendering-pixel h-auto w-40 sm:w-56 md:w-72 lg:w-80"
-                  style={{
-                    imageRendering: 'pixelated',
-                    transform:
-                      character.direction === 1 ? 'scaleX(-1)' : 'none',
-                  }}
-                />
-              </motion.div>
-            </motion.div>
-          ))}
-        </motion.div>
+              </motion.article>
+            ))}
+          </div>
+        </div>
       </section>
     </div>
   )
