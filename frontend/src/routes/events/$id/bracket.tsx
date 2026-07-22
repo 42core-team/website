@@ -40,10 +40,13 @@ function BracketRoute() {
       'event',
       id,
       'teams',
-      { sortColumn: 'score', sortDirection: 'desc', adminReveal: isAdminReveal },
+      {
+        sortColumn: 'score',
+        sortDirection: 'desc',
+        adminReveal: false,
+      },
     ],
-    queryFn: () =>
-      getTeamsForEventTable(id, undefined, 'score', 'desc', isAdminReveal),
+    queryFn: () => getTeamsForEventTable(id, undefined, 'score', 'desc', false),
   })
 
   const eventAdminQuery = useQuery({
@@ -107,6 +110,7 @@ function BracketRoute() {
           teams={teamsQuery.data}
           isEventAdmin={isAdmin}
           teamCount={teamCountQuery.data}
+          isAdminReveal={isAdminReveal}
         />
       </div>
     </main>

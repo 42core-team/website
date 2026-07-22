@@ -16,29 +16,24 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import { useRouter, useSearchParams } from '@/lib/router-hooks'
+import { useRouter } from '@/lib/router-hooks'
 
 interface BracketRankingTableProps {
   teams: Team[]
   matches: Match[]
   eventId: string
-  isEventAdmin?: boolean
 }
 
 export function BracketRankingTable({
   teams,
   matches,
   eventId,
-  isEventAdmin,
 }: BracketRankingTableProps) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const shouldReveal =
-    isEventAdmin && searchParams.get('adminReveal') === 'true'
 
   const revealedMatches = useMemo(
-    () => matches.filter((match) => match.isRevealed || shouldReveal),
-    [matches, shouldReveal],
+    () => matches.filter((match) => match.isRevealed),
+    [matches],
   )
   const maxRound = useMemo(
     () => Math.max(...matches.map((match) => match.round), 1),

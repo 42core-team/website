@@ -24,14 +24,12 @@ export interface Match {
     id: string
     name: string
     score: number
-    queueScore: number
     deletedAt?: string | null
   }[]
   winner?: {
     id: string
     name: string
     score: number
-    queueScore: number
     deletedAt?: string | null
   }
   results: {

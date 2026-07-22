@@ -40,8 +40,8 @@ export async function getLogsOfMatch(matchId: string): Promise<MatchLogs> {
   return (await axiosInstance.get<MatchLogs>(`/match/logs/${matchId}`)).data
 }
 
-export async function revealMatch(matchId: string): Promise<Match> {
-  return (await axiosInstance.put<Match>(`/match/reveal/${matchId}`)).data
+export async function revealMatch(matchId: string): Promise<void> {
+  await axiosInstance.put<void>(`/match/reveal/${matchId}`)
 }
 
 export async function revealAllMatches(

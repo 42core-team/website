@@ -4,10 +4,7 @@ import type { Match } from '@/app/actions/tournament-model'
 import type { Edge, Node } from 'reactflow'
 import { useEffect } from 'react'
 import ReactFlow, { Background, useEdgesState, useNodesState } from 'reactflow'
-import {
-  MatchPhase,
-  MatchState,
-} from '@/app/actions/tournament-model'
+import { MatchPhase, MatchState } from '@/app/actions/tournament-model'
 import { MatchNode } from '@/components/match'
 import { useParams, useRouter } from '@/lib/router-hooks'
 import 'reactflow/dist/style.css'
@@ -44,12 +41,14 @@ interface BracketGraphViewProps {
   matches: Match[]
   teamCount: number
   isEventAdmin: boolean
+  highlightedMatchId?: string
 }
 
 export function BracketGraphView({
   matches,
   teamCount,
   isEventAdmin,
+  highlightedMatchId,
 }: BracketGraphViewProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -138,6 +137,7 @@ export function BracketGraphView({
               showTargetHandle: roundIndex > 0,
               showSourceHandle: roundIndex < lastRoundIndex,
               hideScore: true,
+              isHighlighted: match.id === highlightedMatchId,
               onClick: (clickedMatch: Match) => {
                 if (
                   (match.state === MatchState.FINISHED || isEventAdmin) &&
@@ -171,6 +171,7 @@ export function BracketGraphView({
               showTargetHandle: false,
               showSourceHandle: false,
               hideScore: true,
+              isHighlighted: placementMatch.id === highlightedMatchId,
               onClick: (clickedMatch: Match) => {
                 if (
                   (placementMatch.state === MatchState.FINISHED ||
@@ -214,7 +215,16 @@ export function BracketGraphView({
 
     setNodes(newNodes)
     setEdges(newEdges)
-  }, [matches, teamCount, isEventAdmin, router, eventId, setNodes, setEdges])
+  }, [
+    matches,
+    teamCount,
+    isEventAdmin,
+    highlightedMatchId,
+    router,
+    eventId,
+    setNodes,
+    setEdges,
+  ])
 
   return (
     <ReactFlow
