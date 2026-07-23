@@ -6,26 +6,26 @@ export function getUnitAssetPath(
   config: ComponentsConfig,
   componentIds: string[],
 ) {
-  const counts = componentIds.reduce<Record<string, number>>((result, id) => {
-    result[id] = (result[id] ?? 0) + 1
-    return result
-  }, {})
+  const components = componentIds.flatMap((id) => {
+    const component = config.components.find((candidate) => candidate.id === id)
+    return component?.visualizer_asset_path ? [component] : []
+  })
+  const counts = new Map<string, number>()
 
-  const entries = config.components
-    .map((component) => ({
-      id: component.id,
-      count: counts[component.id] ?? 0,
-      assetPath: component.visualizer_asset_path,
-      prioritized: component.visualizer_asset_prioritized,
-    }))
-    .filter((entry) => entry.count > 0 && entry.assetPath)
-    .sort((a, b) => b.count - a.count || a.id.localeCompare(b.id))
+  for (const component of components)
+    counts.set(component.id, (counts.get(component.id) ?? 0) + 1)
 
-  const prioritized = entries.filter((entry) => entry.prioritized)
+  const prioritized = components.some(
+    (component) => component.visualizer_asset_prioritized,
+  )
 
   return (
-    (prioritized.length ? prioritized : entries)[0]?.assetPath ??
-    FALLBACK_UNIT_ASSET_PATH
+    components
+      .filter(
+        (component) => component.visualizer_asset_prioritized === prioritized,
+      )
+      .sort((a, b) => (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0))
+      .at(0)?.visualizer_asset_path ?? FALLBACK_UNIT_ASSET_PATH
   )
 }
 
