@@ -29,6 +29,11 @@ import {
   toGamblingBetSummary,
   toSettledGamblingBetSummary,
 } from "./gambling-bet-summary";
+import {
+  hasGamblingStarted,
+  requireGamblingStarted,
+  requireGamblingTeam,
+} from "./gambling-access";
 import { getMaximumGamblingBet } from "./gambling-credits";
 import { toGamblingEntrySummaries } from "./gambling-entry-summary";
 import { calculateGamblingPayouts } from "./gambling-payout";
@@ -86,22 +91,19 @@ export class GamblingService {
   }
 
   async getSnapshot(eventId: string, userId: string) {
+    const [myTeam, event] = await Promise.all([
+      this.getUserTeam(this.dataSource.manager, eventId, userId),
+      this.getStartedEvent(this.dataSource.manager, eventId),
+    ]);
     await this.advanceEvent(eventId);
 
-    const [round, latestResult, entries, myTeam, event] = await Promise.all([
+    const [round, latestResult, entries] = await Promise.all([
       this.getLatestRound(eventId),
       this.getLatestSettledRound(eventId),
       this.entryRepository.find({
         where: { event: { id: eventId } },
         relations: { team: true },
         order: { createdAt: "ASC" },
-      }),
-      this.dataSource.getRepository(TeamEntity).findOne({
-        where: { event: { id: eventId }, users: { id: userId } },
-      }),
-      this.dataSource.getRepository(EventEntity).findOneOrFail({
-        select: { id: true, maxQueueCredits: true },
-        where: { id: eventId },
       }),
     ]);
 
@@ -112,18 +114,15 @@ export class GamblingService {
       where: { round: { id: round.id } },
       order: { createdAt: "ASC" },
     });
-    const myBet = myTeam
-      ? bets.find((bet) => bet.bettorTeamId === myTeam.id)
-      : undefined;
-    const latestResultBet =
-      latestResult && myTeam
-        ? await this.betRepository.findOne({
-            where: {
-              round: { id: latestResult.id },
-              bettorTeam: { id: myTeam.id },
-            },
-          })
-        : null;
+    const myBet = bets.find((bet) => bet.bettorTeamId === myTeam.id);
+    const latestResultBet = latestResult
+      ? await this.betRepository.findOne({
+          where: {
+            round: { id: latestResult.id },
+            bettorTeam: { id: myTeam.id },
+          },
+        })
+      : null;
     const pools = {
       teamOne: round.teamOne
         ? bets
@@ -141,15 +140,13 @@ export class GamblingService {
       round: this.toRoundSummary(round, pools.teamOne + pools.teamTwo),
       entries: entrySummaries,
       pools,
-      myTeam: myTeam
-        ? {
-            id: myTeam.id,
-            name: myTeam.name,
-            credits: myTeam.credits,
-            maxCredits: event.maxQueueCredits,
-            isEntered: entrySummaries.some((entry) => entry.id === myTeam.id),
-          }
-        : null,
+      myTeam: {
+        id: myTeam.id,
+        name: myTeam.name,
+        credits: myTeam.credits,
+        maxCredits: event.maxQueueCredits,
+        isEntered: entrySummaries.some((entry) => entry.id === myTeam.id),
+      },
       myBet: myBet ? toGamblingBetSummary(myBet) : null,
       latestResult: latestResult
         ? {
@@ -174,6 +171,7 @@ export class GamblingService {
   async join(eventId: string, userId: string) {
     await this.dataSource.transaction(async (manager) => {
       await this.lockEvent(manager, eventId);
+      await this.getStartedEvent(manager, eventId);
       const team = await this.getUserTeam(manager, eventId, userId);
       const exists = await manager.exists(GamblingEntryEntity, {
         where: { event: { id: eventId }, team: { id: team.id } },
@@ -191,6 +189,7 @@ export class GamblingService {
   async leave(eventId: string, userId: string) {
     await this.dataSource.transaction(async (manager) => {
       await this.lockEvent(manager, eventId);
+      await this.getStartedEvent(manager, eventId);
       const team = await this.getUserTeam(manager, eventId, userId);
       const entry = await manager.findOne(GamblingEntryEntity, {
         where: { event: { id: eventId }, team: { id: team.id } },
@@ -202,6 +201,10 @@ export class GamblingService {
   }
 
   async placeBet(eventId: string, userId: string, dto: PlaceGamblingBetDto) {
+    await Promise.all([
+      this.getStartedEvent(this.dataSource.manager, eventId),
+      this.getUserTeam(this.dataSource.manager, eventId, userId),
+    ]);
     await this.advanceEvent(eventId);
     await this.dataSource.transaction(async (manager) => {
       await this.lockEvent(manager, eventId);
@@ -387,7 +390,12 @@ export class GamblingService {
     eventId: string,
   ): Promise<GamblingAdvanceAction> {
     await this.lockEvent(manager, eventId);
-    await manager.findOneOrFail(EventEntity, { where: { id: eventId } });
+    const event = await manager.findOneOrFail(EventEntity, {
+      select: { id: true, startDate: true },
+      where: { id: eventId },
+    });
+    if (!hasGamblingStarted(event.startDate)) return null;
+
     const round = await this.getOrCreateCurrentRound(manager, eventId);
     const now = new Date();
 
@@ -599,11 +607,16 @@ export class GamblingService {
     const team = await manager.findOne(TeamEntity, {
       where: { event: { id: eventId }, users: { id: userId } },
     });
-    if (!team)
-      throw new BadRequestException(
-        "Create or join a team before using gambling.",
-      );
-    return team;
+    return requireGamblingTeam(team);
+  }
+
+  private async getStartedEvent(manager: EntityManager, eventId: string) {
+    const event = await manager.findOneOrFail(EventEntity, {
+      select: { id: true, startDate: true, maxQueueCredits: true },
+      where: { id: eventId },
+    });
+    requireGamblingStarted(event.startDate);
+    return event;
   }
 
   private lockEvent(manager: EntityManager, eventId: string) {
