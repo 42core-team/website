@@ -19,6 +19,8 @@ RUN pnpm prune --prod
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV CI=true
+ENV NODE_OPTIONS=--enable-source-maps
 
 # Copy production dependencies and built artifacts
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

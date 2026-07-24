@@ -9,6 +9,7 @@ import {
   Post,
   Put,
   Query,
+    UnauthorizedException,
   UseGuards,
   Logger,
 } from "@nestjs/common";
@@ -29,6 +30,8 @@ import {
 import { EVENT_ID_PARAM, TEAM_ID_PARAM } from "../guards/GuardConstants";
 import { TeamEntity } from "./entities/team.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { getLocationTags } from "../user/location-tags";
+import { UpdateTeamCreditsDto } from "./dtos/updateTeamCreditsDto";
 
 @Controller("team")
 export class TeamController {
@@ -42,7 +45,7 @@ export class TeamController {
 
   @Get(":id")
   getTeamById(@Param("id", new ParseUUIDPipe()) id: string) {
-    return this.teamService.getTeamById(id);
+    return this.teamService.getTeamByIdWithTags(id);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -68,7 +71,53 @@ export class TeamController {
   @UseGuards(JwtAuthGuard)
   @Get(`event/:${EVENT_ID_PARAM}/my`)
   getMyTeamForEvent(@EventId eventId: string, @UserId("id") userId: string) {
-    return this.teamService.getTeamOfUserForEvent(eventId, userId);
+    return this.teamService.getTeamOfUserForEventWithTags(eventId, userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(`event/:${EVENT_ID_PARAM}/admin/:${TEAM_ID_PARAM}/credits`)
+  async updateTeamCredits(
+    @EventId eventId: string,
+    @TeamId teamId: string,
+    @UserId() userId: string,
+    @Body() body: UpdateTeamCreditsDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to update team credits for this event.",
+      );
+
+    this.logger.log({
+      action: "attempt_update_team_credits",
+      userId,
+      eventId,
+      teamId,
+      credits: body.credits,
+    });
+
+    return this.teamService.setTeamCredits(eventId, teamId, body.credits);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(`event/:${EVENT_ID_PARAM}/admin/:${TEAM_ID_PARAM}`)
+  async deleteTeamAsAdmin(
+    @EventId eventId: string,
+    @TeamId teamId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to delete teams for this event.",
+      );
+
+    this.logger.log({
+      action: "attempt_admin_delete_team",
+      userId,
+      eventId,
+      teamId,
+    });
+
+    return this.teamService.deleteTeamForEvent(eventId, teamId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -141,6 +190,7 @@ export class TeamController {
         username: user.username,
         profilePicture: user.profilePicture,
         isEventAdmin,
+        tags: getLocationTags(user.socialAccounts),
         socialAccounts: user.socialAccounts.map((sa) => ({
           platform: sa.platform,
           username: sa.username,
@@ -271,10 +321,11 @@ export class TeamController {
 
   @UseGuards(JwtAuthGuard, MyTeamGuards)
   @Put(`event/:${EVENT_ID_PARAM}/queue/join`)
-  async joinQueue(@Team() team: TeamEntity, @UserId() userId: string) {
-    if (team.inQueue)
-      throw new BadRequestException("You are already in the queue.");
-
+  async joinQueue(
+    @Team() team: TeamEntity,
+    @EventId eventId: string,
+    @UserId() userId: string,
+  ) {
     if (!(await this.eventService.hasEventStartedForTeam(team.id)))
       throw new BadRequestException("The event has not started yet.");
 
@@ -284,27 +335,37 @@ export class TeamController {
       userId,
     });
 
-    return this.teamService.joinQueue(team.id);
+    return this.teamService.joinQueue(team.id, eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(`event/:${EVENT_ID_PARAM}/queue/summary`)
+  getQueueSummary(@EventId eventId: string, @UserId() userId: string) {
+    return this.teamService.getQueueSummary(eventId, userId);
   }
 
   @UseGuards(JwtAuthGuard, MyTeamGuards)
-  @Put(`event/:${EVENT_ID_PARAM}/queue/leave`)
-  async leaveQueue(@Team() team: TeamEntity, @UserId() userId: string) {
-    if (!team.inQueue)
-      throw new BadRequestException("You are not in the queue.");
+  @Get(`event/:${EVENT_ID_PARAM}/queue/opponents`)
+  getQueueOpponents(@EventId eventId: string, @Team() team: TeamEntity) {
+    return this.teamService.getQueueOpponents(eventId, team.id);
+  }
+
+  @UseGuards(JwtAuthGuard, MyTeamGuards)
+  @Post(`event/:${EVENT_ID_PARAM}/queue/direct/:targetTeamId`)
+  async startDirectMatch(
+    @Team() team: TeamEntity,
+    @Param("targetTeamId", new ParseUUIDPipe()) targetTeamId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.hasEventStartedForTeam(team.id)))
+      throw new BadRequestException("The event has not started yet.");
 
     this.logger.log({
-      action: "attempt_leave_queue",
-      teamId: team.id,
+      action: "start_direct_match",
+      initiatingTeamId: team.id,
+      targetTeamId,
       userId,
     });
-
-    return this.teamService.leaveQueue(team.id);
-  }
-
-  @UseGuards(JwtAuthGuard, MyTeamGuards)
-  @Get(`event/:${EVENT_ID_PARAM}/queue/state`)
-  async getQueueState(@Team() team: TeamEntity) {
-    return this.teamService.getQueueState(team.id);
+    return this.teamService.createDirectMatch(team.id, targetTeamId);
   }
 }

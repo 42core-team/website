@@ -87,11 +87,11 @@ export class EventController {
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  createEvent(
+  async createEvent(
     @UserId() userId: string,
     @Body() createEventDto: CreateEventDto,
   ) {
-    if (!this.userService.canCreateEvent(userId))
+    if (!await this.userService.canCreateEvent(userId))
       throw new UnauthorizedException(
         "You are not authorized to create events.",
       );

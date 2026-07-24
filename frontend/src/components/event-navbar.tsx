@@ -1,0 +1,145 @@
+import type { Event } from '@/app/actions/event'
+import { useQuery } from '@tanstack/react-query'
+import { Menu } from 'lucide-react'
+import Link from '@/components/app-link'
+import { usePathname } from '@/lib/router-hooks'
+import { useMemo } from 'react'
+import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  navigationMenuTriggerStyle,
+} from '@/components/ui/navigation-menu'
+import { cn } from '@/lib/utils'
+
+interface EventNavbarProps {
+  eventId: string
+  isUserRegistered?: boolean
+  hasTeam?: boolean
+  isEventAdmin?: boolean
+  event: Event
+}
+
+export default function EventNavbar({
+  eventId,
+  isUserRegistered = false,
+  hasTeam = false,
+  isEventAdmin = false,
+  event,
+}: Readonly<EventNavbarProps>) {
+  const pathname = usePathname()
+  const hasStarted = Date.now() >= new Date(event.startDate).getTime()
+  const { data: myTeam } = useQuery({
+    queryKey: myTeamQueryKey(eventId),
+    queryFn: () => myTeamQueryFn(eventId),
+    enabled: isUserRegistered,
+  })
+  const effectiveHasTeam = myTeam === undefined ? hasTeam : Boolean(myTeam)
+
+  const navItems = useMemo(() => {
+    const items = [
+      { name: 'Info', path: `/events/${eventId}` },
+      { name: 'Teams', path: `/events/${eventId}/teams` },
+      { name: 'Gambling', path: `/events/${eventId}/gambling` },
+    ]
+
+    if (isUserRegistered) {
+      items.push({ name: 'My Team', path: `/events/${eventId}/my-team` })
+
+      if (hasStarted) {
+        items.push({
+          name: 'Unit Builder',
+          path: `/events/${eventId}/unit-builder`,
+        })
+      }
+
+      if (hasStarted && effectiveHasTeam) {
+        items.push({ name: 'Match Making', path: `/events/${eventId}/queue` })
+      }
+    }
+
+    items.push(
+      { name: 'Group Phase', path: `/events/${eventId}/groups` },
+      { name: 'Tournament Tree', path: `/events/${eventId}/bracket` },
+    )
+
+    if (isEventAdmin) {
+      items.push({ name: 'Dashboard', path: `/events/${eventId}/dashboard` })
+    }
+
+    return items
+  }, [eventId, isUserRegistered, effectiveHasTeam, isEventAdmin, hasStarted])
+
+  return (
+    <div className="flex items-center justify-start py-4 pl-12 md:justify-center md:pl-0">
+      {/* Desktop navigation */}
+      <NavigationMenu className="hidden md:flex">
+        <NavigationMenuList>
+          {navItems.map((item) => {
+            const isActive =
+              item.name === 'Info'
+                ? pathname === item.path
+                : pathname === item.path || pathname.startsWith(`${item.path}/`)
+            return (
+              <NavigationMenuItem key={item.path}>
+                <NavigationMenuLink
+                  asChild
+                  className={cn(
+                    navigationMenuTriggerStyle(),
+                    isActive && 'bg-accent text-accent-foreground',
+                  )}
+                >
+                  <Link href={item.path}>{item.name}</Link>
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+            )
+          })}
+        </NavigationMenuList>
+      </NavigationMenu>
+
+      {/* Mobile navigation dropdown */}
+      <div className="flex px-3 md:hidden">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="w-fit"
+              size="icon"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="size-5" />
+              Event Menu
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-56">
+            {navItems.map((item) => {
+              const isActive =
+                item.name === 'Info'
+                  ? pathname === item.path
+                  : pathname === item.path ||
+                    pathname.startsWith(`${item.path}/`)
+              return (
+                <DropdownMenuItem
+                  key={item.path}
+                  asChild
+                  className={cn(isActive && 'bg-accent text-accent-foreground')}
+                >
+                  <Link href={item.path}>{item.name}</Link>
+                </DropdownMenuItem>
+              )
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  )
+}

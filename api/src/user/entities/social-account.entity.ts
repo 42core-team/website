@@ -35,6 +35,12 @@ export class SocialAccountEntity {
   @Column()
   platformUserId: string; // User ID from the social platform
 
+  @Column({ type: "integer", nullable: true })
+  campusId: number | null;
+
+  @Column({ type: "varchar", nullable: true })
+  campusName: string | null;
+
   @Column()
   userId: string; // Reference to our user
 

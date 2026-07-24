@@ -12,6 +12,8 @@ COPY . .
 RUN git config --global user.name "corethegame" && \
     git config --global user.email "core@paulgrossmann.de"
 
+ENV CI=true
+
 EXPOSE 3000
 
 CMD ["pnpm", "run", "start:dev"]

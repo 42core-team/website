@@ -9,6 +9,7 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -73,7 +74,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 	}
 
 	_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Create(ctx, configMap, metav1.CreateOptions{})
-	if err != nil {
+	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create configmap: %w", err)
 	}
 
@@ -212,7 +213,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 	gameEnv := []corev1.EnvVar{
 		{Name: "GAME_ID", Value: game.ID.String()},
 		{Name: "SEND_RESULTS", Value: "true"},
-		{Name: "RABBITMQ_URL", Value: c.cfg.RabbitMQHTTP + "/api/exchanges/%2f/amq.direct/publish"},
+		{Name: "RABBITMQ_URL", Value: c.cfg.RabbitMQHTTP + "/api/exchanges/%2f/amq.default/publish"},
 		{Name: "S3_PRESIGNED_URL", Value: presignedURL},
 		{Name: "UPLOAD_REPLAY", Value: "true"},
 		{Name: "BOT_ID_MAPPING", Value: string(botMappingJSON)},
@@ -322,7 +323,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 	}
 
 	createdJob, err := c.clientset.BatchV1().Jobs(c.namespace).Create(ctx, job, metav1.CreateOptions{})
-	if err != nil {
+	if err != nil && !apierrors.IsAlreadyExists(err) {
 		// Try to clean up the configmap if job creation fails
 		_ = c.clientset.CoreV1().ConfigMaps(c.namespace).Delete(ctx, configMapName, metav1.DeleteOptions{})
 		return fmt.Errorf("failed to create job: %v", err)

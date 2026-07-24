@@ -3,6 +3,7 @@ import { TeamService } from "../team/team.service";
 import { InjectRepository } from "@nestjs/typeorm";
 import { MatchEntity, MatchPhase, MatchState } from "./entites/match.entity";
 import { MatchStatsEntity } from "./entites/matchStats.entity";
+import { getCreditWagerRefund } from "./match-credit-wager";
 import { DataSource, In, Not, Repository } from "typeorm";
 import { Swiss } from "tournament-pairings";
 import { EventService } from "../event/event.service";
@@ -12,11 +13,31 @@ import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
 import { getRabbitmqConfig } from "../main";
 import { ConfigService } from "@nestjs/config";
 import { TeamEntity } from "../team/entities/team.entity";
-import { Cron, CronExpression } from "@nestjs/schedule";
 import { GithubApiService } from "../github-api/github-api.service";
 import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations";
+import { FindOptionsSelect } from "typeorm/find-options/FindOptionsSelect";
 import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
-import { LockKeys } from "../constants";
+import { GamblingService } from "../gambling/gambling.service";
+
+const QUEUE_MATCH_SELECT: FindOptionsSelect<MatchEntity> = {
+  id: true,
+  state: true,
+  phase: true,
+  createdAt: true,
+  teams: {
+    id: true,
+    name: true,
+  },
+  winner: {
+    id: true,
+    name: true,
+  },
+};
+
+const QUEUE_MATCH_RELATIONS: FindOptionsRelations<MatchEntity> = {
+  teams: true,
+  winner: true,
+};
 
 @Injectable()
 export class MatchService {
@@ -37,6 +58,8 @@ export class MatchService {
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
     private readonly githubApiService: GithubApiService,
+    @Inject(forwardRef(() => GamblingService))
+    private readonly gamblingService: GamblingService,
   ) {
     this.k8sServiceUrl = configService.getOrThrow<string>("K8S_SERVICE_URL");
     this.gameResultsQueue = ClientProxyFactory.create(
@@ -45,60 +68,6 @@ export class MatchService {
     this.gameQueue = ClientProxyFactory.create(
       getRabbitmqConfig(configService, "game_queue"),
     );
-  }
-
-  @Cron(CronExpression.EVERY_5_SECONDS)
-  async processQueueMatches() {
-    const lockKey = LockKeys.PROCESS_QUEUE_MATCHES;
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-
-    try {
-      const gotLock = await queryRunner.query(
-        "SELECT pg_try_advisory_lock($1)",
-        [lockKey],
-      );
-
-      if (gotLock[0].pg_try_advisory_lock) {
-        try {
-          const events = await this.eventService.getAllEventsForQueue();
-          await Promise.all(
-            events.map(async (event) => {
-              let teamsInQueue = await this.teamService.getTeamsInQueue(
-                event.id,
-              );
-              while (teamsInQueue.length >= 2) {
-                const team1 =
-                  teamsInQueue[Math.floor(Math.random() * teamsInQueue.length)];
-                teamsInQueue = teamsInQueue.filter(
-                  (team) => team.id !== team1.id,
-                );
-                const team2 =
-                  teamsInQueue[Math.floor(Math.random() * teamsInQueue.length)];
-                teamsInQueue = teamsInQueue.filter(
-                  (team) => team.id !== team2.id,
-                );
-                this.logger.log(
-                  `Creating queue match for teams ${team1.name} and ${team2.name} in event ${event.name}.`,
-                );
-                const match = await this.createMatch(
-                  [team1.id, team2.id],
-                  0,
-                  MatchPhase.QUEUE,
-                );
-                await this.startMatch(match.id);
-                await this.teamService.removeFromQueue(team1.id);
-                await this.teamService.removeFromQueue(team2.id);
-              }
-            }),
-          );
-        } finally {
-          await queryRunner.query("SELECT pg_advisory_unlock($1)", [lockKey]);
-        }
-      }
-    } finally {
-      await queryRunner.release();
-    }
   }
 
   async processMatchResult(
@@ -130,6 +99,7 @@ export class MatchService {
           event: true,
         },
         winner: true,
+        creditWagerTeam: true,
       },
     });
 
@@ -199,11 +169,20 @@ export class MatchService {
           } as MatchTeamResultEntity;
         });
       }
+
+      const creditRefund = getCreditWagerRefund(match, winner.id);
+      if (creditRefund > 0)
+        await this.teamService.increaseTeamCredits(winner.id, creditRefund);
     }
     await this.matchRepository.save(match);
     this.logger.log(
       `Match with id ${matchId} finished. Winner: ${winner.name}`,
     );
+
+    if (match.phase === MatchPhase.GAMBLING) {
+      await this.gamblingService.settleMatch(match.id, winner.id);
+      return;
+    }
 
     const event = match.teams[0].event;
     if (!event) {
@@ -347,6 +326,28 @@ export class MatchService {
   }
 
   async startMatch(matchId: string) {
+    const transition = await this.matchRepository
+      .createQueryBuilder()
+      .update(MatchEntity)
+      .set({ state: MatchState.IN_PROGRESS })
+      .where("id = :matchId", { matchId })
+      .andWhere("state = :state", { state: MatchState.PLANNED })
+      .execute();
+
+    if (transition.affected !== 1) {
+      const existingMatch = await this.matchRepository.findOne({
+        select: { id: true, state: true },
+        where: { id: matchId },
+      });
+      if (!existingMatch)
+        throw new Error(`Match with id ${matchId} not found.`);
+      if (existingMatch.state === MatchState.IN_PROGRESS) {
+        this.logger.warn(`Match with id ${matchId} is already in progress.`);
+        return;
+      }
+      throw new Error(`Match with id ${matchId} is not in PLANNED state.`);
+    }
+
     const match = await this.matchRepository.findOne({
       where: { id: matchId },
       relations: {
@@ -360,13 +361,7 @@ export class MatchService {
 
     if (!match) throw new Error(`Match with id ${matchId} not found.`);
 
-    if (match.state !== MatchState.PLANNED)
-      throw new Error(`Match with id ${matchId} is not in PLANNED state.`);
-
-    match.state = MatchState.IN_PROGRESS;
-    await this.matchRepository.save(match);
-
-    if (this.configService.get<string>("RANDOM_GAME_RESULTS") === 'true') {
+    if (this.configService.get<string>("RANDOM_GAME_RESULTS") === "true") {
       const botIdMapping: Record<string, string> = {};
       match.teams.forEach((team) => {
         botIdMapping[team.id] = team.id;
@@ -887,20 +882,6 @@ export class MatchService {
     });
   }
 
-  getLastQueueMatchForTeam(teamId: string) {
-    return this.matchRepository.findOne({
-      where: {
-        teams: {
-          id: teamId,
-        },
-        phase: MatchPhase.QUEUE,
-      },
-      order: {
-        createdAt: "DESC",
-      },
-    });
-  }
-
   async getMatchesForTeam(teamId: string) {
     const matchesToQuery = (
       await this.matchRepository.find({
@@ -977,26 +958,46 @@ export class MatchService {
       })
     ).map((match) => match.id);
 
-    return this.matchRepository.find({
-      where: {
-        id: In(matchesToQuery),
-      },
-      relations: {
-        results: {
-          team: true,
+    const [activeMatches, finishedMatches] = await Promise.all([
+      this.matchRepository.find({
+        select: QUEUE_MATCH_SELECT,
+        where: {
+          teams: {
+            event: {
+              id: eventId,
+            },
+          },
+          phase: MatchPhase.QUEUE,
+          state: MatchState.IN_PROGRESS,
         },
-        teams: true,
-        winner: true,
-      },
-      take: 20,
-      order: {
-        createdAt: "DESC",
-      },
-    });
+        relations: QUEUE_MATCH_RELATIONS,
+        order: {
+          createdAt: "DESC",
+        },
+      }),
+      matchesToQuery.length === 0
+        ? Promise.resolve([])
+        : this.matchRepository.find({
+            select: QUEUE_MATCH_SELECT,
+            where: {
+              id: In(matchesToQuery),
+            },
+            relations: QUEUE_MATCH_RELATIONS,
+            take: 20,
+            order: {
+              createdAt: "DESC",
+            },
+          }),
+    ]);
+
+    return [...activeMatches, ...finishedMatches].map((match) =>
+      this.serializeQueueMatch(match),
+    );
   }
 
   async getAllQueueMatches(eventId: string) {
-    return this.matchRepository.find({
+    const matches = await this.matchRepository.find({
+      select: QUEUE_MATCH_SELECT,
       where: {
         teams: {
           event: {
@@ -1005,18 +1006,27 @@ export class MatchService {
         },
         phase: MatchPhase.QUEUE,
       },
-      relations: {
-        results: {
-          team: true,
-        },
-        teams: true,
-        winner: true,
-      },
+      relations: QUEUE_MATCH_RELATIONS,
       take: 100,
       order: {
         createdAt: "DESC",
       },
     });
+
+    return matches.map((match) => this.serializeQueueMatch(match));
+  }
+
+  private serializeQueueMatch(match: MatchEntity) {
+    return {
+      id: match.id,
+      state: match.state,
+      phase: match.phase,
+      createdAt: match.createdAt,
+      teams: match.teams.map(({ id, name }) => ({ id, name })),
+      winner: match.winner
+        ? { id: match.winner.id, name: match.winner.name }
+        : null,
+    };
   }
 
   async getMatchLogs(
@@ -1101,30 +1111,64 @@ export class MatchService {
     relations: FindOptionsRelations<MatchEntity> = {},
     userId?: string,
     adminReveal?: boolean,
-  ): Promise<MatchEntity> {
+  ): Promise<MatchEntity & { isPlacementMatch?: boolean }> {
     const match = await this.matchRepository.findOneOrFail({
       where: { id: matchId },
       relations,
     });
+    const matchWithPlacementFlag =
+      await this.addPlacementMatchFlagForMatch(match);
 
-    if (match.isRevealed) return match;
+    if (matchWithPlacementFlag.isRevealed) return matchWithPlacementFlag;
 
     if (userId) {
-      const eventId = match.teams?.[0]?.event?.id;
+      const eventId = matchWithPlacementFlag.teams?.[0]?.event?.id;
       if (
         eventId &&
         (await this.eventService.isEventAdmin(eventId, userId)) &&
         adminReveal
       ) {
-        return match;
+        return matchWithPlacementFlag;
       }
     }
 
     return {
-      ...match,
+      ...matchWithPlacementFlag,
       state: MatchState.PLANNED,
       winner: null,
       results: [],
+    };
+  }
+
+  private async addPlacementMatchFlagForMatch(
+    match: MatchEntity,
+  ): Promise<MatchEntity & { isPlacementMatch?: boolean }> {
+    const eventId = match.teams?.[0]?.event?.id;
+    if (match.phase !== MatchPhase.ELIMINATION || !eventId) return match;
+
+    const tournamentMatches = await this.matchRepository.find({
+      where: {
+        teams: {
+          event: {
+            id: eventId,
+          },
+        },
+        phase: MatchPhase.ELIMINATION,
+      },
+      relations: {
+        teams: true,
+        winner: true,
+      },
+    });
+    const matchWithPlacementFlag = this.addPlacementMatchFlags(
+      tournamentMatches,
+    ).find((tournamentMatch) => tournamentMatch.id === match.id);
+
+    if (!matchWithPlacementFlag?.isPlacementMatch) return match;
+
+    return {
+      ...match,
+      isPlacementMatch: true,
     };
   }
 

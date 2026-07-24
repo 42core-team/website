@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Controller,
   Get,
+  HttpCode,
   HttpException,
+  Post,
   Query,
   Req,
   Res,
@@ -39,27 +41,9 @@ export class AuthController {
     this.logger.log({ action: "github_login", userId: user.id });
 
     const token = this.auth.signToken(user);
-    const redirectUrl = this.configService.getOrThrow<string>(
-      "OAUTH_SUCCESS_REDIRECT_URL",
-    );
-    if (redirectUrl) {
-      const cookieName =
-        this.configService.get<string>("AUTH_COOKIE_NAME") || "token";
-      const cookieDomain =
-        this.configService.get<string>("AUTH_COOKIE_DOMAIN") ||
-        (this.configService.get("NODE_ENV") === "development"
-          ? "localhost"
-          : ".coregame.sh");
-      res.cookie(cookieName, token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        domain: cookieDomain,
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-      });
-      return res.redirect(redirectUrl);
-    }
-    return res.json({ token });
+    this.setAuthCookie(res, token);
+
+    return res.redirect(this.getOAuthSuccessRedirectUrl());
   }
 
   @Get("/42/getUrl")
@@ -86,6 +70,8 @@ export class AuthController {
           platformUserId: string;
           username: string;
           email: string;
+          campusId: number | null;
+          campusName: string | null;
         };
       };
     },
@@ -109,6 +95,8 @@ export class AuthController {
         platform: SocialPlatform.FORTYTWO,
         platformUserId: request.user.fortyTwoAccount.platformUserId,
         username: request.user.fortyTwoAccount.username,
+        campusId: request.user.fortyTwoAccount.campusId,
+        campusName: request.user.fortyTwoAccount.campusName,
       });
 
       this.logger.log({ action: "fortytwo_link", userId });
@@ -135,13 +123,19 @@ export class AuthController {
     return this.userService.getUserWithSocialAccounts(user.id);
   }
 
+  @Post("/logout")
+  @HttpCode(204)
+  logout(@Res({ passthrough: true }) res: Response): void {
+    this.clearAuthCookie(res);
+  }
+
   private getFortyTwoErrorMessage(error: unknown): string {
     if (error instanceof HttpException) {
       const response = error.getResponse();
       if (
-        typeof response === "object"
-        && response !== null
-        && "message" in response
+        typeof response === "object" &&
+        response !== null &&
+        "message" in response
       ) {
         const message = (response as { message: unknown }).message;
         return Array.isArray(message) ? message.join(", ") : String(message);
@@ -155,6 +149,59 @@ export class AuthController {
     }
 
     return "Failed to link 42 account";
+  }
+
+  private setAuthCookie(res: Response, token: string): void {
+    const cookieName = this.getAuthCookieName();
+    const cookieDomain = this.getAuthCookieDomain();
+    const isDevelopment = this.configService.get("NODE_ENV") === "development";
+
+    res.cookie(cookieName, token, {
+      httpOnly: true,
+      secure: !isDevelopment,
+      sameSite: isDevelopment ? "lax" : "none",
+      domain: cookieDomain,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+  }
+
+  private clearAuthCookie(res: Response): void {
+    const isDevelopment = this.configService.get("NODE_ENV") === "development";
+
+    res.clearCookie(this.getAuthCookieName(), {
+      httpOnly: true,
+      secure: !isDevelopment,
+      sameSite: isDevelopment ? "lax" : "none",
+      domain: this.getAuthCookieDomain(),
+    });
+  }
+
+  private getAuthCookieName(): string {
+    return this.configService.get<string>("AUTH_COOKIE_NAME") || "token";
+  }
+
+  private getAuthCookieDomain(): string {
+    return (
+      this.configService.get<string>("AUTH_COOKIE_DOMAIN") ||
+      (this.configService.get("NODE_ENV") === "development"
+        ? "localhost"
+        : ".coregame.sh")
+    );
+  }
+
+  private getOAuthSuccessRedirectUrl(): string {
+    const configuredRedirectUrl =
+      this.configService.get<string>("OAUTH_SUCCESS_REDIRECT_URL") ||
+      "http://localhost:3000";
+    const redirectUrl = new URL(configuredRedirectUrl);
+
+    if (redirectUrl.pathname === "/auth/sso") {
+      redirectUrl.pathname = "/";
+      redirectUrl.search = "";
+      redirectUrl.hash = "";
+    }
+
+    return redirectUrl.toString();
   }
 
   private buildFortyTwoErrorRedirectUrl(errorMessage: string): string {
