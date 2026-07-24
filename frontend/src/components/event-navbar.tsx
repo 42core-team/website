@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Menu } from 'lucide-react'
 import Link from '@/components/app-link'
 import { usePathname } from '@/lib/router-hooks'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,7 +37,9 @@ export default function EventNavbar({
   event,
 }: Readonly<EventNavbarProps>) {
   const pathname = usePathname()
-  const hasStarted = Date.now() >= new Date(event.startDate).getTime()
+  const startsAtTime = new Date(event.startDate).getTime()
+  const [now, setNow] = useState(() => Date.now())
+  const hasStarted = now >= startsAtTime
   const { data: myTeam } = useQuery({
     queryKey: myTeamQueryKey(eventId),
     queryFn: () => myTeamQueryFn(eventId),
@@ -45,11 +47,17 @@ export default function EventNavbar({
   })
   const effectiveHasTeam = myTeam === undefined ? hasTeam : Boolean(myTeam)
 
+  useEffect(() => {
+    if (hasStarted) return undefined
+
+    const id = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [hasStarted])
+
   const navItems = useMemo(() => {
     const items = [
       { name: 'Info', path: `/events/${eventId}` },
       { name: 'Teams', path: `/events/${eventId}/teams` },
-      { name: 'Gambling', path: `/events/${eventId}/gambling` },
     ]
 
     if (isUserRegistered) {
@@ -64,6 +72,7 @@ export default function EventNavbar({
 
       if (hasStarted && effectiveHasTeam) {
         items.push({ name: 'Match Making', path: `/events/${eventId}/queue` })
+        items.push({ name: 'Gambling', path: `/events/${eventId}/gambling` })
       }
     }
 
