@@ -7,6 +7,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
+export function getVisibleMatchResultScores(
+  match: Pick<QueueMatch, 'phase' | 'results'>,
+): Map<string, number> {
+  if (match.phase === MatchPhase.QUEUE) return new Map()
+
+  return new Map(
+    match.results?.map((result) => [result.team.id, result.score]) ?? [],
+  )
+}
+
 export default function QueueMatchesList(props: {
   eventId: string
   matches: QueueMatch[]
@@ -32,9 +42,7 @@ export default function QueueMatchesList(props: {
   const listContent = (
     <div className={cn('flex flex-col', isInsideCard ? 'divide-y' : 'gap-4')}>
       {matches.map((match, index) => {
-        const resultScores = new Map(
-          match.results?.map((result) => [result.team.id, result.score]) ?? [],
-        )
+        const resultScores = getVisibleMatchResultScores(match)
         const content = (
           <div className="flex flex-col items-stretch sm:flex-row">
             {/* Match Meta */}

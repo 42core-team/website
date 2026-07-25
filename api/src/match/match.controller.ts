@@ -219,6 +219,52 @@ export class MatchController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get("event/:eventId/timeseries")
+  async getMatchesTimeSeries(
+    @Param("eventId", ParseUUIDPipe) eventId: string,
+    @UserId() userId: string,
+    @Query("interval") interval?: "minute" | "hour" | "day",
+    @Query("start") startStr?: string,
+    @Query("end") endStr?: string,
+    @Query("phases") phasesStr?: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to view match statistics.",
+      );
+
+    const start = this.parseOptionalDate(startStr, "start");
+    const end = this.parseOptionalDate(endStr, "end");
+
+    if (start && end && start > end) {
+      throw new BadRequestException("Start date must be before end date");
+    }
+
+    const validPhases = Object.values(MatchPhase);
+    const phases = phasesStr
+      ? phasesStr
+          .split(",")
+          .map((phase) => phase.trim())
+          .filter(Boolean)
+      : validPhases;
+    const invalidPhase = phases.find(
+      (phase) => !validPhases.includes(phase as MatchPhase),
+    );
+
+    if (invalidPhase) {
+      throw new BadRequestException(`Invalid match phase: ${invalidPhase}`);
+    }
+
+    return this.matchService.getMatchesTimeSeries({
+      interval,
+      start,
+      end,
+      eventId,
+      phases: phases as MatchPhase[],
+    });
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get(":matchId")
   async getMatchById(
     @Param("matchId", ParseUUIDPipe) matchId: string,
@@ -252,23 +298,8 @@ export class MatchController {
         "You are not authorized to view match making stats.",
       );
 
-    let start: Date | undefined = undefined;
-    let end: Date | undefined = undefined;
-
-    if (startStr) {
-      const d = new Date(startStr);
-      if (isNaN(d.getTime())) {
-        throw new BadRequestException("Invalid start date");
-      }
-      start = d;
-    }
-    if (endStr) {
-      const d = new Date(endStr);
-      if (isNaN(d.getTime())) {
-        throw new BadRequestException("Invalid end date");
-      }
-      end = d;
-    }
+    const start = this.parseOptionalDate(startStr, "start");
+    const end = this.parseOptionalDate(endStr, "end");
 
     if (start && end && start > end) {
       throw new BadRequestException("Start date must be before end date");
@@ -280,5 +311,18 @@ export class MatchController {
       end,
       eventId,
     });
+  }
+
+  private parseOptionalDate(
+    value: string | undefined,
+    field: "start" | "end",
+  ): Date | undefined {
+    if (!value) return undefined;
+
+    const date = new Date(value);
+    if (isNaN(date.getTime())) {
+      throw new BadRequestException(`Invalid ${field} date`);
+    }
+    return date;
   }
 }

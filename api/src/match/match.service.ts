@@ -924,16 +924,36 @@ export class MatchService {
     });
 
     return matches.map((match) => {
+      const visibleMatch = {
+        id: match.id,
+        state: match.state,
+        phase: match.phase,
+        createdAt: match.createdAt,
+        teams: match.teams.map(({ id, name, deletedAt }) => ({
+          id,
+          name,
+          deletedAt,
+        })),
+        winner: match.winner
+          ? {
+              id: match.winner.id,
+              name: match.winner.name,
+              deletedAt: match.winner.deletedAt,
+            }
+          : null,
+        results: []
+      };
+
       // Reveal ID only if it's NOT from the queue AND it is revealed.
       const shouldRevealId =
         match.phase !== MatchPhase.QUEUE && match.isRevealed;
 
       if (!shouldRevealId) {
-        const { id: _matchId, ...rest } = match;
+        const { id: _matchId, ...rest } = visibleMatch;
         void _matchId;
         return rest;
       }
-      return match;
+      return visibleMatch;
     });
   }
 
@@ -1349,30 +1369,35 @@ export class MatchService {
       }>();
   }
 
-  async getQueueMatchesTimeSeries(params: {
+  async getMatchesTimeSeries(params: {
     interval?: "minute" | "hour" | "day";
     start?: Date;
     end?: Date;
     eventId?: string;
-  }): Promise<Array<{ bucket: string; count: number }>> {
+    phases?: MatchPhase[];
+  }): Promise<Array<{ bucket: string; phase: MatchPhase; count: number }>> {
     const interval = params.interval ?? "hour";
     const valid = new Set(["minute", "hour", "day"]);
     const unit = valid.has(interval) ? interval : "hour";
 
-    // Determine time range
     const now = new Date();
     const start = params.start ?? new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const end = params.end ?? now;
 
     const qb = this.matchRepository
       .createQueryBuilder("m")
-      .where("m.phase = :phase", { phase: MatchPhase.QUEUE })
-      .andWhere("m.state = :state", { state: MatchState.FINISHED })
+      .where("m.state = :state", { state: MatchState.FINISHED })
       .andWhere("m.updatedAt BETWEEN :start AND :end", { start, end })
       .select(`date_trunc('${unit}', m."updatedAt")`, "bucket")
+      .addSelect("m.phase", "phase")
       .addSelect("COUNT(DISTINCT m.id)", "count")
       .groupBy("bucket")
+      .addGroupBy("m.phase")
       .orderBy("bucket", "ASC");
+
+    if (params.phases?.length) {
+      qb.andWhere("m.phase IN (:...phases)", { phases: params.phases });
+    }
 
     if (params.eventId) {
       qb.innerJoin("m.teams", "t")
@@ -1380,10 +1405,29 @@ export class MatchService {
         .andWhere("e.id = :eventId", { eventId: params.eventId });
     }
 
-    const rows = await qb.getRawMany<{ bucket: Date; count: string }>();
+    const rows = await qb.getRawMany<{
+      bucket: Date;
+      phase: MatchPhase;
+      count: string;
+    }>();
     return rows.map((r) => ({
       bucket: new Date(r.bucket as unknown as string).toISOString(),
+      phase: r.phase,
       count: parseInt(r.count, 10),
     }));
+  }
+
+  async getQueueMatchesTimeSeries(params: {
+    interval?: "minute" | "hour" | "day";
+    start?: Date;
+    end?: Date;
+    eventId?: string;
+  }): Promise<Array<{ bucket: string; count: number }>> {
+    const rows = await this.getMatchesTimeSeries({
+      ...params,
+      phases: [MatchPhase.QUEUE],
+    });
+
+    return rows.map(({ bucket, count }) => ({ bucket, count }));
   }
 }
