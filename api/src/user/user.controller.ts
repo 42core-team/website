@@ -4,7 +4,6 @@ import {
   Get,
   Param,
   Query,
-  UnauthorizedException,
   UseGuards,
   Logger,
 } from "@nestjs/common";
@@ -27,10 +26,6 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   @Get("search")
   async searchUsers(@UserId() userId: string, @Query("q") query: string) {
-    if (!(await this.userService.canCreateEvent(userId))) {
-      throw new UnauthorizedException("Only admins can search users");
-    }
-
     const sanitizedQuery = (query || "").trim();
     if (!sanitizedQuery) {
       throw new BadRequestException("Search query must not be empty");
