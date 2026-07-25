@@ -45,6 +45,7 @@ import {
 } from '@/app/actions/tournament'
 import { searchUsers } from '@/app/actions/user'
 import { StarterTemplatesManagement } from '@/components/dashboard/starter-templates-management'
+import { MatchesAnalytics } from '@/components/dashboard/matches-analytics'
 import { WhitelistManagement } from '@/components/dashboard/whitelist-management'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -417,8 +418,9 @@ function DashboardRoute() {
       </div>
 
       <Tabs value={currentTab} onValueChange={onTabChange} className="w-full">
-        <TabsList>
+        <TabsList className="h-auto flex-wrap justify-start">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="matches">Matches</TabsTrigger>
           <TabsTrigger value="operation">Operation</TabsTrigger>
           <TabsTrigger value="teams">Teams</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -433,6 +435,10 @@ function DashboardRoute() {
             teamsCount={teamsCountQuery.data ?? 0}
             starterTemplates={starterTemplatesQuery.data ?? []}
           />
+        </TabsContent>
+
+        <TabsContent value="matches" className="space-y-6">
+          <MatchesAnalytics eventId={id} />
         </TabsContent>
 
         <TabsContent value="operation" className="space-y-6">

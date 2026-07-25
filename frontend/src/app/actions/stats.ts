@@ -1,4 +1,5 @@
 import axiosInstance from '@/app/actions/axios'
+import type { MatchPhase } from '@/app/actions/tournament-model'
 
 export interface MatchStats {
   actionsExecuted?: string
@@ -27,6 +28,35 @@ export async function getGlobalStats(): Promise<MatchStats> {
 export interface QueueMatchesTimeBucket {
   bucket: string // ISO timestamp of bucket start
   count: number
+}
+
+export type MatchTimeInterval = 'minute' | 'hour' | 'day'
+
+export interface MatchTimeBucket {
+  bucket: string
+  phase: MatchPhase
+  count: number
+}
+
+export async function getMatchesTimeSeries(
+  eventId: string,
+  phases: MatchPhase[],
+  interval: MatchTimeInterval,
+  startISO: string,
+  endISO: string,
+): Promise<MatchTimeBucket[]> {
+  const params = new URLSearchParams({
+    phases: phases.join(','),
+    interval,
+    start: startISO,
+    end: endISO,
+  })
+
+  return (
+    await axiosInstance.get<MatchTimeBucket[]>(
+      `match/event/${eventId}/timeseries?${params.toString()}`,
+    )
+  ).data
 }
 
 export async function getQueueMatchesTimeSeries(
