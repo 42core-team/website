@@ -949,7 +949,7 @@ export class MatchService {
         results: []
       };
 
-      const shouldRevealId = canViewTeamMatchReplay(match, isTeamMember);
+      const shouldRevealId = canViewTeamMatchReplay(isTeamMember);
 
       if (!shouldRevealId) {
         const { id: _matchId, ...rest } = visibleMatch;
@@ -963,8 +963,13 @@ export class MatchService {
   async getQueueMatches(eventId: string, userId: string) {
     const matchesToQuery = (
       await this.matchRepository.find({
+        take: 50,
+        order: {
+          createdAt: "DESC",
+        },
         select: {
           id: true,
+          createdAt: true
         },
         where: {
           teams: {
@@ -975,50 +980,23 @@ export class MatchService {
               id: userId,
             },
           },
-          phase: MatchPhase.QUEUE,
-          state: MatchState.FINISHED,
+          phase: MatchPhase.QUEUE
         },
       })
     ).map((match) => match.id);
 
-    const [activeMatches, finishedMatches] = await Promise.all([
-      this.matchRepository.find({
-        select: QUEUE_MATCH_SELECT,
-        where: {
-          teams: {
-            users: {
-              id: userId
-            },
-            event: {
-              id: eventId,
-            },
-          },
-          phase: MatchPhase.QUEUE,
-          state: MatchState.IN_PROGRESS,
-        },
-        relations: QUEUE_MATCH_RELATIONS,
-        order: {
-          createdAt: "DESC",
-        },
-      }),
-      matchesToQuery.length === 0
-        ? Promise.resolve([])
-        : this.matchRepository.find({
-            select: QUEUE_MATCH_SELECT,
-            where: {
-              id: In(matchesToQuery),
-            },
-            relations: QUEUE_MATCH_RELATIONS,
-            take: 20,
-            order: {
-              createdAt: "DESC",
-            },
-          }),
-    ]);
+    const matches = await this.matchRepository.find({
+      select: QUEUE_MATCH_SELECT,
+      where: {
+        id: In(matchesToQuery),
+      },
+      relations: QUEUE_MATCH_RELATIONS,
+      order: {
+        createdAt: "DESC",
+      },
+    })
 
-    return [...activeMatches, ...finishedMatches].map((match) =>
-      this.serializeQueueMatch(match),
-    );
+    return matches.map(this.serializeQueueMatch)
   }
 
   async getAllQueueMatches(eventId: string) {
