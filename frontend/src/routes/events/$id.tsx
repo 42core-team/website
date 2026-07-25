@@ -12,6 +12,7 @@ import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import GithubLoginButton from '@/components/github'
 import EventInfoNotice from '@/components/event-info-notice'
 import EventNavbar from '@/components/event-navbar'
+import { MarkdownContent } from '@/components/MarkdownContent'
 import TimeBadge from '@/components/timeBadge'
 import {
   Card,
@@ -175,9 +176,10 @@ function EventRoute() {
               Description
             </h3>
             {event.description ? (
-              <p className="mt-1 whitespace-pre-line text-foreground">
-                {event.description}
-              </p>
+              <MarkdownContent
+                className="mt-1 text-foreground"
+                content={event.description}
+              />
             ) : (
               <p className="mt-1 text-muted-foreground">
                 No description provided.
