@@ -359,7 +359,7 @@ export class RepoUtils {
       const originalContent = await fs.readFile(mainCPath, "utf-8");
 
       const updatedContent = originalContent.replaceAll(
-        "YOUR TEAM NAME HERE",
+        "My CORE Bot",
         teamName,
       );
 
