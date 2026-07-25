@@ -18,6 +18,7 @@ import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations"
 import { FindOptionsSelect } from "typeorm/find-options/FindOptionsSelect";
 import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
 import { GamblingService } from "../gambling/gambling.service";
+import { canViewTeamMatchReplay } from "./team-match-visibility";
 
 const QUEUE_MATCH_SELECT: FindOptionsSelect<MatchEntity> = {
   id: true,
@@ -882,7 +883,11 @@ export class MatchService {
     });
   }
 
-  async getMatchesForTeam(teamId: string) {
+  async getMatchesForTeam(teamId: string, userId: string) {
+    const team = await this.teamService.getTeamById(teamId, {
+      users: true,
+    });
+    const isTeamMember = team.users.some((user) => user.id === userId);
     const matchesToQuery = (
       await this.matchRepository.find({
         select: {
@@ -944,9 +949,7 @@ export class MatchService {
         results: []
       };
 
-      // Reveal ID only if it's NOT from the queue AND it is revealed.
-      const shouldRevealId =
-        match.phase !== MatchPhase.QUEUE && match.isRevealed;
+      const shouldRevealId = canViewTeamMatchReplay(match, isTeamMember);
 
       if (!shouldRevealId) {
         const { id: _matchId, ...rest } = visibleMatch;
@@ -983,6 +986,9 @@ export class MatchService {
         select: QUEUE_MATCH_SELECT,
         where: {
           teams: {
+            users: {
+              id: userId
+            },
             event: {
               id: eventId,
             },

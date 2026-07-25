@@ -125,8 +125,11 @@ export class MatchController {
 
   @UseGuards(JwtAuthGuard)
   @Get("team/:teamId")
-  async getMatchesForTeam(@Param("teamId", ParseUUIDPipe) teamId: string) {
-    return await this.matchService.getMatchesForTeam(teamId);
+  async getMatchesForTeam(
+    @Param("teamId", ParseUUIDPipe) teamId: string,
+    @UserId() userId: string,
+  ) {
+    return await this.matchService.getMatchesForTeam(teamId, userId);
   }
 
   @UseGuards(JwtAuthGuard)
