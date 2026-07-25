@@ -14,7 +14,6 @@ import {
   startDirectMatch,
 } from '@/app/actions/team'
 import { MatchState } from '@/app/actions/tournament-model'
-import QueueMatchesList from '@/components/QueueMatchesList'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -28,6 +27,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
+import MatchesList from "#/components/MatchesList.tsx";
 
 export const Route = createFileRoute('/events/$id/queue')({
   component: QueueRoute,
@@ -253,13 +253,13 @@ function QueueRoute() {
       {activeQueueMatches.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">Currently playing</h2>
-          <QueueMatchesList eventId={id} matches={activeQueueMatches} />
+          <MatchesList eventId={id} matches={activeQueueMatches} />
         </section>
       )}
 
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Your match history</h2>
-        <QueueMatchesList eventId={id} matches={finishedQueueMatches} />
+        <MatchesList eventId={id} matches={finishedQueueMatches} />
       </section>
     </main>
   )

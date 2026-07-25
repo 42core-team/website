@@ -1,10 +1,10 @@
 import type { Match } from '@/app/actions/tournament-model'
 import { History } from 'lucide-react'
 import { MatchPhase } from '@/app/actions/tournament-model'
-import QueueMatchesList from '@/components/QueueMatchesList'
 import { Card, CardHeader } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import MatchesList from "#/components/MatchesList.tsx";
 
 type MatchHistoryTab = {
   label: string
@@ -64,7 +64,7 @@ export default function TeamMatchHistory({
 
           {matchHistoryTabs.map((tab) => (
             <TabsContent key={tab.value} value={tab.value} className="mt-0">
-              <QueueMatchesList
+              <MatchesList
                 eventId={eventId}
                 matches={
                   tab.value === 'all'

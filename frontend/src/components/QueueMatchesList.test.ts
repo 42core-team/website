@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MatchPhase } from '@/app/actions/tournament-model'
-import { getVisibleMatchResultScores } from '@/components/QueueMatchesList'
+import {getVisibleMatchResultScores} from "#/components/MatchesList.tsx";
 
 describe('getVisibleMatchResultScores', () => {
   const results = [

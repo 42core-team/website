@@ -17,14 +17,14 @@ export function getVisibleMatchResultScores(
   )
 }
 
-export default function QueueMatchesList(props: {
+export default function MatchesList(props: {
   eventId: string
   matches: QueueMatch[]
   isInsideCard?: boolean
 }) {
   const { eventId, matches, isInsideCard } = props
 
-  if (!matches || matches.length === 0) {
+  if (matches.length === 0) {
     return (
       <div
         className={cn(
@@ -203,7 +203,7 @@ export default function QueueMatchesList(props: {
                 !isInsideCard && 'sm:border-l border-border/40',
               )}
             >
-              {match.id && match.state === MatchState.FINISHED ? (
+              {match.id && match.state === MatchState.FINISHED && (
                 <Link href={`/events/${eventId}/match/${match.id}`}>
                   <Button
                     size="sm"
@@ -213,15 +213,6 @@ export default function QueueMatchesList(props: {
                     Replay
                   </Button>
                 </Link>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="text-xs font-bold uppercase"
-                  disabled
-                >
-                  Playing
-                </Button>
               )}
             </div>
           </div>
