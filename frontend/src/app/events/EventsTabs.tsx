@@ -22,10 +22,10 @@ export default function EventsTabs({
       className="w-full ps-1.5 pb-0.5"
     >
       <TabsList aria-label="Events tabs">
-        <TabsTrigger value="my">{`My Events (${myEvents.length})`}</TabsTrigger>
         <TabsTrigger value="all">
           {`All Events (${allEvents.length})`}
         </TabsTrigger>
+        <TabsTrigger value="my">{`My Events (${myEvents.length})`}</TabsTrigger>
       </TabsList>
       <TabsContent value="my">
         <EventsTable events={myEvents} />
