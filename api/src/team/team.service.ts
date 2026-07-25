@@ -36,6 +36,12 @@ import type { OwnedLocationTagSource } from "../user/location-tags";
 import { accrueQueueCredits, spendQueueCredits } from "./team-credits";
 import { rankQueueOpponents } from "./queue-matchmaking";
 import type { QueueOpponentCandidate } from "./queue-matchmaking";
+import { TeamAssetsService } from "./team-assets.service";
+import {
+  TeamAssetType,
+  UploadedTeamAsset,
+  validateTeamAsset,
+} from "./team-assets";
 
 export type PublicTaggedTeam = TeamEntity & {
   tags: string[];
@@ -57,6 +63,7 @@ export class TeamService {
     private readonly matchService: MatchService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly teamAssetsService: TeamAssetsService,
   ) {}
 
   logger = new Logger("TeamService");
@@ -371,7 +378,79 @@ export class TeamService {
         team.event.githubOrgSecret,
       );
 
+    await Promise.allSettled([
+      this.teamAssetsService.deleteByUrl(team.profileImageUrl),
+      this.teamAssetsService.deleteByUrl(team.bannerImageUrl),
+      this.teamAssetsService.deleteByUrl(team.winningSoundUrl),
+    ]);
+
     return this.teamRepository.softDelete(teamId);
+  }
+
+  async updateCustomization(teamId: string, description: string) {
+    const normalizedDescription = description.trim() || null;
+    await this.teamRepository.update(teamId, {
+      description: normalizedDescription,
+    });
+    return { description: normalizedDescription };
+  }
+
+  async uploadAsset(
+    teamId: string,
+    assetType: TeamAssetType,
+    file: UploadedTeamAsset | undefined,
+  ) {
+    validateTeamAsset(assetType, file);
+
+    const team = await this.getTeamById(teamId);
+    const field = this.getAssetField(assetType);
+    const previousUrl = team[field];
+    const uploadedAsset = await this.teamAssetsService.upload(
+      teamId,
+      assetType,
+      file,
+    );
+
+    try {
+      await this.teamRepository.update(teamId, {
+        [field]: uploadedAsset.url,
+      });
+    } catch (error) {
+      try {
+        await this.teamAssetsService.deleteByKey(uploadedAsset.key);
+      } catch (cleanupError) {
+        this.logger.warn(
+          `Failed to clean up ${assetType} after a database error for team ${teamId}`,
+          cleanupError,
+        );
+      }
+      throw error;
+    }
+
+    try {
+      await this.teamAssetsService.deleteByUrl(previousUrl);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to delete replaced ${assetType} for team ${teamId}`,
+        error,
+      );
+    }
+
+    return {
+      assetType,
+      url: uploadedAsset.url,
+    };
+  }
+
+  private getAssetField(assetType: TeamAssetType) {
+    switch (assetType) {
+      case TeamAssetType.PROFILE_IMAGE:
+        return "profileImageUrl" as const;
+      case TeamAssetType.BANNER_IMAGE:
+        return "bannerImageUrl" as const;
+      case TeamAssetType.WINNING_SOUND:
+        return "winningSoundUrl" as const;
+    }
   }
 
   async setTeamCredits(eventId: string, teamId: string, credits: number) {

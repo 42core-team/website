@@ -9,6 +9,7 @@ import { UserModule } from "../user/user.module";
 import { MatchModule } from "../match/match.module";
 import { TeamEventsController } from "./team.events.controller";
 import { MyTeamGuards, TeamNotLockedGuard } from "../guards/TeamGuard";
+import { TeamAssetsService } from "./team-assets.service";
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { MyTeamGuards, TeamNotLockedGuard } from "../guards/TeamGuard";
     UserModule,
   ],
   controllers: [TeamController, TeamEventsController],
-  providers: [TeamService, MyTeamGuards, TeamNotLockedGuard],
+  providers: [TeamService, TeamAssetsService, MyTeamGuards, TeamNotLockedGuard],
   exports: [TeamService],
 })
 export class TeamModule {}

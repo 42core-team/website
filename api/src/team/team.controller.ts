@@ -9,7 +9,10 @@ import {
   Post,
   Put,
   Query,
-    UnauthorizedException,
+  UnauthorizedException,
+  UploadedFile,
+  UseInterceptors,
+  ParseEnumPipe,
   UseGuards,
   Logger,
 } from "@nestjs/common";
@@ -32,6 +35,13 @@ import { TeamEntity } from "./entities/team.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { getLocationTags } from "../user/location-tags";
 import { UpdateTeamCreditsDto } from "./dtos/updateTeamCreditsDto";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { UpdateTeamCustomizationDto } from "./dtos/updateTeamCustomizationDto";
+import {
+  MAX_TEAM_ASSET_SIZE,
+  TeamAssetType,
+  UploadedTeamAsset,
+} from "./team-assets";
 
 @Controller("team")
 export class TeamController {
@@ -72,6 +82,31 @@ export class TeamController {
   @Get(`event/:${EVENT_ID_PARAM}/my`)
   getMyTeamForEvent(@EventId eventId: string, @UserId("id") userId: string) {
     return this.teamService.getTeamOfUserForEventWithTags(eventId, userId);
+  }
+
+  @UseGuards(JwtAuthGuard, MyTeamGuards)
+  @Put(`event/:${EVENT_ID_PARAM}/customization`)
+  updateTeamCustomization(
+    @Team() team: TeamEntity,
+    @Body() body: UpdateTeamCustomizationDto,
+  ) {
+    return this.teamService.updateCustomization(team.id, body.description);
+  }
+
+  @UseGuards(JwtAuthGuard, MyTeamGuards)
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: { files: 1, fileSize: MAX_TEAM_ASSET_SIZE },
+    }),
+  )
+  @Put(`event/:${EVENT_ID_PARAM}/customization/:assetType`)
+  uploadTeamAsset(
+    @Team() team: TeamEntity,
+    @Param("assetType", new ParseEnumPipe(TeamAssetType))
+    assetType: TeamAssetType,
+    @UploadedFile() file: UploadedTeamAsset | undefined,
+  ) {
+    return this.teamService.uploadAsset(team.id, assetType, file);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -18,6 +18,7 @@ import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import {
   LocationTags,
   TeamCreationSection,
+  TeamCustomizationForm,
   TeamInfoSection,
   TeamMatchHistory,
 } from '@/components/team'
@@ -187,6 +188,7 @@ function MyTeamRoute() {
               eventStartedQuery.data && !myTeamQuery.data.repo,
             )}
           />
+          <TeamCustomizationForm eventId={id} team={myTeamQuery.data} />
           <TeamMatchHistory
             eventId={id}
             matches={matchesQuery.data ?? []}
