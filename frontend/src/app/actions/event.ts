@@ -15,7 +15,7 @@ export interface Event {
   type?: string
   treeFormat?: number
   githubOrg: string
-  repoLockDate?: string
+  repoLockDate?: string | null
   canCreateTeam: boolean
   lockedAt: string | null
   processQueue: boolean

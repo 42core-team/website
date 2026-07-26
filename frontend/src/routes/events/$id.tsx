@@ -13,6 +13,7 @@ import GithubLoginButton from '@/components/github'
 import EventInfoNotice from '@/components/event-info-notice'
 import EventNavbar from '@/components/event-navbar'
 import { MarkdownContent } from '@/components/MarkdownContent'
+import RepositoryLockdownNotice from '@/components/repository-lockdown-notice'
 import TimeBadge from '@/components/timeBadge'
 import {
   Card,
@@ -144,6 +145,10 @@ function EventRoute() {
         isUserRegistered={isUserRegistered}
         hasTeam={Boolean(myTeamQuery.data)}
         isEventAdmin={isEventAdminQuery.data ?? false}
+      />
+      <RepositoryLockdownNotice
+        repoLockDate={event.repoLockDate}
+        lockedAt={event.lockedAt}
       />
       {children}
     </div>
