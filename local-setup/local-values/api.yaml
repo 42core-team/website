@@ -30,7 +30,7 @@ env:
   OAUTH_SUCCESS_REDIRECT_URL: http://localhost:3000
   OAUTH_42_SUCCESS_REDIRECT_URL: http://localhost:3000/profile
   FORTYTWO_CALLBACK_URL: http://localhost:4000/auth/42/callback
-  RANDOM_GAME_RESULTS: false
+  RANDOM_GAME_RESULTS: true
 
 secrets:
   DB_URL: "postgresql://postgres:postgres@postgres:5432/postgres"
