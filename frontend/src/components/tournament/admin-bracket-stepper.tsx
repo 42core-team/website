@@ -226,7 +226,9 @@ export function AdminBracketStepper({
                 {getMatchLabel(match, index)}
               </span>
               <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                {getCompetitors(match)}
+                {match.isRevealed
+                  ? getCompetitors(match)
+                  : 'Teams hidden until reveal'}
               </span>
             </motion.button>
           )
