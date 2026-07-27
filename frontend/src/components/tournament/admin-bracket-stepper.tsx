@@ -167,7 +167,7 @@ export function AdminBracketStepper({
 
       <div className="h-1 overflow-hidden rounded-full bg-muted">
         <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-primary/70 via-primary to-emerald-500"
+          className="h-full rounded-full bg-linear-to-r from-primary/70 via-primary to-emerald-500"
           initial={false}
           animate={{
             width: `${((safeIndex + 1) / orderedMatches.length) * 100}%`,

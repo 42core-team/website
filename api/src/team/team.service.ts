@@ -16,11 +16,11 @@ import {
   LessThanOrEqual,
   Not,
   Repository,
+  type FindOptionsRelations,
 } from "typeorm";
 import { GithubApiService } from "../github-api/github-api.service";
 import { EventService } from "../event/event.service";
 import { UserService } from "../user/user.service";
-import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations";
 import { MatchService } from "../match/match.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { LockKeys } from "../constants";
@@ -57,7 +57,11 @@ export class TeamService {
     private readonly matchService: MatchService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
-  ) {}
+  ) {
+    this.getSortedTeamsForTournament("2c10eecb-ab9b-48e4-a840-d54febb25854").then(results => {
+      console.log(results)
+    })
+  }
 
   logger = new Logger("TeamService");
 
@@ -617,13 +621,17 @@ export class TeamService {
 
     const result = await query.getRawAndEntities();
 
-    // Batch calculate Buchholz points for all teams in the result
     const teamIds = result.entities.map((t) => t.id);
-    const buchholzMap = await this.matchService.calculateBuchholzPointsForTeams(
-      teamIds,
-      eventId,
-      !revealAll,
-    );
+    // Public standings are calculated from revealed matches. The admin view must
+    // keep the persisted value selected above instead of overwriting it with a
+    // different on-the-fly calculation.
+    const revealedBuchholzMap = revealAll
+      ? undefined
+      : await this.matchService.calculateBuchholzPointsForTeams(
+          teamIds,
+          eventId,
+          true,
+        );
     const tagsByTeam = await this.getLocationTagsForTeams(teamIds);
 
     // Map properties from raw if entity is missing them due to partial select
@@ -655,8 +663,9 @@ export class TeamService {
             (team.hadBye ? 1 : 0);
         }
 
-        // Use the batch-calculated Buchholz points
-        mappedTeam.buchholzPoints = buchholzMap.get(team.id) || 0;
+        mappedTeam.buchholzPoints = revealAll
+          ? (team.buchholzPoints ?? 0)
+          : (revealedBuchholzMap?.get(team.id) ?? 0);
 
         return mappedTeam;
       }),
