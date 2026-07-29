@@ -4,7 +4,14 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { MatchEntity, MatchPhase, MatchState } from "./entites/match.entity";
 import { MatchStatsEntity } from "./entites/matchStats.entity";
 import { getCreditWagerRefund } from "./match-credit-wager";
-import { DataSource, In, Not, Repository } from "typeorm";
+import {
+  DataSource,
+  In,
+  Not,
+  Repository,
+  type FindOptionsRelations,
+  type FindOptionsSelect,
+} from "typeorm";
 import { Swiss } from "tournament-pairings";
 import { EventService } from "../event/event.service";
 import type { Player } from "tournament-pairings/interfaces";
@@ -14,8 +21,6 @@ import { getRabbitmqConfig } from "../main";
 import { ConfigService } from "@nestjs/config";
 import { TeamEntity } from "../team/entities/team.entity";
 import { GithubApiService } from "../github-api/github-api.service";
-import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations";
-import { FindOptionsSelect } from "typeorm/find-options/FindOptionsSelect";
 import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
 import { GamblingService } from "../gambling/gambling.service";
 import { canViewTeamMatchReplay } from "./team-match-visibility";

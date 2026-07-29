@@ -103,7 +103,7 @@ export function GroupPhaseGraphView({
 
   if (matches.length === 0) {
     return (
-      <div className="flex min-h-[360px] items-center justify-center rounded-xl border bg-card/50 px-6 text-center text-sm text-muted-foreground">
+      <div className="flex min-h-90 items-center justify-center rounded-xl border bg-card/50 px-6 text-center text-sm text-muted-foreground">
         Matches will appear here once the group phase starts.
       </div>
     )

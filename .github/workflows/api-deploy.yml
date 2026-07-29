@@ -170,6 +170,10 @@ jobs:
           echo "- Release name: api-${SANITIZED_BRANCH}"
           echo "- Environment URL: ${ENVIRONMENT_URL}"
 
+      - name: Create namespace if not exists
+        run: |
+          kubectl create namespace ${{ steps.config.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Create image pull secret
         run: |
           kubectl create secret docker-registry ghcr-secret \
@@ -179,6 +183,17 @@ jobs:
             --docker-email=${{ github.actor }}@users.noreply.github.com \
             --namespace=${{ steps.config.outputs.namespace }} \
             --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Validate Helm chart
+        run: |
+          cd api/helm
+          helm lint . --values ${{ steps.config.outputs.values_file }}
+          helm template ${{ steps.config.outputs.release_name }} . \
+            --namespace ${{ steps.config.outputs.namespace }} \
+            --values ${{ steps.config.outputs.values_file }} \
+            --set image.tag=${{ steps.config.outputs.image_tag }} \
+            --set image.repository=${{ steps.config.outputs.image_repo }} \
+            --validate
 
       - name: Deploy API with Helm
         run: |
@@ -206,7 +221,6 @@ jobs:
             --set env.OAUTH_SUCCESS_REDIRECT_URL="${{ vars.OAUTH_SUCCESS_REDIRECT_URL }}" \
             --set env.OAUTH_42_SUCCESS_REDIRECT_URL="${{ vars.OAUTH_42_SUCCESS_REDIRECT_URL }}" \
             --set env.CORS_ORIGIN="${{ vars.CORS_ORIGIN }}" \
-            --set env.FORTYTWO_CLIENT_ID="${{ vars.FORTYTWO_CLIENT_ID }}" \
             --set env.FORTYTWO_CLIENT_ID="${{ vars.FORTYTWO_CLIENT_ID }}" \
             --set env.FORTYTWO_CALLBACK_URL="${{ vars.FORTYTWO_CALLBACK_URL }}" \
             --set secrets.DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \

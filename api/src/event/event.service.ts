@@ -17,6 +17,7 @@ import {
   IsNull,
   LessThanOrEqual,
   Repository,
+  type FindOptionsRelations,
   UpdateResult,
 } from "typeorm";
 import {
@@ -26,7 +27,6 @@ import {
 import * as CryptoJS from "crypto-js";
 import { ConfigService } from "@nestjs/config";
 import { TeamService } from "../team/team.service";
-import { FindOptionsRelations } from "typeorm/find-options/FindOptionsRelations";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { EventVersionDto } from "./dtos/eventVersionDto";
 import { LockKeys } from "../constants";

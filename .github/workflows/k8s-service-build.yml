@@ -123,5 +123,5 @@ jobs:
     uses: ./.github/workflows/k8s-service-deploy.yml
     with:
       environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'prod' || 'dev') }}
-      image_tag: build-${{ github.run_number }}-${{ github.run_attempt }}
+      image_tag: ${{ needs.build.outputs.image_tag }}
     secrets: inherit

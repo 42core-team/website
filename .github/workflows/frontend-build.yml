@@ -117,6 +117,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Compute image tag
+        id: image-tag
+        run: |
+          IMAGE_TAG="build-${{ github.run_number }}-${{ github.run_attempt }}"
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "Image tag: $IMAGE_TAG"
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v6
@@ -125,14 +132,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr,prefix=pr-
-            type=raw,value=build-${{ github.run_number }}-${{ github.run_attempt }}
-
-      - name: Compute image tag
-        id: image-tag
-        run: |
-          IMAGE_TAG="build-${{ github.run_number }}-${{ github.run_attempt }}"
-          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "Image tag: $IMAGE_TAG"
+            type=raw,value=${{ steps.image-tag.outputs.image_tag }}
 
       - name: Build image (PR - no push)
         if: github.event_name == 'pull_request'
@@ -199,5 +199,5 @@ jobs:
     uses: ./.github/workflows/frontend-deploy.yml
     with:
       environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'prod' || 'dev') }}
-      image_tag: build-${{ github.run_number }}-${{ github.run_attempt }}
+      image_tag: ${{ needs.build.outputs.image_tag }}
     secrets: inherit

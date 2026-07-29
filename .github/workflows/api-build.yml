@@ -55,7 +55,7 @@ jobs:
           version: 10
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 25
           cache: "pnpm"
@@ -102,6 +102,13 @@ jobs:
 
       - name: Setup Blacksmith Builder
         uses: useblacksmith/setup-docker-builder@v1
+
+      - name: Sanitize branch names
+        id: sanitize-branch
+        run: |
+          RAW_REF="${{ github.head_ref || github.ref_name }}"
+          SANITIZED=$(echo "$RAW_REF" | tr '[:upper:]' '[:lower:]' | sed 's#[^a-z0-9._-]#-#g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
+          echo "name=$SANITIZED" >> $GITHUB_OUTPUT
 
       - name: Compute image tag
         id: image-tag
