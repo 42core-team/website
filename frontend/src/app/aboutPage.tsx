@@ -59,6 +59,14 @@ const team: TeamMember[] = [
     linkType: 'github',
   },
   {
+    name: 'Emil Ebert',
+    role: 'Head of Web Systems',
+    imgSrc: '/team/eebert.png',
+    linkUrl: 'https://www.youtube.com/watch?v=XfELJU1mRMg',
+    linkType: 'linkedin',
+    former: true,
+  },
+  {
     name: 'Johannes Moritz',
     role: 'Head of money spending',
     imgSrc:
