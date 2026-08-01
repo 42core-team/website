@@ -36,13 +36,6 @@ const team: TeamMember[] = [
     linkType: 'linkedin',
   },
   {
-    name: 'Emil Ebert',
-    role: 'Head of Web Systems',
-    imgSrc: '/team/eebert.png',
-    linkUrl: 'https://www.linkedin.com/in/emil-ebert/',
-    linkType: 'linkedin',
-  },
-  {
     name: 'Theo Paesch',
     role: 'Event Management and Design',
     imgSrc: '/team/tpaesch.jpeg',
@@ -64,6 +57,14 @@ const team: TeamMember[] = [
       'https://cdn.intra.42.fr/users/c86f2d994f58da1df739af962abca534/medium_chuhlig.jpg',
     linkUrl: 'https://github.com/cuhlig42',
     linkType: 'github',
+  },
+  {
+    name: 'Emil Ebert',
+    role: 'Head of Web Systems',
+    imgSrc: '/team/eebert.png',
+    linkUrl: 'https://www.youtube.com/watch?v=XfELJU1mRMg',
+    linkType: 'linkedin',
+    former: true,
   },
   {
     name: 'Johannes Moritz',
