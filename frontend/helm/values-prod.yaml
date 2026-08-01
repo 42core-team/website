@@ -29,9 +29,6 @@ env:
   VITE_VISUALIZER_URL: "https://visualizer.coregame.sh"
   VITE_BACKEND_PUBLIC_URL: "https://api.coregame.sh"
   VITE_S3_REPLAYS_BUCKET_URL: "https://s3.coregame.sh/core-replays"
-  # Plausible analytics domain defaults for prod
-  PLAUSIBLE_DOMAIN: coregame.sh
-  PLAUSIBLE_CUSTOM_DOMAIN: "https://plausible.coregame.sh"
   AUTH_COOKIE_NAME: "token"
 
 ingress:
