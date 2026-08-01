@@ -36,13 +36,6 @@ const team: TeamMember[] = [
     linkType: 'linkedin',
   },
   {
-    name: 'Emil Ebert',
-    role: 'Head of Web Systems',
-    imgSrc: '/team/eebert.png',
-    linkUrl: 'https://www.linkedin.com/in/emil-ebert/',
-    linkType: 'linkedin',
-  },
-  {
     name: 'Theo Paesch',
     role: 'Event Management and Design',
     imgSrc: '/team/tpaesch.jpeg',
