@@ -57,7 +57,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Setup Blacksmith Builder
-        uses: useblacksmith/setup-docker-builder@v1
+        uses: useblacksmith/setup-docker-builder@v2
 
       - name: Sanitize branch names
         id: sanitize-branch
