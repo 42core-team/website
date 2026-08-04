@@ -1,5 +1,5 @@
 # Stage 0: Base with pnpm
-FROM node:25-alpine AS base
+FROM node:26-alpine AS base
 RUN npm install -g pnpm
 
 # Stage 1: Build
