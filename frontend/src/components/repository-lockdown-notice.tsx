@@ -1,13 +1,15 @@
 import { LockKeyhole } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import TimeBadge from '@/components/timeBadge'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 
 interface RepositoryLockdownNoticeProps {
   repoLockDate?: string | null
   lockedAt?: string | null
+  variant?: 'banner' | 'summary'
 }
+
+export const REPOSITORY_LOCKDOWN_BANNER_LEAD_TIME_MS = 3 * 60 * 60 * 1000
+export const REPOSITORY_LOCKDOWN_BANNER_FOLLOW_UP_MS = 60 * 60 * 1000
 
 export function formatRepoLockCountdown(remainingMs: number) {
   const { days, hours, minutes, seconds } =
@@ -33,76 +35,152 @@ export function getRepoLockCountdownParts(remainingMs: number) {
   }
 }
 
+function BannerCountdown({ remainingMs }: Readonly<{ remainingMs: number }>) {
+  const { days, hours, minutes, seconds } =
+    getRepoLockCountdownParts(remainingMs)
+
+  return (
+    <div
+      role="timer"
+      aria-label={`Repository lockdown countdown: ${formatRepoLockCountdown(remainingMs)}`}
+      className="flex items-baseline gap-1 font-mono text-lg font-semibold tracking-tight tabular-nums"
+    >
+      <span
+        aria-label={`days: ${days}`}
+        className={days === '00' ? 'sr-only' : undefined}
+      >
+        {Number(days)}d
+      </span>
+      <span aria-label={`hours: ${hours}`}>{hours}</span>
+      <span aria-hidden="true" className="text-muted-foreground/60">
+        :
+      </span>
+      <span aria-label={`minutes: ${minutes}`}>{minutes}</span>
+      <span aria-hidden="true" className="text-muted-foreground/60">
+        :
+      </span>
+      <span aria-label={`seconds: ${seconds}`}>{seconds}</span>
+    </div>
+  )
+}
+
 export default function RepositoryLockdownNotice({
   repoLockDate,
   lockedAt,
+  variant = 'banner',
 }: Readonly<RepositoryLockdownNoticeProps>) {
   const lockTime = repoLockDate ? new Date(repoLockDate).getTime() : Number.NaN
   const [now, setNow] = useState(() => Date.now())
-  const isScheduled = Number.isFinite(lockTime) && lockTime > now && !lockedAt
+  const shouldTick =
+    Number.isFinite(lockTime) &&
+    (lockTime > now ||
+      (variant === 'banner' &&
+        now <= lockTime + REPOSITORY_LOCKDOWN_BANNER_FOLLOW_UP_MS))
 
   useEffect(() => {
-    if (!isScheduled) return undefined
+    if (!shouldTick) return undefined
 
     const interval = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(interval)
-  }, [isScheduled, lockTime])
+  }, [shouldTick, lockTime])
 
   if (!Number.isFinite(lockTime)) return null
 
   const remainingMs = lockTime - now
   const hasReachedLockTime = remainingMs <= 0
   const isLocked = Boolean(lockedAt)
-  const countdownParts = getRepoLockCountdownParts(remainingMs)
+  const isWithinBannerWindow =
+    now >= lockTime - REPOSITORY_LOCKDOWN_BANNER_LEAD_TIME_MS &&
+    now <= lockTime + REPOSITORY_LOCKDOWN_BANNER_FOLLOW_UP_MS
+
+  if (variant === 'banner' && !isWithinBannerWindow) return null
+
+  if (variant === 'summary') {
+    return (
+      <section
+        aria-labelledby="repository-lockdown-heading"
+        className="border-t pt-5"
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning-400/10 text-warning-700 dark:text-warning-400">
+              <LockKeyhole className="size-4" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <h2
+                id="repository-lockdown-heading"
+                className="text-sm font-medium text-muted-foreground"
+              >
+                Repository lockdown
+              </h2>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm">
+                <TimeBadge className="font-medium" time={repoLockDate!} />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            {!isLocked && !hasReachedLockTime ? (
+              <div className="rounded-lg bg-muted/60 px-3 py-2 sm:text-right">
+                <p className="font-mono text-sm font-semibold tracking-tight tabular-nums">
+                  Locks in {formatRepoLockCountdown(remainingMs)}
+                </p>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-2 rounded-full bg-destructive/10 px-3 py-1.5 text-sm font-medium text-destructive">
+                <span className="size-1.5 rounded-full bg-current" />
+                {isLocked ? 'Repositories locked' : 'Lock time reached'}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    )
+  }
 
   return (
-    <div className="container mx-auto max-w-7xl px-4">
-      <Alert className="border-warning-400/40 bg-warning-100/50 dark:bg-warning-900/20">
-        <div className="flex items-start gap-4">
-          <LockKeyhole className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
-          <div className="min-w-0 flex-1">
-            <AlertTitle>
+    <aside
+      role="alert"
+      className="border-y border-warning-400/25 bg-warning-50/70 dark:bg-warning-900/10"
+    >
+      <div className="container mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning-400/10 text-warning-700 dark:text-warning-400">
+            <LockKeyhole className="size-4" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold tracking-tight">
               {isLocked
                 ? 'Team repositories are locked'
                 : hasReachedLockTime
                   ? 'Repository lockdown time reached'
                   : 'Repository lockdown scheduled'}
-            </AlertTitle>
-            <AlertDescription className="mt-2 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-1">
+            </p>
+            {!isLocked && (
+              <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                 <span>Scheduled for</span>
                 <TimeBadge className="font-medium" time={repoLockDate!} />
               </div>
-              {!isLocked && !hasReachedLockTime && (
-                <div
-                  role="timer"
-                  aria-label={`Repository lockdown countdown: ${formatRepoLockCountdown(remainingMs)}`}
-                  className="flex flex-wrap items-center gap-1.5"
-                >
-                  <span className="mr-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                    Locks in
-                  </span>
-                  {Object.entries(countdownParts).map(([label, value]) => (
-                    <Badge
-                      key={label}
-                      variant="secondary"
-                      aria-label={`${label}: ${value}`}
-                      className="flex min-w-13 flex-col gap-0.5 px-2 py-1 font-normal tabular-nums"
-                    >
-                      <span className="font-mono text-base font-bold leading-none">
-                        {value}
-                      </span>
-                      <span className="text-[9px] leading-none tracking-wide text-muted-foreground uppercase">
-                        {label}
-                      </span>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </AlertDescription>
+            )}
           </div>
         </div>
-      </Alert>
-    </div>
+
+        <div className="flex items-center gap-3 sm:border-l sm:pl-5">
+          {!isLocked && !hasReachedLockTime ? (
+            <>
+              <span className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
+                Locks in
+              </span>
+              <BannerCountdown remainingMs={remainingMs} />
+            </>
+          ) : (
+            <span className="inline-flex items-center gap-2 rounded-full bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive">
+              <span className="size-1.5 rounded-full bg-current" />
+              {isLocked ? 'Locked' : 'Pending lock'}
+            </span>
+          )}
+        </div>
+      </div>
+    </aside>
   )
 }
