@@ -1,11 +1,10 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { LucideGithub, LucideLinkedin } from 'lucide-react'
 import Image from '@/components/app-image'
 import Link from '@/components/app-link'
 import { title } from '@/components/primitives'
-import { CoreLogoWhite } from '@/components/social'
+import { CoreLogoWhite, GithubIcon, LinkedinIcon } from '@/components/social'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -267,9 +266,9 @@ export default function AboutPageClient() {
                         aria-label={`${m.name} profile link`}
                       >
                         {m.linkType === 'github' ? (
-                          <LucideGithub />
+                          <GithubIcon />
                         ) : (
-                          <LucideLinkedin />
+                          <LinkedinIcon />
                         )}
                       </a>
                     </div>
