@@ -6,13 +6,15 @@ import {
   useLocation,
   useNavigate,
 } from '@tanstack/react-router'
-import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Search } from 'lucide-react'
 import { useState } from 'react'
 import { getTeamsForEventTable } from '@/app/actions/team'
 import { LocationTags } from '@/components/team'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
   Table,
   TableBody,
@@ -80,12 +82,26 @@ function TeamsRoute() {
       location.pathname === `/events/${id}/teams/`,
   })
   const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState('')
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300).trim()
   const [sortColumn, setSortColumn] = useState<SortColumn>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const teamsQuery = useQuery({
-    queryKey: ['event', id, 'teams', sortColumn, sortDirection],
+    queryKey: [
+      'event',
+      id,
+      'teams',
+      debouncedSearchQuery,
+      sortColumn,
+      sortDirection,
+    ],
     queryFn: () =>
-      getTeamsForEventTable(id, undefined, sortColumn, sortDirection),
+      getTeamsForEventTable(
+        id,
+        debouncedSearchQuery || undefined,
+        sortColumn,
+        sortDirection,
+      ),
     placeholderData: (previousData) => previousData,
   })
 
@@ -122,8 +138,19 @@ function TeamsRoute() {
   return (
     <main className="container mx-auto max-w-7xl px-4 py-8">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Teams</CardTitle>
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              aria-label="Search teams by name"
+              className="pl-9"
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search teams by name..."
+              type="search"
+              value={searchQuery}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -162,7 +189,9 @@ function TeamsRoute() {
                     colSpan={3}
                     className="text-center text-muted-foreground"
                   >
-                    No teams found
+                    {debouncedSearchQuery
+                      ? 'No teams match your search.'
+                      : 'No teams found'}
                   </TableCell>
                 </TableRow>
               ) : (
