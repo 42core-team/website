@@ -1,7 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router'
-import { canUserCreateEvent, getEvents, getMyEvents } from '@/app/actions/event'
-import EventsTabs from '@/app/events/EventsTabs'
+import {
+  canUserCreateEvent,
+  getEvents,
+  getEventsOverview,
+} from '@/app/actions/event'
+import EventsView from '@/app/events/EventsView'
 import Link from '@/components/app-link'
 import { title } from '@/components/primitives'
 import { Spinner } from '@/components/ui/spinner'
@@ -16,15 +20,18 @@ function EventsRoute() {
     select: (location) =>
       location.pathname === '/events' || location.pathname === '/events/',
   })
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
+  const isLoggedIn = Boolean(session?.user.id)
   const eventsQuery = useQuery({
-    queryKey: ['events', 'all'],
-    queryFn: getEvents,
-  })
-  const myEventsQuery = useQuery({
-    queryKey: ['events', 'my'],
-    queryFn: getMyEvents,
-    enabled: Boolean(session?.user.id),
+    queryKey: ['events', isLoggedIn ? 'overview' : 'all'],
+    queryFn: async () => {
+      if (isLoggedIn) {
+        return getEventsOverview()
+      }
+
+      return { allEvents: await getEvents(), myEvents: [] }
+    },
+    enabled: status !== 'loading',
   })
   const canCreateQuery = useQuery({
     queryKey: ['events', 'can-create'],
@@ -52,8 +59,6 @@ function EventsRoute() {
     )
   }
 
-  const myEvents = myEventsQuery.data ?? []
-
   return (
     <main className="container mx-auto min-h-screen px-4 py-8">
       <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
@@ -70,10 +75,10 @@ function EventsRoute() {
         )}
       </div>
       <div className="mt-8">
-        <EventsTabs
-          myEvents={myEvents}
-          allEvents={eventsQuery.data}
-          isLoggedIn={Boolean(session?.user.id)}
+        <EventsView
+          myEvents={eventsQuery.data.myEvents}
+          allEvents={eventsQuery.data.allEvents}
+          isLoggedIn={isLoggedIn}
         />
       </div>
     </main>

@@ -72,6 +72,15 @@ export async function getEvents(): Promise<Event[]> {
   return (await axiosInstance.get('event')).data as Event[]
 }
 
+export interface EventsOverview {
+  allEvents: Event[]
+  myEvents: Event[]
+}
+
+export async function getEventsOverview(): Promise<EventsOverview> {
+  return (await axiosInstance.get<EventsOverview>('event/overview')).data
+}
+
 export async function getTeamsCountForEvent(eventId: string): Promise<number> {
   return (await axiosInstance.get(`event/${eventId}/teamsCount`)).data
 }

@@ -41,6 +41,12 @@ export class EventController {
     return this.eventService.getEventsForUser(userId);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get("overview")
+  async getEventsOverview(@UserId() userId: string) {
+    return this.eventService.getEventsOverviewForUser(userId);
+  }
+
   @Get()
   getAllEvents() {
     return this.eventService.getAllEvents();
@@ -91,7 +97,7 @@ export class EventController {
     @UserId() userId: string,
     @Body() createEventDto: CreateEventDto,
   ) {
-    if (!await this.userService.canCreateEvent(userId))
+    if (!(await this.userService.canCreateEvent(userId)))
       throw new UnauthorizedException(
         "You are not authorized to create events.",
       );

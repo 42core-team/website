@@ -124,6 +124,18 @@ export class EventService {
     return events;
   }
 
+  async getEventsOverviewForUser(userId: string): Promise<{
+    allEvents: EventEntity[];
+    myEvents: EventEntity[];
+  }> {
+    const [allEvents, myEvents] = await Promise.all([
+      this.getAllEvents(),
+      this.getEventsForUser(userId),
+    ]);
+
+    return { allEvents, myEvents };
+  }
+
   async getEventById(
     id: string,
     relations: FindOptionsRelations<EventEntity> = {},

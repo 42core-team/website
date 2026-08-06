@@ -99,6 +99,7 @@ function MyTeamRoute() {
       setNewTeamName('')
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: myTeamQueryKey(id) }),
+        queryClient.invalidateQueries({ queryKey: ['events'] }),
         queryClient.invalidateQueries({
           queryKey: ['event', id, 'pending-invites'],
         }),
