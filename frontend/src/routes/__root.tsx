@@ -53,9 +53,13 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ClientProviders>
-        <Navbar />
-        <Outlet />
-        <Footer />
+        <div className="flex min-h-dvh flex-col">
+          <Navbar />
+          <div className="flex-1">
+            <Outlet />
+          </div>
+          <Footer />
+        </div>
       </ClientProviders>
     </QueryClientProvider>
   )
