@@ -21,6 +21,47 @@ import type { TeamEntity } from "./entities/team.entity";
 import { TeamService } from "./team.service";
 
 describe("TeamService.getSearchedTeamsForEvent", () => {
+  it("searches team names without regard to case", async () => {
+    const queryBuilder = {
+      innerJoin: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      getRawAndEntities: jest.fn().mockResolvedValue({
+        entities: [],
+        raw: [],
+      }),
+    };
+    const service = Object.create(TeamService.prototype) as TeamService;
+
+    Reflect.set(service, "teamRepository", {
+      createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+    });
+    Reflect.set(service, "eventService", {
+      isEventAdmin: jest.fn().mockResolvedValue(false),
+    });
+    Reflect.set(service, "matchService", {
+      calculateBuchholzPointsForTeams: jest.fn().mockResolvedValue(new Map()),
+    });
+    jest.spyOn(service, "getLocationTagsForTeams").mockResolvedValue(new Map());
+
+    await service.getSearchedTeamsForEvent(
+      "event-1",
+      "tEaM oNe",
+      undefined,
+      undefined,
+      "user-1",
+    );
+
+    expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+      "team.name ILIKE :searchName",
+      { searchName: "%tEaM oNe%" },
+    );
+  });
+
   it("returns the persisted Buchholz score for the admin reveal view", async () => {
     const team = {
       id: "team-1",
