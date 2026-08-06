@@ -1,6 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 import {
   hasGamblingStarted,
+  requireGamblingEnabled,
   requireGamblingStarted,
   requireGamblingTeam,
 } from "./gambling-access";
@@ -21,6 +22,13 @@ describe("gambling access", () => {
     ).toThrow(
       new BadRequestException("Gambling is available after the event starts."),
     );
+  });
+
+  it("rejects gambling when it is disabled for the event", () => {
+    expect(() => requireGamblingEnabled(false)).toThrow(
+      new BadRequestException("Gambling is disabled for this event."),
+    );
+    expect(() => requireGamblingEnabled(true)).not.toThrow();
   });
 
   it("returns an existing team", () => {

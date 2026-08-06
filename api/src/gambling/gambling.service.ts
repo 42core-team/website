@@ -31,6 +31,7 @@ import {
 } from "./gambling-bet-summary";
 import {
   hasGamblingStarted,
+  requireGamblingEnabled,
   requireGamblingStarted,
   requireGamblingTeam,
 } from "./gambling-access";
@@ -208,6 +209,7 @@ export class GamblingService {
     await this.advanceEvent(eventId);
     await this.dataSource.transaction(async (manager) => {
       await this.lockEvent(manager, eventId);
+      await this.getStartedEvent(manager, eventId);
       const round = await this.getLatestRoundWithManager(manager, eventId);
       if (
         !round ||
@@ -391,9 +393,24 @@ export class GamblingService {
   ): Promise<GamblingAdvanceAction> {
     await this.lockEvent(manager, eventId);
     const event = await manager.findOneOrFail(EventEntity, {
-      select: { id: true, startDate: true },
+      select: { id: true, startDate: true, gamblingEnabled: true },
       where: { id: eventId },
     });
+    if (!event.gamblingEnabled) {
+      const round = await this.getLatestRoundWithManager(manager, eventId);
+      if (
+        round?.phase === GamblingRoundPhase.PLAYING &&
+        round.match?.state === MatchState.FINISHED &&
+        round.match.winner
+      ) {
+        return {
+          type: "settle",
+          matchId: round.match.id,
+          winnerId: round.match.winner.id,
+        };
+      }
+      return null;
+    }
     if (!hasGamblingStarted(event.startDate)) return null;
 
     const round = await this.getOrCreateCurrentRound(manager, eventId);
@@ -612,9 +629,15 @@ export class GamblingService {
 
   private async getStartedEvent(manager: EntityManager, eventId: string) {
     const event = await manager.findOneOrFail(EventEntity, {
-      select: { id: true, startDate: true, maxQueueCredits: true },
+      select: {
+        id: true,
+        startDate: true,
+        maxQueueCredits: true,
+        gamblingEnabled: true,
+      },
       where: { id: eventId },
     });
+    requireGamblingEnabled(event.gamblingEnabled);
     requireGamblingStarted(event.startDate);
     return event;
   }

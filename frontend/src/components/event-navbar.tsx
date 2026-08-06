@@ -74,7 +74,9 @@ export default function EventNavbar({
 
       if (hasStarted && effectiveHasTeam) {
         items.push({ name: 'Match Making', path: `/events/${eventId}/queue` })
-        items.push({ name: 'Gambling', path: `/events/${eventId}/gambling` })
+        if (event.gamblingEnabled) {
+          items.push({ name: 'Gambling', path: `/events/${eventId}/gambling` })
+        }
       }
     }
 
@@ -95,6 +97,7 @@ export default function EventNavbar({
     isEventAdmin,
     hasStarted,
     supportsUnitBuilder,
+    event.gamblingEnabled,
   ])
 
   return (
