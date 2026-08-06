@@ -24,13 +24,13 @@ import {
   PermissionRole,
   UserEventPermissionEntity,
 } from "../user/entities/user.entity";
-import * as CryptoJS from "crypto-js";
 import { ConfigService } from "@nestjs/config";
 import { TeamService } from "../team/team.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { EventVersionDto } from "./dtos/eventVersionDto";
 import { LockKeys } from "../constants";
 import { WhitelistPlatform } from "./entities/event-whitelist.entity";
+import { encryptSecret } from "../common/encryption";
 
 @Injectable()
 export class EventService {
@@ -275,10 +275,10 @@ export class EventService {
     serverConfig: string,
     isPrivate: boolean = false,
   ) {
-    githubOrgSecret = CryptoJS.AES.encrypt(
+    githubOrgSecret = encryptSecret(
       githubOrgSecret,
       this.configService.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
-    ).toString();
+    );
 
     return this.eventRepository.save({
       name,
@@ -534,10 +534,10 @@ export class EventService {
     }
 
     if (settings.githubOrgSecret) {
-      update.githubOrgSecret = CryptoJS.AES.encrypt(
+      update.githubOrgSecret = encryptSecret(
         settings.githubOrgSecret,
         this.configService.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
-      ).toString();
+      );
     }
 
     const numberFields = [
