@@ -464,6 +464,7 @@ export class EventService {
     settings: {
       canCreateTeam?: boolean;
       processQueue?: boolean;
+      gamblingEnabled?: boolean;
       maxQueueCredits?: number;
       queueCreditIntervalMinutes?: number;
       isPrivate?: boolean;
@@ -493,6 +494,7 @@ export class EventService {
     const booleanFields = [
       "canCreateTeam",
       "processQueue",
+      "gamblingEnabled",
       "isPrivate",
     ] as const;
     for (const field of booleanFields) {

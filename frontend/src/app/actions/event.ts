@@ -19,6 +19,7 @@ export interface Event {
   canCreateTeam: boolean
   lockedAt: string | null
   processQueue: boolean
+  gamblingEnabled: boolean
   maxQueueCredits: number
   queueCreditIntervalMinutes: number
   monorepoUrl?: string
@@ -141,6 +142,7 @@ export async function updateEventSettings(
   settings: {
     canCreateTeam?: boolean
     processQueue?: boolean
+    gamblingEnabled?: boolean
     maxQueueCredits?: number
     queueCreditIntervalMinutes?: number
     isPrivate?: boolean
