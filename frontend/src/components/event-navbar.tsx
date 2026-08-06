@@ -20,6 +20,7 @@ import {
   navigationMenuTriggerStyle,
 } from '@/components/ui/navigation-menu'
 import { cn } from '@/lib/utils'
+import { readComponentsConfig } from '@/components/unit-builder/config'
 
 interface EventNavbarProps {
   eventId: string
@@ -46,6 +47,7 @@ export default function EventNavbar({
     enabled: isUserRegistered,
   })
   const effectiveHasTeam = myTeam === undefined ? hasTeam : Boolean(myTeam)
+  const supportsUnitBuilder = readComponentsConfig(event.gameConfig) !== null
 
   useEffect(() => {
     if (hasStarted) return undefined
@@ -63,7 +65,7 @@ export default function EventNavbar({
     if (isUserRegistered) {
       items.push({ name: 'My Team', path: `/events/${eventId}/my-team` })
 
-      if (hasStarted) {
+      if (hasStarted && supportsUnitBuilder) {
         items.push({
           name: 'Unit Builder',
           path: `/events/${eventId}/unit-builder`,
@@ -86,7 +88,14 @@ export default function EventNavbar({
     }
 
     return items
-  }, [eventId, isUserRegistered, effectiveHasTeam, isEventAdmin, hasStarted])
+  }, [
+    eventId,
+    isUserRegistered,
+    effectiveHasTeam,
+    isEventAdmin,
+    hasStarted,
+    supportsUnitBuilder,
+  ])
 
   return (
     <div className="flex items-center justify-start py-4 pl-12 md:justify-center md:pl-0">
