@@ -1,12 +1,16 @@
 verifyDepsBeforeRun: false
 
+peerDependencyRules:
+  allowedVersions:
+    chokidar: ">=4 <6"
+
 allowBuilds:
-  '@nestjs/core': set this to true or false
-  '@scarf/scarf': true
-  '@swc/core': true
+  "@nestjs/core": set this to true or false
+  "@scarf/scarf": true
+  "@swc/core": true
   unrs-resolver: true
 onlyBuiltDependencies:
-  - '@nestjs/core'
-  - '@scarf/scarf'
-  - '@swc/core'
+  - "@nestjs/core"
+  - "@scarf/scarf"
+  - "@swc/core"
   - unrs-resolver

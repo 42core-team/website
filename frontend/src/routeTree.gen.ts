@@ -9,62 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WikiRouteImport } from './routes/wiki'
-import { Route as RushRouteImport } from './routes/rush'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as ImpressumRouteImport } from './routes/impressum'
-import { Route as EventsRouteImport } from './routes/events'
-import { Route as DatenschutzRouteImport } from './routes/datenschutz'
-import { Route as ChangelogRouteImport } from './routes/changelog'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as WikiSplatRouteImport } from './routes/wiki.$'
-import { Route as EventsCreateRouteImport } from './routes/events/create'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as ChangelogRouteImport } from './routes/changelog'
+import { Route as DatenschutzRouteImport } from './routes/datenschutz'
+import { Route as EventsRouteImport } from './routes/events'
+import { Route as ImpressumRouteImport } from './routes/impressum'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as RushRouteImport } from './routes/rush'
+import { Route as WikiRouteImport } from './routes/wiki'
 import { Route as EventsIdRouteImport } from './routes/events/$id'
-import { Route as EventsIdUnitBuilderRouteImport } from './routes/events/$id/unit-builder'
-import { Route as EventsIdTeamsRouteImport } from './routes/events/$id/teams'
-import { Route as EventsIdQueueRouteImport } from './routes/events/$id/queue'
-import { Route as EventsIdMyTeamRouteImport } from './routes/events/$id/my-team'
-import { Route as EventsIdGroupsRouteImport } from './routes/events/$id/groups'
-import { Route as EventsIdGamblingRouteImport } from './routes/events/$id/gambling'
-import { Route as EventsIdDashboardRouteImport } from './routes/events/$id/dashboard'
+import { Route as EventsCreateRouteImport } from './routes/events/create'
+import { Route as WikiSplatRouteImport } from './routes/wiki.$'
 import { Route as EventsIdBracketRouteImport } from './routes/events/$id/bracket'
-import { Route as EventsIdTeamsTeamIdRouteImport } from './routes/events/$id/teams/$teamId'
+import { Route as EventsIdDashboardRouteImport } from './routes/events/$id/dashboard'
+import { Route as EventsIdGamblingRouteImport } from './routes/events/$id/gambling'
+import { Route as EventsIdGroupsRouteImport } from './routes/events/$id/groups'
+import { Route as EventsIdMyTeamRouteImport } from './routes/events/$id/my-team'
+import { Route as EventsIdQueueRouteImport } from './routes/events/$id/queue'
+import { Route as EventsIdTeamsRouteImport } from './routes/events/$id/teams'
+import { Route as EventsIdUnitBuilderRouteImport } from './routes/events/$id/unit-builder'
 import { Route as EventsIdMatchMatchIdRouteImport } from './routes/events/$id/match/$matchId'
+import { Route as EventsIdTeamsTeamIdRouteImport } from './routes/events/$id/teams/$teamId'
 
-const WikiRoute = WikiRouteImport.update({
-  id: '/wiki',
-  path: '/wiki',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RushRoute = RushRouteImport.update({
-  id: '/rush',
-  path: '/rush',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ImpressumRoute = ImpressumRouteImport.update({
-  id: '/impressum',
-  path: '/impressum',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EventsRoute = EventsRouteImport.update({
-  id: '/events',
-  path: '/events',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DatenschutzRoute = DatenschutzRouteImport.update({
-  id: '/datenschutz',
-  path: '/datenschutz',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChangelogRoute = ChangelogRouteImport.update({
-  id: '/changelog',
-  path: '/changelog',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -72,54 +42,59 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WikiSplatRoute = WikiSplatRouteImport.update({
-  id: '/$',
-  path: '/$',
-  getParentRoute: () => WikiRoute,
+const DatenschutzRoute = DatenschutzRouteImport.update({
+  id: '/datenschutz',
+  path: '/datenschutz',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const EventsCreateRoute = EventsCreateRouteImport.update({
-  id: '/create',
-  path: '/create',
-  getParentRoute: () => EventsRoute,
+const EventsRoute = EventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImpressumRoute = ImpressumRouteImport.update({
+  id: '/impressum',
+  path: '/impressum',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RushRoute = RushRouteImport.update({
+  id: '/rush',
+  path: '/rush',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WikiRoute = WikiRouteImport.update({
+  id: '/wiki',
+  path: '/wiki',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const EventsIdRoute = EventsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => EventsRoute,
 } as any)
-const EventsIdUnitBuilderRoute = EventsIdUnitBuilderRouteImport.update({
-  id: '/unit-builder',
-  path: '/unit-builder',
-  getParentRoute: () => EventsIdRoute,
+const EventsCreateRoute = EventsCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => EventsRoute,
 } as any)
-const EventsIdTeamsRoute = EventsIdTeamsRouteImport.update({
-  id: '/teams',
-  path: '/teams',
-  getParentRoute: () => EventsIdRoute,
+const WikiSplatRoute = WikiSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => WikiRoute,
 } as any)
-const EventsIdQueueRoute = EventsIdQueueRouteImport.update({
-  id: '/queue',
-  path: '/queue',
-  getParentRoute: () => EventsIdRoute,
-} as any)
-const EventsIdMyTeamRoute = EventsIdMyTeamRouteImport.update({
-  id: '/my-team',
-  path: '/my-team',
-  getParentRoute: () => EventsIdRoute,
-} as any)
-const EventsIdGroupsRoute = EventsIdGroupsRouteImport.update({
-  id: '/groups',
-  path: '/groups',
-  getParentRoute: () => EventsIdRoute,
-} as any)
-const EventsIdGamblingRoute = EventsIdGamblingRouteImport.update({
-  id: '/gambling',
-  path: '/gambling',
+const EventsIdBracketRoute = EventsIdBracketRouteImport.update({
+  id: '/bracket',
+  path: '/bracket',
   getParentRoute: () => EventsIdRoute,
 } as any)
 const EventsIdDashboardRoute = EventsIdDashboardRouteImport.update({
@@ -127,20 +102,45 @@ const EventsIdDashboardRoute = EventsIdDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => EventsIdRoute,
 } as any)
-const EventsIdBracketRoute = EventsIdBracketRouteImport.update({
-  id: '/bracket',
-  path: '/bracket',
+const EventsIdGamblingRoute = EventsIdGamblingRouteImport.update({
+  id: '/gambling',
+  path: '/gambling',
+  getParentRoute: () => EventsIdRoute,
+} as any)
+const EventsIdGroupsRoute = EventsIdGroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => EventsIdRoute,
+} as any)
+const EventsIdMyTeamRoute = EventsIdMyTeamRouteImport.update({
+  id: '/my-team',
+  path: '/my-team',
+  getParentRoute: () => EventsIdRoute,
+} as any)
+const EventsIdQueueRoute = EventsIdQueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
+  getParentRoute: () => EventsIdRoute,
+} as any)
+const EventsIdTeamsRoute = EventsIdTeamsRouteImport.update({
+  id: '/teams',
+  path: '/teams',
+  getParentRoute: () => EventsIdRoute,
+} as any)
+const EventsIdUnitBuilderRoute = EventsIdUnitBuilderRouteImport.update({
+  id: '/unit-builder',
+  path: '/unit-builder',
+  getParentRoute: () => EventsIdRoute,
+} as any)
+const EventsIdMatchMatchIdRoute = EventsIdMatchMatchIdRouteImport.update({
+  id: '/match/$matchId',
+  path: '/match/$matchId',
   getParentRoute: () => EventsIdRoute,
 } as any)
 const EventsIdTeamsTeamIdRoute = EventsIdTeamsTeamIdRouteImport.update({
   id: '/$teamId',
   path: '/$teamId',
   getParentRoute: () => EventsIdTeamsRoute,
-} as any)
-const EventsIdMatchMatchIdRoute = EventsIdMatchMatchIdRouteImport.update({
-  id: '/match/$matchId',
-  path: '/match/$matchId',
-  getParentRoute: () => EventsIdRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -305,53 +305,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/wiki': {
-      id: '/wiki'
-      path: '/wiki'
-      fullPath: '/wiki'
-      preLoaderRoute: typeof WikiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rush': {
-      id: '/rush'
-      path: '/rush'
-      fullPath: '/rush'
-      preLoaderRoute: typeof RushRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/impressum': {
-      id: '/impressum'
-      path: '/impressum'
-      fullPath: '/impressum'
-      preLoaderRoute: typeof ImpressumRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/events': {
-      id: '/events'
-      path: '/events'
-      fullPath: '/events'
-      preLoaderRoute: typeof EventsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/datenschutz': {
-      id: '/datenschutz'
-      path: '/datenschutz'
-      fullPath: '/datenschutz'
-      preLoaderRoute: typeof DatenschutzRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/changelog': {
-      id: '/changelog'
-      path: '/changelog'
-      fullPath: '/changelog'
-      preLoaderRoute: typeof ChangelogRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -361,26 +319,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/wiki/$': {
-      id: '/wiki/$'
-      path: '/$'
-      fullPath: '/wiki/$'
-      preLoaderRoute: typeof WikiSplatRouteImport
-      parentRoute: typeof WikiRoute
+    '/datenschutz': {
+      id: '/datenschutz'
+      path: '/datenschutz'
+      fullPath: '/datenschutz'
+      preLoaderRoute: typeof DatenschutzRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/events/create': {
-      id: '/events/create'
-      path: '/create'
-      fullPath: '/events/create'
-      preLoaderRoute: typeof EventsCreateRouteImport
-      parentRoute: typeof EventsRoute
+    '/events': {
+      id: '/events'
+      path: '/events'
+      fullPath: '/events'
+      preLoaderRoute: typeof EventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/impressum': {
+      id: '/impressum'
+      path: '/impressum'
+      fullPath: '/impressum'
+      preLoaderRoute: typeof ImpressumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rush': {
+      id: '/rush'
+      path: '/rush'
+      fullPath: '/rush'
+      preLoaderRoute: typeof RushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wiki': {
+      id: '/wiki'
+      path: '/wiki'
+      fullPath: '/wiki'
+      preLoaderRoute: typeof WikiRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/events/$id': {
       id: '/events/$id'
@@ -389,46 +375,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsIdRouteImport
       parentRoute: typeof EventsRoute
     }
-    '/events/$id/unit-builder': {
-      id: '/events/$id/unit-builder'
-      path: '/unit-builder'
-      fullPath: '/events/$id/unit-builder'
-      preLoaderRoute: typeof EventsIdUnitBuilderRouteImport
-      parentRoute: typeof EventsIdRoute
+    '/events/create': {
+      id: '/events/create'
+      path: '/create'
+      fullPath: '/events/create'
+      preLoaderRoute: typeof EventsCreateRouteImport
+      parentRoute: typeof EventsRoute
     }
-    '/events/$id/teams': {
-      id: '/events/$id/teams'
-      path: '/teams'
-      fullPath: '/events/$id/teams'
-      preLoaderRoute: typeof EventsIdTeamsRouteImport
-      parentRoute: typeof EventsIdRoute
+    '/wiki/$': {
+      id: '/wiki/$'
+      path: '/$'
+      fullPath: '/wiki/$'
+      preLoaderRoute: typeof WikiSplatRouteImport
+      parentRoute: typeof WikiRoute
     }
-    '/events/$id/queue': {
-      id: '/events/$id/queue'
-      path: '/queue'
-      fullPath: '/events/$id/queue'
-      preLoaderRoute: typeof EventsIdQueueRouteImport
-      parentRoute: typeof EventsIdRoute
-    }
-    '/events/$id/my-team': {
-      id: '/events/$id/my-team'
-      path: '/my-team'
-      fullPath: '/events/$id/my-team'
-      preLoaderRoute: typeof EventsIdMyTeamRouteImport
-      parentRoute: typeof EventsIdRoute
-    }
-    '/events/$id/groups': {
-      id: '/events/$id/groups'
-      path: '/groups'
-      fullPath: '/events/$id/groups'
-      preLoaderRoute: typeof EventsIdGroupsRouteImport
-      parentRoute: typeof EventsIdRoute
-    }
-    '/events/$id/gambling': {
-      id: '/events/$id/gambling'
-      path: '/gambling'
-      fullPath: '/events/$id/gambling'
-      preLoaderRoute: typeof EventsIdGamblingRouteImport
+    '/events/$id/bracket': {
+      id: '/events/$id/bracket'
+      path: '/bracket'
+      fullPath: '/events/$id/bracket'
+      preLoaderRoute: typeof EventsIdBracketRouteImport
       parentRoute: typeof EventsIdRoute
     }
     '/events/$id/dashboard': {
@@ -438,11 +403,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsIdDashboardRouteImport
       parentRoute: typeof EventsIdRoute
     }
-    '/events/$id/bracket': {
-      id: '/events/$id/bracket'
-      path: '/bracket'
-      fullPath: '/events/$id/bracket'
-      preLoaderRoute: typeof EventsIdBracketRouteImport
+    '/events/$id/gambling': {
+      id: '/events/$id/gambling'
+      path: '/gambling'
+      fullPath: '/events/$id/gambling'
+      preLoaderRoute: typeof EventsIdGamblingRouteImport
+      parentRoute: typeof EventsIdRoute
+    }
+    '/events/$id/groups': {
+      id: '/events/$id/groups'
+      path: '/groups'
+      fullPath: '/events/$id/groups'
+      preLoaderRoute: typeof EventsIdGroupsRouteImport
+      parentRoute: typeof EventsIdRoute
+    }
+    '/events/$id/my-team': {
+      id: '/events/$id/my-team'
+      path: '/my-team'
+      fullPath: '/events/$id/my-team'
+      preLoaderRoute: typeof EventsIdMyTeamRouteImport
+      parentRoute: typeof EventsIdRoute
+    }
+    '/events/$id/queue': {
+      id: '/events/$id/queue'
+      path: '/queue'
+      fullPath: '/events/$id/queue'
+      preLoaderRoute: typeof EventsIdQueueRouteImport
+      parentRoute: typeof EventsIdRoute
+    }
+    '/events/$id/teams': {
+      id: '/events/$id/teams'
+      path: '/teams'
+      fullPath: '/events/$id/teams'
+      preLoaderRoute: typeof EventsIdTeamsRouteImport
+      parentRoute: typeof EventsIdRoute
+    }
+    '/events/$id/unit-builder': {
+      id: '/events/$id/unit-builder'
+      path: '/unit-builder'
+      fullPath: '/events/$id/unit-builder'
+      preLoaderRoute: typeof EventsIdUnitBuilderRouteImport
+      parentRoute: typeof EventsIdRoute
+    }
+    '/events/$id/match/$matchId': {
+      id: '/events/$id/match/$matchId'
+      path: '/match/$matchId'
+      fullPath: '/events/$id/match/$matchId'
+      preLoaderRoute: typeof EventsIdMatchMatchIdRouteImport
       parentRoute: typeof EventsIdRoute
     }
     '/events/$id/teams/$teamId': {
@@ -451,13 +458,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/events/$id/teams/$teamId'
       preLoaderRoute: typeof EventsIdTeamsTeamIdRouteImport
       parentRoute: typeof EventsIdTeamsRoute
-    }
-    '/events/$id/match/$matchId': {
-      id: '/events/$id/match/$matchId'
-      path: '/match/$matchId'
-      fullPath: '/events/$id/match/$matchId'
-      preLoaderRoute: typeof EventsIdMatchMatchIdRouteImport
-      parentRoute: typeof EventsIdRoute
     }
   }
 }

@@ -218,6 +218,14 @@ function EventRoute() {
               {' members'}
             </p>
           </div>
+
+          {event.repoLockDate && (
+            <RepositoryLockdownNotice
+              repoLockDate={event.repoLockDate}
+              lockedAt={event.lockedAt}
+              variant="summary"
+            />
+          )}
         </CardContent>
       </Card>
     </main>,

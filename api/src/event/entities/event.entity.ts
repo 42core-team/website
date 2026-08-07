@@ -59,6 +59,9 @@ export class EventEntity {
   @Column({ default: true })
   processQueue: boolean;
 
+  @Column({ default: true })
+  gamblingEnabled: boolean;
+
   @Column({ default: 5 })
   maxQueueCredits: number;
 

@@ -580,7 +580,7 @@ export class TeamService {
     query.addSelect("COUNT(DISTINCT user.id)", "user_count").groupBy("team.id");
 
     if (searchName) {
-      query.andWhere("team.name LIKE :searchName", {
+      query.andWhere("team.name ILIKE :searchName", {
         searchName: `%${searchName}%`,
       });
     }

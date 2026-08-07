@@ -19,6 +19,7 @@ export interface Event {
   canCreateTeam: boolean
   lockedAt: string | null
   processQueue: boolean
+  gamblingEnabled: boolean
   maxQueueCredits: number
   queueCreditIntervalMinutes: number
   monorepoUrl?: string
@@ -70,6 +71,15 @@ export async function isEventAdmin(eventId: string): Promise<boolean> {
 // Get all events
 export async function getEvents(): Promise<Event[]> {
   return (await axiosInstance.get('event')).data as Event[]
+}
+
+export interface EventsOverview {
+  allEvents: Event[]
+  myEvents: Event[]
+}
+
+export async function getEventsOverview(): Promise<EventsOverview> {
+  return (await axiosInstance.get<EventsOverview>('event/overview')).data
 }
 
 export async function getTeamsCountForEvent(eventId: string): Promise<number> {
@@ -141,6 +151,7 @@ export async function updateEventSettings(
   settings: {
     canCreateTeam?: boolean
     processQueue?: boolean
+    gamblingEnabled?: boolean
     maxQueueCredits?: number
     queueCreditIntervalMinutes?: number
     isPrivate?: boolean

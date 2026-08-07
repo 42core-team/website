@@ -4,8 +4,8 @@ import { UserEntity } from "./entities/user.entity";
 import { ILike, Repository, UpdateResult } from "typeorm";
 import { EventEntity } from "../event/entities/event.entity";
 import { UserInviteSearchResult } from "./dtos/user-search-invite.dto";
-import * as CryptoJS from "crypto-js";
 import { ConfigService } from "@nestjs/config";
+import { encryptSecret } from "../common/encryption";
 
 @Injectable()
 export class UserService {
@@ -24,10 +24,10 @@ export class UserService {
     githubAccessToken: string,
     canCreateEvent?: boolean,
   ): Promise<UserEntity> {
-    const encryptedToken = CryptoJS.AES.encrypt(
+    const encryptedToken = encryptSecret(
       githubAccessToken,
       this.configService.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
-    ).toString();
+    );
 
     const newUser = this.userRepository.create({
       email,
@@ -50,10 +50,10 @@ export class UserService {
     githubId: string,
     githubAccessToken: string,
   ): Promise<UpdateResult> {
-    const encryptedToken = CryptoJS.AES.encrypt(
+    const encryptedToken = encryptSecret(
       githubAccessToken,
       this.configService.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
-    ).toString();
+    );
     return this.userRepository.update(id, {
       email,
       username,
