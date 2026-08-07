@@ -11,6 +11,11 @@ export function requireGamblingStarted(startDate: Date, now = new Date()) {
     );
 }
 
+export function requireGamblingEnabled(gamblingEnabled: boolean) {
+  if (!gamblingEnabled)
+    throw new BadRequestException("Gambling is disabled for this event.");
+}
+
 export function requireGamblingTeam<T>(team: T | null): T {
   if (!team)
     throw new BadRequestException(
