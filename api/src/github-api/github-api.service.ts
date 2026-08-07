@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
 import { getRabbitmqConfig } from "../main";
-import * as CryptoJS from "crypto-js";
+import { decryptSecret } from "../common/encryption";
 
 @Injectable()
 export class GithubApiService {
@@ -15,10 +15,10 @@ export class GithubApiService {
   }
 
   decryptSecret(encryptedSecret: string): string {
-    return CryptoJS.AES.decrypt(
+    return decryptSecret(
       encryptedSecret,
       this.configService.getOrThrow<string>("API_SECRET_ENCRYPTION_KEY"),
-    ).toString(CryptoJS.enc.Utf8);
+    );
   }
 
   async removeWritePermissions(

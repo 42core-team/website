@@ -19,9 +19,9 @@ import { JwtAuthGuard } from "./jwt-auth.guard";
 import { ConfigService } from "@nestjs/config";
 import { UserService } from "../user/user.service";
 import { UserId } from "../guards/UserGuard";
-import * as CryptoJS from "crypto-js";
 import { SocialAccountService } from "../user/social-account.service";
 import { SocialPlatform } from "../user/entities/social-account.entity";
+import { decryptSecret, encryptSecret } from "../common/encryption";
 
 @Controller("auth")
 export class AuthController {
@@ -49,10 +49,10 @@ export class AuthController {
   @Get("/42/getUrl")
   @UseGuards(JwtAuthGuard)
   getFortyTwoAuthUrl(@UserId() userId: string) {
-    const encryptedUserId = CryptoJS.AES.encrypt(
+    const encryptedUserId = encryptSecret(
       userId,
       this.configService.getOrThrow<string>("API_SECRET_ENCRYPTION_KEY"),
-    ).toString();
+    );
 
     const base64EncodedEncryptedUserId =
       Buffer.from(encryptedUserId).toString("base64");
@@ -84,10 +84,10 @@ export class AuthController {
         "base64",
       ).toString("utf-8");
 
-      const userId = CryptoJS.AES.decrypt(
+      const userId = decryptSecret(
         base64DecodedEncryptedUserId,
         this.configService.getOrThrow<string>("API_SECRET_ENCRYPTION_KEY"),
-      ).toString(CryptoJS.enc.Utf8);
+      );
       if (!userId) throw new BadRequestException("Invalid state parameter.");
 
       await this.socialAccountService.upsertSocialAccountForUser({
