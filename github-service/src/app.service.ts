@@ -1,11 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { GitHubApiClient, RepositoryApi, UserApi } from "./githubApi";
-import * as CryptoJS from "crypto-js";
 import { ConfigService } from "@nestjs/config";
 import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
 import { getRabbitmqConfig } from "./main";
 import * as fs from "fs/promises";
 import { RepoUtils } from "./repo.utils";
+import { decryptCryptoJsAes } from "./secret-crypto";
 
 @Injectable()
 export class AppService {
@@ -59,10 +59,10 @@ export class AppService {
 
   decryptSecret(encryptedSecret: string): string {
     try {
-      return CryptoJS.AES.decrypt(
+      return decryptCryptoJsAes(
         encryptedSecret,
         this.configService.getOrThrow<string>("API_SECRET_ENCRYPTION_KEY"),
-      ).toString(CryptoJS.enc.Utf8);
+      );
     } catch (error) {
       this.logger.error("Failed to decrypt secret", error as Error);
       throw error;
