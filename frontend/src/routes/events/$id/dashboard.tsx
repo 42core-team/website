@@ -121,6 +121,7 @@ const SETTINGS_FIELDS = [
   'location',
   'canCreateTeam',
   'processQueue',
+  'gamblingEnabled',
   'maxQueueCredits',
   'queueCreditIntervalMinutes',
   'isPrivate',
@@ -941,7 +942,7 @@ function SettingsTab({
 
           <div className="space-y-4 border-t pt-4">
             <h3 className="text-sm font-semibold">Toggles</h3>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               <SettingSwitch
                 id="canCreateTeam"
                 label="Allow Team Creation"
@@ -956,6 +957,14 @@ function SettingsTab({
                 checked={pendingSettings.processQueue || false}
                 onCheckedChange={(value) =>
                   updatePendingSetting('processQueue', value)
+                }
+              />
+              <SettingSwitch
+                id="gamblingEnabled"
+                label="Enable Gambling"
+                checked={pendingSettings.gamblingEnabled ?? true}
+                onCheckedChange={(value) =>
+                  updatePendingSetting('gamblingEnabled', value)
                 }
               />
               <SettingSwitch
