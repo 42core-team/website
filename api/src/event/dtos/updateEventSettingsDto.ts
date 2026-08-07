@@ -19,6 +19,11 @@ export class UpdateEventSettingsDto {
   @IsBoolean()
   processQueue?: boolean;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  gamblingEnabled?: boolean;
+
   @ApiPropertyOptional({ minimum: 1 })
   @IsOptional()
   @IsInt()

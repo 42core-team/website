@@ -35,6 +35,17 @@ export function WikiLayout({
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const { isBasicNavbarMenuOpen } = useNavbar()
   const sidebarRef = useRef<HTMLElement>(null)
+  const contentRef = useRef<HTMLElement>(null)
+  const pageKey = `${currentVersion}/${currentSlug.join('/')}`
+
+  // The wiki scrolls inside its own container, which persists between client-side
+  // route changes. Reset that container when the page changes; hash-only changes
+  // keep their position so heading navigation can handle them separately.
+  useLayoutEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0
+    }
+  }, [pageKey])
 
   // Save sidebar scroll position on scroll (debounced)
   useEffect(() => {
@@ -285,7 +296,10 @@ export function WikiLayout({
           </div>
         </header>
 
-        <main className="main-wiki-content min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 sm:p-6">
+        <main
+          ref={contentRef}
+          className="main-wiki-content min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 sm:p-6"
+        >
           <div
             className="mx-auto max-w-4xl"
             style={{ viewTransitionName: 'wiki-content' }}
