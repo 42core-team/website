@@ -10,6 +10,7 @@ export function getRouter() {
     routeTree,
     context,
     scrollRestoration: true,
+    scrollToTopSelectors: ['.main-wiki-content'],
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
   })
