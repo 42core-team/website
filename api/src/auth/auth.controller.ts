@@ -153,14 +153,14 @@ export class AuthController {
 
   private setAuthCookie(res: Response, token: string): void {
     const cookieName = this.getAuthCookieName();
-    const cookieDomain = this.getAuthCookieDomain();
     const isDevelopment = this.configService.get("NODE_ENV") === "development";
+
+    this.clearLegacyDomainCookie(res);
 
     res.cookie(cookieName, token, {
       httpOnly: true,
       secure: !isDevelopment,
-      sameSite: isDevelopment ? "lax" : "none",
-      domain: cookieDomain,
+      sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
   }
@@ -171,22 +171,26 @@ export class AuthController {
     res.clearCookie(this.getAuthCookieName(), {
       httpOnly: true,
       secure: !isDevelopment,
-      sameSite: isDevelopment ? "lax" : "none",
-      domain: this.getAuthCookieDomain(),
+      sameSite: "lax",
     });
+    this.clearLegacyDomainCookie(res);
   }
 
   private getAuthCookieName(): string {
     return this.configService.get<string>("AUTH_COOKIE_NAME") || "token";
   }
 
-  private getAuthCookieDomain(): string {
-    return (
-      this.configService.get<string>("AUTH_COOKIE_DOMAIN") ||
-      (this.configService.get("NODE_ENV") === "development"
-        ? "localhost"
-        : ".coregame.sh")
-    );
+  private clearLegacyDomainCookie(res: Response): void {
+    const legacyDomain = this.configService.get<string>("AUTH_COOKIE_DOMAIN");
+    if (!legacyDomain) return;
+
+    const isDevelopment = this.configService.get("NODE_ENV") === "development";
+    res.clearCookie(this.getAuthCookieName(), {
+      httpOnly: true,
+      secure: !isDevelopment,
+      sameSite: "lax",
+      domain: legacyDomain,
+    });
   }
 
   private getOAuthSuccessRedirectUrl(): string {
