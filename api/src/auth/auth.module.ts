@@ -5,14 +5,19 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { JwtStrategy } from "./jwt.strategy";
-import { GithubOAuthStrategy } from "./github.strategy";
+import { GithubOAuthClient } from "./github.strategy";
 import { FortyTwoOAuthStrategy } from "./fortytwo.strategy";
 import { UserModule } from "../user/user.module";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { OAuthStateEntity } from "./entities/oauth-state.entity";
+import { OAuthStateService } from "./oauth-state.service";
+import { FortyTwoOAuthStateGuard } from "./fortytwo-oauth-state.guard";
 
 @Module({
   imports: [
     ConfigModule,
     UserModule,
+    TypeOrmModule.forFeature([OAuthStateEntity]),
     PassportModule.register({ session: false }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -28,8 +33,10 @@ import { UserModule } from "../user/user.module";
   providers: [
     AuthService,
     JwtStrategy,
-    GithubOAuthStrategy,
+    GithubOAuthClient,
     FortyTwoOAuthStrategy,
+    OAuthStateService,
+    FortyTwoOAuthStateGuard,
   ],
   controllers: [AuthController],
   exports: [PassportModule, JwtModule],
