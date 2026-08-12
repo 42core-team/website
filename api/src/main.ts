@@ -12,6 +12,7 @@ import {
 } from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
 import cookieParser from "cookie-parser";
+import { createCsrfProtection } from "./common/csrf-protection";
 
 export const getRabbitmqConfig = (
   configService: ConfigService,
@@ -44,6 +45,12 @@ async function bootstrap() {
     new TypeormExceptionFilter(),
   );
   app.use(cookieParser());
+  app.use(
+    createCsrfProtection(
+      configService.getOrThrow<string>("CORS_ORIGIN"),
+      configService.get<string>("AUTH_COOKIE_NAME") || "token",
+    ),
+  );
   app.enableCors({
     origin: configService.getOrThrow<string>("CORS_ORIGIN"),
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
