@@ -1,9 +1,53 @@
-import { createDecipheriv, createHash } from "node:crypto";
+import { createDecipheriv, createHash, scryptSync } from "node:crypto";
 
+const V2_FORMAT_PREFIX = "v2:";
+const V2_SALT_LENGTH = 16;
+const V2_IV_LENGTH = 12;
+const V2_AUTH_TAG_LENGTH = 16;
 const OPENSSL_SALTED_PREFIX = Buffer.from("Salted__", "ascii");
-const SALT_LENGTH = 8;
+const LEGACY_SALT_LENGTH = 8;
 const AES_256_KEY_LENGTH = 32;
 const AES_BLOCK_LENGTH = 16;
+
+/**
+ * Decrypts secrets written by the API, including the current authenticated
+ * AES-256-GCM format and legacy CryptoJS values.
+ */
+export function decryptSecret(encryptedValue: string, password: string): string {
+  if (!encryptedValue.startsWith(V2_FORMAT_PREFIX)) {
+    return decryptCryptoJsAes(encryptedValue, password);
+  }
+
+  const payload = Buffer.from(
+    encryptedValue.slice(V2_FORMAT_PREFIX.length),
+    "base64",
+  );
+  const minimumLength =
+    V2_SALT_LENGTH + V2_IV_LENGTH + V2_AUTH_TAG_LENGTH;
+
+  if (payload.length < minimumLength) {
+    throw new Error("Invalid v2 encrypted secret");
+  }
+
+  const salt = payload.subarray(0, V2_SALT_LENGTH);
+  const iv = payload.subarray(
+    V2_SALT_LENGTH,
+    V2_SALT_LENGTH + V2_IV_LENGTH,
+  );
+  const authTag = payload.subarray(
+    V2_SALT_LENGTH + V2_IV_LENGTH,
+    minimumLength,
+  );
+  const ciphertext = payload.subarray(minimumLength);
+  const key = scryptSync(password, salt, AES_256_KEY_LENGTH);
+  const decipher = createDecipheriv("aes-256-gcm", key, iv);
+  decipher.setAuthTag(authTag);
+
+  return Buffer.concat([
+    decipher.update(ciphertext),
+    decipher.final(),
+  ]).toString("utf8");
+}
 
 function deriveOpenSslKeyAndIv(password: string, salt: Buffer) {
   const passwordBytes = Buffer.from(password, "utf8");
@@ -39,7 +83,7 @@ export function decryptCryptoJsAes(
   password: string,
 ): string {
   const payload = Buffer.from(encryptedValue, "base64");
-  const headerLength = OPENSSL_SALTED_PREFIX.length + SALT_LENGTH;
+  const headerLength = OPENSSL_SALTED_PREFIX.length + LEGACY_SALT_LENGTH;
   const ciphertext = payload.subarray(headerLength);
 
   if (
