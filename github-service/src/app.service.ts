@@ -5,7 +5,7 @@ import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
 import { getRabbitmqConfig } from "./main";
 import * as fs from "fs/promises";
 import { RepoUtils } from "./repo.utils";
-import { decryptCryptoJsAes } from "./secret-crypto";
+import { decryptSecret } from "./secret-crypto";
 
 @Injectable()
 export class AppService {
@@ -59,7 +59,7 @@ export class AppService {
 
   decryptSecret(encryptedSecret: string): string {
     try {
-      return decryptCryptoJsAes(
+      return decryptSecret(
         encryptedSecret,
         this.configService.getOrThrow<string>("API_SECRET_ENCRYPTION_KEY"),
       );
