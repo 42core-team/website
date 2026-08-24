@@ -338,13 +338,20 @@ export class AppService {
           gitRepo,
           basePath,
         );
-      } catch (e) {
+      } catch (error) {
         this.logger.error(
           `Failed to clone mono repo and push to team repo for repo ${name}`,
-          e as Error,
+          error as Error,
         );
-        await this.deleteRepository(name, githubOrg, secret);
-        // Error is handled by the outer catch block; do not re-throw here.
+        try {
+          await this.deleteRepository(name, githubOrg, encryptedSecret);
+        } catch (cleanupError) {
+          this.logger.error(
+            `Failed to clean up repository ${name} after setup failed`,
+            cleanupError as Error,
+          );
+        }
+        throw error;
       } finally {
         await fs.rm(tempFolderPath, { recursive: true, force: true });
         this.logger.log(`Removed temp folder ${tempFolderPath}`);
