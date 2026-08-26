@@ -2,6 +2,7 @@ import { useForm } from '@tanstack/react-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useStore } from '@tanstack/react-store'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { isAxiosError } from 'axios'
 import { format } from 'date-fns'
 import { ArrowLeft, CalendarIcon } from 'lucide-react'
 import type { FormEvent, ReactNode } from 'react'
@@ -169,6 +170,13 @@ function combineImageAndTag(image: string, tag: string | undefined) {
 }
 
 function getErrorMessage(error: unknown, fallback = 'Failed to create event.') {
+  if (isAxiosError(error)) {
+    const message = (
+      error.response?.data as { message?: string | string[] } | undefined
+    )?.message
+    if (Array.isArray(message)) return message.join(', ')
+    if (message) return message
+  }
   if (error instanceof Error && error.message) return error.message
   return fallback
 }

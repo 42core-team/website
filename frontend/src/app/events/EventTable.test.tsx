@@ -32,6 +32,7 @@ function event(index: number): Event {
     maxQueueCredits: 5,
     queueCreditIntervalMinutes: 15,
     isPrivate: false,
+    gamblingEnabled: false,
   }
 }
 

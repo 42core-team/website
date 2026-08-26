@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EventEntity } from "./entities/event.entity";
+import { assertImageExists } from "./image.util";
 import { EventStarterTemplateEntity } from "./entities/event-starter-template.entity";
 import { EventWhitelistEntity } from "./entities/event-whitelist.entity";
 import {
@@ -254,7 +255,7 @@ export class EventService {
     return event.serverConfig;
   }
 
-  createEvent(
+  async createEvent(
     userId: string,
     name: string,
     description: string,
@@ -275,6 +276,14 @@ export class EventService {
     serverConfig: string,
     isPrivate: boolean = false,
   ) {
+    await Promise.all(
+      [
+        gameServerDockerImage,
+        myCoreBotDockerImage,
+        visualizerDockerImage,
+      ].map(assertImageExists),
+    );
+
     githubOrgSecret = encryptSecret(
       githubOrgSecret,
       this.configService.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
@@ -337,6 +346,8 @@ export class EventService {
     basePath: string,
     myCoreBotDockerImage: string,
   ) {
+    await assertImageExists(myCoreBotDockerImage);
+
     const event = await this.getEventById(eventId);
     const template = this.templateRepository.create({
       name,
@@ -358,8 +369,10 @@ export class EventService {
 
     if (data.name) template.name = data.name;
     if (data.basePath) template.basePath = data.basePath;
-    if (data.myCoreBotDockerImage)
+    if (data.myCoreBotDockerImage) {
+      await assertImageExists(data.myCoreBotDockerImage);
       template.myCoreBotDockerImage = data.myCoreBotDockerImage;
+    }
 
     return this.templateRepository.save(template);
   }
@@ -534,6 +547,14 @@ export class EventService {
         update[field] = settings[field];
       }
     }
+
+    await Promise.all(
+      [
+        update.gameServerDockerImage,
+        update.myCoreBotDockerImage,
+        update.visualizerDockerImage,
+      ].map(assertImageExists),
+    );
 
     if (settings.githubOrgSecret) {
       update.githubOrgSecret = encryptSecret(
