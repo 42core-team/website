@@ -46,6 +46,7 @@ export async function assertImageExists(ref?: string): Promise<void> {
   }
 
   if (!res.ok) {
+    if (res.status === 401 || res.status === 403) return;
     throw new BadRequestException(
       `Image not found in registry: ${ref} (registry returned ${res.status})`,
     );
