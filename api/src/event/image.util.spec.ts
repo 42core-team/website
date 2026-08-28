@@ -2,6 +2,7 @@ import { assertImageExists } from "./image.util";
 
 describe("assertImageExists", () => {
   const fetchMock = jest.fn();
+  const originalFetch = global.fetch;
 
   beforeEach(() => {
     fetchMock.mockReset();
@@ -13,6 +14,10 @@ describe("assertImageExists", () => {
           : { ok: true, status: 200 },
       ),
     );
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
   });
 
   it("accepts a tag the registry knows", async () => {
