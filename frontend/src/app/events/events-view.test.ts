@@ -24,6 +24,7 @@ function event(id: string, startDate: string, endDate: string): Event {
     maxQueueCredits: 5,
     queueCreditIntervalMinutes: 15,
     isPrivate: false,
+    gamblingEnabled: false,
   }
 }
 
