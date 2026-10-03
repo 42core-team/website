@@ -1,5 +1,5 @@
 import * as fs from "fs/promises";
-import simpleGit, { SimpleGit } from "simple-git";
+import { simpleGit, SimpleGit } from "simple-git";
 import * as path from "node:path";
 import * as YAML from "yaml";
 import { Logger } from "@nestjs/common";
