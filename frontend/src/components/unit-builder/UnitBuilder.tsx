@@ -309,7 +309,7 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
   const tileRefs = useRef(new Map<string, HTMLDivElement>())
   const libraryTileRefs = useRef(new Map<string, HTMLDivElement>())
   const [unitName, setUnitName] = useState('')
-  const [copied, setCopied] = useState(false)
+  const [copiedLanguage, setCopiedLanguage] = useState<'c' | 'go' | null>(null)
   const [selected, setSelected] = useState<SelectedComponent[]>([])
   const [highlights, setHighlights] = useState<Highlights>({
     properties: {},
@@ -346,6 +346,10 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
     ...componentIds.map(cString),
     'NULL',
   ].join(', ')});`
+  const goCreationCall = `b.CreateUnit(${[
+    JSON.stringify(unitName.trim()),
+    ...componentIds.map((id) => JSON.stringify(id)),
+  ].join(', ')})`
 
   useEffect(() => {
     const hasHighlights =
@@ -725,14 +729,16 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
     } else returnToAssembly(drag)
   }
 
-  async function copyCall() {
-    await navigator.clipboard.writeText(creationCall)
-    setCopied(true)
+  async function copyCall(language: 'c' | 'go') {
+    await navigator.clipboard.writeText(
+      language === 'c' ? creationCall : goCreationCall,
+    )
+    setCopiedLanguage(language)
 
     if (copiedTimeout.current) window.clearTimeout(copiedTimeout.current)
 
     copiedTimeout.current = window.setTimeout(() => {
-      setCopied(false)
+      setCopiedLanguage(null)
     }, 1400)
   }
 
@@ -1046,16 +1052,34 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
                 have enough gems 💎 👀.
               </p>
             </div>
-            <div className="rounded-lg border bg-card shadow-sm">
-              <div className="flex items-center justify-end border-b p-3">
-                <Button type="button" size="sm" onClick={copyCall}>
-                  {copied ? <Check /> : <Copy />}
-                  {copied ? 'Copied' : 'Copy'}
-                </Button>
-              </div>
-              <pre className="overflow-x-auto p-3 text-sm">
-                <code className="font-mono">{creationCall}</code>
-              </pre>
+            <div className="space-y-3">
+              {(
+                [
+                  { language: 'c', label: 'C', code: creationCall },
+                  { language: 'go', label: 'Go', code: goCreationCall },
+                ] as const
+              ).map(({ language, label, code }) => (
+                <div
+                  key={language}
+                  className="rounded-lg border bg-card shadow-sm"
+                >
+                  <div className="flex items-center justify-between border-b p-3">
+                    <span className="text-sm font-semibold">{label}</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => copyCall(language)}
+                      aria-label={`Copy ${label} code`}
+                    >
+                      {copiedLanguage === language ? <Check /> : <Copy />}
+                      {copiedLanguage === language ? 'Copied' : 'Copy'}
+                    </Button>
+                  </div>
+                  <pre className="overflow-x-auto p-3 text-sm">
+                    <code className="font-mono">{code}</code>
+                  </pre>
+                </div>
+              ))}
             </div>
           </section>
 
