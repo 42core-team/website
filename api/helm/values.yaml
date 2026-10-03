@@ -51,6 +51,7 @@ affinity: {}
 env:
   NODE_ENV: production
   PORT: "80"
+  RABBITMQ_QUEUE_PREFIX: ""
   # Database configuration
   DB_TYPE: postgres
   DB_PORT: "5432"

@@ -2,6 +2,8 @@
 image:
   tag: "latest"
 
-# Secrets and vars are supplied via GitHub env during deploy
+env:
+  RABBITMQ_QUEUE_PREFIX: "dev_"
 
+# Secrets and vars are supplied via GitHub env during deploy
 
