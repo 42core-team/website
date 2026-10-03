@@ -31,7 +31,7 @@ func main() {
 	}
 
 	// Declare queues
-	err = q.DeclareQueues()
+	err = q.DeclareQueues(cfg.QueueName("game_queue"), cfg.QueueName("game_results"))
 	if err != nil {
 		logger.Fatalln("Failed to declare RabbitMQ queues:", err)
 	}
