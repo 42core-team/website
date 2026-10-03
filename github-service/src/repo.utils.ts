@@ -343,45 +343,41 @@ export class RepoUtils {
     repoRoot: string,
     teamName: string,
   ): Promise<void> {
-    const mainPaths = ["main.c", "main.go"].map((fileName) =>
-      path.join(repoRoot, "my-core-bot", "src", fileName),
-    );
-
-    for (const filePath of mainPaths) {
-      try {
-        const exists = await fs
-          .stat(filePath)
-          .then(() => true)
-          .catch(() => false);
-        if (!exists) {
-          this.logger.log(
-            `No ${path.basename(filePath)} found at ${filePath}, skipping team name update`,
-          );
-          continue;
-        }
-
-        const originalContent = await fs.readFile(filePath, "utf-8");
-        const updatedContent = originalContent.replaceAll(
-          "My CORE Bot",
-          teamName,
+    try {
+      const mainCPath = path.join(repoRoot, "my-core-bot", "src", "main.c");
+      const exists = await fs
+        .stat(mainCPath)
+        .then(() => true)
+        .catch(() => false);
+      if (!exists) {
+        this.logger.log(
+          `No src/main.c found at ${mainCPath}, skipping team name update`,
         );
+        return;
+      }
 
-        if (updatedContent !== originalContent) {
-          await fs.writeFile(filePath, updatedContent);
-          this.logger.log(
-            `Replaced 'My CORE Bot' with '${teamName}' in ${filePath}`,
-          );
-        } else {
-          this.logger.log(
-            `No occurrence of 'My CORE Bot' found in ${filePath}`,
-          );
-        }
-      } catch (error) {
-        this.logger.error(
-          `Failed to update team name in ${path.basename(filePath)}`,
-          error as Error,
+      const originalContent = await fs.readFile(mainCPath, "utf-8");
+
+      const updatedContent = originalContent.replaceAll(
+        "My CORE Bot",
+        teamName,
+      );
+
+      if (updatedContent !== originalContent) {
+        await fs.writeFile(mainCPath, updatedContent);
+        this.logger.log(
+          `Replaced 'YOUR TEAM NAME HERE' with '${teamName}' in ${mainCPath}`,
+        );
+      } else {
+        this.logger.log(
+          `No occurrence of 'YOUR TEAM NAME HERE' found in ${mainCPath}`,
         );
       }
+    } catch (error) {
+      this.logger.error(
+        `Failed to update team name in src/main.c`,
+        error as Error,
+      );
     }
   }
 
