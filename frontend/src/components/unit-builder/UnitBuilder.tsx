@@ -346,8 +346,8 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
     ...componentIds.map(cString),
     'NULL',
   ].join(', ')});`
-  const goCreationCall = `b.CreateUnit(${[
-    JSON.stringify(unitName.trim()),
+  const goCreationCall = `bot.CreateUnit(${[
+    JSON.stringify(codeUnitName),
     ...componentIds.map((id) => JSON.stringify(id)),
   ].join(', ')})`
 
