@@ -1,10 +1,10 @@
 ## Stage 1: Build
-FROM node:25-alpine AS builder
+FROM node:26.10.0-alpine AS builder
 WORKDIR /app
 
 # Install dependencies
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+RUN npm install -g pnpm@12.8.1 && pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY . .
@@ -14,7 +14,7 @@ RUN pnpm run build
 RUN pnpm prune --prod
 
 ## Stage 2: Production runtime
-FROM node:25-alpine AS runner
+FROM node:26.10.0-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
@@ -24,7 +24,6 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 ENV CI=true
 
-RUN apk update
 RUN apk add --no-cache git
 
 # Set git config for container
