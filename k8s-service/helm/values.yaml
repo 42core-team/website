@@ -45,6 +45,7 @@ autoscaling:
 # Non-sensitive environment variables
 env:
   ADDR: ":9000"
+  RABBITMQ_QUEUE_PREFIX: ""
   NAMESPACE: "coregame"
   S3_ENDPOINT: "https://s3.example"
   S3_REGION: "eu"
