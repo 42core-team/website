@@ -1,5 +1,5 @@
 import * as fs from "fs/promises";
-import simpleGit, { SimpleGit } from "simple-git";
+import { simpleGit, SimpleGit } from "simple-git";
 import * as path from "node:path";
 import * as YAML from "yaml";
 import { Logger } from "@nestjs/common";
@@ -343,40 +343,45 @@ export class RepoUtils {
     repoRoot: string,
     teamName: string,
   ): Promise<void> {
-    try {
-      const mainCPath = path.join(repoRoot, "my-core-bot", "src", "main.c");
-      const exists = await fs
-        .stat(mainCPath)
-        .then(() => true)
-        .catch(() => false);
-      if (!exists) {
-        this.logger.log(
-          `No src/main.c found at ${mainCPath}, skipping team name update`,
+    const files = [
+      path.join(repoRoot, "my-core-bot", "src", "main.c"),
+      path.join(repoRoot, "my-core-bot", "main.go"),
+    ];
+    let foundFile = false;
+
+    for (const filePath of files) {
+      try {
+        const originalContent = await fs.readFile(filePath, "utf-8");
+        foundFile = true;
+        const updatedContent = originalContent.replaceAll(
+          "My CORE Bot",
+          teamName,
         );
-        return;
+
+        if (updatedContent !== originalContent) {
+          await fs.writeFile(filePath, updatedContent);
+          this.logger.log(
+            `Replaced 'My CORE Bot' with '${teamName}' in ${filePath}`,
+          );
+        } else {
+          this.logger.log(
+            `No occurrence of 'My CORE Bot' found in ${filePath}`,
+          );
+        }
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code !== "ENOENT") {
+          this.logger.error(
+            `Failed to update team name in ${filePath}`,
+            error as Error,
+          );
+        }
       }
+    }
 
-      const originalContent = await fs.readFile(mainCPath, "utf-8");
-
-      const updatedContent = originalContent.replaceAll(
-        "My CORE Bot",
-        teamName,
-      );
-
-      if (updatedContent !== originalContent) {
-        await fs.writeFile(mainCPath, updatedContent);
-        this.logger.log(
-          `Replaced 'YOUR TEAM NAME HERE' with '${teamName}' in ${mainCPath}`,
-        );
-      } else {
-        this.logger.log(
-          `No occurrence of 'YOUR TEAM NAME HERE' found in ${mainCPath}`,
-        );
-      }
-    } catch (error) {
-      this.logger.error(
-        `Failed to update team name in src/main.c`,
-        error as Error,
+    if (!foundFile) {
+      this.logger.warn(
+        `No bot main file found in ${repoRoot}; checked ${files.join(", ")}`,
       );
     }
   }
