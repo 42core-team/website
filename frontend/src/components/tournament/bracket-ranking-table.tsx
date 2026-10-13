@@ -23,6 +23,7 @@ interface BracketRankingTableProps {
   matches: Match[]
   eventId: string
   isAdminView?: boolean
+  selectedTag?: string | null
 }
 
 export function BracketRankingTable({
@@ -30,6 +31,7 @@ export function BracketRankingTable({
   matches,
   eventId,
   isAdminView = false,
+  selectedTag = null,
 }: BracketRankingTableProps) {
   const router = useRouter()
 
@@ -130,6 +132,10 @@ export function BracketRankingTable({
       return b.buchholzPoints - a.buchholzPoints
     })
 
+  const visibleTeams = selectedTag
+    ? sortedTeams.filter((team) => team.tags.includes(selectedTag))
+    : sortedTeams
+
   return (
     <div className="w-full overflow-hidden rounded-xl border bg-card/50 shadow-sm">
       <Table>
@@ -142,17 +148,19 @@ export function BracketRankingTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedTeams.length === 0 ? (
+          {visibleTeams.length === 0 ? (
             <TableRow>
               <TableCell
                 colSpan={4}
                 className="h-24 text-center text-muted-foreground"
               >
-                Matches will appear here once the bracket starts.
+                {selectedTag
+                  ? 'No ranked teams match this tag.'
+                  : 'Matches will appear here once the bracket starts.'}
               </TableCell>
             </TableRow>
           ) : (
-            sortedTeams.map((team) => {
+            visibleTeams.map((team) => {
               const rank = team.actualRank ?? 0
               const isWinner = rank === 1
               const isFinalist = rank === 2

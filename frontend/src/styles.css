@@ -92,11 +92,48 @@ mark {
   scroll-margin-top: 90px;
 }
 
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
 @theme {
   --font-display: 'Original', sans-serif;
   --navbar-height: 4rem;
   --sidebar-width: 16rem;
   /* 256px – w-64 */
+
+  --animate-border-spin: border-spin 20s linear infinite;
+  --animate-gradient-drift: gradient-drift 14s linear infinite;
+  --animate-glow-pulse: glow-pulse 4s ease-in-out infinite;
+
+  /* Rotates the conic gradient's angle so colors travel evenly around the border */
+  @keyframes border-spin {
+    to {
+      --border-angle: 360deg;
+    }
+  }
+
+  /* Background is 200% wide and repeats every 100%, so the loop is seamless */
+  @keyframes gradient-drift {
+    from {
+      background-position: 0% 50%;
+    }
+    to {
+      background-position: 100% 50%;
+    }
+  }
+
+  @keyframes glow-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 12px 0 rgb(236 72 153 / 0.35);
+    }
+    50% {
+      box-shadow: 0 0 28px 4px rgb(236 72 153 / 0.6);
+    }
+  }
 }
 
 @theme inline {
