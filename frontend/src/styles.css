@@ -98,9 +98,9 @@ mark {
   --sidebar-width: 16rem;
   /* 256px – w-64 */
 
-  --animate-border-spin: border-spin 4s linear infinite;
-  --animate-shimmer: shimmer 3.5s ease-in-out infinite;
-  --animate-glow-pulse: glow-pulse 2.4s ease-in-out infinite;
+  --animate-border-spin: border-spin 12s linear infinite;
+  --animate-gradient-drift: gradient-drift 14s linear infinite;
+  --animate-glow-pulse: glow-pulse 4s ease-in-out infinite;
 
   @keyframes border-spin {
     to {
@@ -108,23 +108,23 @@ mark {
     }
   }
 
-  @keyframes shimmer {
-    0% {
-      transform: translateX(-100%);
+  /* Background is 200% wide and repeats every 100%, so the loop is seamless */
+  @keyframes gradient-drift {
+    from {
+      background-position: 0% 50%;
     }
-    60%,
-    100% {
-      transform: translateX(250%);
+    to {
+      background-position: 100% 50%;
     }
   }
 
   @keyframes glow-pulse {
     0%,
     100% {
-      box-shadow: 0 0 0 0 rgb(236 72 153 / 0.55);
+      box-shadow: 0 0 12px 0 rgb(236 72 153 / 0.35);
     }
     50% {
-      box-shadow: 0 0 0 10px rgb(236 72 153 / 0);
+      box-shadow: 0 0 28px 4px rgb(236 72 153 / 0.6);
     }
   }
 }

@@ -15,7 +15,7 @@ export default function WorldChampionshipBanner() {
       initial={prefersReducedMotion ? false : { opacity: 0, y: 24, scale: 0.94 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 160, damping: 16, delay: 0.15 }}
-      className="relative w-full max-w-4xl overflow-hidden rounded-2xl p-[3px] shadow-[0_0_60px_-12px_rgb(236_72_153/0.6)]"
+      className="relative w-full overflow-hidden rounded-2xl p-[3px] shadow-[0_0_60px_-12px_rgb(236_72_153/0.6)]"
     >
       {/* Spinning rainbow border */}
       <div
@@ -24,26 +24,21 @@ export default function WorldChampionshipBanner() {
       />
 
       <div className="relative overflow-hidden rounded-[calc(1rem-3px)] bg-background">
-        {/* Colorful wash */}
+        {/* Drifting color wash; the gradient repeats at 50% so the loop never jumps */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-br from-amber-500/15 via-pink-500/15 to-violet-500/20"
-        />
-        {/* Shimmer sweep */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent motion-safe:animate-shimmer"
+          className="absolute inset-0 bg-[linear-gradient(90deg,rgb(245_158_11/0.16),rgb(236_72_153/0.16),rgb(139_92_246/0.2),rgb(245_158_11/0.16),rgb(236_72_153/0.16),rgb(139_92_246/0.2),rgb(245_158_11/0.16))] bg-[length:200%_100%] motion-safe:animate-gradient-drift"
         />
 
-        <div className="relative flex flex-col items-center gap-5 p-5 text-center sm:p-7 md:flex-row md:text-left">
+        <div className="relative flex flex-col items-center gap-5 p-5 text-center sm:p-8 md:flex-row md:text-left">
           <motion.div
             aria-hidden="true"
             animate={
               prefersReducedMotion
                 ? undefined
-                : { rotate: [0, -10, 10, -6, 6, 0], scale: [1, 1.1, 1] }
+                : { y: [0, -5, 0], rotate: [-4, 4, -4] }
             }
-            transition={{ duration: 1.2, repeat: Infinity, repeatDelay: 2.5 }}
+            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
             className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-pink-500 to-violet-600 text-white shadow-lg shadow-pink-500/40"
           >
             <Trophy className="size-8" />

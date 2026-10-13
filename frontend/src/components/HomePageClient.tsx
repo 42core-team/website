@@ -104,7 +104,7 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
             className="h-auto w-40 text-foreground sm:w-52 md:w-64"
             aria-label="CORE Game"
           />
-          <div className="mt-6 mb-2 flex w-full justify-center sm:mt-8">
+          <div className="mt-10 mb-6 flex w-full justify-center sm:mt-14 sm:mb-10">
             <WorldChampionshipBanner />
           </div>
           <h1 className="mt-5 max-w-3xl text-2xl font-bold leading-tight text-balance sm:text-3xl md:text-4xl">
