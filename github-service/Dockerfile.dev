@@ -1,5 +1,5 @@
-FROM node:25-alpine
-RUN npm install -g pnpm
+FROM node:26.10.0-alpine
+RUN npm install -g pnpm@12.8.1
 RUN apk add --no-cache git
 
 WORKDIR /app

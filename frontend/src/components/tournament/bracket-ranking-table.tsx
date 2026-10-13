@@ -22,18 +22,27 @@ interface BracketRankingTableProps {
   teams: Team[]
   matches: Match[]
   eventId: string
+  isAdminView?: boolean
+  selectedTag?: string | null
 }
 
 export function BracketRankingTable({
   teams,
   matches,
   eventId,
+  isAdminView = false,
+  selectedTag = null,
 }: BracketRankingTableProps) {
   const router = useRouter()
 
-  const revealedMatches = useMemo(
-    () => matches.filter((match) => match.isRevealed),
-    [matches],
+  const visibleMatches = useMemo(
+    () =>
+      matches.filter(
+        (match) =>
+          match.isRevealed ||
+          (isAdminView && match.state === MatchState.FINISHED),
+      ),
+    [matches, isAdminView],
   )
   const maxRound = useMemo(
     () => Math.max(...matches.map((match) => match.round), 1),
@@ -53,7 +62,7 @@ export function BracketRankingTable({
 
     for (const team of teams) {
       const teamId = team.id
-      const teamMatches = revealedMatches.filter((match) =>
+      const teamMatches = visibleMatches.filter((match) =>
         match.teams.some((matchTeam) => matchTeam.id === teamId),
       )
       const highestRound = Math.max(
@@ -96,7 +105,7 @@ export function BracketRankingTable({
     }
 
     return map
-  }, [revealedMatches, maxRound, teams])
+  }, [visibleMatches, maxRound, teams])
 
   const swissRankMap = new Map(
     [...teams]
@@ -123,6 +132,10 @@ export function BracketRankingTable({
       return b.buchholzPoints - a.buchholzPoints
     })
 
+  const visibleTeams = selectedTag
+    ? sortedTeams.filter((team) => team.tags.includes(selectedTag))
+    : sortedTeams
+
   return (
     <div className="w-full overflow-hidden rounded-xl border bg-card/50 shadow-sm">
       <Table>
@@ -135,17 +148,19 @@ export function BracketRankingTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedTeams.length === 0 ? (
+          {visibleTeams.length === 0 ? (
             <TableRow>
               <TableCell
                 colSpan={4}
                 className="h-24 text-center text-muted-foreground"
               >
-                Matches will appear here once the bracket starts.
+                {selectedTag
+                  ? 'No ranked teams match this tag.'
+                  : 'Matches will appear here once the bracket starts.'}
               </TableCell>
             </TableRow>
           ) : (
-            sortedTeams.map((team) => {
+            visibleTeams.map((team) => {
               const rank = team.actualRank ?? 0
               const isWinner = rank === 1
               const isFinalist = rank === 2

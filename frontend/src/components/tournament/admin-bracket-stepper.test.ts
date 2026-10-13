@@ -27,7 +27,7 @@ function createMatch(
 }
 
 describe('admin bracket reveal order', () => {
-  it('orders matches round by round and places the third-place match last', () => {
+  it('orders matches round by round and reveals third place before the final', () => {
     const matches = [
       createMatch({ id: 'final', round: 2 }),
       createMatch({
@@ -42,8 +42,8 @@ describe('admin bracket reveal order', () => {
     expect(orderMatchesForReveal(matches).map((match) => match.id)).toEqual([
       'semi-1',
       'semi-2',
-      'final',
       'third',
+      'final',
     ])
   })
 

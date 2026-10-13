@@ -15,16 +15,18 @@ This service handles GitHub operations including:
 
 ### Prerequisites
 
+Use Node.js 26 (Docker and CI use 26.10.0) and pnpm 12.8.1:
+
 Install pnpm:
 
 ```bash
-corepack enable && corepack prepare pnpm@latest --activate
+corepack enable && corepack prepare pnpm@12.8.1 --activate
 ```
 
 or
 
 ```bash
-brew install pnpm
+npm install -g pnpm@12.8.1
 ```
 
 ### Installation & Setup
@@ -32,7 +34,7 @@ brew install pnpm
 1. Install dependencies:
 
    ```bash
-   pnpm install
+   pnpm install --frozen-lockfile
    ```
 
 2. Set up environment variables:
@@ -53,6 +55,28 @@ brew install pnpm
 
 * **Build:** `pnpm build`
 * **Start:** `pnpm start:prod`
+
+### Dependency compatibility
+
+TypeScript stays on `~6.0.3`: TypeScript 7.0.2 does not expose the JavaScript
+compiler API required by Nest CLI and ts-jest, and is outside the supported
+range of typescript-eslint. Revisit this pin when those tools support TypeScript 7.
+Jest scripts enable VM modules to load the ESM packages introduced in NestJS 12.
+
+### Production Docker image
+
+From the repository root:
+
+```bash
+docker build --pull --platform linux/amd64 -t github-service:local ./github-service
+docker run --rm --platform linux/amd64 --env-file github-service/.env github-service:local
+```
+
+Set `RABBITMQ_URL` to a broker reachable from the container. Successful startup
+logs `Nest microservice successfully started` and creates a consumer on the
+`github_service` quorum queue. This is a RabbitMQ worker and has no HTTP port.
+Local dependencies, build output, and environment files are excluded from the
+Docker build context.
 
 ## Environment Variables
 

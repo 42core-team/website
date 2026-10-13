@@ -189,6 +189,7 @@ function MyTeamRoute() {
             )}
           />
           <TeamMatchHistory
+            teamId={myTeamQuery.data.id}
             eventId={id}
             matches={matchesQuery.data ?? []}
             isLoading={matchesQuery.isPending}

@@ -1,10 +1,11 @@
 import type { Team, TeamMember } from '@/app/actions/team'
 
 import { DialogTrigger } from '@radix-ui/react-dialog'
-import { Plus } from 'lucide-react'
+import { ExternalLink, Plus } from 'lucide-react'
 import { useParams } from '@/lib/router-hooks'
 import { useState } from 'react'
 
+import { GithubIcon } from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -80,14 +81,26 @@ export function TeamInfoSection({
             <p className="text-sm text-muted-foreground">Repository</p>
             <div className="font-medium">
               {myTeam.repo && githubOrg ? (
-                <a
-                  href={getRepoUrl()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="mt-1 max-w-full"
                 >
-                  {myTeam.repo}
-                </a>
+                  <a
+                    href={getRepoUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Open ${myTeam.repo} repository on GitHub`}
+                  >
+                    <GithubIcon aria-hidden="true" />
+                    <span className="truncate">{myTeam.repo}</span>
+                    <ExternalLink
+                      className="text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                  </a>
+                </Button>
               ) : myTeam.repo ? (
                 <span>{myTeam.repo}</span>
               ) : isRepoPending ? (
