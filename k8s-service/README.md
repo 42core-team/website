@@ -15,7 +15,7 @@ This Go service handles:
 
 ### Prerequisites
 
-Install Go 1.25+:
+Install Go 1.27+:
 
 ```bash
 brew install go
