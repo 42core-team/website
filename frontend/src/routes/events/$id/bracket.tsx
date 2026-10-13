@@ -20,14 +20,22 @@ function BracketRoute() {
   const searchParams = useSearchParams()
   const isAdminReveal = searchParams.get('adminReveal') === 'true'
 
+  const eventAdminQuery = useQuery({
+    queryKey: ['event', id, 'is-event-admin'],
+    queryFn: () => isEventAdmin(id),
+  })
+  // Reveal controls need finished match data even with Admin View switched off.
+  const fetchAdminMatches = eventAdminQuery.data === true
+
   const matchesQuery = useQuery({
     queryKey: [
       'event',
       id,
       'tournament-matches',
-      { adminReveal: isAdminReveal },
+      { adminReveal: fetchAdminMatches },
     ],
-    queryFn: () => getTournamentMatches(id, isAdminReveal),
+    queryFn: () => getTournamentMatches(id, fetchAdminMatches),
+    enabled: !eventAdminQuery.isPending,
   })
 
   const teamCountQuery = useQuery({
@@ -47,11 +55,6 @@ function BracketRoute() {
       },
     ],
     queryFn: () => getTeamsForEventTable(id, undefined, 'score', 'desc', false),
-  })
-
-  const eventAdminQuery = useQuery({
-    queryKey: ['event', id, 'is-event-admin'],
-    queryFn: () => isEventAdmin(id),
   })
 
   if (

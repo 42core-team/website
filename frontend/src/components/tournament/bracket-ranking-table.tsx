@@ -22,18 +22,25 @@ interface BracketRankingTableProps {
   teams: Team[]
   matches: Match[]
   eventId: string
+  isAdminView?: boolean
 }
 
 export function BracketRankingTable({
   teams,
   matches,
   eventId,
+  isAdminView = false,
 }: BracketRankingTableProps) {
   const router = useRouter()
 
-  const revealedMatches = useMemo(
-    () => matches.filter((match) => match.isRevealed),
-    [matches],
+  const visibleMatches = useMemo(
+    () =>
+      matches.filter(
+        (match) =>
+          match.isRevealed ||
+          (isAdminView && match.state === MatchState.FINISHED),
+      ),
+    [matches, isAdminView],
   )
   const maxRound = useMemo(
     () => Math.max(...matches.map((match) => match.round), 1),
@@ -53,7 +60,7 @@ export function BracketRankingTable({
 
     for (const team of teams) {
       const teamId = team.id
-      const teamMatches = revealedMatches.filter((match) =>
+      const teamMatches = visibleMatches.filter((match) =>
         match.teams.some((matchTeam) => matchTeam.id === teamId),
       )
       const highestRound = Math.max(
@@ -96,7 +103,7 @@ export function BracketRankingTable({
     }
 
     return map
-  }, [revealedMatches, maxRound, teams])
+  }, [visibleMatches, maxRound, teams])
 
   const swissRankMap = new Map(
     [...teams]
