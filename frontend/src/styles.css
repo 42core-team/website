@@ -97,6 +97,36 @@ mark {
   --navbar-height: 4rem;
   --sidebar-width: 16rem;
   /* 256px – w-64 */
+
+  --animate-border-spin: border-spin 4s linear infinite;
+  --animate-shimmer: shimmer 3.5s ease-in-out infinite;
+  --animate-glow-pulse: glow-pulse 2.4s ease-in-out infinite;
+
+  @keyframes border-spin {
+    to {
+      transform: translate(-50%, -50%) rotate(360deg);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    60%,
+    100% {
+      transform: translateX(250%);
+    }
+  }
+
+  @keyframes glow-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgb(236 72 153 / 0.55);
+    }
+    50% {
+      box-shadow: 0 0 0 10px rgb(236 72 153 / 0);
+    }
+  }
 }
 
 @theme inline {
