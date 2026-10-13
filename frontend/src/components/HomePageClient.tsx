@@ -9,6 +9,7 @@ import { CoreLogoWhite } from '@/components/social'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { getVisualizerUrl } from '@/lib/env'
+import WorldChampionshipBanner from '@/components/world-championship-banner'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
@@ -99,6 +100,9 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
     <div className="overflow-hidden">
       <section className="px-4 pb-16 pt-6 sm:pb-20 sm:pt-10 lg:pb-28">
         <div className="mx-auto flex max-w-6xl flex-col items-center text-center">
+          <div className="mb-8 flex w-full justify-center sm:mb-10">
+            <WorldChampionshipBanner />
+          </div>
           <CoreLogoWhite
             className="h-auto w-40 text-foreground sm:w-52 md:w-64"
             aria-label="CORE Game"
