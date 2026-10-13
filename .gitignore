@@ -2,6 +2,7 @@
 .vscode
 .DS_Store
 node_modules/
+.pnpm-store/
 api.gen.go
 .env
 .claude
