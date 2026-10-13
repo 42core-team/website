@@ -1,8 +1,9 @@
-import { ExternalLink, Trophy } from 'lucide-react'
+import { ExternalLink, Trophy, UserPlus } from 'lucide-react'
 import Link from '@/components/app-link'
 import { Button } from '@/components/ui/button'
 
 const EVENTBRITE_URL = 'https://link.coregame.sh/core-global-eventbrite'
+const EVENT_URL = '/events/ca841f27-eb2d-438c-a46f-d2f6e3004ccc'
 
 export default function WorldChampionshipBanner() {
   return (
@@ -24,17 +25,33 @@ export default function WorldChampionshipBanner() {
               The CORE Game World Championship is coming!
             </p>
             <p className="text-xs text-muted-foreground sm:text-sm">
-              Want to compete on-site? Register for the onsite event on
-              Eventbrite.
+              Register for the event to compete online or on-site. Joining us
+              on-site? Also grab your ticket on Eventbrite.
             </p>
           </div>
         </div>
-        <Button asChild className="w-full shrink-0 font-semibold sm:w-auto">
-          <Link href={EVENTBRITE_URL} target="_blank" rel="noopener noreferrer">
-            Register now
-            <ExternalLink aria-hidden="true" />
-          </Link>
-        </Button>
+        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
+          <Button asChild className="w-full font-semibold sm:w-auto">
+            <Link href={EVENT_URL}>
+              <UserPlus aria-hidden="true" />
+              Register for event
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="w-full font-semibold sm:w-auto"
+          >
+            <Link
+              href={EVENTBRITE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Onsite tickets
+              <ExternalLink aria-hidden="true" />
+            </Link>
+          </Button>
+        </div>
       </div>
     </aside>
   )
