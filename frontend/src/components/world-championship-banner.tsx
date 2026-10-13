@@ -20,7 +20,7 @@ export default function WorldChampionshipBanner() {
       {/* Spinning rainbow border */}
       <div
         aria-hidden="true"
-        className="absolute left-1/2 top-1/2 aspect-square w-[200%] -translate-x-1/2 -translate-y-1/2 bg-[conic-gradient(from_0deg,#f59e0b,#ec4899,#8b5cf6,#06b6d4,#22c55e,#f59e0b)] motion-safe:animate-border-spin"
+        className="absolute inset-0 bg-[conic-gradient(from_var(--border-angle),#f59e0b,#ec4899,#8b5cf6,#06b6d4,#22c55e,#f59e0b)] motion-safe:animate-border-spin"
       />
 
       <div className="relative overflow-hidden rounded-[calc(1rem-3px)] bg-background">
@@ -68,7 +68,7 @@ export default function WorldChampionshipBanner() {
               className="group min-h-11 w-full border-0 bg-gradient-to-r from-pink-500 to-violet-600 font-bold text-white hover:from-pink-600 hover:to-violet-700 motion-safe:animate-glow-pulse sm:w-auto"
             >
               <Link href={EVENT_URL}>
-                Register now
+                Register your team
                 <ArrowRight
                   aria-hidden="true"
                   className="transition-transform group-hover:translate-x-1"

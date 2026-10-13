@@ -92,19 +92,26 @@ mark {
   scroll-margin-top: 90px;
 }
 
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
 @theme {
   --font-display: 'Original', sans-serif;
   --navbar-height: 4rem;
   --sidebar-width: 16rem;
   /* 256px – w-64 */
 
-  --animate-border-spin: border-spin 12s linear infinite;
+  --animate-border-spin: border-spin 20s linear infinite;
   --animate-gradient-drift: gradient-drift 14s linear infinite;
   --animate-glow-pulse: glow-pulse 4s ease-in-out infinite;
 
+  /* Rotates the conic gradient's angle so colors travel evenly around the border */
   @keyframes border-spin {
     to {
-      transform: translate(-50%, -50%) rotate(360deg);
+      --border-angle: 360deg;
     }
   }
 
