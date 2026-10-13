@@ -51,7 +51,7 @@ export default function WorldChampionshipBanner() {
             </p>
             <h2
               id="world-championship-heading"
-              className="bg-gradient-to-r from-amber-500 via-pink-500 to-violet-500 bg-clip-text text-xl font-extrabold tracking-tight text-transparent sm:text-2xl md:text-3xl"
+              className="text-xl font-extrabold tracking-tight text-pink-500 sm:text-2xl md:text-3xl"
             >
               CORE Game World Championship
             </h2>
