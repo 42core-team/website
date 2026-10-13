@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { BarChart3, Expand, Network, Rows3 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { MatchState } from '@/app/actions/tournament-model'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import {
   AdminBracketStepper,
@@ -118,19 +119,25 @@ export function BracketTabs({
   const { currentTab, onTabChange } = useTabParam('graph')
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [selectedMatchId, setSelectedMatchId] = useState<string>()
-  const [isRevealDialogOpen, setRevealDialogOpen] = useState(isAdminReveal)
+  const [isRevealDialogOpen, setRevealDialogOpen] = useState(false)
+  const isAdminView = isEventAdmin && isAdminReveal
   const streamVisibleMatches = useMemo(
     () => getStreamVisibleMatches(matches),
     [matches],
   )
+  const visibleMatches = isAdminView ? matches : streamVisibleMatches
   const rankingTags = useMemo(() => {
     const rankedTeamIds = new Set(
-      streamVisibleMatches
-        .filter((match) => match.isRevealed)
+      visibleMatches
+        .filter(
+          (match) =>
+            match.isRevealed ||
+            (isAdminView && match.state === MatchState.FINISHED),
+        )
         .flatMap((match) => match.teams.map((team) => team.id)),
     )
     return getRankingTags(teams.filter((team) => rankedTeamIds.has(team.id)))
-  }, [streamVisibleMatches, teams])
+  }, [visibleMatches, isAdminView, teams])
   const activeTag =
     selectedTag && rankingTags.includes(selectedTag) ? selectedTag : null
   const selectMatch = useCallback((matchId?: string) => {
@@ -138,8 +145,8 @@ export function BracketTabs({
   }, [])
 
   useEffect(() => {
-    setRevealDialogOpen(isAdminReveal)
-  }, [isAdminReveal])
+    if (!isEventAdmin) setRevealDialogOpen(false)
+  }, [isEventAdmin])
 
   return (
     <>
@@ -163,7 +170,7 @@ export function BracketTabs({
                 onSelectedTagChange={setSelectedTag}
               />
             )}
-            {isEventAdmin && isAdminReveal && (
+            {isEventAdmin && (
               <Button onClick={() => setRevealDialogOpen(true)}>
                 <Expand />
                 Open reveal mode
@@ -175,7 +182,7 @@ export function BracketTabs({
         <TabsContent value="graph" className="mt-0">
           <div className="relative h-[60vh] min-h-[400px] overflow-hidden rounded-xl border bg-card/50 text-card-foreground shadow-sm md:h-[75vh] md:min-h-[600px] md:rounded-2xl">
             <BracketGraphView
-              matches={streamVisibleMatches}
+              matches={visibleMatches}
               teamCount={teamCount}
               isEventAdmin={isEventAdmin}
             />
@@ -185,14 +192,15 @@ export function BracketTabs({
         <TabsContent value="ranking" className="mt-0">
           <BracketRankingTable
             teams={teams}
-            matches={streamVisibleMatches}
+            matches={visibleMatches}
             eventId={eventId}
+            isAdminView={isAdminView}
             selectedTag={activeTag}
           />
         </TabsContent>
       </Tabs>
 
-      {isEventAdmin && isAdminReveal && (
+      {isEventAdmin && (
         <Dialog open={isRevealDialogOpen} onOpenChange={setRevealDialogOpen}>
           <DialogContent className="flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[96rem] grid-rows-none flex-col gap-4 overflow-hidden border-primary/20 bg-background/95 p-4 shadow-2xl backdrop-blur-xl duration-500 data-[state=closed]:slide-out-to-bottom-8 data-[state=closed]:zoom-out-90 data-[state=open]:slide-in-from-bottom-8 data-[state=open]:zoom-in-90 sm:p-6">
             <motion.div

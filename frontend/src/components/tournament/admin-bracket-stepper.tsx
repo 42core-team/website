@@ -31,7 +31,7 @@ export function orderMatchesForReveal(matches: Match[]) {
         Boolean(left.match.isPlacementMatch) !==
         Boolean(right.match.isPlacementMatch)
       ) {
-        return left.match.isPlacementMatch ? 1 : -1
+        return left.match.isPlacementMatch ? -1 : 1
       }
 
       const createdAtDifference =

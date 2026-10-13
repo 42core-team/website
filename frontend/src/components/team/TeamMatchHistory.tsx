@@ -4,7 +4,7 @@ import { MatchPhase } from '@/app/actions/tournament-model'
 import { Card, CardHeader } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import MatchesList from "#/components/MatchesList.tsx";
+import MatchesList from '#/components/MatchesList.tsx'
 
 type MatchHistoryTab = {
   label: string
@@ -19,6 +19,7 @@ const matchHistoryTabs: MatchHistoryTab[] = [
 ]
 
 interface TeamMatchHistoryProps {
+  teamId: string
   eventId: string
   matches?: Match[]
   isLoading?: boolean
@@ -27,6 +28,7 @@ interface TeamMatchHistoryProps {
 
 export default function TeamMatchHistory({
   eventId,
+  teamId,
   matches = [],
   isLoading = false,
   isError = false,
@@ -66,6 +68,7 @@ export default function TeamMatchHistory({
             <TabsContent key={tab.value} value={tab.value} className="mt-0">
               <MatchesList
                 eventId={eventId}
+                teamId={teamId}
                 matches={
                   tab.value === 'all'
                     ? matches

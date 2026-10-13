@@ -121,6 +121,7 @@ function TeamRoute() {
       />
       <div className="mt-6">
         <TeamMatchHistory
+          teamId={teamId}
           eventId={id}
           matches={matchesQuery.data ?? []}
           isLoading={matchesQuery.isPending}
