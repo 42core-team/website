@@ -4,6 +4,8 @@ metadata:
   name: seaweedfs-cors-configs
   namespace: core-local
 data:
+  core-team-images-policy.json: |
+    {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"arn:aws:s3:::core-team-images/teams/*"}]}
   core-replays-policy.json: |
     {
       "Version": "2012-10-17",
@@ -94,6 +96,8 @@ spec:
                 --bucket core-replays \
                 --cors-configuration file:///cors/core-replays-cors.json
 
+              aws --endpoint-url "$ENDPOINT" s3 mb s3://core-team-images --region local 2>/dev/null || echo "core-team-images already exists"
+              aws --endpoint-url "$ENDPOINT" s3api put-bucket-policy --bucket core-team-images --policy file:///cors/core-team-images-policy.json
               echo "SeaweedFS init complete."
           volumeMounts:
             - name: cors-configs

@@ -12,13 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  navigationMenuTriggerStyle,
-} from '@/components/ui/navigation-menu'
+import { navigationMenuTriggerStyle } from '@/components/ui/navigation-menu'
 import { cn } from '@/lib/utils'
 import { readComponentsConfig } from '@/components/unit-builder/config'
 
@@ -101,47 +95,54 @@ export default function EventNavbar({
   ])
 
   return (
-    <div className="flex items-center justify-start py-4 pl-12 md:justify-center md:pl-0">
+    <div className="mx-auto flex w-full min-w-0 max-w-7xl items-center px-4 py-4">
       {/* Desktop navigation */}
-      <NavigationMenu className="hidden md:flex">
-        <NavigationMenuList>
+      <nav
+        aria-label="Event navigation"
+        className="hidden min-w-0 w-full md:block"
+      >
+        <ul className="flex flex-wrap items-center justify-center gap-1">
           {navItems.map((item) => {
             const isActive =
               item.name === 'Info'
                 ? pathname === item.path
                 : pathname === item.path || pathname.startsWith(`${item.path}/`)
             return (
-              <NavigationMenuItem key={item.path}>
-                <NavigationMenuLink
-                  asChild
+              <li key={item.path}>
+                <Link
+                  href={item.path}
+                  aria-current={isActive ? 'page' : undefined}
                   className={cn(
                     navigationMenuTriggerStyle(),
+                    'px-3 xl:px-4',
                     isActive && 'bg-accent text-accent-foreground',
                   )}
                 >
-                  <Link href={item.path}>{item.name}</Link>
-                </NavigationMenuLink>
-              </NavigationMenuItem>
+                  {item.name}
+                </Link>
+              </li>
             )
           })}
-        </NavigationMenuList>
-      </NavigationMenu>
+        </ul>
+      </nav>
 
       {/* Mobile navigation dropdown */}
-      <div className="flex px-3 md:hidden">
+      <div className="flex md:hidden">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="w-fit"
-              size="icon"
-              aria-label="Open navigation menu"
+              className="min-h-11"
+              aria-label="Open event navigation menu"
             >
               <Menu className="size-5" />
               Event Menu
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-56">
+          <DropdownMenuContent
+            align="start"
+            className="min-w-56 max-w-[calc(100vw-2rem)]"
+          >
             {navItems.map((item) => {
               const isActive =
                 item.name === 'Info'
@@ -152,9 +153,17 @@ export default function EventNavbar({
                 <DropdownMenuItem
                   key={item.path}
                   asChild
-                  className={cn(isActive && 'bg-accent text-accent-foreground')}
+                  className={cn(
+                    'min-h-11',
+                    isActive && 'bg-accent text-accent-foreground',
+                  )}
                 >
-                  <Link href={item.path}>{item.name}</Link>
+                  <Link
+                    href={item.path}
+                    aria-current={isActive ? 'page' : undefined}
+                  >
+                    {item.name}
+                  </Link>
                 </DropdownMenuItem>
               )
             })}

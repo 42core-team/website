@@ -10,6 +10,9 @@ import { MatchModule } from "../match/match.module";
 import { TeamEventsController } from "./team.events.controller";
 import { MyTeamGuards, TeamNotLockedGuard } from "../guards/TeamGuard";
 
+import { TeamImageController } from "./team-image.controller";
+import { TeamImageService } from "./team-image.service";
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([TeamEntity]),
@@ -18,8 +21,8 @@ import { MyTeamGuards, TeamNotLockedGuard } from "../guards/TeamGuard";
     forwardRef(() => MatchModule),
     UserModule,
   ],
-  controllers: [TeamController, TeamEventsController],
-  providers: [TeamService, MyTeamGuards, TeamNotLockedGuard],
+  controllers: [TeamController, TeamEventsController, TeamImageController],
+  providers: [TeamImageService, TeamService, MyTeamGuards, TeamNotLockedGuard],
   exports: [TeamService],
 })
 export class TeamModule {}

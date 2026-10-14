@@ -278,6 +278,8 @@ export class MatchController {
     return await this.matchService.getMatchById(
       matchId,
       {
+        winner: true,
+        results: { team: true },
         teams: {
           event: true,
         },

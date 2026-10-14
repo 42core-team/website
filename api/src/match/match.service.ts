@@ -33,10 +33,14 @@ const QUEUE_MATCH_SELECT: FindOptionsSelect<MatchEntity> = {
   teams: {
     id: true,
     name: true,
+    picture: true,
+    background: true,
   },
   winner: {
     id: true,
     name: true,
+    picture: true,
+    background: true,
   },
 };
 

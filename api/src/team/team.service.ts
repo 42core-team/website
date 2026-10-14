@@ -549,6 +549,8 @@ export class TeamService {
       query.select([
         "team.id",
         "team.name",
+        "team.picture",
+        "team.background",
         "team.locked",
         "team.score",
         "team.buchholzPoints",
@@ -568,6 +570,8 @@ export class TeamService {
         .select([
           "team.id",
           "team.name",
+          "team.picture",
+          "team.background",
           "team.locked",
           "team.hadBye",
           "team.createdAt",
@@ -816,7 +820,7 @@ export class TeamService {
 
   async getQueueOpponents(eventId: string, teamId: string) {
     const opponents = await this.teamRepository.find({
-      select: { id: true, name: true },
+      select: { id: true, name: true, picture: true },
       where: {
         id: Not(teamId),
         event: { id: eventId },

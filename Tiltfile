@@ -127,7 +127,7 @@ k8s_yaml(helm(
 ))
 k8s_resource('api',
     port_forwards = ['4000:4000'],
-    resource_deps = ['postgres', 'rabbitmq'],
+    resource_deps = ['postgres', 'rabbitmq', 'seaweedfs-init'],
     labels        = ['app'],
 )
 

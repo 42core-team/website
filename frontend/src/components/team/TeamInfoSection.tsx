@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { GithubIcon } from '@/components/icons'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogClose,
@@ -21,7 +21,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import TeamInviteModal from './TeamInviteModal'
 import TeamMemberDisplay from './TeamMemberDisplay'
-import LocationTags from './LocationTags'
+import { TeamProfileHeader } from './TeamProfileHeader'
+import { TeamAppearanceEditor } from './TeamAppearanceEditor'
 
 interface TeamInfoSectionProps {
   myTeam: Team
@@ -65,18 +66,26 @@ export function TeamInfoSection({
   }
 
   return (
-    <Card className="rounded-lg border">
-      <CardHeader>
-        <div className="flex flex-wrap items-center gap-2">
-          <CardTitle className="text-2xl font-bold">
-            Team: {myTeam.name}
-          </CardTitle>
-          <LocationTags tags={myTeam.tags} />
-        </div>
-        {myTeam.locked && <Badge variant="destructive">Locked</Badge>}
-      </CardHeader>
+    <Card className="gap-0 overflow-hidden pt-0">
+      <TeamProfileHeader
+        team={myTeam}
+        showBack={false}
+        cover={
+          <TeamAppearanceEditor
+            team={myTeam}
+            eventId={eventId}
+            kind="background"
+          />
+        }
+        picture={<TeamAppearanceEditor team={myTeam} eventId={eventId} />}
+        badge={
+          myTeam.locked ? (
+            <Badge variant="destructive">Locked</Badge>
+          ) : undefined
+        }
+      />
       <CardContent className="flex flex-col gap-2">
-        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="mb-6">
           <div>
             <p className="text-sm text-muted-foreground">Repository</p>
             <div className="font-medium">
@@ -116,24 +125,12 @@ export function TeamInfoSection({
               )}
             </div>
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Created</p>
-            <p className="font-medium">
-              {new Date(myTeam.createdAt || '').toLocaleDateString()}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Updated</p>
-            <p className="font-medium">
-              {new Date(myTeam.updatedAt || '').toLocaleDateString()}
-            </p>
-          </div>
         </div>
 
         {/* Team Members Section */}
-        <div className="rounded-lg border p-4">
-          <div className="mb-1.5 flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Team Members</h3>
+        <section aria-label="Team members" className="rounded-xl border p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-lg font-semibold">Members</h3>
             {!myTeam.locked && (
               <Button size="sm" onClick={() => setIsOpen(true)}>
                 <Plus className="size-4" />
@@ -156,7 +153,7 @@ export function TeamInfoSection({
               </p>
             )}
           </div>
-        </div>
+        </section>
 
         {/* Team Management Compartment */}
         <div>

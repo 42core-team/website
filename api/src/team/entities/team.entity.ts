@@ -16,6 +16,8 @@ import { MatchEntity } from "src/match/entites/match.entity";
 import { EventStarterTemplateEntity } from "src/event/entities/event-starter-template.entity";
 import { Exclude } from "class-transformer";
 
+import type { TeamImage, TeamBackground } from "../team-image.service";
+
 @Entity("teams")
 export class TeamEntity {
   @PrimaryGeneratedColumn("uuid")
@@ -23,6 +25,12 @@ export class TeamEntity {
 
   @Column()
   name: string;
+
+  @Column({ type: "jsonb", nullable: true })
+  picture: TeamImage | null;
+
+  @Column({ type: "jsonb", nullable: true })
+  background: TeamBackground | null;
 
   @Column({ default: false })
   locked: boolean;

@@ -1,3 +1,4 @@
+import { MatchTeamHeader } from '@/components/match/MatchTeamHeader'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ExternalLink } from 'lucide-react'
@@ -59,7 +60,10 @@ function MatchRoute() {
     enabled: Boolean(matchQuery.data),
   })
 
-  if (matchQuery.isPending || (isEliminationMatch && teamCountQuery.isPending)) {
+  if (
+    matchQuery.isPending ||
+    (isEliminationMatch && teamCountQuery.isPending)
+  ) {
     return (
       <main className="flex min-h-[45vh] items-center justify-center">
         <Spinner />
@@ -79,6 +83,7 @@ function MatchRoute() {
     <main className="container mx-auto max-w-7xl px-4 py-8">
       <h1 className="mb-6 text-3xl font-bold">Match</h1>
       <div className="space-y-6">
+        <MatchTeamHeader match={matchQuery.data} eventId={id} />
         {visualizerUrl && (
           <section className="space-y-3">
             <div className="flex items-center justify-between gap-3">

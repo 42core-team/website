@@ -161,7 +161,7 @@ function MyTeamRoute() {
 
   if (eventQuery.isError) {
     return (
-      <main className="container mx-auto max-w-4xl px-4 py-8">
+      <main className="container mx-auto max-w-5xl px-4 py-8">
         <Alert variant="destructive">
           <AlertTitle>Event unavailable</AlertTitle>
           <AlertDescription>Could not load event details.</AlertDescription>
@@ -171,7 +171,7 @@ function MyTeamRoute() {
   }
 
   return (
-    <main className="container mx-auto max-w-4xl px-4 py-8">
+    <main className="container mx-auto max-w-5xl px-4 py-8">
       {myTeamQuery.data ? (
         <div className="space-y-6">
           <TeamInfoSection
