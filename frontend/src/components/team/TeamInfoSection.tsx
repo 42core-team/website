@@ -1,14 +1,13 @@
 import type { Team, TeamMember } from '@/app/actions/team'
 
 import { DialogTrigger } from '@radix-ui/react-dialog'
-import { ExternalLink, Plus } from 'lucide-react'
+import { ExternalLink, Lock, Plus } from 'lucide-react'
 import { useParams } from '@/lib/router-hooks'
 import { useState } from 'react'
 
 import { GithubIcon } from '@/components/icons'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogClose,
@@ -19,9 +18,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import TeamInviteModal from './TeamInviteModal'
 import TeamMemberDisplay from './TeamMemberDisplay'
-import LocationTags from './LocationTags'
+import { TeamProfileHeader } from './TeamProfileHeader'
+import { TeamAppearanceEditor } from './TeamAppearanceEditor'
 
 interface TeamInfoSectionProps {
   myTeam: Team
@@ -51,6 +52,18 @@ export function TeamInfoSection({
     return `https://github.com/${githubOrg}/${myTeam.repo}`
   }
 
+  const repositoryIcon = myTeam.locked ? (
+    <span
+      className="inline-flex shrink-0 items-center text-destructive"
+      aria-label="Repository locked"
+      title="Repository locked"
+    >
+      <Lock className="size-4" aria-hidden="true" />
+    </span>
+  ) : (
+    <GithubIcon aria-hidden="true" />
+  )
+
   const handleConfirmLeave = async () => {
     setLeaveError(null)
     const success = await onLeaveTeam()
@@ -65,19 +78,22 @@ export function TeamInfoSection({
   }
 
   return (
-    <Card className="rounded-lg border">
-      <CardHeader>
-        <div className="flex flex-wrap items-center gap-2">
-          <CardTitle className="text-2xl font-bold">
-            Team: {myTeam.name}
-          </CardTitle>
-          <LocationTags tags={myTeam.tags} />
-        </div>
-        {myTeam.locked && <Badge variant="destructive">Locked</Badge>}
-      </CardHeader>
+    <Card className="gap-0 overflow-hidden pt-0">
+      <TeamProfileHeader
+        team={myTeam}
+        showBack={false}
+        cover={
+          <TeamAppearanceEditor
+            team={myTeam}
+            eventId={eventId}
+            kind="background"
+          />
+        }
+        picture={<TeamAppearanceEditor team={myTeam} eventId={eventId} />}
+      />
       <CardContent className="flex flex-col gap-2">
-        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
+        <div className="mb-6">
+          <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Repository</p>
             <div className="font-medium">
               {myTeam.repo && githubOrg ? (
@@ -85,24 +101,40 @@ export function TeamInfoSection({
                   asChild
                   variant="outline"
                   size="sm"
-                  className="mt-1 max-w-full"
+                  className={cn(
+                    'max-w-full gap-2 px-3',
+                    myTeam.locked &&
+                      'border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive',
+                  )}
                 >
                   <a
                     href={getRepoUrl()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label={`Open ${myTeam.repo} repository on GitHub`}
+                    aria-label={`Open ${myTeam.repo} repository on GitHub${myTeam.locked ? ' (locked)' : ''}`}
                   >
-                    <GithubIcon aria-hidden="true" />
+                    {repositoryIcon}
                     <span className="truncate">{myTeam.repo}</span>
                     <ExternalLink
-                      className="text-muted-foreground"
+                      className={
+                        myTeam.locked
+                          ? 'text-destructive'
+                          : 'text-muted-foreground'
+                      }
                       aria-hidden="true"
                     />
                   </a>
                 </Button>
               ) : myTeam.repo ? (
-                <span>{myTeam.repo}</span>
+                <span
+                  className={cn(
+                    'inline-flex max-w-full items-center gap-2',
+                    myTeam.locked && 'text-destructive',
+                  )}
+                >
+                  {repositoryIcon}
+                  <span className="truncate">{myTeam.repo}</span>
+                </span>
               ) : isRepoPending ? (
                 <p className="text-sm text-gray-200">
                   Repository will be created when the event starts.
@@ -116,24 +148,12 @@ export function TeamInfoSection({
               )}
             </div>
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Created</p>
-            <p className="font-medium">
-              {new Date(myTeam.createdAt || '').toLocaleDateString()}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Updated</p>
-            <p className="font-medium">
-              {new Date(myTeam.updatedAt || '').toLocaleDateString()}
-            </p>
-          </div>
         </div>
 
         {/* Team Members Section */}
-        <div className="rounded-lg border p-4">
-          <div className="mb-1.5 flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Team Members</h3>
+        <section aria-label="Team members" className="rounded-xl border p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-lg font-semibold">Members</h3>
             {!myTeam.locked && (
               <Button size="sm" onClick={() => setIsOpen(true)}>
                 <Plus className="size-4" />
@@ -156,7 +176,7 @@ export function TeamInfoSection({
               </p>
             )}
           </div>
-        </div>
+        </section>
 
         {/* Team Management Compartment */}
         <div>

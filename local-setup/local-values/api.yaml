@@ -31,8 +31,13 @@ env:
   OAUTH_42_SUCCESS_REDIRECT_URL: http://localhost:3000/profile
   FORTYTWO_CALLBACK_URL: http://localhost:4000/auth/42/callback
   RANDOM_GAME_RESULTS: true
+  MEDIA_S3_ENDPOINT: "http://seaweedfs:8333"
+  MEDIA_S3_BUCKET: core-team-images
+  MEDIA_S3_REGION: local
 
 secrets:
+  MEDIA_S3_ACCESS_KEY_ID: core
+  MEDIA_S3_SECRET_ACCESS_KEY: coresecret
   DB_URL: "postgresql://postgres:postgres@postgres:5432/postgres"
   RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
   JWT_SECRET: local-dev-jwt-secret

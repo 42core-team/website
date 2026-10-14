@@ -63,6 +63,10 @@ env:
   DB_SSL_REQUIRED: "true"
   AUTH_COOKIE_NAME: "token"
   AUTH_COOKIE_DOMAIN: ".coregame.sh"
+  # Dedicated storage for team artwork; supplied by deployment variables.
+  MEDIA_S3_ENDPOINT: ""
+  MEDIA_S3_BUCKET: ""
+  MEDIA_S3_REGION: "eu01"
 
 # These are placeholders.
 # Values are injected at runtime via --set flags in the CI/CD pipeline.
@@ -74,6 +78,8 @@ secrets:
   JWT_SECRET: ""
   CLIENT_GITHUB_SECRET: ""
   FORTYTWO_CLIENT_SECRET: ""
+  MEDIA_S3_ACCESS_KEY_ID: ""
+  MEDIA_S3_SECRET_ACCESS_KEY: ""
 
 ingress:
   enabled: false

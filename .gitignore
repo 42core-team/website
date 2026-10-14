@@ -2,7 +2,16 @@
 .vscode
 .DS_Store
 node_modules/
+
+# Dependency, build, and test caches
 .pnpm-store/
+.cache/
+.turbo/
+.vite/
+*.tsbuildinfo
+coverage/
+.nyc_output/
+
 api.gen.go
 .env
 .claude

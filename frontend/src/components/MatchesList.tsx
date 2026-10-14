@@ -1,3 +1,4 @@
+import { TeamPicture } from '@/components/team/TeamAppearance'
 import type { QueueMatch } from '@/app/actions/tournament-model'
 import { Trophy } from 'lucide-react'
 import Link from '@/components/app-link'
@@ -22,8 +23,9 @@ export default function MatchesList(props: {
   matches: QueueMatch[]
   isInsideCard?: boolean
   teamId?: string
+  showTeamPictures?: boolean
 }) {
-  const { eventId, matches, isInsideCard, teamId } = props
+  const { eventId, matches, isInsideCard, teamId, showTeamPictures = true } = props
 
   if (matches.length === 0) {
     return (
@@ -107,6 +109,7 @@ export default function MatchesList(props: {
                   const isWinner = Boolean(team && match.winner?.id === team.id)
                   const teamName = team && (
                     <>
+                      {showTeamPictures && <TeamPicture team={team} />}
                       <span
                         className={cn(
                           'min-w-0 truncate',

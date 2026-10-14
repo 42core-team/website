@@ -223,6 +223,7 @@ export class GamblingService {
       const team = await manager.findOneOrFail(TeamEntity, {
         where: { id: teamReference.id },
         lock: { mode: "pessimistic_write" },
+        loadEagerRelations: false,
       });
       if (team.id === round.teamOne?.id || team.id === round.teamTwo?.id)
         throw new BadRequestException(

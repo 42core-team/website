@@ -1,3 +1,4 @@
+import { TeamPicture } from '@/components/team/TeamAppearance'
 import type { QueueOpponent } from '@/app/actions/team'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
@@ -27,7 +28,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
-import MatchesList from "#/components/MatchesList.tsx";
+import MatchesList from '#/components/MatchesList.tsx'
 
 export const Route = createFileRoute('/events/$id/queue')({
   component: QueueRoute,
@@ -225,7 +226,10 @@ function QueueRoute() {
                         className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div>
-                          <p className="font-medium">{opponent.name}</p>
+                          <p className="flex items-center gap-2 font-medium">
+                            <TeamPicture team={opponent} />
+                            {opponent.name}
+                          </p>
                         </div>
                         <Button
                           size="sm"

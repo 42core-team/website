@@ -1,3 +1,4 @@
+import { TeamPicture } from '@/components/team/TeamAppearance'
 import type { Team } from '@/app/actions/team'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -211,6 +212,7 @@ function TeamsRoute() {
                   >
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-2">
+                        <TeamPicture team={team} />
                         <span className="font-medium">{team.name}</span>
                         <LocationTags tags={team.tags} />
                       </div>

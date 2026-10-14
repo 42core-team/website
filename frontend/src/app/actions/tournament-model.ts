@@ -1,3 +1,5 @@
+import type { TeamImage, TeamBackground } from './team'
+
 export enum MatchPhase {
   SWISS = 'SWISS',
   ELIMINATION = 'ELIMINATION',
@@ -22,12 +24,16 @@ export interface Match {
   isPlacementMatch?: boolean
   teams: {
     id: string
+    picture?: TeamImage | null
+    background?: TeamBackground | null
     name: string
     score: number
     deletedAt?: string | null
   }[]
   winner?: {
     id: string
+    picture?: TeamImage | null
+    background?: TeamBackground | null
     name: string
     score: number
     deletedAt?: string | null
@@ -35,6 +41,8 @@ export interface Match {
   results: {
     team: {
       id: string
+      picture?: TeamImage | null
+      background?: TeamBackground | null
       name: string
       deletedAt?: string | null
     }
@@ -49,17 +57,23 @@ export interface QueueMatch {
   createdAt: string
   teams: {
     id: string
+    picture?: TeamImage | null
+    background?: TeamBackground | null
     name: string
     deletedAt?: string | null
   }[]
   winner?: {
     id: string
+    picture?: TeamImage | null
+    background?: TeamBackground | null
     name: string
     deletedAt?: string | null
   } | null
   results?: {
     team: {
       id: string
+      picture?: TeamImage | null
+      background?: TeamBackground | null
       name: string
       deletedAt?: string | null
     }

@@ -1,6 +1,19 @@
 import type { QueueMatch } from '@/app/actions/tournament-model'
 import axiosInstance from '@/app/actions/axios'
 
+export interface TeamImage {
+  small: string
+  large: string
+}
+export interface TeamBackground {
+  large: string
+  small?: string // Legacy uploads only.
+}
+export interface TeamAppearance {
+  picture?: TeamImage | null
+  background?: TeamBackground | null
+}
+
 export interface QueueTeamSummary {
   id: string
   name: string
@@ -10,12 +23,12 @@ export interface QueueTeamSummary {
   nextCreditAt: string | null
 }
 
-export interface QueueOpponent {
+export interface QueueOpponent extends TeamAppearance {
   id: string
   name: string
 }
 
-export interface Team {
+export interface Team extends TeamAppearance {
   id: string
   name: string
   repo: string
@@ -44,7 +57,7 @@ export interface TeamMember {
   tags: string[]
 }
 
-export interface TeamApiResponse {
+export interface TeamApiResponse extends TeamAppearance {
   id: string
   name: string
   repo?: string | null
@@ -288,6 +301,8 @@ export function mapTeamResponse(team: TeamApiResponse): Team {
   return {
     id: team.id,
     name: team.name,
+    picture: team.picture,
+    background: team.background,
     repo: team.repo ?? '',
     inQueue: team.inQueue ?? false,
     score: team.score ?? 0,
@@ -300,4 +315,30 @@ export function mapTeamResponse(team: TeamApiResponse): Team {
     credits: team.credits ?? 0,
     tags: team.tags ?? [],
   }
+}
+
+export async function saveTeamImage(
+  eventId: string,
+  kind: 'picture' | 'background',
+  file: File,
+  x: number,
+  y: number,
+  scale = 1,
+) {
+  const data = new FormData()
+  data.append('file', file)
+  data.append('x', String(x))
+  data.append('y', String(y))
+  data.append('scale', String(scale))
+  return (
+    await axiosInstance.put(`team/event/${eventId}/my/images/${kind}`, data, {
+      headers: { 'Content-Type': undefined },
+    })
+  ).data as TeamImage | TeamBackground
+}
+export async function removeTeamImage(
+  eventId: string,
+  kind: 'picture' | 'background',
+) {
+  await axiosInstance.delete(`team/event/${eventId}/my/images/${kind}`)
 }

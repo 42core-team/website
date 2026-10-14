@@ -124,3 +124,59 @@ For issues and questions:
 
 - Check the individual service READMEs for service-specific setup and commands.
 - Open an issue in this repository.
+
+### Team pictures and backgrounds
+
+Team members can upload, crop, replace, and remove artwork in **My Team → edit icon on the team picture or Edit background on the cover**, including while the roster is locked. JPEG, PNG, static WebP, and animated GIF
+uploads are limited to 10 MB and 25 megapixels. The API generates square WebP
+pictures (128/512 px) and a single wide cover (1600×600 px), without enlarging
+small inputs. GIF animation, frame timing, and looping are preserved in WebP output.
+GIFs are limited to 200 frames and 25 million total pixels across all frames,
+with a 15-second processing timeout per output. Original uploads are discarded; metadata is stripped.
+
+`make dev` / Tilt creates the `core-team-images` SeaweedFS bucket, configures
+public reads of generated images, and runs the database migration on API startup.
+The frontend reads images through `http://localhost:9000/core-team-images`.
+Uploads go through the authenticated API; browser-to-S3 upload CORS is unnecessary.
+
+For an API running outside Kubernetes, set:
+
+```dotenv
+MEDIA_S3_ENDPOINT=http://localhost:9000
+MEDIA_S3_BUCKET=core-team-images
+MEDIA_S3_REGION=local
+MEDIA_S3_ACCESS_KEY_ID=core
+MEDIA_S3_SECRET_ACCESS_KEY=coresecret
+```
+
+Set frontend `VITE_MEDIA_URL=http://localhost:9000/core-team-images` (also
+the development fallback), and run the usual API database migrations. For hosted
+environments, configure these variables with your own storage endpoint, bucket,
+credentials, and public image URL. Only generated artwork should have public
+read access; writes, listing, and deletion belong to the API credentials.
+
+Images use immutable UUID keys. Replacements become visible only after all
+required variants are stored. A daily 03:00 server-time cleanup removes unreferenced
+objects older than 24 hours, including failed uploads and deleted-team artwork.
+The `media_uploads` table stores one object key per variant, and `teams`
+references those rows through `pictureSmallUploadId`, `pictureLargeUploadId`,
+and `backgroundLargeUploadId` (`ON DELETE SET NULL`). Keeping `media_uploads`
+owner-agnostic allows future uploads on other entities without modifying the
+media table. The team API still returns `picture` and `background` objects
+assembled from these rows. Replacement rows are committed together in a
+transaction after storage succeeds.
+Generated objects use the shared `images/` prefix. Cleanup is restricted to this
+prefix and preserves all uploads referenced by active teams.
+Processing is limited to two concurrent uploads per API process and one per team.
+
+Production media storage configuration uses GitHub environment variables
+`MEDIA_S3_ENDPOINT`, `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION`, and
+`VITE_MEDIA_URL`, plus GitHub environment secrets
+`MEDIA_S3_ACCESS_KEY_ID` and `MEDIA_S3_SECRET_ACCESS_KEY`.
+`MEDIA_S3_REGION` defaults to `eu01` when unset or empty; local development
+explicitly uses `local`.
+Set these in each deployed environment (`dev` / `prod`). The API deployment passes
+storage settings to Helm. The frontend build embeds `VITE_MEDIA_URL` into
+the static bundle, so changing that URL requires rebuilding the frontend image.
+The bucket must already exist, with public image reads and API upload/list/delete
+permissions. Cleanup uses a PostgreSQL transaction lock shared by API replicas.
