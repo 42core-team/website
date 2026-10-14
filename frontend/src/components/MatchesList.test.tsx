@@ -35,16 +35,20 @@ function teamLinks() {
     .filter((link) => link.getAttribute('href')?.includes('/teams/'))
 }
 
+function teamName(element: Element) {
+  return element.querySelector('span.truncate')?.textContent
+}
+
 describe('match history team positioning', () => {
   it.each([alpha, beta])(
     'puts the viewed team $id first with its own score and winner',
     (team) => {
       render(<MatchesList eventId="event" matches={[match]} teamId={team.id} />)
       const links = teamLinks()
-      expect(links[0].textContent).toBe(team.name)
-      const betaLink = links.find((link) => link.textContent === beta.name)!
+      expect(teamName(links[0])).toBe(team.name)
+      const betaLink = links.find((link) => teamName(link) === beta.name)!
       expect(betaLink.querySelector('[aria-label="Winner"]')).toBeTruthy()
-      expect(betaLink.parentElement?.textContent).toBe('Beta5')
+      expect(betaLink.nextElementSibling?.textContent).toBe('5')
       expect(match.teams).toEqual([alpha, beta])
     },
   )
@@ -53,10 +57,7 @@ describe('match history team positioning', () => {
     'preserves the original order without a matching team (%s)',
     (teamId) => {
       render(<MatchesList eventId="event" matches={[match]} teamId={teamId} />)
-      expect(teamLinks().map((link) => link.textContent)).toEqual([
-        alpha.name,
-        beta.name,
-      ])
+      expect(teamLinks().map(teamName)).toEqual([alpha.name, beta.name])
     },
   )
 
@@ -81,7 +82,7 @@ describe('match history team positioning', () => {
         ]}
       />,
     )
-    expect(teamLinks()[0].textContent).toBe(beta.name)
+    expect(teamName(teamLinks()[0])).toBe(beta.name)
   })
 
   it('handles a missing opponent', () => {
@@ -92,7 +93,7 @@ describe('match history team positioning', () => {
         matches={[{ ...match, teams: [beta] }]}
       />,
     )
-    expect(teamLinks()[0].textContent).toBe(beta.name)
+    expect(teamName(teamLinks()[0])).toBe(beta.name)
     expect(screen.getByText('Unknown')).toBeTruthy()
   })
 
@@ -106,8 +107,8 @@ describe('match history team positioning', () => {
         ]}
       />,
     )
-    expect(teamLinks().map((link) => link.textContent)).toEqual([alpha.name])
-    expect(screen.getByLabelText('Winner').parentElement?.textContent).toBe(
+    expect(teamLinks().map(teamName)).toEqual([alpha.name])
+    expect(teamName(screen.getByLabelText('Winner').parentElement!)).toBe(
       beta.name,
     )
   })

@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN npm install -g pnpm@12.8.1 && pnpm install --frozen-lockfile
+RUN npm install -g pnpm@12.11.2 && pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY . .
