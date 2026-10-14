@@ -7,7 +7,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Cron } from "@nestjs/schedule";
-import { IsNull, Not, Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { randomUUID } from "crypto";
 import {
   S3Client,
@@ -180,22 +180,40 @@ export class TeamImageService {
       }
       await this.teams.manager.transaction(async (manager) => {
         // Serialize replacements across API replicas and publish all variants atomically.
-        await manager.findOneOrFail(TeamEntity, {
+        const team = await manager.findOneOrFail(TeamEntity, {
           where: { id: teamId },
           lock: { mode: "pessimistic_write" },
           loadEagerRelations: false,
         });
-        await manager.delete(MediaUploadEntity, { teamId, kind });
-        await manager.save(
+        const oldIds =
+          kind === "picture"
+            ? [team.pictureSmallUploadId, team.pictureLargeUploadId].filter(
+                (id): id is string => Boolean(id),
+              )
+            : [team.backgroundLargeUploadId].filter((id): id is string =>
+                Boolean(id),
+              );
+        const saved = await manager.save(
           MediaUploadEntity,
           variants.map((variant) => ({
-            teamId,
-            userId: null,
-            kind,
-            variant,
             objectKey: `${prefix}-${variant}.webp`,
           })),
         );
+        await manager.update(
+          TeamEntity,
+          { id: teamId },
+          kind === "picture"
+            ? {
+                pictureSmallUploadId: saved[0].id,
+                pictureLargeUploadId: saved[1].id,
+              }
+            : {
+                backgroundLargeUploadId: saved[0].id,
+              },
+        );
+        if (oldIds.length) {
+          await manager.delete(MediaUploadEntity, { id: In(oldIds) });
+        }
       });
       return image;
     } finally {
@@ -211,12 +229,29 @@ export class TeamImageService {
         "Wait for the current upload to finish.",
       );
     await this.teams.manager.transaction(async (manager) => {
-      await manager.findOneOrFail(TeamEntity, {
+      const team = await manager.findOneOrFail(TeamEntity, {
         where: { id: teamId },
         lock: { mode: "pessimistic_write" },
         loadEagerRelations: false,
       });
-      await manager.delete(MediaUploadEntity, { teamId, kind });
+      const oldIds =
+        kind === "picture"
+          ? [team.pictureSmallUploadId, team.pictureLargeUploadId].filter(
+              (id): id is string => Boolean(id),
+            )
+          : [team.backgroundLargeUploadId].filter((id): id is string =>
+              Boolean(id),
+            );
+      await manager.update(
+        TeamEntity,
+        { id: teamId },
+        kind === "picture"
+          ? { pictureSmallUploadId: null, pictureLargeUploadId: null }
+          : { backgroundLargeUploadId: null },
+      );
+      if (oldIds.length) {
+        await manager.delete(MediaUploadEntity, { id: In(oldIds) });
+      }
     });
   }
 
@@ -235,14 +270,29 @@ export class TeamImageService {
         if (!lock.acquired) return;
         const storage = this.storage();
         client = storage.client;
-        const uploads = await manager.find(MediaUploadEntity, {
-          select: { objectKey: true },
-          where: [
-            { teamId: IsNull() },
-            { teamId: Not(IsNull()), team: { deletedAt: IsNull() } },
-          ],
+        const activeTeams = await manager.find(TeamEntity, {
+          select: {
+            id: true,
+            pictureSmallUpload: { id: true, objectKey: true },
+            pictureLargeUpload: { id: true, objectKey: true },
+            backgroundLargeUpload: { id: true, objectKey: true },
+          },
+          relations: {
+            pictureSmallUpload: true,
+            pictureLargeUpload: true,
+            backgroundLargeUpload: true,
+          },
+          loadEagerRelations: false,
         });
-        const referenced = new Set(uploads.map((upload) => upload.objectKey));
+        const referenced = new Set(
+          activeTeams.flatMap((team) =>
+            [
+              team.pictureSmallUpload?.objectKey,
+              team.pictureLargeUpload?.objectKey,
+              team.backgroundLargeUpload?.objectKey,
+            ].filter((key): key is string => Boolean(key)),
+          ),
+        );
         const cutoff = Date.now() - 24 * 60 * 60 * 1000;
         let token: string | undefined;
         do {

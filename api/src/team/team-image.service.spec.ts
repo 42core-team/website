@@ -74,9 +74,12 @@ describe("team image cleanup locking", () => {
   it("holds the transaction through all pages and deletes only old unreferenced files", async () => {
     const { service, manager, transaction, send, destroy } = setup();
     manager.find.mockResolvedValue([
-      { objectKey: "teams/used" },
-      { objectKey: "teams/used-large" },
-      { objectKey: "images/user-used", teamId: null, userId: "user" },
+      {
+        id: "team-1",
+        pictureSmallUpload: { id: "u1", objectKey: "teams/used" },
+        pictureLargeUpload: { id: "u2", objectKey: "teams/used-large" },
+        backgroundLargeUpload: { id: "u3", objectKey: "images/bg-used" },
+      },
     ]);
     const old = new Date(Date.now() - 48 * 60 * 60 * 1000);
     let finishDelete!: () => void;
@@ -97,7 +100,7 @@ describe("team image cleanup locking", () => {
               Contents: [
                 { Key: "teams/used", LastModified: old },
                 { Key: "teams/new", LastModified: new Date() },
-                { Key: "images/user-used", LastModified: old },
+                { Key: "images/bg-used", LastModified: old },
               ],
             };
       }
@@ -286,9 +289,19 @@ describe("team image publishing", () => {
   });
   function setup() {
     const manager = {
-      findOneOrFail: jest.fn().mockResolvedValue({ id: "team" }),
+      findOneOrFail: jest.fn().mockResolvedValue({
+        id: "team",
+        pictureSmallUploadId: "old-small",
+        pictureLargeUploadId: "old-large",
+        backgroundLargeUploadId: "old-bg",
+      }),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
-      save: jest.fn().mockResolvedValue([]),
+      save: jest
+        .fn()
+        .mockImplementation(async (_entity, rows: Array<{ objectKey: string }>) =>
+          rows.map((row, idx) => ({ id: `new-${idx + 1}`, ...row })),
+        ),
     };
     const transaction = jest.fn(
       async (run: (manager: EntityManager) => Promise<void>) =>
@@ -317,13 +330,17 @@ describe("team image publishing", () => {
     expect(result.large).toMatch(/^images\/[\w-]+\/background-large.webp$/);
     expect(manager.save).toHaveBeenCalledWith(MediaUploadEntity, [
       {
-        teamId: "team",
-        userId: null,
-        kind: "background",
-        variant: "large",
         objectKey: result.large,
       },
     ]);
+    expect(manager.update).toHaveBeenCalledWith(
+      TeamEntity,
+      { id: "team" },
+      { backgroundLargeUploadId: "new-1" },
+    );
+    expect(manager.delete).toHaveBeenCalledWith(MediaUploadEntity, {
+      id: expect.anything(),
+    });
   });
   it("keeps the current database reference if storing the second variant fails", async () => {
     const send = jest
@@ -358,35 +375,33 @@ describe("team image publishing", () => {
       lock: { mode: "pessimistic_write" },
       loadEagerRelations: false,
     });
-    expect(manager.delete).toHaveBeenCalledWith(MediaUploadEntity, {
-      teamId: "team",
-      kind: "picture",
-    });
     expect(manager.save).toHaveBeenCalledWith(MediaUploadEntity, [
       {
-        teamId: "team",
-        userId: null,
-        kind: "picture",
-        variant: "small",
         objectKey: result.small,
       },
       {
-        teamId: "team",
-        userId: null,
-        kind: "picture",
-        variant: "large",
         objectKey: result.large,
       },
     ]);
+    expect(manager.update).toHaveBeenCalledWith(
+      TeamEntity,
+      { id: "team" },
+      {
+        pictureSmallUploadId: "new-1",
+        pictureLargeUploadId: "new-2",
+      },
+    );
     expect(send.mock.invocationCallOrder[1]).toBeLessThan(
       transaction.mock.invocationCallOrder[0],
     );
     expect(result.small).toMatch(/^images\/[\w-]+\/picture-small.webp$/);
     await service.remove("team", "picture");
-    expect(manager.delete).toHaveBeenLastCalledWith(MediaUploadEntity, {
-      teamId: "team",
-      kind: "picture",
-    });
+    expect(manager.update).toHaveBeenLastCalledWith(
+      TeamEntity,
+      { id: "team" },
+      { pictureSmallUploadId: null, pictureLargeUploadId: null },
+    );
+    expect(manager.delete).toHaveBeenCalledTimes(2);
     expect(manager.save).toHaveBeenCalledTimes(1);
     expect(transaction).toHaveBeenCalledTimes(2);
   });

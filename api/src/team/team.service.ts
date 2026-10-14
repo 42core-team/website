@@ -559,6 +559,9 @@ export class TeamService {
         "team.credits",
         "team.createdAt",
         "team.updatedAt",
+        "team.pictureSmallUploadId",
+        "team.pictureLargeUploadId",
+        "team.backgroundLargeUploadId",
       ]);
     } else {
       // Calculate revealed score dynamically
@@ -576,6 +579,9 @@ export class TeamService {
           "team.createdAt",
           "team.updatedAt",
           "team.score",
+          "team.pictureSmallUploadId",
+          "team.pictureLargeUploadId",
+          "team.backgroundLargeUploadId",
         ])
         .addSelect("COUNT(DISTINCT match.id)", "revealed_match_wins");
     }
@@ -625,18 +631,24 @@ export class TeamService {
     const result = await query.getRawAndEntities();
 
     const teamIds = result.entities.map((t) => t.id);
+    const uploadIds = [
+      ...new Set(
+        result.entities.flatMap((team) =>
+          [
+            team.pictureSmallUploadId,
+            team.pictureLargeUploadId,
+            team.backgroundLargeUploadId,
+          ].filter((id): id is string => Boolean(id)),
+        ),
+      ),
+    ];
     // Query builders do not load eager relations; fetch artwork in one batch.
-    const uploads = teamIds.length
+    const uploads = uploadIds.length
       ? await this.teamRepository.manager.find(MediaUploadEntity, {
-          where: { teamId: In(teamIds) },
+          where: { id: In(uploadIds) },
         })
       : [];
-    const uploadsByTeam = new Map<string, MediaUploadEntity[]>();
-    for (const upload of uploads) {
-      const teamUploads = uploadsByTeam.get(upload.teamId!) ?? [];
-      teamUploads.push(upload);
-      uploadsByTeam.set(upload.teamId!, teamUploads);
-    }
+    const uploadsById = new Map(uploads.map((upload) => [upload.id, upload]));
     // Public standings are calculated from revealed matches. The admin view must
     // keep the persisted value selected above instead of overwriting it with a
     // different on-the-fly calculation.
@@ -660,7 +672,17 @@ export class TeamService {
           buchholzPoints: number;
           tags: string[];
         } = Object.assign(new TeamEntity(), team, {
-          ...mediaArtwork(uploadsByTeam.get(team.id) ?? []),
+          ...mediaArtwork({
+            pictureSmallUpload: team.pictureSmallUploadId
+              ? uploadsById.get(team.pictureSmallUploadId)
+              : null,
+            pictureLargeUpload: team.pictureLargeUploadId
+              ? uploadsById.get(team.pictureLargeUploadId)
+              : null,
+            backgroundLargeUpload: team.backgroundLargeUploadId
+              ? uploadsById.get(team.backgroundLargeUploadId)
+              : null,
+          }),
           hadBye: team.hadBye,
           userCount: parseInt(raw.user_count, 10) || 0,
           score: 0,

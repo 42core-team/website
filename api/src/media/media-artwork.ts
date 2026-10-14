@@ -1,20 +1,26 @@
 import type { MediaUploadEntity } from "./entities/media-upload.entity";
 
-export function mediaArtwork(uploads: readonly MediaUploadEntity[]) {
-  const small = uploads.find(
-    (upload) => upload.kind === "picture" && upload.variant === "small",
-  );
-  const large = uploads.find(
-    (upload) => upload.kind === "picture" && upload.variant === "large",
-  );
-  const background = uploads.find(
-    (upload) => upload.kind === "background" && upload.variant === "large",
-  );
+export interface TeamMediaUploads {
+  pictureSmallUpload?: Pick<MediaUploadEntity, "objectKey"> | null;
+  pictureLargeUpload?: Pick<MediaUploadEntity, "objectKey"> | null;
+  backgroundLargeUpload?: Pick<MediaUploadEntity, "objectKey"> | null;
+}
+
+export function mediaArtwork({
+  pictureSmallUpload,
+  pictureLargeUpload,
+  backgroundLargeUpload,
+}: TeamMediaUploads) {
   return {
     picture:
-      small && large
-        ? { small: small.objectKey, large: large.objectKey }
+      pictureSmallUpload && pictureLargeUpload
+        ? {
+            small: pictureSmallUpload.objectKey,
+            large: pictureLargeUpload.objectKey,
+          }
         : null,
-    background: background ? { large: background.objectKey } : null,
+    background: backgroundLargeUpload
+      ? { large: backgroundLargeUpload.objectKey }
+      : null,
   };
 }

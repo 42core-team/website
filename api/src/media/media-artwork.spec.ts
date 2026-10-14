@@ -5,22 +5,18 @@ import { mediaArtwork } from "./media-artwork";
 import { TeamEntity } from "../team/entities/team.entity";
 import { MatchEntity } from "../match/entites/match.entity";
 
-function upload(
-  kind: "picture" | "background",
-  variant: "small" | "large",
-  objectKey: string,
-) {
-  return Object.assign(new MediaUploadEntity(), { kind, variant, objectKey });
+function upload(objectKey: string) {
+  return Object.assign(new MediaUploadEntity(), { objectKey });
 }
 
 describe("relational media artwork", () => {
   it("assembles two picture variants and one background variant", () => {
     expect(
-      mediaArtwork([
-        upload("picture", "small", "small.webp"),
-        upload("picture", "large", "large.webp"),
-        upload("background", "large", "background.webp"),
-      ]),
+      mediaArtwork({
+        pictureSmallUpload: upload("small.webp"),
+        pictureLargeUpload: upload("large.webp"),
+        backgroundLargeUpload: upload("background.webp"),
+      }),
     ).toEqual({
       picture: { small: "small.webp", large: "large.webp" },
       background: { large: "background.webp" },
@@ -28,22 +24,23 @@ describe("relational media artwork", () => {
   });
 
   it("returns null when artwork is missing or a picture is incomplete", () => {
-    expect(mediaArtwork([])).toEqual({ picture: null, background: null });
-    expect(mediaArtwork([upload("picture", "small", "small.webp")])).toEqual({
+    expect(mediaArtwork({})).toEqual({ picture: null, background: null });
+    expect(
+      mediaArtwork({ pictureSmallUpload: upload("small.webp") }),
+    ).toEqual({
       picture: null,
       background: null,
     });
   });
 
-  it("preserves the public response shape without exposing upload ownership", () => {
+  it("preserves the public response shape without exposing upload relations", () => {
     const team = Object.assign(new TeamEntity(), {
-      mediaUploads: [
-        Object.assign(upload("picture", "small", "small.webp"), {
-          teamId: "team",
-          userId: null,
-        }),
-        upload("picture", "large", "large.webp"),
-      ],
+      pictureSmallUploadId: "small-id",
+      pictureLargeUploadId: "large-id",
+      backgroundLargeUploadId: null,
+      pictureSmallUpload: upload("small.webp"),
+      pictureLargeUpload: upload("large.webp"),
+      backgroundLargeUpload: null,
     });
     team.loadArtwork();
     const response = instanceToPlain(team);
@@ -52,7 +49,12 @@ describe("relational media artwork", () => {
       large: "large.webp",
     });
     expect(response.background).toBeNull();
-    expect(response).not.toHaveProperty("mediaUploads");
+    expect(response).not.toHaveProperty("pictureSmallUploadId");
+    expect(response).not.toHaveProperty("pictureLargeUploadId");
+    expect(response).not.toHaveProperty("backgroundLargeUploadId");
+    expect(response).not.toHaveProperty("pictureSmallUpload");
+    expect(response).not.toHaveProperty("pictureLargeUpload");
+    expect(response).not.toHaveProperty("backgroundLargeUpload");
   });
 });
 
@@ -74,21 +76,29 @@ describe("media upload ORM schema", () => {
     await source.prepareMetadata();
   });
 
-  it("uses a separate table and no team artwork JSONB columns", () => {
+  it("uses a generic media_uploads table referenced by team foreign keys", () => {
     const media = source.getMetadata(MediaUploadEntity);
     expect(media.tableName).toBe("media_uploads");
+    expect(media.foreignKeys).toHaveLength(0);
     expect(
-      media.foreignKeys.map((key) => key.referencedTablePath).sort(),
-    ).toEqual(["teams", "users"]);
-    expect(media.checks.map((check) => check.name)).toContain(
-      "media_uploads_owner_check",
-    );
-    expect(media.indices.filter((index) => index.isUnique)).toHaveLength(2);
-    const columns = source
-      .getMetadata(TeamEntity)
-      .columns.map((column) => column.propertyName);
+      media.columns.map((column) => column.propertyName).sort(),
+    ).toEqual(["createdAt", "id", "objectKey"]);
+
+    const teamMeta = source.getMetadata(TeamEntity);
+    const columns = teamMeta.columns.map((column) => column.propertyName);
     expect(columns).not.toContain("picture");
     expect(columns).not.toContain("background");
+    expect(columns).toEqual(
+      expect.arrayContaining([
+        "pictureSmallUploadId",
+        "pictureLargeUploadId",
+        "backgroundLargeUploadId",
+      ]),
+    );
+    const mediaFks = teamMeta.foreignKeys.filter(
+      (key) => key.referencedTablePath === "media_uploads",
+    );
+    expect(mediaFks).toHaveLength(3);
   });
 
   it("loads artwork even for partially selected queue teams and winners", () => {
@@ -104,7 +114,7 @@ describe("media upload ORM schema", () => {
         relations: { teams: true, winner: true },
       })
       .getSql();
-    expect(sql.match(/JOIN "media_uploads"/g)).toHaveLength(2);
+    expect(sql.match(/JOIN "media_uploads"/g)).toHaveLength(6);
     expect(sql).toContain('"objectKey"');
   });
 

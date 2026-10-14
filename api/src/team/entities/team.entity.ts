@@ -4,10 +4,10 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  JoinColumn,
   JoinTable,
   ManyToMany,
   ManyToOne,
-  OneToMany,
   PrimaryGeneratedColumn,
   RelationId,
   UpdateDateColumn,
@@ -35,12 +35,35 @@ export class TeamEntity {
   background: TeamBackground | null;
 
   @Exclude()
-  @OneToMany(() => MediaUploadEntity, (upload) => upload.team, { eager: true })
-  mediaUploads: MediaUploadEntity[];
+  @Column({ type: "uuid", nullable: true })
+  pictureSmallUploadId: string | null;
+
+  @Exclude()
+  @ManyToOne(() => MediaUploadEntity, { eager: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "pictureSmallUploadId" })
+  pictureSmallUpload: MediaUploadEntity | null;
+
+  @Exclude()
+  @Column({ type: "uuid", nullable: true })
+  pictureLargeUploadId: string | null;
+
+  @Exclude()
+  @ManyToOne(() => MediaUploadEntity, { eager: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "pictureLargeUploadId" })
+  pictureLargeUpload: MediaUploadEntity | null;
+
+  @Exclude()
+  @Column({ type: "uuid", nullable: true })
+  backgroundLargeUploadId: string | null;
+
+  @Exclude()
+  @ManyToOne(() => MediaUploadEntity, { eager: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "backgroundLargeUploadId" })
+  backgroundLargeUpload: MediaUploadEntity | null;
 
   @AfterLoad()
   loadArtwork() {
-    Object.assign(this, mediaArtwork(this.mediaUploads ?? []));
+    Object.assign(this, mediaArtwork(this));
   }
 
   @Column({ default: false })

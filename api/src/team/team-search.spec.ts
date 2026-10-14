@@ -101,6 +101,9 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
       buchholzPoints: 12,
       hadBye: false,
       credits: 0,
+      pictureSmallUploadId: "u-small",
+      pictureLargeUploadId: "u-large",
+      backgroundLargeUploadId: "u-bg",
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       updatedAt: new Date("2026-01-01T00:00:00.000Z"),
     } as TeamEntity;
@@ -128,21 +131,15 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
       manager: {
         find: jest.fn().mockResolvedValue([
           {
-            teamId: "team-1",
-            kind: "picture",
-            variant: "small",
+            id: "u-small",
             objectKey: "small.webp",
           },
           {
-            teamId: "team-1",
-            kind: "picture",
-            variant: "large",
+            id: "u-large",
             objectKey: "large.webp",
           },
           {
-            teamId: "team-1",
-            kind: "background",
-            variant: "large",
+            id: "u-bg",
             objectKey: "background.webp",
           },
         ]),

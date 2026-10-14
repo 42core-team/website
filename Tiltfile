@@ -107,6 +107,7 @@ docker_build('api', './api',
     ignore     = ['helm', 'dist', '.env*', '*.md'],
     live_update = [
         sync('./api/src', '/app/src'),
+        sync('./api/db', '/app/db'),
         run(
             'cd /app && pnpm install --frozen-lockfile',
             trigger = ['./api/package.json', './api/pnpm-lock.yaml'],
