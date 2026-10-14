@@ -21,7 +21,7 @@ const input = () =>
 afterEach(() => jest.restoreAllMocks());
 
 describe("team image cleanup locking", () => {
-  function setup(acquired = true) {
+  function setup(acquired = true, region?: string) {
     const manager = {
       query: jest.fn().mockResolvedValue([{ acquired }]),
       find: jest.fn().mockResolvedValue([]),
@@ -34,6 +34,7 @@ describe("team image cleanup locking", () => {
       new ConfigService({
         MEDIA_S3_ENDPOINT: "http://localhost:9000",
         MEDIA_S3_BUCKET: "test",
+        MEDIA_S3_REGION: region,
         MEDIA_S3_ACCESS_KEY_ID: "test",
         MEDIA_S3_SECRET_ACCESS_KEY: "test",
       }),
@@ -46,6 +47,17 @@ describe("team image cleanup locking", () => {
     jest.spyOn(Logger.prototype, "error").mockImplementation(() => {});
     return { service, manager, transaction, send, destroy };
   }
+
+  it.each([
+    [undefined, "eu01"],
+    ["", "eu01"],
+    ["local", "local"],
+  ])("uses region %s with resolved value %s", async (region, expected) => {
+    const { service, send } = setup(true, region);
+    await service.cleanup();
+    const client = send.mock.contexts[0] as S3Client;
+    await expect(client.config.region()).resolves.toBe(expected);
+  });
 
   it("skips the entire sweep when another replica owns the lock", async () => {
     const { service, manager, send } = setup(false);
@@ -124,6 +136,17 @@ describe("team image cleanup locking", () => {
 });
 
 describe("team image processing", () => {
+  it("applies a 15-second timeout to still-image decoding and both outputs", async () => {
+    const timeout = jest.spyOn(sharp.prototype, "timeout");
+    await processTeamImage(await input(), "picture");
+    expect(timeout).toHaveBeenCalledTimes(3);
+    expect(timeout.mock.calls).toEqual([
+      [{ seconds: 15 }],
+      [{ seconds: 15 }],
+      [{ seconds: 15 }],
+    ]);
+  });
+
   it.each(["picture", "background"] as const)(
     "preserves GIF frames, timing, loop and crop for %s",
     async (kind) => {

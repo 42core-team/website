@@ -828,7 +828,7 @@ export class TeamService {
       order: { name: "ASC" },
     });
 
-    return opponents.map(({ id, name }) => ({ id, name }));
+    return opponents.map(({ id, name, picture }) => ({ id, name, picture }));
   }
 
   async createDirectMatch(challengerId: string, targetId: string) {

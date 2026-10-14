@@ -275,7 +275,7 @@ export class MatchController {
     @Query("adminRevealQuery", new ParseBoolPipe({ optional: true }))
     adminRevealQuery: boolean | undefined,
   ): Promise<MatchEntity> {
-    return await this.matchService.getMatchById(
+    const match = await this.matchService.getMatchById(
       matchId,
       {
         winner: true,
@@ -287,6 +287,8 @@ export class MatchController {
       userId,
       adminRevealQuery ?? false,
     );
+    // QUEUE result scores contain private matchmaking ratings, not public scores.
+    return match.phase === MatchPhase.QUEUE ? { ...match, results: [] } : match;
   }
 
   @UseGuards(JwtAuthGuard)

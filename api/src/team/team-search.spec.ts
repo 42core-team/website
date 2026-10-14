@@ -20,6 +20,35 @@ jest.mock("../user/user.service", () => ({
 import type { TeamEntity } from "./entities/team.entity";
 import { TeamService } from "./team.service";
 
+describe("TeamService.getQueueOpponents", () => {
+  it.each([{ small: "small.webp", large: "large.webp" }, null])(
+    "preserves opponent pictures without exposing other fields: %p",
+    async (picture) => {
+      const find = jest.fn().mockResolvedValue([
+        {
+          id: "opponent",
+          name: "Opponent",
+          picture,
+          queueScore: 1234,
+          repo: "private-repo",
+          credits: 99,
+        },
+      ]);
+      const service = Object.create(TeamService.prototype) as TeamService;
+      Reflect.set(service, "teamRepository", { find });
+
+      await expect(service.getQueueOpponents("event", "team")).resolves.toEqual(
+        [{ id: "opponent", name: "Opponent", picture }],
+      );
+      expect(find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          select: { id: true, name: true, picture: true },
+        }),
+      );
+    },
+  );
+});
+
 describe("TeamService.getSearchedTeamsForEvent", () => {
   it("searches team names without regard to case", async () => {
     const queryBuilder = {

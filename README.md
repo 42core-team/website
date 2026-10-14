@@ -164,6 +164,8 @@ Production media storage configuration uses GitHub environment variables
 `MEDIA_S3_ENDPOINT`, `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION`, and
 `VITE_MEDIA_URL`, plus GitHub environment secrets
 `MEDIA_S3_ACCESS_KEY_ID` and `MEDIA_S3_SECRET_ACCESS_KEY`.
+`MEDIA_S3_REGION` defaults to `eu01` when unset or empty; local development
+explicitly uses `local`.
 Set these in each deployed environment (`dev` / `prod`). The API deployment passes
 storage settings to Helm. The frontend build embeds `VITE_MEDIA_URL` into
 the static bundle, so changing that URL requires rebuilding the frontend image.

@@ -56,7 +56,11 @@ export async function processTeamImage(
     // Animated GIFs keep their frame stack and timing; still images are auto-oriented.
     const oriented = animated
       ? null
-      : await input.rotate().raw().toBuffer({ resolveWithObject: true });
+      : await input
+          .rotate()
+          .raw()
+          .timeout({ seconds: 15 })
+          .toBuffer({ resolveWithObject: true });
     const sourceWidth = oriented?.info.width ?? meta.width!;
     const sourceHeight = oriented?.info.height ?? meta.pageHeight!;
     const ratio = kind === "picture" ? 1 : 10 / 3;
@@ -123,7 +127,7 @@ export class TeamImageService {
       bucket,
       client: new S3Client({
         endpoint,
-        region: this.config.get("MEDIA_S3_REGION", "local"),
+        region: this.config.get<string>("MEDIA_S3_REGION") || "eu01",
         forcePathStyle: true,
         credentials: {
           accessKeyId: this.config.getOrThrow("MEDIA_S3_ACCESS_KEY_ID"),

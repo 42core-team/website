@@ -66,7 +66,7 @@ env:
   # Dedicated storage for team artwork; supplied by deployment variables.
   MEDIA_S3_ENDPOINT: ""
   MEDIA_S3_BUCKET: ""
-  MEDIA_S3_REGION: ""
+  MEDIA_S3_REGION: "eu01"
 
 # These are placeholders.
 # Values are injected at runtime via --set flags in the CI/CD pipeline.

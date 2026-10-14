@@ -1,4 +1,5 @@
 import type { Match } from '@/app/actions/tournament-model'
+import { MatchPhase } from '@/app/actions/tournament-model'
 import { Link } from '@tanstack/react-router'
 import { TeamCover, TeamPicture } from '@/components/team/TeamAppearance'
 
@@ -34,6 +35,7 @@ export function MatchTeamHeader({
                 {team.name}
               </span>
               {match.isRevealed &&
+                match.phase !== MatchPhase.QUEUE &&
                 match.results?.find((result) => result.team.id === team.id) && (
                   <span className="ml-auto text-2xl font-bold tabular-nums">
                     {

@@ -943,19 +943,23 @@ export class MatchService {
         state: match.state,
         phase: match.phase,
         createdAt: match.createdAt,
-        teams: match.teams.map(({ id, name, deletedAt }) => ({
+        teams: match.teams.map(({ id, name, deletedAt, picture, background }) => ({
           id,
           name,
           deletedAt,
+          picture,
+          background,
         })),
         winner: match.winner
           ? {
               id: match.winner.id,
               name: match.winner.name,
               deletedAt: match.winner.deletedAt,
+              picture: match.winner.picture,
+              background: match.winner.background,
             }
           : null,
-        results: []
+        results: [],
       };
 
       const shouldRevealId = canViewTeamMatchReplay(isTeamMember);
@@ -1035,9 +1039,19 @@ export class MatchService {
       state: match.state,
       phase: match.phase,
       createdAt: match.createdAt,
-      teams: match.teams.map(({ id, name }) => ({ id, name })),
+      teams: match.teams.map(({ id, name, picture, background }) => ({
+        id,
+        name,
+        picture,
+        background,
+      })),
       winner: match.winner
-        ? { id: match.winner.id, name: match.winner.name }
+        ? {
+            id: match.winner.id,
+            name: match.winner.name,
+            picture: match.winner.picture,
+            background: match.winner.background,
+          }
         : null,
     };
   }

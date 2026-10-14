@@ -1,12 +1,11 @@
 import type { Team, TeamMember } from '@/app/actions/team'
 
 import { DialogTrigger } from '@radix-ui/react-dialog'
-import { ExternalLink, Plus } from 'lucide-react'
+import { ExternalLink, Lock, Plus } from 'lucide-react'
 import { useParams } from '@/lib/router-hooks'
 import { useState } from 'react'
 
 import { GithubIcon } from '@/components/icons'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -19,6 +18,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import TeamInviteModal from './TeamInviteModal'
 import TeamMemberDisplay from './TeamMemberDisplay'
 import { TeamProfileHeader } from './TeamProfileHeader'
@@ -52,6 +52,18 @@ export function TeamInfoSection({
     return `https://github.com/${githubOrg}/${myTeam.repo}`
   }
 
+  const repositoryIcon = myTeam.locked ? (
+    <span
+      className="inline-flex shrink-0 items-center text-destructive"
+      aria-label="Repository locked"
+      title="Repository locked"
+    >
+      <Lock className="size-4" aria-hidden="true" />
+    </span>
+  ) : (
+    <GithubIcon aria-hidden="true" />
+  )
+
   const handleConfirmLeave = async () => {
     setLeaveError(null)
     const success = await onLeaveTeam()
@@ -78,15 +90,10 @@ export function TeamInfoSection({
           />
         }
         picture={<TeamAppearanceEditor team={myTeam} eventId={eventId} />}
-        badge={
-          myTeam.locked ? (
-            <Badge variant="destructive">Locked</Badge>
-          ) : undefined
-        }
       />
       <CardContent className="flex flex-col gap-2">
         <div className="mb-6">
-          <div>
+          <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Repository</p>
             <div className="font-medium">
               {myTeam.repo && githubOrg ? (
@@ -94,24 +101,40 @@ export function TeamInfoSection({
                   asChild
                   variant="outline"
                   size="sm"
-                  className="mt-1 max-w-full"
+                  className={cn(
+                    'max-w-full gap-2 px-3',
+                    myTeam.locked &&
+                      'border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive',
+                  )}
                 >
                   <a
                     href={getRepoUrl()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label={`Open ${myTeam.repo} repository on GitHub`}
+                    aria-label={`Open ${myTeam.repo} repository on GitHub${myTeam.locked ? ' (locked)' : ''}`}
                   >
-                    <GithubIcon aria-hidden="true" />
+                    {repositoryIcon}
                     <span className="truncate">{myTeam.repo}</span>
                     <ExternalLink
-                      className="text-muted-foreground"
+                      className={
+                        myTeam.locked
+                          ? 'text-destructive'
+                          : 'text-muted-foreground'
+                      }
                       aria-hidden="true"
                     />
                   </a>
                 </Button>
               ) : myTeam.repo ? (
-                <span>{myTeam.repo}</span>
+                <span
+                  className={cn(
+                    'inline-flex max-w-full items-center gap-2',
+                    myTeam.locked && 'text-destructive',
+                  )}
+                >
+                  {repositoryIcon}
+                  <span className="truncate">{myTeam.repo}</span>
+                </span>
               ) : isRepoPending ? (
                 <p className="text-sm text-gray-200">
                   Repository will be created when the event starts.

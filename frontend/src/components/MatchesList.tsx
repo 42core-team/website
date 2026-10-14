@@ -23,8 +23,9 @@ export default function MatchesList(props: {
   matches: QueueMatch[]
   isInsideCard?: boolean
   teamId?: string
+  showTeamPictures?: boolean
 }) {
-  const { eventId, matches, isInsideCard, teamId } = props
+  const { eventId, matches, isInsideCard, teamId, showTeamPictures = true } = props
 
   if (matches.length === 0) {
     return (
@@ -108,7 +109,7 @@ export default function MatchesList(props: {
                   const isWinner = Boolean(team && match.winner?.id === team.id)
                   const teamName = team && (
                     <>
-                      <TeamPicture team={team} />
+                      {showTeamPictures && <TeamPicture team={team} />}
                       <span
                         className={cn(
                           'min-w-0 truncate',
