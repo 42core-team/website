@@ -7,7 +7,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Cron } from "@nestjs/schedule";
-import { Repository } from "typeorm";
+import { IsNull, Not, Repository } from "typeorm";
 import { randomUUID } from "crypto";
 import {
   S3Client,
@@ -18,6 +18,8 @@ import {
 import sharp from "sharp";
 import { TeamEntity } from "./entities/team.entity";
 import { LockKeys } from "../constants";
+import { MediaUploadEntity } from "../media/entities/media-upload.entity";
+import type { MediaVariant } from "../media/entities/media-upload.entity";
 
 export type ImageKind = "picture" | "background";
 export interface TeamImage {
@@ -26,8 +28,6 @@ export interface TeamImage {
 }
 export interface TeamBackground {
   large: string;
-  /** Present only on backgrounds uploaded before single-image storage. */
-  small?: string;
 }
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -120,9 +120,7 @@ export class TeamImageService {
     const endpoint = this.config.get<string>("MEDIA_S3_ENDPOINT");
     const bucket = this.config.get<string>("MEDIA_S3_BUCKET");
     if (!endpoint || !bucket)
-      throw new ServiceUnavailableException(
-        "Media storage is not configured.",
-      );
+      throw new ServiceUnavailableException("Media storage is not configured.");
     return {
       bucket,
       client: new S3Client({
@@ -131,9 +129,7 @@ export class TeamImageService {
         forcePathStyle: true,
         credentials: {
           accessKeyId: this.config.getOrThrow("MEDIA_S3_ACCESS_KEY_ID"),
-          secretAccessKey: this.config.getOrThrow(
-            "MEDIA_S3_SECRET_ACCESS_KEY",
-          ),
+          secretAccessKey: this.config.getOrThrow("MEDIA_S3_SECRET_ACCESS_KEY"),
         },
         requestChecksumCalculation: "WHEN_REQUIRED",
       }),
@@ -161,10 +157,13 @@ export class TeamImageService {
       const storage = this.storage();
       client = storage.client;
       const outputs = await processTeamImage(buffer, kind, x, y, scale);
-      const prefix = `teams/${teamId}/${randomUUID()}/${kind}`;
-      const variants = kind === "picture" ? ["small", "large"] : ["large"];
-      const image: TeamBackground = { large: `${prefix}-large.webp` };
-      if (kind === "picture") image.small = `${prefix}-small.webp`;
+      const prefix = `images/${randomUUID()}/${kind}`;
+      const variants: MediaVariant[] =
+        kind === "picture" ? ["small", "large"] : ["large"];
+      const image =
+        kind === "picture"
+          ? { small: `${prefix}-small.webp`, large: `${prefix}-large.webp` }
+          : { large: `${prefix}-large.webp` };
       // Publish only after every immutable object exists. Orphans are cleaned later.
       for (const [index, variant] of variants.entries()) {
         const key = `${prefix}-${variant}.webp`;
@@ -179,7 +178,25 @@ export class TeamImageService {
           }),
         );
       }
-      await this.teams.update(teamId, { [kind]: image });
+      await this.teams.manager.transaction(async (manager) => {
+        // Serialize replacements across API replicas and publish all variants atomically.
+        await manager.findOneOrFail(TeamEntity, {
+          where: { id: teamId },
+          lock: { mode: "pessimistic_write" },
+          loadEagerRelations: false,
+        });
+        await manager.delete(MediaUploadEntity, { teamId, kind });
+        await manager.save(
+          MediaUploadEntity,
+          variants.map((variant) => ({
+            teamId,
+            userId: null,
+            kind,
+            variant,
+            objectKey: `${prefix}-${variant}.webp`,
+          })),
+        );
+      });
       return image;
     } finally {
       client?.destroy();
@@ -193,7 +210,14 @@ export class TeamImageService {
       throw new ServiceUnavailableException(
         "Wait for the current upload to finish.",
       );
-    await this.teams.update(teamId, { [kind]: null });
+    await this.teams.manager.transaction(async (manager) => {
+      await manager.findOneOrFail(TeamEntity, {
+        where: { id: teamId },
+        lock: { mode: "pessimistic_write" },
+        loadEagerRelations: false,
+      });
+      await manager.delete(MediaUploadEntity, { teamId, kind });
+    });
   }
 
   @Cron("0 3 * * *")
@@ -211,23 +235,21 @@ export class TeamImageService {
         if (!lock.acquired) return;
         const storage = this.storage();
         client = storage.client;
-        const teams = await manager.find(TeamEntity, {
-          select: { picture: true, background: true },
+        const uploads = await manager.find(MediaUploadEntity, {
+          select: { objectKey: true },
+          where: [
+            { teamId: IsNull() },
+            { teamId: Not(IsNull()), team: { deletedAt: IsNull() } },
+          ],
         });
-        const referenced = new Set(
-          teams.flatMap((team) =>
-            [team.picture, team.background].flatMap((image) =>
-              image ? [image.large, ...(image.small ? [image.small] : [])] : [],
-            ),
-          ),
-        );
+        const referenced = new Set(uploads.map((upload) => upload.objectKey));
         const cutoff = Date.now() - 24 * 60 * 60 * 1000;
         let token: string | undefined;
         do {
           const page = await client.send(
             new ListObjectsV2Command({
               Bucket: storage.bucket,
-              Prefix: "teams/",
+              Prefix: "images/",
               ContinuationToken: token,
             }),
           );
@@ -251,7 +273,7 @@ export class TeamImageService {
         } while (token);
       });
     } catch (error) {
-      this.logger.error("Team image cleanup failed", error);
+      this.logger.error("Media upload cleanup failed", error);
     } finally {
       client?.destroy();
     }

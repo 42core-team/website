@@ -12,10 +12,11 @@ import { MyTeamGuards, TeamNotLockedGuard } from "../guards/TeamGuard";
 
 import { TeamImageController } from "./team-image.controller";
 import { TeamImageService } from "./team-image.service";
+import { MediaUploadEntity } from "../media/entities/media-upload.entity";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TeamEntity]),
+    TypeOrmModule.forFeature([TeamEntity, MediaUploadEntity]),
     GithubApiModule,
     forwardRef(() => EventModule),
     forwardRef(() => MatchModule),

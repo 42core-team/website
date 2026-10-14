@@ -196,28 +196,8 @@ jobs:
             --validate
 
       - name: Deploy API with Helm
-        env:
-          MEDIA_S3_ENDPOINT: ${{ vars.MEDIA_S3_ENDPOINT }}
-          MEDIA_S3_BUCKET: ${{ vars.MEDIA_S3_BUCKET }}
-          MEDIA_S3_REGION: ${{ vars.MEDIA_S3_REGION }}
-          MEDIA_S3_ACCESS_KEY_ID: ${{ secrets.MEDIA_S3_ACCESS_KEY_ID }}
-          MEDIA_S3_SECRET_ACCESS_KEY: ${{ secrets.MEDIA_S3_SECRET_ACCESS_KEY }}
         run: |
           cd api/helm
-
-          # JSON preserves special characters in credentials without shell interpolation.
-          python3 - <<'PYCONFIG'
-          import json, os
-          values = {
-              "env": {key: os.environ[key] for key in (
-                  "MEDIA_S3_ENDPOINT", "MEDIA_S3_BUCKET", "MEDIA_S3_REGION")},
-              "secrets": {key: os.environ[key] for key in (
-                  "MEDIA_S3_ACCESS_KEY_ID", "MEDIA_S3_SECRET_ACCESS_KEY")},
-          }
-          path = os.path.join(os.environ["RUNNER_TEMP"], "team-images-values.json")
-          with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w") as file:
-              json.dump(values, file)
-          PYCONFIG
 
           echo "Deploying API to ${{ steps.config.outputs.environment }} environment..."
           echo "Using values file: ${{ steps.config.outputs.values_file }}"
@@ -228,7 +208,6 @@ jobs:
             . \
             --namespace ${{ steps.config.outputs.namespace }} \
             --values ${{ steps.config.outputs.values_file }} \
-            --values "$RUNNER_TEMP/team-images-values.json" \
             --set image.tag=${{ steps.config.outputs.image_tag }} \
             --set image.repository=${{ steps.config.outputs.image_repo }} \
             --set env.DB_HOST="${{ vars.DB_HOST }}" \
@@ -244,6 +223,9 @@ jobs:
             --set env.CORS_ORIGIN="${{ vars.CORS_ORIGIN }}" \
             --set env.FORTYTWO_CLIENT_ID="${{ vars.FORTYTWO_CLIENT_ID }}" \
             --set env.FORTYTWO_CALLBACK_URL="${{ vars.FORTYTWO_CALLBACK_URL }}" \
+            --set env.MEDIA_S3_ENDPOINT="${{ vars.MEDIA_S3_ENDPOINT }}" \
+            --set env.MEDIA_S3_BUCKET="${{ vars.MEDIA_S3_BUCKET }}" \
+            --set env.MEDIA_S3_REGION="${{ vars.MEDIA_S3_REGION || 'eu01' }}" \
             --set secrets.DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
             --set secrets.DB_URL="${{ secrets.DB_URL }}" \
             --set secrets.API_SECRET_ENCRYPTION_KEY="${{ secrets.API_SECRET_ENCRYPTION_KEY }}" \
@@ -251,6 +233,8 @@ jobs:
             --set secrets.JWT_SECRET="${{ secrets.JWT_SECRET }}" \
             --set secrets.CLIENT_GITHUB_SECRET="${{ secrets.CLIENT_GITHUB_SECRET }}" \
             --set secrets.FORTYTWO_CLIENT_SECRET="${{ secrets.FORTYTWO_CLIENT_SECRET }}" \
+            --set secrets.MEDIA_S3_ACCESS_KEY_ID="${{ secrets.MEDIA_S3_ACCESS_KEY_ID }}" \
+            --set secrets.MEDIA_S3_SECRET_ACCESS_KEY="${{ secrets.MEDIA_S3_SECRET_ACCESS_KEY }}" \
             --wait \
             --timeout=5m \
             --atomic \

@@ -42,7 +42,7 @@ describe("TeamService.getQueueOpponents", () => {
       );
       expect(find).toHaveBeenCalledWith(
         expect.objectContaining({
-          select: { id: true, name: true, picture: true },
+          select: { id: true, name: true },
         }),
       );
     },
@@ -68,6 +68,7 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
 
     Reflect.set(service, "teamRepository", {
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+      manager: { find: jest.fn().mockResolvedValue([]) },
     });
     Reflect.set(service, "eventService", {
       isEventAdmin: jest.fn().mockResolvedValue(false),
@@ -124,6 +125,28 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
 
     Reflect.set(service, "teamRepository", {
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+      manager: {
+        find: jest.fn().mockResolvedValue([
+          {
+            teamId: "team-1",
+            kind: "picture",
+            variant: "small",
+            objectKey: "small.webp",
+          },
+          {
+            teamId: "team-1",
+            kind: "picture",
+            variant: "large",
+            objectKey: "large.webp",
+          },
+          {
+            teamId: "team-1",
+            kind: "background",
+            variant: "large",
+            objectKey: "background.webp",
+          },
+        ]),
+      },
     });
     Reflect.set(service, "eventService", {
       isEventAdmin: jest.fn().mockResolvedValue(true),
@@ -145,6 +168,11 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
     );
 
     expect(result[0].buchholzPoints).toBe(12);
+    expect(result[0].picture).toEqual({
+      small: "small.webp",
+      large: "large.webp",
+    });
+    expect(result[0].background).toEqual({ large: "background.webp" });
     expect(calculateBuchholzPointsForTeams).not.toHaveBeenCalled();
   });
 });

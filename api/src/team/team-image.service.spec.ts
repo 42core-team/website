@@ -9,6 +9,7 @@ import { EntityManager, Repository } from "typeorm";
 import { LockKeys } from "../constants";
 import sharp from "sharp";
 import { TeamEntity } from "./entities/team.entity";
+import { MediaUploadEntity } from "../media/entities/media-upload.entity";
 import { processTeamImage, TeamImageService } from "./team-image.service";
 
 const input = () =>
@@ -73,7 +74,9 @@ describe("team image cleanup locking", () => {
   it("holds the transaction through all pages and deletes only old unreferenced files", async () => {
     const { service, manager, transaction, send, destroy } = setup();
     manager.find.mockResolvedValue([
-      { picture: { small: "teams/used", large: "teams/used-large" } },
+      { objectKey: "teams/used" },
+      { objectKey: "teams/used-large" },
+      { objectKey: "images/user-used", teamId: null, userId: "user" },
     ]);
     const old = new Date(Date.now() - 48 * 60 * 60 * 1000);
     let finishDelete!: () => void;
@@ -83,6 +86,7 @@ describe("team image cleanup locking", () => {
     });
     send.mockImplementation(async (command) => {
       if (command instanceof ListObjectsV2Command) {
+        expect(command.input.Prefix).toBe("images/");
         return command.input.ContinuationToken
           ? {
               Contents: [{ Key: "teams/orphan", LastModified: old }],
@@ -93,6 +97,7 @@ describe("team image cleanup locking", () => {
               Contents: [
                 { Key: "teams/used", LastModified: old },
                 { Key: "teams/new", LastModified: new Date() },
+                { Key: "images/user-used", LastModified: old },
               ],
             };
       }
@@ -129,7 +134,7 @@ describe("team image cleanup locking", () => {
     );
     expect(destroy).toHaveBeenCalledTimes(1);
     expect(Logger.prototype.error).toHaveBeenCalledWith(
-      "Team image cleanup failed",
+      "Media upload cleanup failed",
       expect.any(Error),
     );
   });
@@ -197,7 +202,9 @@ describe("team image processing", () => {
 
   it("rejects GIFs above the frame limit", async () => {
     const pixels = Buffer.concat(
-      Array.from({ length: 201 }, (_, i) => Buffer.alloc(4 * 4 * 3, (i % 2) * 255)),
+      Array.from({ length: 201 }, (_, i) =>
+        Buffer.alloc(4 * 4 * 3, (i % 2) * 255),
+      ),
     );
     const gif = await sharp(pixels, {
       raw: { width: 4, height: 4 * 201, channels: 3, pageHeight: 4 },
@@ -277,14 +284,27 @@ describe("team image publishing", () => {
     MEDIA_S3_ACCESS_KEY_ID: "test",
     MEDIA_S3_SECRET_ACCESS_KEY: "test",
   });
+  function setup() {
+    const manager = {
+      findOneOrFail: jest.fn().mockResolvedValue({ id: "team" }),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
+      save: jest.fn().mockResolvedValue([]),
+    };
+    const transaction = jest.fn(
+      async (run: (manager: EntityManager) => Promise<void>) =>
+        run(manager as unknown as EntityManager),
+    );
+    const service = new TeamImageService(config, {
+      manager: { transaction },
+    } as unknown as Repository<TeamEntity>);
+    return { service, manager, transaction };
+  }
+
   it("uploads and publishes only one background file", async () => {
     const send = jest
       .spyOn(S3Client.prototype, "send")
       .mockImplementation(async () => ({}));
-    const update = jest.fn().mockResolvedValue({ affected: 1 });
-    const service = new TeamImageService(config, {
-      update,
-    } as unknown as Repository<TeamEntity>);
+    const { service, manager } = setup();
     const result = await service.upload(
       "team",
       "background",
@@ -294,10 +314,16 @@ describe("team image publishing", () => {
     );
     expect(send).toHaveBeenCalledTimes(1);
     expect(Object.keys(result)).toEqual(["large"]);
-    expect(result.large).toMatch(
-      /^teams\/team\/[\w-]+\/background-large.webp$/,
-    );
-    expect(update).toHaveBeenCalledWith("team", { background: result });
+    expect(result.large).toMatch(/^images\/[\w-]+\/background-large.webp$/);
+    expect(manager.save).toHaveBeenCalledWith(MediaUploadEntity, [
+      {
+        teamId: "team",
+        userId: null,
+        kind: "background",
+        variant: "large",
+        objectKey: result.large,
+      },
+    ]);
   });
   it("keeps the current database reference if storing the second variant fails", async () => {
     const send = jest
@@ -306,24 +332,19 @@ describe("team image publishing", () => {
       .mockImplementationOnce(async () => {
         throw new Error("storage unavailable");
       });
-    const update = jest.fn();
-    const service = new TeamImageService(config, {
-      update,
-    } as unknown as Repository<TeamEntity>);
+    const { service, transaction, manager } = setup();
     await expect(
       service.upload("team", "picture", await input(), 50, 50),
     ).rejects.toThrow("storage unavailable");
     expect(send).toHaveBeenCalledTimes(2);
-    expect(update).not.toHaveBeenCalled();
+    expect(transaction).not.toHaveBeenCalled();
+    expect(manager.delete).not.toHaveBeenCalled();
   });
   it("publishes immutable keys after both uploads and removes only the reference", async () => {
     const send = jest
       .spyOn(S3Client.prototype, "send")
       .mockImplementation(async () => ({}));
-    const update = jest.fn().mockResolvedValue({ affected: 1 });
-    const service = new TeamImageService(config, {
-      update,
-    } as unknown as Repository<TeamEntity>);
+    const { service, manager, transaction } = setup();
     const result = await service.upload(
       "team",
       "picture",
@@ -332,10 +353,54 @@ describe("team image publishing", () => {
       50,
     );
     expect(send).toHaveBeenCalledTimes(2);
-    expect(update).toHaveBeenCalledWith("team", { picture: result });
-    expect(result.small).toMatch(/^teams\/team\/[\w-]+\/picture-small.webp$/);
+    expect(manager.findOneOrFail).toHaveBeenCalledWith(TeamEntity, {
+      where: { id: "team" },
+      lock: { mode: "pessimistic_write" },
+      loadEagerRelations: false,
+    });
+    expect(manager.delete).toHaveBeenCalledWith(MediaUploadEntity, {
+      teamId: "team",
+      kind: "picture",
+    });
+    expect(manager.save).toHaveBeenCalledWith(MediaUploadEntity, [
+      {
+        teamId: "team",
+        userId: null,
+        kind: "picture",
+        variant: "small",
+        objectKey: result.small,
+      },
+      {
+        teamId: "team",
+        userId: null,
+        kind: "picture",
+        variant: "large",
+        objectKey: result.large,
+      },
+    ]);
+    expect(send.mock.invocationCallOrder[1]).toBeLessThan(
+      transaction.mock.invocationCallOrder[0],
+    );
+    expect(result.small).toMatch(/^images\/[\w-]+\/picture-small.webp$/);
     await service.remove("team", "picture");
-    expect(update).toHaveBeenLastCalledWith("team", { picture: null });
+    expect(manager.delete).toHaveBeenLastCalledWith(MediaUploadEntity, {
+      teamId: "team",
+      kind: "picture",
+    });
+    expect(manager.save).toHaveBeenCalledTimes(1);
+    expect(transaction).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not publish partial variants when the database transaction fails", async () => {
+    jest.spyOn(S3Client.prototype, "send").mockImplementation(async () => ({}));
+    const { service, manager, transaction } = setup();
+    manager.save.mockRejectedValue(new Error("database unavailable"));
+    await expect(
+      service.upload("team", "picture", await input(), 50, 50),
+    ).rejects.toThrow("database unavailable");
+    await expect(transaction.mock.results[0].value).rejects.toThrow(
+      "database unavailable",
+    );
   });
 });
 

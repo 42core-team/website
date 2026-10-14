@@ -8,6 +8,8 @@ import {
 } from "@nestjs/common";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { TeamEntity } from "./entities/team.entity";
+import { MediaUploadEntity } from "../media/entities/media-upload.entity";
+import { mediaArtwork } from "../media/media-artwork";
 import {
   DataSource,
   EntityManager,
@@ -386,6 +388,7 @@ export class TeamService {
           event: { id: eventId },
         },
         lock: { mode: "pessimistic_write" },
+        loadEagerRelations: false,
       });
 
       if (!team) throw new NotFoundException("Team not found in this event.");
@@ -549,8 +552,6 @@ export class TeamService {
       query.select([
         "team.id",
         "team.name",
-        "team.picture",
-        "team.background",
         "team.locked",
         "team.score",
         "team.buchholzPoints",
@@ -570,8 +571,6 @@ export class TeamService {
         .select([
           "team.id",
           "team.name",
-          "team.picture",
-          "team.background",
           "team.locked",
           "team.hadBye",
           "team.createdAt",
@@ -626,6 +625,18 @@ export class TeamService {
     const result = await query.getRawAndEntities();
 
     const teamIds = result.entities.map((t) => t.id);
+    // Query builders do not load eager relations; fetch artwork in one batch.
+    const uploads = teamIds.length
+      ? await this.teamRepository.manager.find(MediaUploadEntity, {
+          where: { teamId: In(teamIds) },
+        })
+      : [];
+    const uploadsByTeam = new Map<string, MediaUploadEntity[]>();
+    for (const upload of uploads) {
+      const teamUploads = uploadsByTeam.get(upload.teamId!) ?? [];
+      teamUploads.push(upload);
+      uploadsByTeam.set(upload.teamId!, teamUploads);
+    }
     // Public standings are calculated from revealed matches. The admin view must
     // keep the persisted value selected above instead of overwriting it with a
     // different on-the-fly calculation.
@@ -648,14 +659,14 @@ export class TeamService {
           score: number;
           buchholzPoints: number;
           tags: string[];
-        } = {
-          ...team,
+        } = Object.assign(new TeamEntity(), team, {
+          ...mediaArtwork(uploadsByTeam.get(team.id) ?? []),
           hadBye: team.hadBye,
           userCount: parseInt(raw.user_count, 10) || 0,
           score: 0,
           buchholzPoints: 0,
           tags: tagsByTeam.get(team.id) ?? [],
-        };
+        });
 
         if (revealAll) {
           // For admins, use DB score which includes byes
@@ -685,6 +696,7 @@ export class TeamService {
       const team = await entityManager.findOneOrFail(TeamEntity, {
         where: { id: teamId },
         lock: { mode: "pessimistic_write" },
+        loadEagerRelations: false,
       });
       if (team.eventId !== eventId)
         throw new BadRequestException("The team is not part of this event.");
@@ -784,6 +796,7 @@ export class TeamService {
       const lockedTeam = await entityManager.findOneOrFail(TeamEntity, {
         where: { id: teamReference.id },
         lock: { mode: "pessimistic_write" },
+        loadEagerRelations: false,
       });
       const event = await entityManager.findOneOrFail(EventEntity, {
         select: {
@@ -820,7 +833,7 @@ export class TeamService {
 
   async getQueueOpponents(eventId: string, teamId: string) {
     const opponents = await this.teamRepository.find({
-      select: { id: true, name: true, picture: true },
+      select: { id: true, name: true },
       where: {
         id: Not(teamId),
         event: { id: eventId },
@@ -840,6 +853,7 @@ export class TeamService {
         where: { id: In([challengerId, targetId]) },
         order: { id: "ASC" },
         lock: { mode: "pessimistic_write" },
+        loadEagerRelations: false,
       });
       const challenger = teams.find((team) => team.id === challengerId);
       const target = teams.find((team) => team.id === targetId);
@@ -911,6 +925,7 @@ export class TeamService {
       },
       order: { id: "ASC" },
       lock: { mode: "pessimistic_write" },
+      loadEagerRelations: false,
     });
     if (candidates.length === 0) return null;
 

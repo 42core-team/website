@@ -1,11 +1,13 @@
 import {
   Column,
+  AfterLoad,
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
   JoinTable,
   ManyToMany,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   RelationId,
   UpdateDateColumn,
@@ -17,6 +19,8 @@ import { EventStarterTemplateEntity } from "src/event/entities/event-starter-tem
 import { Exclude } from "class-transformer";
 
 import type { TeamImage, TeamBackground } from "../team-image.service";
+import { MediaUploadEntity } from "../../media/entities/media-upload.entity";
+import { mediaArtwork } from "../../media/media-artwork";
 
 @Entity("teams")
 export class TeamEntity {
@@ -26,11 +30,18 @@ export class TeamEntity {
   @Column()
   name: string;
 
-  @Column({ type: "jsonb", nullable: true })
   picture: TeamImage | null;
 
-  @Column({ type: "jsonb", nullable: true })
   background: TeamBackground | null;
+
+  @Exclude()
+  @OneToMany(() => MediaUploadEntity, (upload) => upload.team, { eager: true })
+  mediaUploads: MediaUploadEntity[];
+
+  @AfterLoad()
+  loadArtwork() {
+    Object.assign(this, mediaArtwork(this.mediaUploads ?? []));
+  }
 
   @Column({ default: false })
   locked: boolean;

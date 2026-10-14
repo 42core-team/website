@@ -158,6 +158,14 @@ read access; writes, listing, and deletion belong to the API credentials.
 Images use immutable UUID keys. Replacements become visible only after all
 required variants are stored. A daily 03:00 server-time cleanup removes unreferenced
 objects older than 24 hours, including failed uploads and deleted-team artwork.
+The `media_uploads` table stores one object key per variant: two rows for a
+picture (`small` / `large`) and one for a background (`large`). Each upload
+belongs to exactly one team or user; user ownership supports future profile
+uploads without a schema redesign. The team API still returns `picture` and
+`background` objects assembled from these rows. Replacement rows are committed
+together in a transaction after storage succeeds.
+Generated objects use the shared `images/` prefix. Cleanup is restricted to this
+prefix and preserves all referenced uploads, including future user-owned media.
 Processing is limited to two concurrent uploads per API process and one per team.
 
 Production media storage configuration uses GitHub environment variables
