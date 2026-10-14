@@ -142,14 +142,14 @@ Uploads go through the authenticated API; browser-to-S3 upload CORS is unnecessa
 For an API running outside Kubernetes, set:
 
 ```dotenv
-TEAM_IMAGES_S3_ENDPOINT=http://localhost:9000
-TEAM_IMAGES_S3_BUCKET=core-team-images
-TEAM_IMAGES_S3_REGION=local
-TEAM_IMAGES_S3_ACCESS_KEY_ID=core
-TEAM_IMAGES_S3_SECRET_ACCESS_KEY=coresecret
+MEDIA_S3_ENDPOINT=http://localhost:9000
+MEDIA_S3_BUCKET=core-team-images
+MEDIA_S3_REGION=local
+MEDIA_S3_ACCESS_KEY_ID=core
+MEDIA_S3_SECRET_ACCESS_KEY=coresecret
 ```
 
-Set frontend `VITE_TEAM_IMAGES_URL=http://localhost:9000/core-team-images` (also
+Set frontend `VITE_MEDIA_URL=http://localhost:9000/core-team-images` (also
 the development fallback), and run the usual API database migrations. For hosted
 environments, configure these variables with your own storage endpoint, bucket,
 credentials, and public image URL. Only generated artwork should have public
@@ -160,12 +160,12 @@ required variants are stored. A daily 03:00 server-time cleanup removes unrefere
 objects older than 24 hours, including failed uploads and deleted-team artwork.
 Processing is limited to two concurrent uploads per API process and one per team.
 
-Production team image configuration uses GitHub environment variables
-`TEAM_IMAGES_S3_ENDPOINT`, `TEAM_IMAGES_S3_BUCKET`, `TEAM_IMAGES_S3_REGION`, and
-`VITE_TEAM_IMAGES_URL`, plus GitHub environment secrets
-`TEAM_IMAGES_S3_ACCESS_KEY_ID` and `TEAM_IMAGES_S3_SECRET_ACCESS_KEY`.
+Production media storage configuration uses GitHub environment variables
+`MEDIA_S3_ENDPOINT`, `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION`, and
+`VITE_MEDIA_URL`, plus GitHub environment secrets
+`MEDIA_S3_ACCESS_KEY_ID` and `MEDIA_S3_SECRET_ACCESS_KEY`.
 Set these in each deployed environment (`dev` / `prod`). The API deployment passes
-storage settings to Helm. The frontend build embeds `VITE_TEAM_IMAGES_URL` into
+storage settings to Helm. The frontend build embeds `VITE_MEDIA_URL` into
 the static bundle, so changing that URL requires rebuilding the frontend image.
 The bucket must already exist, with public image reads and API upload/list/delete
 permissions. Cleanup uses a PostgreSQL transaction lock shared by API replicas.

@@ -197,11 +197,11 @@ jobs:
 
       - name: Deploy API with Helm
         env:
-          TEAM_IMAGES_S3_ENDPOINT: ${{ vars.TEAM_IMAGES_S3_ENDPOINT }}
-          TEAM_IMAGES_S3_BUCKET: ${{ vars.TEAM_IMAGES_S3_BUCKET }}
-          TEAM_IMAGES_S3_REGION: ${{ vars.TEAM_IMAGES_S3_REGION }}
-          TEAM_IMAGES_S3_ACCESS_KEY_ID: ${{ secrets.TEAM_IMAGES_S3_ACCESS_KEY_ID }}
-          TEAM_IMAGES_S3_SECRET_ACCESS_KEY: ${{ secrets.TEAM_IMAGES_S3_SECRET_ACCESS_KEY }}
+          MEDIA_S3_ENDPOINT: ${{ vars.MEDIA_S3_ENDPOINT }}
+          MEDIA_S3_BUCKET: ${{ vars.MEDIA_S3_BUCKET }}
+          MEDIA_S3_REGION: ${{ vars.MEDIA_S3_REGION }}
+          MEDIA_S3_ACCESS_KEY_ID: ${{ secrets.MEDIA_S3_ACCESS_KEY_ID }}
+          MEDIA_S3_SECRET_ACCESS_KEY: ${{ secrets.MEDIA_S3_SECRET_ACCESS_KEY }}
         run: |
           cd api/helm
 
@@ -210,9 +210,9 @@ jobs:
           import json, os
           values = {
               "env": {key: os.environ[key] for key in (
-                  "TEAM_IMAGES_S3_ENDPOINT", "TEAM_IMAGES_S3_BUCKET", "TEAM_IMAGES_S3_REGION")},
+                  "MEDIA_S3_ENDPOINT", "MEDIA_S3_BUCKET", "MEDIA_S3_REGION")},
               "secrets": {key: os.environ[key] for key in (
-                  "TEAM_IMAGES_S3_ACCESS_KEY_ID", "TEAM_IMAGES_S3_SECRET_ACCESS_KEY")},
+                  "MEDIA_S3_ACCESS_KEY_ID", "MEDIA_S3_SECRET_ACCESS_KEY")},
           }
           path = os.path.join(os.environ["RUNNER_TEMP"], "team-images-values.json")
           with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w") as file:

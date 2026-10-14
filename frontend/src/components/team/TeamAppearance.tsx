@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 export function teamImageUrl(key: string) {
   const base = (
-    import.meta.env.VITE_TEAM_IMAGES_URL ||
+    import.meta.env.VITE_MEDIA_URL ||
     (import.meta.env.DEV ? 'http://localhost:9000/core-team-images' : '')
   ).replace(/\/$/, '')
   return base

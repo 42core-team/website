@@ -200,7 +200,7 @@ jobs:
 
       - name: Deploy with Helm
         env:
-          VITE_TEAM_IMAGES_URL: ${{ vars.VITE_TEAM_IMAGES_URL }}
+          VITE_MEDIA_URL: ${{ vars.VITE_MEDIA_URL }}
         run: |
           cd frontend/helm
 
@@ -213,7 +213,7 @@ jobs:
             . \
             --namespace ${{ steps.config.outputs.namespace }} \
             --values ${{ steps.config.outputs.values_file }} \
-            --set-string env.VITE_TEAM_IMAGES_URL="$VITE_TEAM_IMAGES_URL" \
+            --set-string env.VITE_MEDIA_URL="$VITE_MEDIA_URL" \
             --set image.tag=${{ steps.config.outputs.image_tag }} \
             --set image.repository=${{ steps.config.outputs.image_repo }} \
             --set secrets.VITE_AUTH_SECRET="${{ secrets.VITE_AUTH_SECRET || secrets.NEXTAUTH_SECRET }}" \

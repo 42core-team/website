@@ -113,22 +113,22 @@ export class TeamImageService {
   ) {}
 
   private storage() {
-    const endpoint = this.config.get<string>("TEAM_IMAGES_S3_ENDPOINT");
-    const bucket = this.config.get<string>("TEAM_IMAGES_S3_BUCKET");
+    const endpoint = this.config.get<string>("MEDIA_S3_ENDPOINT");
+    const bucket = this.config.get<string>("MEDIA_S3_BUCKET");
     if (!endpoint || !bucket)
       throw new ServiceUnavailableException(
-        "Team image storage is not configured.",
+        "Media storage is not configured.",
       );
     return {
       bucket,
       client: new S3Client({
         endpoint,
-        region: this.config.get("TEAM_IMAGES_S3_REGION", "local"),
+        region: this.config.get("MEDIA_S3_REGION", "local"),
         forcePathStyle: true,
         credentials: {
-          accessKeyId: this.config.getOrThrow("TEAM_IMAGES_S3_ACCESS_KEY_ID"),
+          accessKeyId: this.config.getOrThrow("MEDIA_S3_ACCESS_KEY_ID"),
           secretAccessKey: this.config.getOrThrow(
-            "TEAM_IMAGES_S3_SECRET_ACCESS_KEY",
+            "MEDIA_S3_SECRET_ACCESS_KEY",
           ),
         },
         requestChecksumCalculation: "WHEN_REQUIRED",
@@ -194,7 +194,7 @@ export class TeamImageService {
 
   @Cron("0 3 * * *")
   async cleanup() {
-    if (!this.config.get("TEAM_IMAGES_S3_BUCKET")) return;
+    if (!this.config.get("MEDIA_S3_BUCKET")) return;
     let client: S3Client | undefined;
     try {
       await this.teams.manager.transaction(async (manager) => {

@@ -32,10 +32,10 @@ describe("team image cleanup locking", () => {
     );
     const service = new TeamImageService(
       new ConfigService({
-        TEAM_IMAGES_S3_ENDPOINT: "http://localhost:9000",
-        TEAM_IMAGES_S3_BUCKET: "test",
-        TEAM_IMAGES_S3_ACCESS_KEY_ID: "test",
-        TEAM_IMAGES_S3_SECRET_ACCESS_KEY: "test",
+        MEDIA_S3_ENDPOINT: "http://localhost:9000",
+        MEDIA_S3_BUCKET: "test",
+        MEDIA_S3_ACCESS_KEY_ID: "test",
+        MEDIA_S3_SECRET_ACCESS_KEY: "test",
       }),
       { manager: { transaction } } as unknown as Repository<TeamEntity>,
     );
@@ -249,10 +249,10 @@ describe("team image processing", () => {
 
 describe("team image publishing", () => {
   const config = new ConfigService({
-    TEAM_IMAGES_S3_ENDPOINT: "http://localhost:9000",
-    TEAM_IMAGES_S3_BUCKET: "test",
-    TEAM_IMAGES_S3_ACCESS_KEY_ID: "test",
-    TEAM_IMAGES_S3_SECRET_ACCESS_KEY: "test",
+    MEDIA_S3_ENDPOINT: "http://localhost:9000",
+    MEDIA_S3_BUCKET: "test",
+    MEDIA_S3_ACCESS_KEY_ID: "test",
+    MEDIA_S3_SECRET_ACCESS_KEY: "test",
   });
   it("uploads and publishes only one background file", async () => {
     const send = jest
