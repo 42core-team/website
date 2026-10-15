@@ -6,9 +6,6 @@ image:
   pullPolicy: IfNotPresent
   tag: latest
 
-imagePullSecrets:
-  - name: ghcr-secret
-
 nameOverride: ""
 fullnameOverride: ""
 

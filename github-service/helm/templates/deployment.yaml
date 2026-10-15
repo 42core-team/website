@@ -20,10 +20,6 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       serviceAccountName: {{ include "github-service.serviceAccountName" . }}
       containers:
         - name: {{ .Chart.Name }}

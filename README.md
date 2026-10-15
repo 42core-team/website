@@ -46,11 +46,10 @@ make
 
 This command:
 
-1. Configures the repository's Git hooks.
-2. Creates the `core-dev` k3d cluster, or starts it if it already exists.
-3. Writes the cluster configuration to `kubeconfig.yaml`.
-4. Guides you through creating `.env.tilt` for local OAuth credentials.
-5. Starts Tilt, which builds and deploys the services into the cluster.
+1. Creates the `core-dev` k3d cluster, or starts it if it already exists.
+2. Writes the cluster configuration to `kubeconfig.yaml`.
+3. Guides you through creating `.env.tilt` for local OAuth credentials.
+4. Starts Tilt, which builds and deploys the services into the cluster.
 
 Once Tilt reports the resources as ready, the local services are available at:
 
