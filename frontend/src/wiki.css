@@ -360,3 +360,10 @@
 .wiki-content h6:hover .heading-anchor::before {
   @apply opacity-100;
 }
+
+/* ── Language-specific blocks (rehype-lang-blocks) ─────────────────────── */
+/* data-wiki-lang on .main-wiki-content holds the language chosen in the header. */
+[data-wiki-lang='c'] .wiki-content .lang-block:not([data-lang='c']),
+[data-wiki-lang='go'] .wiki-content .lang-block:not([data-lang='go']) {
+  display: none;
+}
