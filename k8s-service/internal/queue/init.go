@@ -58,9 +58,9 @@ func Init(url string, logger *zap.SugaredLogger) (*Queue, error) {
 	return queue, nil
 }
 
-func (q *Queue) DeclareQueues() error {
+func (q *Queue) DeclareQueues(gameQueueName, gameResultsQueueName string) error {
 	newQueue, err := q.ch.QueueDeclare(
-		"game_queue",
+		gameQueueName,
 		true,
 		false,
 		false,
@@ -74,7 +74,7 @@ func (q *Queue) DeclareQueues() error {
 	q.gameQ = &newQueue
 
 	_, err = q.ch.QueueDeclare(
-		"game_results",
+		gameResultsQueueName,
 		true,
 		false,
 		false,

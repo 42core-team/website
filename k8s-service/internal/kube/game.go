@@ -210,14 +210,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 		})
 	}
 
-	gameEnv := []corev1.EnvVar{
-		{Name: "GAME_ID", Value: game.ID.String()},
-		{Name: "SEND_RESULTS", Value: "true"},
-		{Name: "RABBITMQ_URL", Value: c.cfg.RabbitMQHTTP + "/api/exchanges/%2f/amq.default/publish"},
-		{Name: "S3_PRESIGNED_URL", Value: presignedURL},
-		{Name: "UPLOAD_REPLAY", Value: "true"},
-		{Name: "BOT_ID_MAPPING", Value: string(botMappingJSON)},
-	}
+	gameEnv := c.gameContainerEnv(game.ID.String(), presignedURL, string(botMappingJSON))
 	gameEnv = append(gameEnv, playerNameEnvs...)
 
 	mainContainer := corev1.Container{
@@ -345,6 +338,18 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 
 	c.logger.Infoln("Job to run a game successfully created", "jobName", createdJob.Name)
 	return nil
+}
+
+func (c *Client) gameContainerEnv(gameID, presignedURL, botMappingJSON string) []corev1.EnvVar {
+	return []corev1.EnvVar{
+		{Name: "GAME_ID", Value: gameID},
+		{Name: "SEND_RESULTS", Value: "true"},
+		{Name: "RABBITMQ_URL", Value: c.cfg.RabbitMQHTTP + "/api/exchanges/%2f/amq.default/publish"},
+		{Name: "RABBITMQ_RESULTS_QUEUE", Value: c.cfg.QueueName("game_results")},
+		{Name: "S3_PRESIGNED_URL", Value: presignedURL},
+		{Name: "UPLOAD_REPLAY", Value: "true"},
+		{Name: "BOT_ID_MAPPING", Value: botMappingJSON},
+	}
 }
 
 // imagePullPolicy returns PullAlways for non-release images (i.e. tags that do
