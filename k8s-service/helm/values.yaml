@@ -1,5 +1,22 @@
 replicaCount: 1
 
+# Roll out one pod at a time: start one new pod, wait until it has been Ready
+# for minReadySeconds, then terminate one old pod. Never drop below the desired count.
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+minReadySeconds: 5
+terminationGracePeriodSeconds: 30
+
+# Keep serving for a few seconds after termination starts so the endpoint is
+# removed from Services/ingress before the process receives SIGTERM.
+lifecycle:
+  preStop:
+    sleep:
+      seconds: 5
+
 image:
   repository: ghcr.io/OWNER/REPO-k8s-service
   pullPolicy: IfNotPresent
@@ -47,7 +64,8 @@ env:
   S3_REGION: "eu"
   S3_BUCKET: "core-replays"
 
-# Probes
+# Probes (both check the RabbitMQ channel; the service has no reconnect logic,
+# so a liveness restart is how it recovers from a lost connection)
 livenessProbe:
   enabled: true
   httpGet:
@@ -63,8 +81,7 @@ readinessProbe:
   httpGet:
     path: /health
     port: http
-  initialDelaySeconds: 5
-  periodSeconds: 10
+  periodSeconds: 5
   timeoutSeconds: 2
   failureThreshold: 3
 

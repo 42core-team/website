@@ -1,6 +1,23 @@
 # Default values for api
 replicaCount: 1
 
+# Roll out one pod at a time: start one new pod, wait until it has been Ready
+# for minReadySeconds, then terminate one old pod. Never drop below the desired count.
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+minReadySeconds: 5
+terminationGracePeriodSeconds: 30
+
+# Keep serving for a few seconds after termination starts so the endpoint is
+# removed from Services/ingress before the process receives SIGTERM.
+lifecycle:
+  preStop:
+    sleep:
+      seconds: 5
+
 image:
   repository: ghcr.io/42core-team/website_relaunch-api
   pullPolicy: IfNotPresent
@@ -89,18 +106,32 @@ ingress:
           pathType: ImplementationSpecific
   tls: []
 
+# Probes
+# startup/liveness only check the process; readiness also checks the database.
+# Generous budget: the container runs database migrations before it starts listening.
+startupProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 2
+  timeoutSeconds: 2
+  failureThreshold: 60
+
 livenessProbe:
   enabled: true
   httpGet:
     path: /health
     port: http
-  initialDelaySeconds: 30
   periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
 
 readinessProbe:
   enabled: true
   httpGet:
-    path: /health
+    path: /health/ready
     port: http
-  initialDelaySeconds: 5
   periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 3
