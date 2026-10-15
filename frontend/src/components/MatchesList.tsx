@@ -23,9 +23,8 @@ export default function MatchesList(props: {
   matches: QueueMatch[]
   isInsideCard?: boolean
   teamId?: string
-  showTeamPictures?: boolean
 }) {
-  const { eventId, matches, isInsideCard, teamId, showTeamPictures = true } = props
+  const { eventId, matches, isInsideCard, teamId } = props
 
   if (matches.length === 0) {
     return (
@@ -57,7 +56,7 @@ export default function MatchesList(props: {
             {/* Match Meta */}
             <div
               className={cn(
-                'px-4 py-3 shrink-0 sm:w-40 bg-muted/10 flex flex-row sm:flex-col items-center sm:items-start justify-between sm:justify-center gap-2',
+                'px-4 py-3 shrink-0 sm:w-52 bg-muted/10 flex flex-row sm:flex-col items-center sm:items-start justify-between sm:justify-center gap-2',
                 !isInsideCard &&
                   'bg-muted/20 border-b sm:border-b-0 sm:border-r',
               )}
@@ -88,28 +87,38 @@ export default function MatchesList(props: {
                   {match.phase === MatchPhase.ELIMINATION && 'Tournament'}
                 </Badge>
               </div>
-              <div className="flex flex-col text-right sm:text-left">
-                <span className="text-xs font-medium text-muted-foreground">
-                  {new Date(match.createdAt).toLocaleDateString()}
-                </span>
-                <span className="text-[10px] text-muted-foreground/60">
+              <span className="text-xs font-medium text-muted-foreground">
+                {new Date(match.createdAt).toLocaleDateString()}
+                <span className="text-muted-foreground/60">
+                  {' · '}
                   {new Date(match.createdAt).toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit',
                   })}
                 </span>
-              </div>
+              </span>
             </div>
 
             {/* Match Content */}
             <div className="flex min-w-0 flex-1 items-center justify-center p-4 sm:p-6">
-              <div className="flex w-full max-w-4xl min-w-0 items-center justify-center gap-4 sm:gap-6 lg:gap-12">
+              <div className="flex w-full max-w-4xl min-w-0 items-center justify-center gap-3 sm:gap-4">
                 {([0, 1] as const).map((side) => {
                   const team = teams.at(side)
                   const isWinner = Boolean(team && match.winner?.id === team.id)
+                  const isLoser = Boolean(match.winner && !isWinner)
+                  // Picture sits on the inner edge next to VS so it lines up
+                  // across rows; name and trophy extend toward the outside.
                   const teamName = team && (
                     <>
-                      {showTeamPictures && <TeamPicture team={team} />}
+                      <TeamPicture
+                        team={team}
+                        className={cn(
+                          'size-8 rounded-md ring-1 ring-border',
+                          side === 0 && 'order-last',
+                          isLoser && 'opacity-60 grayscale',
+                        )}
+                        fallbackClassName="rounded-md bg-muted text-[10px] text-muted-foreground"
+                      />
                       <span
                         className={cn(
                           'min-w-0 truncate',
@@ -123,14 +132,14 @@ export default function MatchesList(props: {
                           aria-label="Winner"
                           className={cn(
                             'size-4 shrink-0 text-amber-500',
-                            side === 1 && 'order-first',
+                            side === 0 && 'order-first',
                           )}
                         />
                       )}
                     </>
                   )
                   const nameClassName = cn(
-                    'flex w-full min-w-0 items-center gap-2 text-sm font-semibold sm:text-base',
+                    'flex w-full min-w-0 items-center gap-2.5 text-sm font-semibold sm:text-base',
                     side === 0 ? 'justify-end text-right' : 'text-left',
                   )
 
@@ -138,7 +147,7 @@ export default function MatchesList(props: {
                     <div key={side} className="contents">
                       {side === 1 && (
                         <div className="flex shrink-0 items-center justify-center">
-                          <span className="text-[10px] font-black text-muted-foreground/30">
+                          <span className="text-xs font-bold text-muted-foreground/50">
                             VS
                           </span>
                         </div>
@@ -202,7 +211,7 @@ export default function MatchesList(props: {
             {/* Replay */}
             <div
               className={cn(
-                'flex items-center justify-center shrink-0 px-6 sm:w-40 pb-4 sm:pb-0',
+                'flex items-center justify-center shrink-0 px-6 sm:w-32 pb-4 sm:pb-0',
                 !isInsideCard && 'sm:border-l border-border/40',
               )}
             >

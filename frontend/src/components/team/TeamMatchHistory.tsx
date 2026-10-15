@@ -69,7 +69,6 @@ export default function TeamMatchHistory({
               <MatchesList
                 eventId={eventId}
                 teamId={teamId}
-                showTeamPictures={false}
                 matches={
                   tab.value === 'all'
                     ? matches
