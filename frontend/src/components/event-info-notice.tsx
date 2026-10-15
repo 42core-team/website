@@ -1,10 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { CalendarClock, UserPlus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { joinEvent } from '@/app/actions/event'
 import { myTeamQueryKey } from '@/app/events/my-team-queries'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface EventJoinNoticeProps {
   userId: string
@@ -68,6 +70,7 @@ export default function EventInfoNotice({
   isUserRegistered,
 }: Readonly<EventJoinNoticeProps>) {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const startsAtTime = new Date(startDate).getTime()
   const [now, setNow] = useState(() => Date.now())
   const hasStarted = startsAtTime <= now
@@ -99,11 +102,14 @@ export default function EventInfoNotice({
     mutationFn: async () => joinEvent(eventId),
     onSuccess: () => {
       toast.success('Successfully joined the event!')
+      queryClient.setQueryData(['event', eventId, 'is-user-registered'], true)
+      void queryClient.invalidateQueries({ queryKey: ['events'] })
       void queryClient.invalidateQueries({ queryKey: ['event', eventId] })
       void queryClient.invalidateQueries({
         queryKey: ['event', eventId, 'is-user-registered'],
       })
       void queryClient.invalidateQueries({ queryKey: myTeamQueryKey(eventId) })
+      void navigate({ to: '/events/$id/my-team', params: { id: eventId } })
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to join event')
@@ -117,44 +123,99 @@ export default function EventInfoNotice({
   return (
     <aside
       role="status"
-      className="border-y border-warning-400/25 bg-warning-50/70 dark:bg-warning-900/10"
+      className={cn(
+        'border-y',
+        showJoinButton
+          ? 'border-primary/30 bg-primary/10'
+          : 'border-warning-400/25 bg-warning-50/70 dark:bg-warning-900/10',
+      )}
     >
-      <div className="container mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        className={cn(
+          'container mx-auto flex max-w-7xl flex-col px-4',
+          showJoinButton
+            ? 'gap-4 py-6 md:flex-row md:items-center md:justify-between'
+            : 'gap-3 py-3 sm:flex-row sm:items-center sm:justify-between',
+        )}
+      >
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-warning-400/10 text-warning-700 dark:text-warning-400">
-            <CalendarClock className="size-4" aria-hidden="true" />
+          <div
+            className={cn(
+              'flex shrink-0 items-center justify-center rounded-lg',
+              showJoinButton
+                ? 'size-12 bg-primary/15 text-primary'
+                : 'size-9 bg-warning-400/10 text-warning-700 dark:text-warning-400',
+            )}
+          >
+            {showJoinButton ? (
+              <UserPlus className="size-6" aria-hidden="true" />
+            ) : (
+              <CalendarClock className="size-4" aria-hidden="true" />
+            )}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold tracking-tight">
-              {hasStarted ? 'Private event' : 'Event starts soon'}
-            </p>
-            <p className="text-xs text-muted-foreground">
+            {showJoinButton && (
+              <p className="mb-1 text-xs font-semibold tracking-wide text-primary uppercase">
+                Step 1 · Join this private event
+              </p>
+            )}
+            <p
+              className={cn(
+                'font-semibold tracking-tight',
+                showJoinButton ? 'text-lg' : 'text-sm',
+              )}
+            >
               {showJoinButton
-                ? hasStarted
-                  ? 'Join to participate and create a team.'
-                  : 'Join this private event now and start coding when the countdown ends.'
+                ? 'Want to create a team? Join the event first.'
+                : 'Event starts soon'}
+            </p>
+            <p
+              className={cn(
+                'text-muted-foreground',
+                showJoinButton ? 'mt-1 text-sm' : 'text-xs',
+              )}
+            >
+              {showJoinButton
+                ? 'Click Join Event to go to My Team, where you can create a team or accept an invite.'
                 : 'You can start coding when the countdown ends.'}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 sm:border-l sm:pl-5">
+        <div
+          className={cn(
+            'flex shrink-0 gap-3',
+            showJoinButton
+              ? 'flex-col md:border-l md:pl-5 xl:flex-row xl:items-center'
+              : 'flex-wrap items-center sm:border-l sm:pl-5',
+          )}
+        >
           {!hasStarted && (
-            <>
+            <div className="flex flex-wrap items-center gap-3">
               <span className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
                 Starts in
               </span>
               <EventStartCountdown remainingMs={timeLeftMs} />
-            </>
+            </div>
           )}
           {showJoinButton && (
-            <div className="flex w-full border-t border-border/70 pt-3 sm:w-auto sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4">
+            <div
+              className={cn(
+                'flex w-full xl:w-auto',
+                !hasStarted &&
+                  'border-t border-primary/20 pt-3 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-4',
+              )}
+            >
               <Button
                 onClick={() => joinEventMutation.mutate()}
                 disabled={joinEventMutation.isPending}
-                className="w-full min-w-36 font-semibold transition-transform hover:-translate-y-0.5 sm:w-auto"
+                size="lg"
+                isLoading={joinEventMutation.isPending}
+                className="w-full min-w-40 font-semibold shadow-lg shadow-primary/20 xl:w-auto"
               >
-                <UserPlus aria-hidden="true" />
+                {!joinEventMutation.isPending && (
+                  <UserPlus aria-hidden="true" />
+                )}
                 {joinEventMutation.isPending ? 'Joining...' : 'Join Event'}
               </Button>
             </div>

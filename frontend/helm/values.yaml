@@ -6,9 +6,6 @@ image:
   pullPolicy: IfNotPresent
   tag: latest
 
-imagePullSecrets:
-  - name: ghcr-secret
-
 nameOverride: ""
 fullnameOverride: ""
 
@@ -56,6 +53,8 @@ env:
   VITE_VISUALIZER_URL: ""
   VITE_BACKEND_PUBLIC_URL: ""
   VITE_S3_REPLAYS_BUCKET_URL: ""
+  # Also required at image build time; runtime env cannot change the static bundle.
+  VITE_MEDIA_URL: ""
   AUTH_COOKIE_NAME: "token"
 
 # Secrets - these should be provided via GitHub secrets during deployment

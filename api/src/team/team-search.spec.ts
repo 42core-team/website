@@ -20,6 +20,35 @@ jest.mock("../user/user.service", () => ({
 import type { TeamEntity } from "./entities/team.entity";
 import { TeamService } from "./team.service";
 
+describe("TeamService.getQueueOpponents", () => {
+  it.each([{ small: "small.webp", large: "large.webp" }, null])(
+    "preserves opponent pictures without exposing other fields: %p",
+    async (picture) => {
+      const find = jest.fn().mockResolvedValue([
+        {
+          id: "opponent",
+          name: "Opponent",
+          picture,
+          queueScore: 1234,
+          repo: "private-repo",
+          credits: 99,
+        },
+      ]);
+      const service = Object.create(TeamService.prototype) as TeamService;
+      Reflect.set(service, "teamRepository", { find });
+
+      await expect(service.getQueueOpponents("event", "team")).resolves.toEqual(
+        [{ id: "opponent", name: "Opponent", picture }],
+      );
+      expect(find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          select: { id: true, name: true },
+        }),
+      );
+    },
+  );
+});
+
 describe("TeamService.getSearchedTeamsForEvent", () => {
   it("searches team names without regard to case", async () => {
     const queryBuilder = {
@@ -39,6 +68,7 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
 
     Reflect.set(service, "teamRepository", {
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+      manager: { find: jest.fn().mockResolvedValue([]) },
     });
     Reflect.set(service, "eventService", {
       isEventAdmin: jest.fn().mockResolvedValue(false),
@@ -71,6 +101,9 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
       buchholzPoints: 12,
       hadBye: false,
       credits: 0,
+      pictureSmallUploadId: "u-small",
+      pictureLargeUploadId: "u-large",
+      backgroundLargeUploadId: "u-bg",
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       updatedAt: new Date("2026-01-01T00:00:00.000Z"),
     } as TeamEntity;
@@ -95,6 +128,22 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
 
     Reflect.set(service, "teamRepository", {
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+      manager: {
+        find: jest.fn().mockResolvedValue([
+          {
+            id: "u-small",
+            objectKey: "small.webp",
+          },
+          {
+            id: "u-large",
+            objectKey: "large.webp",
+          },
+          {
+            id: "u-bg",
+            objectKey: "background.webp",
+          },
+        ]),
+      },
     });
     Reflect.set(service, "eventService", {
       isEventAdmin: jest.fn().mockResolvedValue(true),
@@ -116,6 +165,11 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
     );
 
     expect(result[0].buchholzPoints).toBe(12);
+    expect(result[0].picture).toEqual({
+      small: "small.webp",
+      large: "large.webp",
+    });
+    expect(result[0].background).toEqual({ large: "background.webp" });
     expect(calculateBuchholzPointsForTeams).not.toHaveBeenCalled();
   });
 });

@@ -8,6 +8,8 @@ import {
 } from "@nestjs/common";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { TeamEntity } from "./entities/team.entity";
+import { MediaUploadEntity } from "../media/entities/media-upload.entity";
+import { mediaArtwork } from "../media/media-artwork";
 import {
   DataSource,
   EntityManager,
@@ -386,6 +388,7 @@ export class TeamService {
           event: { id: eventId },
         },
         lock: { mode: "pessimistic_write" },
+        loadEagerRelations: false,
       });
 
       if (!team) throw new NotFoundException("Team not found in this event.");
@@ -556,6 +559,9 @@ export class TeamService {
         "team.credits",
         "team.createdAt",
         "team.updatedAt",
+        "team.pictureSmallUploadId",
+        "team.pictureLargeUploadId",
+        "team.backgroundLargeUploadId",
       ]);
     } else {
       // Calculate revealed score dynamically
@@ -573,6 +579,9 @@ export class TeamService {
           "team.createdAt",
           "team.updatedAt",
           "team.score",
+          "team.pictureSmallUploadId",
+          "team.pictureLargeUploadId",
+          "team.backgroundLargeUploadId",
         ])
         .addSelect("COUNT(DISTINCT match.id)", "revealed_match_wins");
     }
@@ -622,6 +631,24 @@ export class TeamService {
     const result = await query.getRawAndEntities();
 
     const teamIds = result.entities.map((t) => t.id);
+    const uploadIds = [
+      ...new Set(
+        result.entities.flatMap((team) =>
+          [
+            team.pictureSmallUploadId,
+            team.pictureLargeUploadId,
+            team.backgroundLargeUploadId,
+          ].filter((id): id is string => Boolean(id)),
+        ),
+      ),
+    ];
+    // Query builders do not load eager relations; fetch artwork in one batch.
+    const uploads = uploadIds.length
+      ? await this.teamRepository.manager.find(MediaUploadEntity, {
+          where: { id: In(uploadIds) },
+        })
+      : [];
+    const uploadsById = new Map(uploads.map((upload) => [upload.id, upload]));
     // Public standings are calculated from revealed matches. The admin view must
     // keep the persisted value selected above instead of overwriting it with a
     // different on-the-fly calculation.
@@ -644,14 +671,24 @@ export class TeamService {
           score: number;
           buchholzPoints: number;
           tags: string[];
-        } = {
-          ...team,
+        } = Object.assign(new TeamEntity(), team, {
+          ...mediaArtwork({
+            pictureSmallUpload: team.pictureSmallUploadId
+              ? uploadsById.get(team.pictureSmallUploadId)
+              : null,
+            pictureLargeUpload: team.pictureLargeUploadId
+              ? uploadsById.get(team.pictureLargeUploadId)
+              : null,
+            backgroundLargeUpload: team.backgroundLargeUploadId
+              ? uploadsById.get(team.backgroundLargeUploadId)
+              : null,
+          }),
           hadBye: team.hadBye,
           userCount: parseInt(raw.user_count, 10) || 0,
           score: 0,
           buchholzPoints: 0,
           tags: tagsByTeam.get(team.id) ?? [],
-        };
+        });
 
         if (revealAll) {
           // For admins, use DB score which includes byes
@@ -681,6 +718,7 @@ export class TeamService {
       const team = await entityManager.findOneOrFail(TeamEntity, {
         where: { id: teamId },
         lock: { mode: "pessimistic_write" },
+        loadEagerRelations: false,
       });
       if (team.eventId !== eventId)
         throw new BadRequestException("The team is not part of this event.");
@@ -780,6 +818,7 @@ export class TeamService {
       const lockedTeam = await entityManager.findOneOrFail(TeamEntity, {
         where: { id: teamReference.id },
         lock: { mode: "pessimistic_write" },
+        loadEagerRelations: false,
       });
       const event = await entityManager.findOneOrFail(EventEntity, {
         select: {
@@ -824,7 +863,7 @@ export class TeamService {
       order: { name: "ASC" },
     });
 
-    return opponents.map(({ id, name }) => ({ id, name }));
+    return opponents.map(({ id, name, picture }) => ({ id, name, picture }));
   }
 
   async createDirectMatch(challengerId: string, targetId: string) {
@@ -836,6 +875,7 @@ export class TeamService {
         where: { id: In([challengerId, targetId]) },
         order: { id: "ASC" },
         lock: { mode: "pessimistic_write" },
+        loadEagerRelations: false,
       });
       const challenger = teams.find((team) => team.id === challengerId);
       const target = teams.find((team) => team.id === targetId);
@@ -907,6 +947,7 @@ export class TeamService {
       },
       order: { id: "ASC" },
       lock: { mode: "pessimistic_write" },
+      loadEagerRelations: false,
     });
     if (candidates.length === 0) return null;
 

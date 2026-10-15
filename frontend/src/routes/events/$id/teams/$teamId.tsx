@@ -75,7 +75,7 @@ function TeamRoute() {
 
   if (teamQuery.isError || !teamQuery.data) {
     return (
-      <main className="container mx-auto max-w-7xl px-4 py-8">
+      <main className="container mx-auto max-w-5xl px-4 py-8">
         <p className="text-center text-destructive">Team not found.</p>
       </main>
     )
@@ -85,7 +85,7 @@ function TeamRoute() {
     Boolean(myTeamQuery.data) && myTeamQuery.data?.id !== teamQuery.data.id
 
   return (
-    <main className="container mx-auto max-w-7xl px-4 py-8">
+    <main className="container mx-auto max-w-5xl px-4 py-8">
       <TeamPublicProfile
         team={teamQuery.data}
         members={membersQuery.data ?? []}
@@ -121,6 +121,7 @@ function TeamRoute() {
       />
       <div className="mt-6">
         <TeamMatchHistory
+          teamId={teamId}
           eventId={id}
           matches={matchesQuery.data ?? []}
           isLoading={matchesQuery.isPending}

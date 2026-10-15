@@ -16,6 +16,9 @@ This NestJS service serves as the primary backend, handling:
 
 ### Prerequisites
 
+Use Node.js 26 or newer. TypeScript stays on the 6.0 release line because the
+Nest CLI, ts-jest, and typescript-eslint require its JavaScript compiler API.
+
 Install pnpm:
 
 ```bash

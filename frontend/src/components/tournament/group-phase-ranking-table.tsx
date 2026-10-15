@@ -2,10 +2,11 @@
 
 import type { Team } from '@/app/actions/team'
 import type { Match } from '@/app/actions/tournament-model'
-import { Fragment } from 'react'
+import { Fragment, useMemo } from 'react'
 import { MatchState } from '@/app/actions/tournament-model'
 import { MatchHistoryBadges } from '@/components/match/MatchHistoryBadges'
 import { LocationTags } from '@/components/team'
+import { TeamPicture } from '@/components/team/TeamAppearance'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -22,6 +23,7 @@ interface GroupPhaseRankingTableProps {
   matches: Match[]
   eventId: string
   advancementCount: number
+  selectedTag?: string | null
 }
 
 export function GroupPhaseRankingTable({
@@ -29,13 +31,23 @@ export function GroupPhaseRankingTable({
   matches,
   eventId,
   advancementCount,
+  selectedTag = null,
 }: GroupPhaseRankingTableProps) {
   const router = useRouter()
 
-  const sortedTeams = [...teams].sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score
-    return b.buchholzPoints - a.buchholzPoints
-  })
+  const rankedTeams = useMemo(
+    () =>
+      [...teams]
+        .sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score
+          return b.buchholzPoints - a.buchholzPoints
+        })
+        .map((team, index) => ({ ...team, rank: index + 1 })),
+    [teams],
+  )
+  const visibleTeams = selectedTag
+    ? rankedTeams.filter((team) => team.tags.includes(selectedTag))
+    : rankedTeams
 
   const getMatchHistory = (teamId: string) =>
     matches
@@ -65,20 +77,26 @@ export function GroupPhaseRankingTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedTeams.length === 0 ? (
+          {visibleTeams.length === 0 ? (
             <TableRow>
               <TableCell
                 colSpan={6}
                 className="h-24 text-center text-muted-foreground"
               >
-                Rankings will appear once teams join the event.
+                {selectedTag
+                  ? 'No teams match this tag.'
+                  : 'Rankings will appear once teams join the event.'}
               </TableCell>
             </TableRow>
           ) : (
-            sortedTeams.map((team, index) => {
-              const rank = index + 1
+            visibleTeams.map((team, index) => {
+              const rank = team.rank
               const history = getMatchHistory(team.id)
-              const isAtCutoff = rank === advancementCount
+              const nextRank = visibleTeams.at(index + 1)?.rank
+              const isAtCutoff =
+                rank <= advancementCount &&
+                nextRank !== undefined &&
+                nextRank > advancementCount
 
               return (
                 <Fragment key={team.id}>
@@ -91,6 +109,7 @@ export function GroupPhaseRankingTable({
                     <TableCell>{rank}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-2">
+                        <TeamPicture team={team} />
                         <span>{team.name}</span>
                         <LocationTags tags={team.tags} />
                       </div>
@@ -115,7 +134,7 @@ export function GroupPhaseRankingTable({
                       </div>
                     </TableCell>
                   </TableRow>
-                  {isAtCutoff && index < sortedTeams.length - 1 && (
+                  {isAtCutoff && (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center">
                         <div className="flex h-full w-full items-center gap-4 px-4">

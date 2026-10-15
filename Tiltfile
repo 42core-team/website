@@ -107,6 +107,7 @@ docker_build('api', './api',
     ignore     = ['helm', 'dist', '.env*', '*.md'],
     live_update = [
         sync('./api/src', '/app/src'),
+        sync('./api/db', '/app/db'),
         run(
             'cd /app && pnpm install --frozen-lockfile',
             trigger = ['./api/package.json', './api/pnpm-lock.yaml'],
@@ -127,7 +128,7 @@ k8s_yaml(helm(
 ))
 k8s_resource('api',
     port_forwards = ['4000:4000'],
-    resource_deps = ['postgres', 'rabbitmq'],
+    resource_deps = ['postgres', 'rabbitmq', 'seaweedfs-init'],
     labels        = ['app'],
 )
 

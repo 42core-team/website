@@ -1,3 +1,4 @@
+import { TeamPicture } from '@/components/team/TeamAppearance'
 import type { QueueMatch } from '@/app/actions/tournament-model'
 import { Trophy } from 'lucide-react'
 import Link from '@/components/app-link'
@@ -21,8 +22,10 @@ export default function MatchesList(props: {
   eventId: string
   matches: QueueMatch[]
   isInsideCard?: boolean
+  teamId?: string
+  showTeamPictures?: boolean
 }) {
-  const { eventId, matches, isInsideCard } = props
+  const { eventId, matches, isInsideCard, teamId, showTeamPictures = true } = props
 
   if (matches.length === 0) {
     return (
@@ -43,6 +46,12 @@ export default function MatchesList(props: {
     <div className={cn('flex flex-col', isInsideCard ? 'divide-y' : 'gap-4')}>
       {matches.map((match, index) => {
         const resultScores = getVisibleMatchResultScores(match)
+        const teams = [...match.teams]
+        const viewedTeamIndex = teams.findIndex((team) => team.id === teamId)
+        if (viewedTeamIndex > 0) {
+          const [viewedTeam] = teams.splice(viewedTeamIndex, 1)
+          teams.unshift(viewedTeam)
+        }
         const content = (
           <div className="flex flex-col items-stretch sm:flex-row">
             {/* Match Meta */}
@@ -94,105 +103,99 @@ export default function MatchesList(props: {
 
             {/* Match Content */}
             <div className="flex min-w-0 flex-1 items-center justify-center p-4 sm:p-6">
-              <div className="flex w-full max-w-4xl min-w-0 items-center justify-center gap-4 sm:gap-12">
-                {/* Team 1 */}
-                <div className="flex min-w-0 flex-1 flex-col items-end gap-1">
-                  {match.teams[0] ? (
+              <div className="flex w-full max-w-4xl min-w-0 items-center justify-center gap-4 sm:gap-6 lg:gap-12">
+                {([0, 1] as const).map((side) => {
+                  const team = teams.at(side)
+                  const isWinner = Boolean(team && match.winner?.id === team.id)
+                  const teamName = team && (
                     <>
-                      {match.teams[0].deletedAt ? (
-                        <div className="flex w-full flex-col items-end">
-                          <span className="truncate text-sm font-semibold text-muted-foreground/50 line-through sm:text-base">
-                            {match.teams[0].name}
-                          </span>
-                        </div>
-                      ) : (
-                        <Link
-                          href={`/events/${eventId}/teams/${match.teams[0].id}`}
+                      {showTeamPictures && <TeamPicture team={team} />}
+                      <span
+                        className={cn(
+                          'min-w-0 truncate',
+                          team.deletedAt && 'line-through',
+                        )}
+                      >
+                        {team.name}
+                      </span>
+                      {isWinner && (
+                        <Trophy
+                          aria-label="Winner"
                           className={cn(
-                            'text-sm sm:text-base font-semibold truncate hover:underline hover:text-primary transition-colors text-right w-full',
-                            match.winner?.id === match.teams[0].id
-                              ? 'text-foreground'
-                              : 'text-muted-foreground',
+                            'size-4 shrink-0 text-amber-500',
+                            side === 1 && 'order-first',
                           )}
-                        >
-                          {match.teams[0].name}
-                          {match.winner?.id === match.teams[0].id && (
-                            <Trophy className="ml-2 inline size-4 text-amber-500" />
-                          )}
-                        </Link>
-                      )}
-                      {resultScores.has(match.teams[0].id) && (
-                        <span
-                          className={cn(
-                            'text-2xl sm:text-3xl font-bold tracking-tighter',
-                            match.winner?.id === match.teams[0].id
-                              ? 'text-foreground'
-                              : 'text-muted-foreground/40',
-                          )}
-                        >
-                          {resultScores.get(match.teams[0].id)}
-                        </span>
+                        />
                       )}
                     </>
-                  ) : (
-                    <span className="text-muted-foreground/40 italic">
-                      Unknown
-                    </span>
-                  )}
-                </div>
+                  )
+                  const nameClassName = cn(
+                    'flex w-full min-w-0 items-center gap-2 text-sm font-semibold sm:text-base',
+                    side === 0 ? 'justify-end text-right' : 'text-left',
+                  )
 
-                {/* VS */}
-                <div className="flex flex-col items-center justify-center">
-                  <span className="text-[10px] font-black text-muted-foreground/30">
-                    VS
-                  </span>
-                </div>
-
-                {/* Team 2 */}
-                <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
-                  {match.teams[1] ? (
-                    <>
-                      {match.teams[1].deletedAt ? (
-                        <div className="flex w-full flex-col items-start">
-                          <span className="truncate text-sm font-semibold text-muted-foreground/50 line-through sm:text-base">
-                            {match.teams[1].name}
+                  return (
+                    <div key={side} className="contents">
+                      {side === 1 && (
+                        <div className="flex shrink-0 items-center justify-center">
+                          <span className="text-[10px] font-black text-muted-foreground/30">
+                            VS
                           </span>
                         </div>
-                      ) : (
-                        <Link
-                          href={`/events/${eventId}/teams/${match.teams[1].id}`}
-                          className={cn(
-                            'text-sm sm:text-base font-semibold truncate hover:underline hover:text-primary transition-colors text-left w-full',
-                            match.winner?.id === match.teams[1].id
-                              ? 'text-foreground'
-                              : 'text-muted-foreground',
-                          )}
-                        >
-                          {match.winner?.id === match.teams[1].id && (
-                            <Trophy className="mr-2 inline size-4 text-amber-500" />
-                          )}
-                          {match.teams[1].name}
-                        </Link>
                       )}
-                      {resultScores.has(match.teams[1].id) && (
-                        <span
-                          className={cn(
-                            'text-2xl sm:text-3xl font-bold tracking-tighter',
-                            match.winner?.id === match.teams[1].id
-                              ? 'text-foreground'
-                              : 'text-muted-foreground/40',
-                          )}
-                        >
-                          {resultScores.get(match.teams[1].id)}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground/40 italic">
-                      Unknown
-                    </span>
-                  )}
-                </div>
+                      <div
+                        className={cn(
+                          'flex min-w-0 flex-1 flex-col gap-1',
+                          side === 0 ? 'items-end' : 'items-start',
+                        )}
+                      >
+                        {team ? (
+                          <>
+                            {team.deletedAt ? (
+                              <div
+                                className={cn(
+                                  nameClassName,
+                                  'text-muted-foreground/50',
+                                )}
+                              >
+                                {teamName}
+                              </div>
+                            ) : (
+                              <Link
+                                href={`/events/${eventId}/teams/${team.id}`}
+                                className={cn(
+                                  nameClassName,
+                                  'transition-colors hover:text-primary hover:underline',
+                                  isWinner
+                                    ? 'text-foreground'
+                                    : 'text-muted-foreground',
+                                )}
+                              >
+                                {teamName}
+                              </Link>
+                            )}
+                            {resultScores.has(team.id) && (
+                              <span
+                                className={cn(
+                                  'text-2xl sm:text-3xl font-bold tracking-tighter',
+                                  isWinner
+                                    ? 'text-foreground'
+                                    : 'text-muted-foreground/40',
+                                )}
+                              >
+                                {resultScores.get(team.id)}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground/40 italic">
+                            Unknown
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 

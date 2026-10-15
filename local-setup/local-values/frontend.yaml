@@ -3,8 +3,6 @@ image:
   tag: local
   pullPolicy: IfNotPresent
 
-imagePullSecrets: []
-
 fullnameOverride: "frontend"
 
 serviceAccount:
@@ -27,6 +25,7 @@ env:
   PLAUSIBLE_DOMAIN: localhost
   PLAUSIBLE_CUSTOM_DOMAIN: ""
   CURRENT_BRANCH: dev
+  VITE_MEDIA_URL: "http://localhost:9000/core-team-images"
   VITE_S3_REPLAYS_BUCKET_URL: "http://localhost:9000/core-replays"
   VITE_FORTY_TWO_CLIENT_ID: local-42-client-id
 
