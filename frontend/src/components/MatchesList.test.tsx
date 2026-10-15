@@ -83,9 +83,8 @@ describe('match history team positioning', () => {
       />,
     )
     expect(teamName(teamLinks()[0])).toBe(beta.name)
-    expect(teamLinks()[0].textContent).toBe(beta.name)
-    expect(screen.queryByText('BE')).toBeNull()
-    expect(screen.queryByText('AL')).toBeNull()
+    expect(screen.getByText('BE')).toBeTruthy()
+    expect(screen.getByText('AL')).toBeTruthy()
   })
 
   it('handles a missing opponent', () => {

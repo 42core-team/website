@@ -257,13 +257,21 @@ function QueueRoute() {
       {activeQueueMatches.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">Currently playing</h2>
-          <MatchesList eventId={id} matches={activeQueueMatches} />
+          <MatchesList
+            eventId={id}
+            teamId={queueSummaryQuery.data.id}
+            matches={activeQueueMatches}
+          />
         </section>
       )}
 
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Your match history</h2>
-        <MatchesList eventId={id} matches={finishedQueueMatches} />
+        <MatchesList
+          eventId={id}
+          teamId={queueSummaryQuery.data.id}
+          matches={finishedQueueMatches}
+        />
       </section>
     </main>
   )

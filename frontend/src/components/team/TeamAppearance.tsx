@@ -15,17 +15,22 @@ export function teamImageUrl(key: string) {
 export function TeamPicture({
   team,
   large = false,
+  className,
+  fallbackClassName,
 }: {
   team: Appearance & { name: string }
   large?: boolean
+  className?: string
+  fallbackClassName?: string
 }) {
   return (
     <Avatar
-      className={
+      className={cn(
         large
           ? 'size-20 shrink-0 rounded-xl border-2 border-background'
-          : 'size-8 shrink-0 rounded-md'
-      }
+          : 'size-8 shrink-0 rounded-md',
+        className,
+      )}
     >
       <AvatarImage
         src={
@@ -36,7 +41,12 @@ export function TeamPicture({
         alt=""
         className="object-cover"
       />
-      <AvatarFallback className="rounded-md bg-primary/15 font-semibold text-foreground">
+      <AvatarFallback
+        className={cn(
+          'rounded-md bg-primary/15 font-semibold text-foreground',
+          fallbackClassName,
+        )}
+      >
         {team.name.slice(0, 2).toUpperCase()}
       </AvatarFallback>
     </Avatar>
