@@ -8,6 +8,13 @@ spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
+  {{- with .Values.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.minReadySeconds }}
+  minReadySeconds: {{ . }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "k8s-service.selectorLabels" . | nindent 6 }}
@@ -21,6 +28,9 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: {{ include "k8s-service.serviceAccountName" . }}
+      {{- with .Values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ . }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -54,25 +64,17 @@ spec:
                 secretKeyRef:
                   name: {{ include "k8s-service.fullname" . }}-secrets
                   key: S3_SECRET_ACCESS_KEY
-          {{- if .Values.livenessProbe.enabled }}
-          livenessProbe:
-            httpGet:
-              path: {{ .Values.livenessProbe.httpGet.path }}
-              port: {{ .Values.livenessProbe.httpGet.port }}
-            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
-            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
-            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          {{- with .Values.lifecycle }}
+          lifecycle:
+            {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if .Values.readinessProbe.enabled }}
-          readinessProbe:
-            httpGet:
-              path: {{ .Values.readinessProbe.httpGet.path }}
-              port: {{ .Values.readinessProbe.httpGet.port }}
-            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
-            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
-            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          {{- range $probe := list "startupProbe" "livenessProbe" "readinessProbe" }}
+          {{- with (index $.Values $probe) }}
+          {{- if .enabled }}
+          {{ $probe }}:
+            {{- toYaml (omit . "enabled") | nindent 12 }}
+          {{- end }}
+          {{- end }}
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

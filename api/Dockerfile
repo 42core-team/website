@@ -28,4 +28,4 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
 # Run database migrations before starting the service
-CMD ["sh", "-lc", "pnpm run migration:run && node dist/src/main.js"]
+CMD ["sh", "-lc", "pnpm run migration:run && exec node dist/src/main.js"]

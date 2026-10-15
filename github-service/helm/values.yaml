@@ -1,5 +1,15 @@
 replicaCount: 1
 
+# Roll out one pod at a time: start one new pod, wait until it has been Ready
+# for minReadySeconds, then terminate one old pod. Never drop below the desired count.
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+minReadySeconds: 5
+terminationGracePeriodSeconds: 30
+
 image:
   repository: ghcr.io/OWNER/REPO-github-service
   pullPolicy: IfNotPresent
@@ -42,4 +52,33 @@ secrets:
   RABBITMQ_URL: ""
   API_SECRET_ENCRYPTION_KEY: ""
 
+# HTTP port, only used for health probes
+port: 3000
 
+# Probes (readiness also checks the RabbitMQ connection)
+startupProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 2
+  timeoutSeconds: 2
+  failureThreshold: 30
+
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /health/ready
+    port: http
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 3
