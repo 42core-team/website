@@ -28,13 +28,49 @@ import { JwtStrategy } from "./jwt.strategy";
 import { OAuthStateService } from "./oauth-state.service";
 import { RefreshTokenService } from "./refresh-token.service";
 import { createInMemoryRefreshTokenRepository } from "./testing/in-memory-refresh-token-repository";
+import { encryptSecret } from "../common/encryption";
+import { BackgroundTasks } from "./background-tasks";
+import { GithubGrantChecker } from "./github-grant-checker";
+import { GithubGrantService } from "./github-grant.service";
 
 const JWT_SECRET = "test-secret";
+const ENCRYPTION_KEY = "test-encryption-key";
+const GITHUB_TOKEN = "gho_user_token";
+const ENCRYPTED_GITHUB_TOKEN = encryptSecret(GITHUB_TOKEN, ENCRYPTION_KEY);
 const USER = {
   id: "00000000-0000-0000-0000-000000000001",
   email: "user@example.com",
   username: "user",
 };
+const GITHUB_PROFILE = {
+  id: 123,
+  login: "user",
+  name: "User Name",
+  avatar_url: "https://example.com/avatar.png",
+};
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
+type TestUser = typeof USER & {
+  name: string;
+  profilePicture: string;
+  githubAccessToken: string;
+  githubCheckedAt: Date | null;
+};
+
+function createUser(overrides: Partial<TestUser> = {}): TestUser {
+  return {
+    ...USER,
+    name: GITHUB_PROFILE.name,
+    profilePicture: GITHUB_PROFILE.avatar_url,
+    githubAccessToken: ENCRYPTED_GITHUB_TOKEN,
+    githubCheckedAt: null,
+    ...overrides,
+  };
+}
+
+function githubResponse(status: number, body: unknown = GITHUB_PROFILE) {
+  return new Response(JSON.stringify(body), { status });
+}
 const FIFTEEN_MINUTES_S = 15 * 60;
 const NINETY_DAYS_S = 90 * 24 * 60 * 60;
 
@@ -72,17 +108,36 @@ function isCleared(cookie: Cookie | undefined): boolean {
 describe("AuthController sessions", () => {
   let app: INestApplication;
   let jwt: JwtService;
-  let users: Map<string, typeof USER>;
+  let users: Map<string, TestUser>;
+  let backgroundTasks: BackgroundTasks;
+  let fetchMock: jest.SpyInstance;
+  let recordGithubCheck: jest.Mock;
 
   beforeEach(async () => {
-    users = new Map([[USER.id, USER]]);
+    users = new Map([[USER.id, createUser()]]);
+    fetchMock = jest
+      .spyOn(global, "fetch")
+      .mockImplementation(async () => githubResponse(200));
+    recordGithubCheck = jest.fn(
+      async (
+        id: string,
+        checkedAt: Date,
+        profile: Partial<
+          Pick<TestUser, "username" | "name" | "profilePicture">
+        >,
+      ) => {
+        const user = users.get(id);
+        if (user) Object.assign(user, profile, { githubCheckedAt: checkedAt });
+      },
+    );
     const userService = {
       getUserById: jest.fn(async (id: string) => {
         const user = users.get(id);
         if (!user) throw new Error("EntityNotFound");
-        return user;
+        return { ...user };
       }),
       getUserWithSocialAccounts: jest.fn(async (id: string) => users.get(id)),
+      recordGithubCheck,
     };
 
     const module = await Test.createTestingModule({
@@ -95,10 +150,14 @@ describe("AuthController sessions", () => {
         AuthService,
         RefreshTokenService,
         JwtStrategy,
+        BackgroundTasks,
+        GithubGrantChecker,
+        GithubGrantService,
         {
           provide: ConfigService,
           useValue: new ConfigService({
             JWT_SECRET,
+            API_SECRET_ENCRYPTION_KEY: ENCRYPTION_KEY,
             NODE_ENV: "production",
             OAUTH_SUCCESS_REDIRECT_URL: "https://coregame.sh",
           }),
@@ -124,10 +183,13 @@ describe("AuthController sessions", () => {
     app.use(cookieParser());
     await app.init();
     jwt = module.get(JwtService);
+    backgroundTasks = module.get(BackgroundTasks);
   });
 
   afterEach(async () => {
+    await backgroundTasks.drain();
     jest.useRealTimers();
+    jest.restoreAllMocks();
     await app.close();
   });
 
@@ -386,5 +448,230 @@ describe("AuthController sessions", () => {
       .post("/auth/refresh")
       .set("Cookie", `refresh_token=${session.refreshToken}`)
       .expect(204);
+  });
+
+  describe("GitHub grant check after refresh", () => {
+    async function refresh(refreshToken: string, status = 204) {
+      return request(app.getHttpServer())
+        .post("/auth/refresh")
+        .set("Cookie", `refresh_token=${refreshToken}`)
+        .expect(status);
+    }
+
+    function nextRefreshToken(response: request.Response): string {
+      return parseSetCookies(response).get("refresh_token")!.value;
+    }
+
+    function githubCalls(): number {
+      return fetchMock.mock.calls.filter(
+        ([url]) => url === "https://api.github.com/user",
+      ).length;
+    }
+
+    it("ends every session of the user when GitHub answers 401", async () => {
+      const laptop = await login();
+      const phone = await login();
+      fetchMock.mockImplementation(async () => githubResponse(401));
+
+      const response = await refresh(laptop.refreshToken);
+      await backgroundTasks.drain();
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(new Headers(init.headers).get("Authorization")).toBe(
+        `Bearer ${GITHUB_TOKEN}`,
+      );
+      await refresh(nextRefreshToken(response), 401);
+      await refresh(phone.refreshToken, 401);
+      expect(users.get(USER.id)!.githubCheckedAt).toBeNull();
+    });
+
+    it("records the check and syncs only changed profile fields when GitHub answers 200", async () => {
+      const session = await login();
+      fetchMock.mockImplementation(async () =>
+        githubResponse(200, {
+          ...GITHUB_PROFILE,
+          login: "renamed",
+          name: null,
+        }),
+      );
+      const before = Date.now();
+
+      const response = await refresh(session.refreshToken);
+      await backgroundTasks.drain();
+
+      const user = users.get(USER.id)!;
+      expect(user.githubCheckedAt!.getTime()).toBeGreaterThanOrEqual(before);
+      expect(user).toMatchObject({
+        username: "renamed",
+        name: "renamed",
+        email: USER.email,
+        profilePicture: GITHUB_PROFILE.avatar_url,
+      });
+      expect(recordGithubCheck).toHaveBeenCalledWith(
+        USER.id,
+        expect.any(Date),
+        { username: "renamed", name: "renamed" },
+      );
+      await refresh(nextRefreshToken(response));
+    });
+
+    it("writes no profile fields when nothing changed on GitHub", async () => {
+      const session = await login();
+
+      await refresh(session.refreshToken);
+      await backgroundTasks.drain();
+
+      expect(recordGithubCheck).toHaveBeenCalledWith(
+        USER.id,
+        expect.any(Date),
+        {},
+      );
+    });
+
+    it.each([
+      ["a 5xx", () => Promise.resolve(githubResponse(502))],
+      ["a rate limit", () => Promise.resolve(githubResponse(403))],
+      ["a network error", () => Promise.reject(new TypeError("fetch failed"))],
+      [
+        "a timeout",
+        () =>
+          Promise.reject(
+            new DOMException("The operation timed out.", "TimeoutError"),
+          ),
+      ],
+    ])(
+      "keeps the session and retries on the next refresh after %s",
+      async (_, answer) => {
+        const session = await login();
+        fetchMock.mockImplementation(answer);
+
+        const response = await refresh(session.refreshToken);
+        await backgroundTasks.drain();
+
+        expect(users.get(USER.id)!.githubCheckedAt).toBeNull();
+        await refresh(nextRefreshToken(response));
+        await backgroundTasks.drain();
+        expect(githubCalls()).toBe(2);
+      },
+    );
+
+    it.each([
+      ["empty", ""],
+      ["undecryptable", encryptSecret(GITHUB_TOKEN, "another-key")],
+    ])(
+      "keeps the session without asking GitHub when the stored token is %s",
+      async (_, githubAccessToken) => {
+        users.set(USER.id, createUser({ githubAccessToken }));
+        const session = await login();
+
+        const response = await refresh(session.refreshToken);
+        await backgroundTasks.drain();
+
+        expect(githubCalls()).toBe(0);
+        expect(users.get(USER.id)!.githubCheckedAt).toBeNull();
+        await refresh(nextRefreshToken(response));
+      },
+    );
+
+    it("checks at most once per hour", async () => {
+      const session = await login();
+      const first = await refresh(session.refreshToken);
+      await backgroundTasks.drain();
+      const second = await refresh(nextRefreshToken(first));
+      await backgroundTasks.drain();
+      expect(githubCalls()).toBe(1);
+
+      jest.useFakeTimers({
+        now: Date.now() + ONE_HOUR_MS + 1000,
+        doNotFake: ["nextTick", "setImmediate", "setTimeout", "setInterval"],
+      });
+      await refresh(nextRefreshToken(second));
+      await backgroundTasks.drain();
+      expect(githubCalls()).toBe(2);
+    });
+
+    it("does not check on the grace path of a just-rotated token", async () => {
+      const session = await login();
+      await refresh(session.refreshToken);
+      await backgroundTasks.drain();
+      users.get(USER.id)!.githubCheckedAt = null;
+
+      await refresh(session.refreshToken);
+      await backgroundTasks.drain();
+
+      expect(githubCalls()).toBe(1);
+    });
+
+    it("does not check when the refresh is rejected", async () => {
+      await refresh("unknown-token", 401);
+      await backgroundTasks.drain();
+
+      expect(githubCalls()).toBe(0);
+    });
+
+    it("checks after a legacy JWT is upgraded", async () => {
+      fetchMock.mockImplementation(async () => githubResponse(401));
+      const legacy = jwt.sign(
+        { sub: USER.id, email: USER.email, username: USER.username },
+        { expiresIn: "30d" },
+      );
+
+      const response = await request(app.getHttpServer())
+        .post("/auth/refresh")
+        .set("Cookie", `token=${legacy}`)
+        .expect(204);
+      await backgroundTasks.drain();
+
+      expect(githubCalls()).toBe(1);
+      await refresh(nextRefreshToken(response), 401);
+    });
+
+    it("answers the refresh without waiting for GitHub", async () => {
+      const session = await login();
+      let answerGithub!: (response: Response) => void;
+      fetchMock.mockImplementation(
+        () => new Promise<Response>((resolve) => (answerGithub = resolve)),
+      );
+
+      const response = await refresh(session.refreshToken);
+
+      expect(githubCalls()).toBe(1);
+      expect(users.get(USER.id)!.githubCheckedAt).toBeNull();
+      answerGithub(githubResponse(401));
+      await backgroundTasks.drain();
+      await refresh(nextRefreshToken(response), 401);
+    });
+
+    it("keeps a session from a login during the check when GitHub answers 401", async () => {
+      const session = await login();
+      let answerGithub!: (response: Response) => void;
+      fetchMock.mockImplementation(
+        () => new Promise<Response>((resolve) => (answerGithub = resolve)),
+      );
+
+      await refresh(session.refreshToken);
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(githubCalls()).toBe(1);
+      users.get(USER.id)!.githubAccessToken = encryptSecret(
+        "gho_new_token",
+        ENCRYPTION_KEY,
+      );
+      const relogin = await login();
+      answerGithub(githubResponse(401));
+      await backgroundTasks.drain();
+
+      fetchMock.mockImplementation(async () => githubResponse(200));
+      await refresh(relogin.refreshToken);
+    });
+
+    it("keeps refresh working when recording the check fails", async () => {
+      const session = await login();
+      recordGithubCheck.mockRejectedValue(new Error("database down"));
+
+      const response = await refresh(session.refreshToken);
+      await backgroundTasks.drain();
+
+      await refresh(nextRefreshToken(response));
+    });
   });
 });

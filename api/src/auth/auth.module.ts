@@ -14,6 +14,9 @@ import { OAuthStateService } from "./oauth-state.service";
 import { FortyTwoOAuthStateGuard } from "./fortytwo-oauth-state.guard";
 import { RefreshTokenEntity } from "./entities/refresh-token.entity";
 import { RefreshTokenService } from "./refresh-token.service";
+import { BackgroundTasks } from "./background-tasks";
+import { GithubGrantChecker } from "./github-grant-checker";
+import { GithubGrantService } from "./github-grant.service";
 
 @Module({
   imports: [
@@ -37,6 +40,9 @@ import { RefreshTokenService } from "./refresh-token.service";
     OAuthStateService,
     FortyTwoOAuthStateGuard,
     RefreshTokenService,
+    BackgroundTasks,
+    GithubGrantChecker,
+    GithubGrantService,
   ],
   controllers: [AuthController],
   exports: [PassportModule, JwtModule],

@@ -22,6 +22,12 @@ export const REFRESH_TOKEN_RETENTION_MS = DAY_MS;
 
 export const REFRESH_TOKEN_BYTES = 32;
 
+/** The user's GitHub grant is re-checked at most this often (ADR 0003). */
+export const GITHUB_GRANT_CHECK_INTERVAL_MS = 60 * MINUTE_MS;
+
+/** A GitHub grant check that takes longer than this counts as "unknown". */
+export const GITHUB_GRANT_CHECK_TIMEOUT_MS = 10 * SECOND_MS;
+
 export const REFRESH_COOKIE_NAME = "refresh_token";
 
 /** The refresh cookie is only sent to `/auth/*`, never on normal API calls. */

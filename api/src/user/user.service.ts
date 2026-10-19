@@ -8,6 +8,11 @@ import { ConfigService } from "@nestjs/config";
 import { encryptSecret } from "../common/encryption";
 import { isRegistrationOpen } from "../event/event-lifecycle";
 
+/** GitHub profile fields kept in sync by the grant check (ADR 0003). */
+export type GithubSyncedProfile = Partial<
+  Pick<UserEntity, "username" | "name" | "profilePicture">
+>;
+
 @Injectable()
 export class UserService {
   constructor(
@@ -37,6 +42,8 @@ export class UserService {
       profilePicture,
       githubId,
       githubAccessToken: encryptedToken,
+      // Login just fetched GET /user with this token (ADR 0003).
+      githubCheckedAt: new Date(),
       canCreateEvent,
     });
     return this.userRepository.save(newUser);
@@ -62,6 +69,20 @@ export class UserService {
       profilePicture,
       githubId,
       githubAccessToken: encryptedToken,
+      // Login just fetched GET /user with this token (ADR 0003).
+      githubCheckedAt: new Date(),
+    });
+  }
+
+  /** Record a successful GitHub grant check and the profile fields that changed. */
+  async recordGithubCheck(
+    id: string,
+    checkedAt: Date,
+    profile: GithubSyncedProfile,
+  ): Promise<void> {
+    await this.userRepository.update(id, {
+      ...profile,
+      githubCheckedAt: checkedAt,
     });
   }
 

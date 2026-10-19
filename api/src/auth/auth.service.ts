@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { UserEntity } from "../user/entities/user.entity";
 import { UserService } from "../user/user.service";
+import { GithubGrantService } from "./github-grant.service";
 import { JwtPayload } from "./jwt.strategy";
 import { RefreshTokenService } from "./refresh-token.service";
 import { ACCESS_TOKEN_TTL_MS } from "./session.constants";
@@ -20,6 +21,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly refreshTokens: RefreshTokenService,
     private readonly users: UserService,
+    private readonly githubGrant: GithubGrantService,
   ) {}
 
   /** Login: start a new session (token family) for the user. */
@@ -46,6 +48,9 @@ export class AuthService {
     // Re-check the user exactly like JwtStrategy.validate does.
     const user = await this.users.getUserById(result.userId).catch(() => null);
     if (!user) return null;
+
+    // The grace path only follows a rotation that was just checked.
+    if (result.status === "rotated") this.githubGrant.checkInBackground(user);
 
     return {
       accessToken: this.signAccessToken(user, result.familyId),
@@ -85,7 +90,10 @@ export class AuthService {
     const user = await this.users.getUserById(payload.sub).catch(() => null);
     if (!user) return null;
 
-    return this.startSession(user);
+    // Start the session first so a revocation found by the check covers it.
+    const tokens = await this.startSession(user);
+    this.githubGrant.checkInBackground(user);
+    return tokens;
   }
 
   private signAccessToken(user: SessionUser, familyId: string): string {
