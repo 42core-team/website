@@ -1534,7 +1534,7 @@ function formatDateTimeInput(value: string | number | undefined) {
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (isAxiosError<{ message?: string | string[] }>(error)) {
-    const message = error.response?.data?.message
+    const message = error.response?.data.message
     if (Array.isArray(message)) return message.join(', ')
     if (message) return message
   }
