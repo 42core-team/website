@@ -1048,27 +1048,14 @@ export class MatchService {
   }
 
   async getAllQueueMatches(eventId: string) {
-    const matches = await this.matchRepository.find({
-      select: QUEUE_MATCH_SELECT,
-      where: {
-        teams: {
-          event: {
-            id: eventId,
-          },
-        },
-        phase: MatchPhase.QUEUE,
-      },
-      relations: QUEUE_MATCH_RELATIONS,
-      take: 100,
-      order: {
-        createdAt: "DESC",
-      },
-    });
-
-    return matches.map((match) => this.serializeQueueMatch(match));
+    return this.getLatestEventMatches(eventId, MatchPhase.QUEUE);
   }
 
   async getManualMatches(eventId: string) {
+    return this.getLatestEventMatches(eventId, MatchPhase.MANUAL);
+  }
+
+  private async getLatestEventMatches(eventId: string, phase: MatchPhase) {
     const matches = await this.matchRepository.find({
       select: QUEUE_MATCH_SELECT,
       where: {
@@ -1077,7 +1064,7 @@ export class MatchService {
             id: eventId,
           },
         },
-        phase: MatchPhase.MANUAL,
+        phase,
       },
       relations: QUEUE_MATCH_RELATIONS,
       take: 100,
