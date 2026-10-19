@@ -9,6 +9,7 @@ import { Cron } from "@nestjs/schedule";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { DataSource, EntityManager, Repository } from "typeorm";
 import { EventEntity } from "../event/entities/event.entity";
+import { isPlaying } from "../event/event-lifecycle";
 import {
   MatchEntity,
   MatchPhase,
@@ -203,13 +204,13 @@ export class GamblingService {
 
   async placeBet(eventId: string, userId: string, dto: PlaceGamblingBetDto) {
     await Promise.all([
-      this.getStartedEvent(this.dataSource.manager, eventId),
+      this.getBettingEvent(this.dataSource.manager, eventId),
       this.getUserTeam(this.dataSource.manager, eventId, userId),
     ]);
     await this.advanceEvent(eventId);
     await this.dataSource.transaction(async (manager) => {
       await this.lockEvent(manager, eventId);
-      await this.getStartedEvent(manager, eventId);
+      await this.getBettingEvent(manager, eventId);
       const round = await this.getLatestRoundWithManager(manager, eventId);
       if (
         !round ||
@@ -630,16 +631,19 @@ export class GamblingService {
 
   private async getStartedEvent(manager: EntityManager, eventId: string) {
     const event = await manager.findOneOrFail(EventEntity, {
-      select: {
-        id: true,
-        startDate: true,
-        maxQueueCredits: true,
-        gamblingEnabled: true,
-      },
       where: { id: eventId },
     });
     requireGamblingEnabled(event.gamblingEnabled);
     requireGamblingStarted(event.startDate);
+    return event;
+  }
+
+  private async getBettingEvent(manager: EntityManager, eventId: string) {
+    const event = await this.getStartedEvent(manager, eventId);
+    if (!isPlaying(event))
+      throw new BadRequestException(
+        "Betting is only available while the event is playing.",
+      );
     return event;
   }
 

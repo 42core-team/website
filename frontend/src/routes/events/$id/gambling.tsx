@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import { getEventById } from '@/app/actions/event'
+import { bettingOpen } from '@/lib/event-lifecycle'
+import { getMyEventTeam } from '@/app/actions/team'
+import { useEventClock } from '@/hooks/use-event-clock'
 import {
   getGamblingSnapshot,
   joinGamblingList,
@@ -24,8 +28,25 @@ export const Route = createFileRoute('/events/$id/gambling')({
 const GAMBLING_QUERY_INTERVAL_MS = 3000
 
 function GamblingRoute() {
+  const now = useEventClock()
   const { id } = Route.useParams()
   const queryClient = useQueryClient()
+  const eventQuery = useQuery({
+    queryKey: ['event', id],
+    queryFn: () => getEventById(id),
+    refetchInterval: 1000,
+  })
+  const teamQuery = useQuery({
+    queryKey: ['event', id, 'gambling-team'],
+    queryFn: () => getMyEventTeam(id),
+    refetchInterval: 3000,
+  })
+  const canBet = Boolean(
+    eventQuery.data &&
+    bettingOpen(eventQuery.data, now) &&
+    teamQuery.data?.repositoryStatus === 'READY' &&
+    !teamQuery.data.tournamentExcluded,
+  )
   const queryKey = ['event', id, 'gambling'] as const
   const gamblingQuery = useQuery({
     queryKey,
@@ -85,6 +106,11 @@ function GamblingRoute() {
 
   return (
     <main className="container mx-auto max-w-6xl space-y-6 px-4 py-8">
+      {!canBet && (
+        <p role="status">
+          Betting is closed. Existing bets and results remain available.
+        </p>
+      )}
       <GamblingHeader
         round={snapshot.round}
         onCountdownComplete={() => {
@@ -97,22 +123,25 @@ function GamblingRoute() {
           <GamblingMatchCard
             eventId={id}
             snapshot={snapshot}
+            bettingEnabled={canBet}
             isBetPending={betMutation.isPending}
             onPlaceBet={(teamId, credits) =>
-              betMutation.mutate({ teamId, credits })
+              canBet && betMutation.mutate({ teamId, credits })
             }
           />
           <GamblingLatestResult eventId={id} result={snapshot.latestResult} />
         </div>
 
         <GamblingSidebar
+          membershipEnabled={canBet}
           entries={snapshot.entries}
           myTeam={snapshot.myTeam}
           isMembershipPending={
             joinMutation.isPending || leaveMutation.isPending
           }
           onToggleMembership={(isEntered) =>
-            isEntered ? leaveMutation.mutate() : joinMutation.mutate()
+            canBet &&
+            (isEntered ? leaveMutation.mutate() : joinMutation.mutate())
           }
         />
       </div>

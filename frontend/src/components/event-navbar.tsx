@@ -1,4 +1,5 @@
 import type { Event } from '@/app/actions/event'
+import { eventState } from '@/lib/event-lifecycle'
 import { useQuery } from '@tanstack/react-query'
 import { Menu } from 'lucide-react'
 import Link from '@/components/app-link'
@@ -32,13 +33,13 @@ export default function EventNavbar({
   event,
 }: Readonly<EventNavbarProps>) {
   const pathname = usePathname()
-  const startsAtTime = new Date(event.startDate).getTime()
   const [now, setNow] = useState(() => Date.now())
-  const hasStarted = now >= startsAtTime
+  const hasStarted = eventState(event, now) !== 'REGISTRATION'
   const { data: myTeam } = useQuery({
     queryKey: myTeamQueryKey(eventId),
     queryFn: () => myTeamQueryFn(eventId),
     enabled: isUserRegistered,
+    refetchInterval: 3000,
   })
   const effectiveHasTeam = myTeam === undefined ? hasTeam : Boolean(myTeam)
   const supportsUnitBuilder = readComponentsConfig(event.gameConfig) !== null

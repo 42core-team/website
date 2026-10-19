@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   CanActivate,
   createParamDecorator,
   ExecutionContext,
@@ -68,8 +67,10 @@ export class TeamNotLockedGuard implements CanActivate {
 
     if (!teamId) return false;
 
-    if (await this.teamService.isTeamLocked(teamId))
-      throw new BadRequestException("Team is locked");
+    await this.teamService.assertTeamMembershipOpen(
+      teamId,
+      request.params[EVENT_ID_PARAM],
+    );
 
     return true;
   }

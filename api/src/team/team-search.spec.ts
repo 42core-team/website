@@ -1,5 +1,6 @@
 jest.mock("./entities/team.entity", () => ({
   TeamEntity: class TeamEntity {},
+  RepositoryStatus: { READY: "READY" },
 }));
 jest.mock("../event/entities/event.entity", () => ({
   EventEntity: class EventEntity {},
@@ -35,7 +36,17 @@ describe("TeamService.getQueueOpponents", () => {
         },
       ]);
       const service = Object.create(TeamService.prototype) as TeamService;
-      Reflect.set(service, "teamRepository", { find });
+      Reflect.set(service, "teamRepository", {
+        find,
+        findOneOrFail: jest.fn().mockResolvedValue({
+          repositoryStatus: "READY",
+          locked: false,
+          event: {
+            startDate: new Date(0),
+            submissionDeadline: new Date("2099-01-01"),
+          },
+        }),
+      });
 
       await expect(service.getQueueOpponents("event", "team")).resolves.toEqual(
         [{ id: "opponent", name: "Opponent", picture }],

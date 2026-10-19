@@ -13,7 +13,9 @@ import GithubLoginButton from '@/components/github'
 import EventInfoNotice from '@/components/event-info-notice'
 import EventNavbar from '@/components/event-navbar'
 import { MarkdownContent } from '@/components/MarkdownContent'
-import RepositoryLockdownNotice from '@/components/repository-lockdown-notice'
+import { EventLifecycleNotice } from '@/components/event-lifecycle-notice'
+import { registrationOpen } from '@/lib/event-lifecycle'
+import { useEventClock } from '@/hooks/use-event-clock'
 import TimeBadge from '@/components/timeBadge'
 import {
   Card,
@@ -43,6 +45,7 @@ function StatCard({ title, value }: { title: string; value: ReactNode }) {
 }
 
 function EventRoute() {
+  const now = useEventClock()
   const { id } = Route.useParams()
   const isEventOverview = useLocation({
     select: (location) =>
@@ -55,6 +58,7 @@ function EventRoute() {
   const eventQuery = useQuery({
     queryKey: ['event', id],
     queryFn: async () => getEventById(id),
+    refetchInterval: 1000,
     enabled: Boolean(userId),
   })
 
@@ -130,7 +134,7 @@ function EventRoute() {
   const isUserRegistered = isUserRegisteredQuery.data ?? false
   const eventShell = (children: ReactNode) => (
     <div className="relative flex min-h-lvh flex-col">
-      {userId && (
+      {userId && registrationOpen(event, now) && (
         <EventInfoNotice
           userId={userId}
           startDate={event.startDate}
@@ -146,10 +150,7 @@ function EventRoute() {
         hasTeam={Boolean(myTeamQuery.data)}
         isEventAdmin={isEventAdminQuery.data ?? false}
       />
-      <RepositoryLockdownNotice
-        repoLockDate={event.repoLockDate}
-        lockedAt={event.lockedAt}
-      />
+      <EventLifecycleNotice event={event} />
       {children}
     </div>
   )
@@ -201,9 +202,9 @@ function EventRoute() {
             </div>
             <div>
               <h3 className="text-sm font-medium text-muted-foreground">
-                End Date
+                Scheduled End (informational)
               </h3>
-              <TimeBadge className="mt-1" time={event.endDate} />
+              <TimeBadge className="mt-1" time={event.scheduledEndDate} />
             </div>
           </div>
 
@@ -219,12 +220,10 @@ function EventRoute() {
             </p>
           </div>
 
-          {event.repoLockDate && (
-            <RepositoryLockdownNotice
-              repoLockDate={event.repoLockDate}
-              lockedAt={event.lockedAt}
-              variant="summary"
-            />
+          {event.completedAt && (
+            <p>
+              Completed: <TimeBadge time={event.completedAt} />
+            </p>
           )}
         </CardContent>
       </Card>

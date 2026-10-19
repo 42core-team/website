@@ -1,4 +1,10 @@
 import type { Team, TeamMember } from '@/app/actions/team'
+import {
+  eventState,
+  registrationOpen,
+  teamEditsOpen,
+} from '@/lib/event-lifecycle'
+import { useEventClock } from '@/hooks/use-event-clock'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import type { AxiosError } from 'axios'
@@ -10,7 +16,6 @@ import {
   declineTeamInvite,
   getTeamMembers,
   getUserPendingInvites,
-  hasEventStarted,
   leaveTeam,
 } from '@/app/actions/team'
 import { getMatchesForTeam } from '@/app/actions/tournament'
@@ -34,6 +39,7 @@ export const Route = createFileRoute('/events/$id/my-team')({
 const REPO_CREATION_POLL_INTERVAL_MS = 2000
 
 function MyTeamRoute() {
+  const now = useEventClock()
   const { id } = Route.useParams()
   const queryClient = useQueryClient()
   const [newTeamName, setNewTeamName] = useState('')
@@ -42,12 +48,12 @@ function MyTeamRoute() {
   const eventQuery = useQuery({
     queryKey: ['event', id],
     queryFn: async () => getEventById(id),
+    refetchInterval: 1000,
   })
   const myTeamQuery = useQuery<Team | null>({
     queryKey: myTeamQueryKey(id),
     queryFn: () => myTeamQueryFn(id),
-    refetchInterval: ({ state }) =>
-      state.data && !state.data.repo ? REPO_CREATION_POLL_INTERVAL_MS : false,
+    refetchInterval: REPO_CREATION_POLL_INTERVAL_MS,
   })
   const teamMembersQuery = useQuery<TeamMember[]>({
     queryKey: ['team', myTeamQuery.data?.id, 'members'],
@@ -65,15 +71,6 @@ function MyTeamRoute() {
     enabled: Boolean(myTeamQuery.data),
     refetchInterval: ({ state }) =>
       myTeamQuery.data && !myTeamQuery.data.repo && !state.data
-        ? REPO_CREATION_POLL_INTERVAL_MS
-        : false,
-  })
-  const eventStartedQuery = useQuery({
-    queryKey: ['team', myTeamQuery.data?.id, 'event-started'],
-    queryFn: () => hasEventStarted(myTeamQuery.data!.id),
-    enabled: Boolean(myTeamQuery.data?.id),
-    refetchInterval: () =>
-      myTeamQuery.data && !myTeamQuery.data.repo
         ? REPO_CREATION_POLL_INTERVAL_MS
         : false,
   })
@@ -176,6 +173,7 @@ function MyTeamRoute() {
         <div className="space-y-6">
           <TeamInfoSection
             myTeam={myTeamQuery.data}
+            canEdit={teamEditsOpen(eventQuery.data, myTeamQuery.data, now)}
             onLeaveTeam={async () => {
               await leaveTeamMutation.mutateAsync()
               return true
@@ -183,9 +181,9 @@ function MyTeamRoute() {
             isLeaving={leaveTeamMutation.isPending}
             teamMembers={teamMembersQuery.data ?? []}
             githubOrg={githubOrgQuery.data ?? ''}
-            isRepoPending={!eventStartedQuery.data}
+            isRepoPending={eventState(eventQuery.data, now) === 'REGISTRATION'}
             isRepoCreating={Boolean(
-              eventStartedQuery.data && !myTeamQuery.data.repo,
+              myTeamQuery.data.repositoryStatus === 'PROVISIONING',
             )}
           />
           <TeamMatchHistory
@@ -196,7 +194,8 @@ function MyTeamRoute() {
             isError={matchesQuery.isError}
           />
         </div>
-      ) : eventQuery.data.canCreateTeam ? (
+      ) : eventQuery.data.canCreateTeam &&
+        registrationOpen(eventQuery.data, now) ? (
         <div className="space-y-6">
           <TeamCreationSection
             eventId={id}

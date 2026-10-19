@@ -206,6 +206,36 @@ export class RepositoryApi {
     );
   }
 
+  async getCollaboratorPermission(
+    owner: string,
+    repo: string,
+    username: string,
+  ): Promise<string> {
+    const result = await this.client.get<{ permission: string }>(
+      `repos/${owner}/${repo}/collaborators/${username}/permission`,
+    );
+    return result.permission;
+  }
+
+  async hasCommits(owner: string, repo: string): Promise<boolean> {
+    try {
+      const commits = await this.client.get<unknown[]>(
+        `repos/${owner}/${repo}/commits`,
+        { params: { per_page: 1 } },
+      );
+      return commits.length > 0;
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "status" in error &&
+        error.status === 409
+      )
+        return false;
+      throw error;
+    }
+  }
+
   /**
    * Remove a collaborator from a repository
    * @param owner Repository owner

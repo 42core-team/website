@@ -7,15 +7,15 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
-import { TeamEntity } from "./entities/team.entity";
+import { RepositoryStatus, TeamEntity } from "./entities/team.entity";
+import { randomUUID } from "crypto";
+import { isPlaying, isRegistrationOpen } from "../event/event-lifecycle";
 import { MediaUploadEntity } from "../media/entities/media-upload.entity";
 import { mediaArtwork } from "../media/media-artwork";
 import {
   DataSource,
   EntityManager,
   In,
-  IsNull,
-  LessThanOrEqual,
   Not,
   Repository,
   type FindOptionsRelations,
@@ -59,11 +59,7 @@ export class TeamService {
     private readonly matchService: MatchService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
-  ) {
-    this.getSortedTeamsForTournament("2c10eecb-ab9b-48e4-a840-d54febb25854").then(results => {
-      console.log(results)
-    })
-  }
+  ) {}
 
   logger = new Logger("TeamService");
 
@@ -124,24 +120,60 @@ export class TeamService {
       if (gotLock[0].pg_try_advisory_lock) {
         try {
           const teams = await this.teamRepository.find({
-            where: {
-              startedRepoCreationAt: IsNull(),
-              event: {
-                startDate: LessThanOrEqual(new Date()),
-              },
-            },
             relations: {
               event: true,
             },
           });
           for (const team of teams) {
-            this.logger.log(
-              `Starting repo creation for team ${team.name} as its event has started.`,
-            );
+            try {
+              if (
+                team.repositoryOperationId &&
+                team.startedRepoCreationAt &&
+                Date.now() - team.startedRepoCreationAt.getTime() >=
+                  10 * 60 * 1000
+              ) {
+                await this.retryRepositoryOperation(team.id);
+                continue;
+              }
+              if (!isRegistrationOpen(team.event)) {
+                if (
+                  [RepositoryStatus.READY, RepositoryStatus.PENDING].includes(
+                    team.repositoryStatus,
+                  ) ||
+                  (team.repositoryStatus === RepositoryStatus.LOCKING &&
+                    !team.repositoryOperationId)
+                )
+                  await this.lockTeam(team.id);
+                continue;
+              }
+              if (
+                isPlaying(team.event) &&
+                !team.locked &&
+                (team.repositoryStatus === RepositoryStatus.LOCKED ||
+                  (team.repositoryStatus === RepositoryStatus.UNLOCKING &&
+                    !team.repositoryOperationId))
+              ) {
+                await this.unlockTeam(team.id);
+                continue;
+              }
+              if (
+                !isPlaying(team.event) ||
+                team.repositoryStatus !== RepositoryStatus.PENDING
+              )
+                continue;
+              this.logger.log(
+                `Starting repo creation for team ${team.name} as its event has started.`,
+              );
 
-            await this.dataSource.transaction(async (entityManager) => {
-              await this.createTeamRepository(team.id, entityManager);
-            });
+              await this.dataSource.transaction(async (entityManager) => {
+                await this.createTeamRepository(team.id, entityManager);
+              });
+            } catch (error) {
+              this.logger.error(
+                `Repository reconciliation failed for team ${team.id}`,
+                error,
+              );
+            }
           }
         } finally {
           await queryRunner.query("SELECT pg_advisory_unlock($1)", [lockKey]);
@@ -215,46 +247,227 @@ export class TeamService {
     return groupLocationTagsByOwner(teamIds, rows);
   }
 
-  async lockTeam(teamId: string) {
-    const team = await this.teamRepository.findOneOrFail({
-      where: {
-        id: teamId,
-      },
-      relations: {
-        users: true,
-        event: true,
-      },
-    });
+  async lockTeam(teamId: string, followLifecycle = true) {
+    return this.changeRepositoryAccess(teamId, true, followLifecycle);
+  }
 
-    await Promise.all(
-      team.users.map(async (user) => {
-        try {
-          await this.githubApiService.removeWritePermissions(
-            user.username,
-            user.githubId,
-            team.event.githubOrg,
-            team.repo,
-            team.event.githubOrgSecret,
-          );
-        } catch (e) {
-          this.logger.error(
-            `Failed to remove write permissions for user ${user.username} in team ${teamId}`,
-            e,
-          );
+  async unlockTeam(teamId: string) {
+    return this.changeRepositoryAccess(teamId, false);
+  }
+
+  private async changeRepositoryAccess(
+    teamId: string,
+    locked: boolean,
+    followLifecycle = false,
+  ) {
+    const team = await this.getTeamById(teamId, { users: true, event: true });
+    // Event closure work may arrive after a reopen. Only an explicit manual
+    // lock (followLifecycle=false) may override the current event policy.
+    if (followLifecycle) locked = !isRegistrationOpen(team.event);
+    if (!locked && !isRegistrationOpen(team.event))
+      throw new BadRequestException("Submissions are closed.");
+    // A creation already in flight must finish before its permissions can change.
+    if (team.repositoryStatus === RepositoryStatus.PROVISIONING) {
+      return this.teamRepository.update(teamId, {
+        locked,
+      });
+    }
+    if (
+      team.repositoryOperationId &&
+      [RepositoryStatus.LOCKING, RepositoryStatus.UNLOCKING].includes(
+        team.repositoryStatus,
+      )
+    ) {
+      await this.teamRepository.update(teamId, { locked });
+      return;
+    }
+    if (!team.repo) {
+      await this.teamRepository.update(teamId, {
+        locked,
+        repositoryStatus: locked
+          ? RepositoryStatus.FAILED
+          : RepositoryStatus.PENDING,
+        repositoryOperationId: null,
+        repositoryError: locked
+          ? "Repository is unavailable at submission closure. An administrator must explicitly exclude this team before showcase, or reopen submissions and retry provisioning."
+          : null,
+      });
+      if (!locked && isPlaying(team.event))
+        await this.dataSource.transaction((manager) =>
+          this.createTeamRepository(teamId, manager),
+        );
+      return;
+    }
+    const operationId = randomUUID();
+    await this.teamRepository.update(teamId, {
+      locked,
+      repositoryStatus: locked
+        ? RepositoryStatus.LOCKING
+        : RepositoryStatus.UNLOCKING,
+      repositoryOperationId: operationId,
+      repositoryError: null,
+      startedRepoCreationAt: new Date(),
+    });
+    try {
+      await this.githubApiService.setRepositoryAccess({
+        teamId,
+        operationId,
+        locked,
+        repositoryName: team.repo,
+        githubOrg: team.event.githubOrg,
+        encryptedSecret: team.event.githubOrgSecret,
+        githubUsers: team.users.map((user) => ({
+          username: user.username,
+          githubId: user.githubId,
+          githubAccessToken: user.githubAccessToken,
+        })),
+      });
+    } catch (error) {
+      await this.completeRepositoryOperation({
+        teamId,
+        operationId,
+        repositoryName: team.repo,
+        error: "Could not dispatch repository permission operation.",
+      });
+      throw error;
+    }
+  }
+
+  async completeRepositoryOperation(data: {
+    teamId: string;
+    operationId: string;
+    repositoryName: string;
+    error?: string;
+    action?: "CREATE" | "LOCK" | "UNLOCK";
+  }) {
+    let reconcile: boolean | undefined;
+    await this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(TeamEntity);
+      const team = await repository.findOne({
+        where: { id: data.teamId },
+        lock: { mode: "pessimistic_write" },
+        loadEagerRelations: false,
+      });
+      if (!team || !data.operationId) return;
+      const event = await manager.findOneOrFail(EventEntity, {
+        where: { id: team.eventId },
+      });
+      if (team.repositoryOperationId !== data.operationId) {
+        // A stale acknowledgement can still describe real GitHub side effects.
+        // Reassert the current policy rather than only ignoring the old state.
+        const closed = !isRegistrationOpen(event) || team.locked;
+        if (
+          data.repositoryName &&
+          ((closed && data.action !== "LOCK") ||
+            (!closed && data.action === "LOCK" && !team.locked))
+        ) {
+          if (!team.repo) team.repo = data.repositoryName;
+          team.repositoryOperationId = null;
+          team.repositoryStatus = closed
+            ? RepositoryStatus.LOCKING
+            : RepositoryStatus.UNLOCKING;
+          team.locked = closed;
+          await repository.save(team);
+          reconcile = closed;
         }
-      }),
-    );
-
-    return this.teamRepository.update(teamId, {
-      locked: true,
+        return;
+      }
+      const wasLocking = team.repositoryStatus === RepositoryStatus.LOCKING;
+      const mustLock = !isRegistrationOpen(event) || team.locked;
+      if (data.repositoryName) team.repo = data.repositoryName;
+      team.repositoryOperationId = null;
+      team.repositoryError = data.error ?? null;
+      team.repositoryStatus = data.error
+        ? RepositoryStatus.FAILED
+        : wasLocking
+          ? RepositoryStatus.LOCKED
+          : mustLock
+            ? RepositoryStatus.LOCKING
+            : RepositoryStatus.READY;
+      team.locked = mustLock;
+      if (!team.repo && !isRegistrationOpen(event)) {
+        team.repositoryStatus = RepositoryStatus.FAILED;
+        team.repositoryError =
+          "Repository is unavailable at submission closure. An administrator must explicitly exclude this team before showcase, or reopen submissions and retry provisioning.";
+      }
+      // Even partially successful creation can have writable collaborators.
+      if (team.repo && mustLock && !wasLocking) reconcile = true;
+      if (!data.error && wasLocking && !mustLock) reconcile = false;
+      await repository.save(team);
     });
+    if (reconcile !== undefined)
+      await this.changeRepositoryAccess(data.teamId, reconcile, true);
+  }
+
+  async isRepositoryOperationCurrent(teamId: string, operationId: string) {
+    return this.dataSource.transaction(async (manager) => {
+      const team = await manager.findOne(TeamEntity, {
+        where: { id: teamId },
+        lock: { mode: "pessimistic_write" },
+        loadEagerRelations: false,
+      });
+      return Boolean(team && team.repositoryOperationId === operationId);
+    });
+  }
+
+  async retryRepositoryOperation(teamId: string) {
+    const team = await this.getTeamById(teamId, { event: true });
+    // Invalidate a lost acknowledgement; workers check operation IDs before
+    // starting a retry and serialize effects for each team.
+    if (team.repositoryOperationId) {
+      await this.teamRepository.update(teamId, {
+        repositoryOperationId: null,
+        repositoryStatus: RepositoryStatus.FAILED,
+      });
+    }
+    if (!isRegistrationOpen(team.event)) return this.lockTeam(teamId);
+    if (team.repo) return this.unlockTeam(teamId);
+    if (!isPlaying(team.event))
+      throw new BadRequestException("The event has not started.");
+    await this.teamRepository.update(teamId, {
+      repositoryStatus: RepositoryStatus.PENDING,
+    });
+    return this.dataSource.transaction((manager) =>
+      this.createTeamRepository(teamId, manager),
+    );
+  }
+
+  async assertTeamMembershipOpen(teamId: string, eventId?: string) {
+    const team = await this.getTeamById(teamId, { event: true });
+    if (
+      (eventId && team.event.id !== eventId) ||
+      !isRegistrationOpen(team.event) ||
+      team.locked
+    )
+      throw new BadRequestException("Team membership changes are closed.");
+    if (
+      [
+        RepositoryStatus.PROVISIONING,
+        RepositoryStatus.LOCKING,
+        RepositoryStatus.UNLOCKING,
+      ].includes(team.repositoryStatus)
+    )
+      throw new BadRequestException(
+        "Repository access is being updated. Please retry shortly.",
+      );
+  }
+
+  private repositoryName(team: TeamEntity) {
+    return `${team.event.name}-${team.name}-${team.id}`.replace(
+      /[^a-zA-Z0-9_.-]/g,
+      "-",
+    );
   }
 
   async createTeamRepository(teamId: string, entityManager: EntityManager) {
     const teamRepository = entityManager.getRepository(TeamEntity);
+    await teamRepository.findOneOrFail({
+      where: { id: teamId },
+      lock: { mode: "pessimistic_write" },
+      loadEagerRelations: false,
+    });
     const team = await teamRepository.findOneOrFail({
       where: {
-        startedRepoCreationAt: IsNull(),
         id: teamId,
       },
       relations: {
@@ -271,7 +484,22 @@ export class TeamService {
       return;
     }
 
-    const repoName = team.event.name + "-" + team.name + "-" + team.id;
+    if (
+      !isPlaying(team.event) ||
+      team.repo ||
+      team.repositoryStatus !== RepositoryStatus.PENDING
+    )
+      return;
+    const operationId = randomUUID();
+    await teamRepository.update(teamId, {
+      repositoryStatus: RepositoryStatus.PROVISIONING,
+      repositoryOperationId: operationId,
+      repositoryError: null,
+      startedRepoCreationAt: new Date(),
+      locked: false,
+    });
+
+    const repoName = this.repositoryName(team);
 
     // Determine values to use: template or event default
     const basePath = team.starterTemplate
@@ -301,6 +529,12 @@ export class TeamService {
       team.event.gameConfig ?? "",
       team.event.serverConfig ?? "",
       team.starterTemplate?.id,
+      operationId,
+      (
+        team.event.submissionDeadline ??
+        team.event.repoLockDate ??
+        team.event.endDate
+      )?.toISOString(),
     );
 
     await teamRepository.update(teamId, {
@@ -315,6 +549,11 @@ export class TeamService {
     starterTemplateId?: string,
   ) {
     return await this.dataSource.transaction(async (entityManager) => {
+      const event = await entityManager.findOneOrFail(EventEntity, {
+        where: { id: eventId },
+      });
+      if (!isRegistrationOpen(event))
+        throw new BadRequestException("Registration is closed.");
       if (
         starterTemplateId &&
         !(await this.eventService.isStarterTemplateInEvent(
@@ -338,7 +577,7 @@ export class TeamService {
           : undefined,
       });
 
-      if (await this.eventService.hasEventStarted(eventId))
+      if (isPlaying(event))
         await this.createTeamRepository(newTeam.id, entityManager);
 
       return newTeam;
@@ -405,6 +644,7 @@ export class TeamService {
   }
 
   async leaveTeam(teamId: string, userId: string) {
+    await this.assertTeamMembershipOpen(teamId);
     const team = await this.getTeamById(teamId, {
       users: true,
       event: true,
@@ -485,20 +725,14 @@ export class TeamService {
   }
 
   async acceptTeamInvite(userId: string, teamId: string): Promise<void> {
+    await this.assertTeamMembershipOpen(teamId);
     const team = await this.getTeamById(teamId, {
       event: true,
     });
-    const user = await this.userService.getUserById(userId);
-
     if (team.repo)
-      await this.githubApiService.addUserToRepository(
-        team.repo,
-        user.username,
-        user.githubId,
-        team.event.githubOrg,
-        team.event.githubOrgSecret,
-        user.githubAccessToken,
-      );
+      await this.teamRepository.update(teamId, {
+        repositoryStatus: RepositoryStatus.UNLOCKING,
+      });
 
     await this.teamRepository
       .createQueryBuilder()
@@ -511,6 +745,7 @@ export class TeamService {
       .relation("users")
       .of(teamId)
       .add(userId);
+    if (team.repo) await this.unlockTeam(teamId);
   }
 
   declineTeamInvite(userId: string, teamId: string) {
@@ -553,6 +788,10 @@ export class TeamService {
         "team.id",
         "team.name",
         "team.locked",
+        "team.repositoryStatus",
+        "team.repositoryOperationId",
+        "team.repositoryError",
+        "team.tournamentExcluded",
         "team.score",
         "team.buchholzPoints",
         "team.hadBye",
@@ -575,6 +814,10 @@ export class TeamService {
           "team.id",
           "team.name",
           "team.locked",
+          "team.repositoryStatus",
+          "team.repositoryOperationId",
+          "team.repositoryError",
+          "team.tournamentExcluded",
           "team.hadBye",
           "team.createdAt",
           "team.updatedAt",
@@ -736,10 +979,13 @@ export class TeamService {
           "Your team needs at least one credit to start match making.",
         );
 
-      const now = new Date();
       if (!event.processQueue)
         throw new BadRequestException("Match making is disabled.");
-      if (event.startDate > now || event.endDate < now)
+      if (
+        !isPlaying(event) ||
+        team.repositoryStatus !== RepositoryStatus.READY ||
+        team.locked
+      )
         throw new BadRequestException("Match making is not available.");
 
       const match = await this.createBestQueueMatch(team, entityManager);
@@ -854,10 +1100,19 @@ export class TeamService {
   }
 
   async getQueueOpponents(eventId: string, teamId: string) {
+    const team = await this.getTeamById(teamId, { event: true });
+    if (
+      !isPlaying(team.event) ||
+      team.repositoryStatus !== RepositoryStatus.READY ||
+      team.locked
+    )
+      return [];
     const opponents = await this.teamRepository.find({
       select: { id: true, name: true },
       where: {
         id: Not(teamId),
+        repositoryStatus: RepositoryStatus.READY,
+        locked: false,
         event: { id: eventId },
       },
       order: { name: "ASC" },
@@ -887,13 +1142,18 @@ export class TeamService {
         );
 
       const event = await entityManager.findOneOrFail(EventEntity, {
-        select: {
-          id: true,
-          maxQueueCredits: true,
-          queueCreditIntervalMinutes: true,
-        },
         where: { id: challenger.eventId },
       });
+      if (
+        !isPlaying(event) ||
+        [challenger, target].some(
+          (team) =>
+            team.repositoryStatus !== RepositoryStatus.READY || team.locked,
+        )
+      )
+        throw new BadRequestException(
+          "Match making requires playing teams with ready repositories.",
+        );
       accrueQueueCredits(
         challenger,
         event.maxQueueCredits,
@@ -943,6 +1203,8 @@ export class TeamService {
     const candidates = await entityManager.find(TeamEntity, {
       where: {
         id: Not(team.id),
+        repositoryStatus: RepositoryStatus.READY,
+        locked: false,
         event: { id: team.eventId },
       },
       order: { id: "ASC" },
@@ -1056,44 +1318,17 @@ export class TeamService {
   }
 
   async unlockTeamsForEvent(eventId: string) {
-    const teams = await this.dataSource.transaction(async (entityManager) => {
-      const teamRepository = entityManager.getRepository(TeamEntity);
-      await teamRepository
-        .createQueryBuilder()
-        .update()
-        .set({ locked: false })
-        .where("eventId = :eventId", { eventId })
-        .execute();
-
-      return teamRepository.find({
-        where: {
-          event: {
-            id: eventId,
-          },
-        },
-        relations: {
-          users: true,
-          event: true,
-        },
-      });
-    });
-
+    const teams = await this.getTeamsForEvent(eventId);
     for (const team of teams) {
-      if (!team.repo || !team.event) continue;
-
-      for (const user of team.users) {
-        if (!user.username) continue;
-
-        await this.githubApiService.addWritePermissions(
-          user.username,
-          user.githubId,
-          team.event.githubOrg,
-          team.repo,
-          team.event.githubOrgSecret,
+      try {
+        await this.unlockTeam(team.id);
+      } catch (error) {
+        this.logger.error(
+          `Failed to unlock repository for team ${team.id}`,
+          error,
         );
       }
     }
-
     return teams;
   }
 

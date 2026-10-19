@@ -9,6 +9,23 @@ import {
 } from "class-validator";
 
 export class UpdateEventSettingsDto {
+  @IsOptional()
+  @IsNumber()
+  submissionDeadline?: number;
+
+  @IsOptional()
+  @IsNumber()
+  scheduledEndDate?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  introEnabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  introLeadMinutes?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
