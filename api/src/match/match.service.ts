@@ -1,4 +1,10 @@
-import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+} from "@nestjs/common";
 import { TeamService } from "../team/team.service";
 import { InjectRepository } from "@nestjs/typeorm";
 import { MatchEntity, MatchPhase, MatchState } from "./entites/match.entity";
@@ -189,6 +195,9 @@ export class MatchService {
       await this.gamblingService.settleMatch(match.id, winner.id);
       return;
     }
+
+    // Manual matches are admin-triggered test games and never affect rounds.
+    if (match.phase === MatchPhase.MANUAL) return;
 
     const event = match.teams[0].event;
     if (!event) {
@@ -451,6 +460,34 @@ export class MatchService {
     });
 
     return this.matchRepository.save(match);
+  }
+
+  async createManualMatch(
+    eventId: string,
+    teamOneId: string,
+    teamTwoId: string,
+  ) {
+    if (teamOneId === teamTwoId)
+      throw new BadRequestException("A team cannot play against itself.");
+
+    const teams = await this.dataSource.getRepository(TeamEntity).find({
+      select: { id: true, repo: true },
+      where: { id: In([teamOneId, teamTwoId]), event: { id: eventId } },
+    });
+    if (teams.length !== 2)
+      throw new BadRequestException("Both teams must belong to this event.");
+    if (teams.some((team) => !team.repo))
+      throw new BadRequestException("Both teams need a repository.");
+
+    const match = await this.createMatch(
+      [teamOneId, teamTwoId],
+      0,
+      MatchPhase.MANUAL,
+    );
+    // Manual matches are only listed for admins, so results need no hiding.
+    await this.revealMatch(match.id);
+    await this.startMatch(match.id);
+    return { id: match.id };
   }
 
   async getFormerOpponents(teamId: string): Promise<TeamEntity[]> {
@@ -794,6 +831,7 @@ export class MatchService {
         winner: {
           id: teamId,
         },
+        phase: MatchPhase.SWISS,
       },
       relations: {
         teams: true,
@@ -908,6 +946,7 @@ export class MatchService {
             teams: { id: teamId },
             state: MatchState.FINISHED,
             isRevealed: true,
+            phase: Not(MatchPhase.MANUAL),
           },
         ],
         withDeleted: true,
@@ -1018,6 +1057,27 @@ export class MatchService {
           },
         },
         phase: MatchPhase.QUEUE,
+      },
+      relations: QUEUE_MATCH_RELATIONS,
+      take: 100,
+      order: {
+        createdAt: "DESC",
+      },
+    });
+
+    return matches.map((match) => this.serializeQueueMatch(match));
+  }
+
+  async getManualMatches(eventId: string) {
+    const matches = await this.matchRepository.find({
+      select: QUEUE_MATCH_SELECT,
+      where: {
+        teams: {
+          event: {
+            id: eventId,
+          },
+        },
+        phase: MatchPhase.MANUAL,
       },
       relations: QUEUE_MATCH_RELATIONS,
       take: 100,
