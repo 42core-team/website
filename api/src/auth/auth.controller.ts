@@ -7,13 +7,21 @@ import {
   Post,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
   Logger,
 } from "@nestjs/common";
 import { UserEntity } from "../user/entities/user.entity";
 import { AuthGuard } from "@nestjs/passport";
-import { Request, Response } from "express";
-import { AuthService } from "./auth.service";
+import { CookieOptions, Request, Response } from "express";
+import { AuthService, SessionTokens } from "./auth.service";
+import {
+  ACCESS_TOKEN_TTL_MS,
+  getAuthCookieName,
+  REFRESH_COOKIE_NAME,
+  REFRESH_COOKIE_PATH,
+  REFRESH_TOKEN_IDLE_TTL_MS,
+} from "./session.constants";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { ConfigService } from "@nestjs/config";
 import { UserService } from "../user/user.service";
@@ -89,8 +97,12 @@ export class AuthController {
     );
     this.logger.log({ action: "github_login", userId: user.id });
 
-    const token = this.auth.signToken(user);
-    this.setAuthCookie(res, token);
+    // The new login replaces this browser's session; do not leave the old
+    // family valid (and unreachable for logout) for its 90-day idle lifetime.
+    await this.auth.endSession(
+      req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined,
+    );
+    this.setSessionCookies(res, await this.auth.startSession(user));
 
     return res.redirect(this.getOAuthSuccessRedirectUrl());
   }
@@ -176,10 +188,45 @@ export class AuthController {
     return this.userService.getUserWithSocialAccounts(user.id);
   }
 
+  @Post("/refresh")
+  @HttpCode(204)
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    const tokens = await this.auth.refreshSession(
+      req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined,
+      req.cookies?.[this.getAuthCookieName()] as string | undefined,
+    );
+    if (!tokens) {
+      this.clearSessionCookies(res);
+      throw new UnauthorizedException();
+    }
+    this.setSessionCookies(res, tokens);
+  }
+
   @Post("/logout")
   @HttpCode(204)
-  logout(@Res({ passthrough: true }) res: Response): void {
-    this.clearAuthCookie(res);
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    await this.auth.endSession(
+      req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined,
+    );
+    this.clearSessionCookies(res);
+  }
+
+  @Post("/logout-all")
+  @HttpCode(204)
+  @UseGuards(JwtAuthGuard)
+  async logoutAll(
+    @UserId() userId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    await this.auth.endAllSessions(userId);
+    this.logger.log({ action: "logout_all", userId });
+    this.clearSessionCookies(res);
   }
 
   private getFortyTwoErrorMessage(error: unknown): string {
@@ -204,18 +251,25 @@ export class AuthController {
     return "Failed to link 42 account";
   }
 
-  private setAuthCookie(res: Response, token: string): void {
-    const cookieName = this.getAuthCookieName();
-    const isDevelopment = this.configService.get("NODE_ENV") === "development";
-
+  private setSessionCookies(res: Response, tokens: SessionTokens): void {
     this.clearLegacyDomainCookie(res);
 
-    res.cookie(cookieName, token, {
-      httpOnly: true,
-      secure: !isDevelopment,
-      sameSite: "lax",
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+    res.cookie(this.getAuthCookieName(), tokens.accessToken, {
+      ...this.getSessionCookieOptions(),
+      maxAge: ACCESS_TOKEN_TTL_MS,
     });
+    if (tokens.refreshToken) {
+      res.cookie(REFRESH_COOKIE_NAME, tokens.refreshToken, {
+        ...this.getSessionCookieOptions(),
+        path: REFRESH_COOKIE_PATH,
+        maxAge: REFRESH_TOKEN_IDLE_TTL_MS,
+      });
+    }
+  }
+
+  private getSessionCookieOptions(): CookieOptions {
+    const isDevelopment = this.configService.get("NODE_ENV") === "development";
+    return { httpOnly: true, secure: !isDevelopment, sameSite: "lax" };
   }
 
   private setOAuthBrowserCookie(
@@ -248,30 +302,25 @@ export class AuthController {
     });
   }
 
-  private clearAuthCookie(res: Response): void {
-    const isDevelopment = this.configService.get("NODE_ENV") === "development";
-
-    res.clearCookie(this.getAuthCookieName(), {
-      httpOnly: true,
-      secure: !isDevelopment,
-      sameSite: "lax",
+  private clearSessionCookies(res: Response): void {
+    res.clearCookie(this.getAuthCookieName(), this.getSessionCookieOptions());
+    res.clearCookie(REFRESH_COOKIE_NAME, {
+      ...this.getSessionCookieOptions(),
+      path: REFRESH_COOKIE_PATH,
     });
     this.clearLegacyDomainCookie(res);
   }
 
   private getAuthCookieName(): string {
-    return this.configService.get<string>("AUTH_COOKIE_NAME") || "token";
+    return getAuthCookieName(this.configService);
   }
 
   private clearLegacyDomainCookie(res: Response): void {
     const legacyDomain = this.configService.get<string>("AUTH_COOKIE_DOMAIN");
     if (!legacyDomain) return;
 
-    const isDevelopment = this.configService.get("NODE_ENV") === "development";
     res.clearCookie(this.getAuthCookieName(), {
-      httpOnly: true,
-      secure: !isDevelopment,
-      sameSite: "lax",
+      ...this.getSessionCookieOptions(),
       domain: legacyDomain,
     });
   }

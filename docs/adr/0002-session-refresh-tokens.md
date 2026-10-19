@@ -59,7 +59,9 @@ The frontend is a client-side SPA that sends the cookie via axios
    without `fid` is a *legacy* token. `JwtStrategy` rejects legacy tokens
    with 401, so the frontend calls `/auth/refresh`. For a transition period,
    `/auth/refresh` accepts a valid legacy 30-day JWT (when there's no refresh
-   cookie) once and mints a new family, so the deploy doesn't log anyone out.
+   cookie) and mints a new family, so the deploy doesn't log anyone out.
+   The exchange is not tracked server-side, so it is not limited to one use
+   (see Consequences).
 7. **Revocation scope for #684:**
    - `POST /auth/logout` revokes the current family.
    - "Log out everywhere" revokes all of the user's families.
@@ -109,11 +111,11 @@ The GitHub OAuth callback starts a new family and sets both cookies.
 
 ```
 refresh_tokens(
-  id, user_id → users, family_id, token_hash (SHA-256, unique),
-  expires_at,            -- now + 90 days, renewed on rotation
-  rotated_at NULL,       -- set when exchanged for a successor
-  revoked_at NULL,
-  created_at
+  id, userId → users, familyId, tokenHash (SHA-256, unique),
+  expiresAt,             -- now + 90 days, renewed on rotation
+  rotatedAt NULL,        -- set when exchanged for a successor
+  revokedAt NULL,
+  createdAt
 )
 
 POST /auth/refresh
@@ -140,4 +142,8 @@ POST /auth/refresh
   exclusion list.
 - Rare false positive: a reuse more than 30 s after rotation (for example a
   tab that was suspended mid-request) logs that session out.
-- Follow-up: remove the legacy upgrade path 30 days after deploy.
+- Accepted risk: a legacy JWT stolen before the deploy can be exchanged for
+  new families repeatedly until it expires (at most 30 days after deploy), and
+  "log out everywhere" does not stop that. Families it created keep living
+  under the normal 90-day idle rule.
+- Follow-up: remove the legacy upgrade path 30 days after deploy (#785).

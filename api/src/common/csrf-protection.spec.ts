@@ -9,10 +9,14 @@ describe("createCsrfProtection", () => {
   function createTestApp(onMutation: () => void) {
     const app = express();
     app.use(cookieParser());
-    app.use(createCsrfProtection(trustedOrigin, "token"));
+    app.use(createCsrfProtection(trustedOrigin, ["token", "refresh_token"]));
     app.post("/event/:eventId/admins/:newAdminId", (_req, res) => {
       onMutation();
       res.sendStatus(201);
+    });
+    app.post("/auth/refresh", (_req, res) => {
+      onMutation();
+      res.sendStatus(204);
     });
     return app;
   }
@@ -67,5 +71,29 @@ describe("createCsrfProtection", () => {
       .expect(403);
 
     expect(onMutation).not.toHaveBeenCalled();
+  });
+
+  it("rejects a cross-site refresh that carries only the refresh cookie", async () => {
+    const onMutation = jest.fn();
+
+    await request(createTestApp(onMutation))
+      .post("/auth/refresh")
+      .set("Cookie", "refresh_token=session")
+      .set("Origin", "https://attacker.example")
+      .expect(403);
+
+    expect(onMutation).not.toHaveBeenCalled();
+  });
+
+  it("allows a same-site refresh after the access cookie has expired", async () => {
+    const onMutation = jest.fn();
+
+    await request(createTestApp(onMutation))
+      .post("/auth/refresh")
+      .set("Cookie", "refresh_token=session")
+      .set("Origin", trustedOrigin)
+      .expect(204);
+
+    expect(onMutation).toHaveBeenCalledTimes(1);
   });
 });

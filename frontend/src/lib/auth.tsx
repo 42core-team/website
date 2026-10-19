@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
-import axiosInstance from '@/app/actions/axios'
+import axiosInstance, { onSessionExpired } from '@/app/actions/axios'
 
 export interface ClientUser {
   id: string
@@ -14,6 +16,8 @@ export interface ClientSession {
   user: ClientUser
 }
 
+const SESSION_QUERY_KEY = ['auth', 'session'] as const
+
 async function fetchCurrentUser(): Promise<ClientSession | null> {
   const response = await axiosInstance.get<ClientUser>('/auth/me')
   return {
@@ -24,9 +28,14 @@ async function fetchCurrentUser(): Promise<ClientSession | null> {
   }
 }
 
+async function clearSession(queryClient: QueryClient) {
+  queryClient.setQueryData(SESSION_QUERY_KEY, null)
+  await queryClient.invalidateQueries({ queryKey: ['auth'] })
+}
+
 export function useSession() {
   const query = useQuery({
-    queryKey: ['auth', 'session'],
+    queryKey: SESSION_QUERY_KEY,
     queryFn: fetchCurrentUser,
     retry: false,
   })
@@ -43,6 +52,16 @@ export function useSession() {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
+
+  useEffect(
+    () =>
+      onSessionExpired(() => {
+        queryClient.setQueryData(SESSION_QUERY_KEY, null)
+      }),
+    [queryClient],
+  )
+
   return children
 }
 
@@ -51,9 +70,20 @@ export function useSignOut() {
 
   return useMutation({
     mutationFn: () => axiosInstance.post('/auth/logout'),
-    onSettled: async () => {
-      queryClient.setQueryData(['auth', 'session'], null)
-      await queryClient.invalidateQueries({ queryKey: ['auth'] })
-    },
+    onSettled: () => clearSession(queryClient),
+  })
+}
+
+/**
+ * Revokes every session of the current user, on all devices (ADR 0002).
+ * Unlike `useSignOut`, the local session is only cleared on success, so a
+ * failed request does not pretend the other devices were logged out.
+ */
+export function useSignOutEverywhere() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => axiosInstance.post('/auth/logout-all'),
+    onSuccess: () => clearSession(queryClient),
   })
 }

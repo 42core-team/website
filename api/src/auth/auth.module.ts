@@ -12,21 +12,20 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { OAuthStateEntity } from "./entities/oauth-state.entity";
 import { OAuthStateService } from "./oauth-state.service";
 import { FortyTwoOAuthStateGuard } from "./fortytwo-oauth-state.guard";
+import { RefreshTokenEntity } from "./entities/refresh-token.entity";
+import { RefreshTokenService } from "./refresh-token.service";
 
 @Module({
   imports: [
     ConfigModule,
     UserModule,
-    TypeOrmModule.forFeature([OAuthStateEntity]),
+    TypeOrmModule.forFeature([OAuthStateEntity, RefreshTokenEntity]),
     PassportModule.register({ session: false }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>("JWT_SECRET"),
-        signOptions: {
-          expiresIn: "30d",
-        },
       }),
     }),
   ],
@@ -37,6 +36,7 @@ import { FortyTwoOAuthStateGuard } from "./fortytwo-oauth-state.guard";
     FortyTwoOAuthStrategy,
     OAuthStateService,
     FortyTwoOAuthStateGuard,
+    RefreshTokenService,
   ],
   controllers: [AuthController],
   exports: [PassportModule, JwtModule],

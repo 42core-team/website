@@ -7,6 +7,7 @@ import { title } from '@/components/primitives'
 import SocialAccountsDisplay from '@/components/social-accounts-display'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { User } from '@/components/user'
+import SignOutEverywhereCard from './SignOutEverywhereCard'
 
 function ProfileContent() {
   const router = useRouter()
@@ -56,6 +57,8 @@ function ProfileContent() {
         </Card>
 
         <SocialAccountsDisplay />
+
+        <SignOutEverywhereCard />
       </div>
     </div>
   )
