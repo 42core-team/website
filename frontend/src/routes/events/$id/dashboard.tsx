@@ -1,4 +1,5 @@
 import type { Event } from '@/app/actions/event'
+import { LifecycleControls } from '@/components/dashboard/lifecycle-controls'
 import type { Team } from '@/app/actions/team'
 import type { UserSearchResult } from '@/app/actions/user'
 import type { UseMutationResult } from '@tanstack/react-query'
@@ -6,7 +7,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { format } from 'date-fns'
 import {
-  CalendarIcon,
   Loader2,
   Maximize2,
   Minimize2,
@@ -16,6 +16,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { isAxiosError } from 'axios'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -27,14 +28,11 @@ import {
   getTeamsCountForEvent,
   isEventAdmin,
   removeEventAdmin,
-  setEventTeamsLockDate,
   updateEventSettings,
 } from '@/app/actions/event'
 import {
   deleteTeamAsAdmin,
   getTeamsForEventTable,
-  lockEvent,
-  unlockEvent,
   updateTeamCredits,
 } from '@/app/actions/team'
 import {
@@ -48,7 +46,6 @@ import { StarterTemplatesManagement } from '@/components/dashboard/starter-templ
 import { MatchesAnalytics } from '@/components/dashboard/matches-analytics'
 import { WhitelistManagement } from '@/components/dashboard/whitelist-management'
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
 import {
   Card,
   CardContent,
@@ -66,11 +63,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -84,7 +76,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useTabParam } from '@/hooks/useTabParam'
+import { useEventClock } from '@/hooks/use-event-clock'
 import { useSession } from '@/lib/auth'
+import { eventState } from '@/lib/event-lifecycle'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/events/$id/dashboard')({
@@ -92,21 +86,16 @@ export const Route = createFileRoute('/events/$id/dashboard')({
 })
 
 type PendingEventSettings = Partial<
-  Omit<Event, 'startDate' | 'endDate'> & {
+  Omit<Event, 'startDate' | 'submissionDeadline' | 'scheduledEndDate'> & {
     startDate: string | number
-    endDate: string | number
+    submissionDeadline: string | number
+    scheduledEndDate: string | number
   }
 >
 type EventSettingsUpdate = Parameters<typeof updateEventSettings>[1]
 type VoidMutation = UseMutationResult<unknown, Error, void, unknown>
 type PhaseMutation = UseMutationResult<unknown, Error, string, unknown>
 type StringMutation = UseMutationResult<unknown, Error, string, unknown>
-type TeamLockDateMutation = UseMutationResult<
-  unknown,
-  Error,
-  number | null,
-  unknown
->
 
 interface EventAdmin {
   id: string
@@ -138,7 +127,10 @@ const SETTINGS_FIELDS = [
   'githubOrg',
   'githubOrgSecret',
   'startDate',
-  'endDate',
+  'submissionDeadline',
+  'scheduledEndDate',
+  'introEnabled',
+  'introLeadMinutes',
 ] as const
 
 function DashboardRoute() {
@@ -147,7 +139,6 @@ function DashboardRoute() {
   const queryClient = useQueryClient()
   const { currentTab, onTabChange } = useTabParam('overview')
 
-  const [teamAutoLockTime, setTeamAutoLockTime] = useState('')
   const [userSearchQuery, setUserSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -160,13 +151,8 @@ function DashboardRoute() {
   const eventQuery = useQuery<Event>({
     queryKey: ['event', id],
     queryFn: () => getEventById(id),
+    refetchInterval: 3000,
   })
-
-  useEffect(() => {
-    if (eventQuery.data) {
-      setPendingSettings(eventQuery.data)
-    }
-  }, [eventQuery.data])
 
   const teamsCountQuery = useQuery({
     queryKey: ['event', id, 'teams-count'],
@@ -194,24 +180,6 @@ function DashboardRoute() {
   const starterTemplatesQuery = useQuery({
     queryKey: ['event', id, 'templates'],
     queryFn: () => getStarterTemplates(id),
-  })
-
-  const lockEventMutation = useMutation({
-    mutationFn: () => lockEvent(id),
-    onSuccess: async () => {
-      toast.success('Team repositories locked.')
-      await queryClient.invalidateQueries({ queryKey: ['event', id] })
-    },
-    onError: () => toast.error('Failed to lock team repositories.'),
-  })
-
-  const unlockEventMutation = useMutation({
-    mutationFn: () => unlockEvent(id),
-    onSuccess: async () => {
-      toast.success('Team repositories unlocked.')
-      await queryClient.invalidateQueries({ queryKey: ['event', id] })
-    },
-    onError: () => toast.error('Failed to unlock team repositories.'),
   })
 
   const startSwissMatchesMutation = useMutation({
@@ -252,21 +220,12 @@ function DashboardRoute() {
       toast.error(getErrorMessage(error, 'Failed to cleanup matches.')),
   })
 
-  const setTeamsLockDateMutation = useMutation({
-    mutationFn: (lockDate: number | null) =>
-      setEventTeamsLockDate(id, lockDate),
-    onSuccess: async () => {
-      toast.success('Team auto lock date updated.')
-      await queryClient.invalidateQueries({ queryKey: ['event', id] })
-    },
-    onError: () => toast.error('Failed to update team auto lock date.'),
-  })
-
   const updateEventSettingsMutation = useMutation({
     mutationFn: (settings: EventSettingsUpdate) =>
       updateEventSettings(id, settings),
     onSuccess: async () => {
       toast.success('Event settings updated.')
+      setPendingSettings({})
       await queryClient.invalidateQueries({ queryKey: ['event', id] })
     },
     onError: (error) =>
@@ -296,14 +255,6 @@ function DashboardRoute() {
     onError: (error) =>
       toast.error(getErrorMessage(error, 'Failed to remove admin.')),
   })
-
-  useEffect(() => {
-    if (eventQuery.data?.repoLockDate) {
-      setTeamAutoLockTime(new Date(eventQuery.data.repoLockDate).toISOString())
-      return
-    }
-    setTeamAutoLockTime('')
-  }, [eventQuery.data?.repoLockDate])
 
   useEffect(() => {
     const delayDebounceFn = window.setTimeout(async () => {
@@ -358,17 +309,21 @@ function DashboardRoute() {
     )
   }
 
-  const hasChanges = Object.keys(pendingSettings).some(
+  const hasChanges = SETTINGS_FIELDS.some(
     (key) =>
+      key in pendingSettings &&
       pendingSettings[key as keyof PendingEventSettings] !==
-      event[key as keyof Event],
+        event[key as keyof Event],
   )
 
   const handleSaveSettings = () => {
     const updates: EventSettingsUpdate = {}
 
     SETTINGS_FIELDS.forEach((field) => {
-      if (pendingSettings[field] !== event[field as keyof Event]) {
+      if (
+        field in pendingSettings &&
+        pendingSettings[field] !== event[field as keyof Event]
+      ) {
         Object.assign(updates, { [field]: pendingSettings[field] })
       }
     })
@@ -376,8 +331,29 @@ function DashboardRoute() {
     if (updates.startDate) {
       updates.startDate = new Date(updates.startDate).getTime()
     }
-    if (updates.endDate) {
-      updates.endDate = new Date(updates.endDate).getTime()
+    if (updates.submissionDeadline) {
+      updates.submissionDeadline = new Date(
+        updates.submissionDeadline,
+      ).getTime()
+    }
+    if (updates.scheduledEndDate)
+      updates.scheduledEndDate = new Date(updates.scheduledEndDate).getTime()
+    const start = new Date(updates.startDate ?? event.startDate).getTime()
+    const deadline = new Date(
+      updates.submissionDeadline ?? event.submissionDeadline,
+    ).getTime()
+    const end = new Date(
+      updates.scheduledEndDate ?? event.scheduledEndDate,
+    ).getTime()
+    if (
+      ![start, deadline, end].every(Number.isFinite) ||
+      deadline <= start ||
+      end < start
+    ) {
+      toast.error(
+        'Enter valid dates: submission deadline must follow start and scheduled end cannot precede start.',
+      )
+      return
     }
 
     if (Object.keys(updates).length === 0) {
@@ -445,21 +421,16 @@ function DashboardRoute() {
         <TabsContent value="operation" className="space-y-6">
           <OperationTab
             event={event}
-            teamAutoLockTime={teamAutoLockTime}
-            setTeamAutoLockTime={setTeamAutoLockTime}
-            lockEventMutation={lockEventMutation}
-            unlockEventMutation={unlockEventMutation}
             startSwissMatchesMutation={startSwissMatchesMutation}
             startTournamentMatchesMutation={startTournamentMatchesMutation}
             revealMatchesMutation={revealMatchesMutation}
             cleanupMatchesMutation={cleanupMatchesMutation}
-            setTeamsLockDateMutation={setTeamsLockDateMutation}
           />
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-6">
           <SettingsTab
-            pendingSettings={pendingSettings}
+            pendingSettings={{ ...event, ...pendingSettings }}
             updatePendingSetting={updatePendingSetting}
             isGameConfigExpanded={isGameConfigExpanded}
             setIsGameConfigExpanded={setIsGameConfigExpanded}
@@ -528,7 +499,21 @@ function OverviewTab({
               label="Start Date"
               value={formatDateTime(event.startDate)}
             />
-            <InfoBlock label="End Date" value={formatDateTime(event.endDate)} />
+            <InfoBlock
+              label="Submission Deadline"
+              value={formatDateTime(event.submissionDeadline)}
+            />
+            <InfoBlock
+              label="Scheduled End (informational)"
+              value={formatDateTime(event.scheduledEndDate)}
+            />
+            <InfoBlock label="State" value={event.state} />
+            {event.completedAt && (
+              <InfoBlock
+                label="Completed"
+                value={formatDateTime(event.completedAt)}
+              />
+            )}
             <InfoBlock label="Location" value={event.location || 'Online'} />
           </div>
         </CardContent>
@@ -610,56 +595,39 @@ function OverviewTab({
 
 function OperationTab({
   event,
-  teamAutoLockTime,
-  setTeamAutoLockTime,
-  lockEventMutation,
-  unlockEventMutation,
   startSwissMatchesMutation,
   startTournamentMatchesMutation,
   revealMatchesMutation,
   cleanupMatchesMutation,
-  setTeamsLockDateMutation,
 }: {
   event: Event
-  teamAutoLockTime: string
-  setTeamAutoLockTime: (value: string) => void
-  lockEventMutation: VoidMutation
-  unlockEventMutation: VoidMutation
   startSwissMatchesMutation: VoidMutation
   startTournamentMatchesMutation: VoidMutation
   revealMatchesMutation: PhaseMutation
   cleanupMatchesMutation: PhaseMutation
-  setTeamsLockDateMutation: TeamLockDateMutation
 }) {
+  const now = useEventClock()
+  const repositories = useQuery({
+    queryKey: ['event', event.id, 'repository-progress'],
+    queryFn: () =>
+      getTeamsForEventTable(event.id, undefined, 'name', 'asc', true),
+    refetchInterval: 3000,
+  })
+  const tournamentReady =
+    ['SUBMISSIONS_CLOSED', 'SHOWCASE'].includes(eventState(event, now)) &&
+    repositories.isSuccess &&
+    repositories.data.every(
+      (team) => team.tournamentExcluded || team.repositoryStatus === 'LOCKED',
+    )
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Operation Controls</CardTitle>
-        <CardDescription>
-          Immediate actions for running the event.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-10">
-        <OperationSection title="Repository Management">
-          <Button
-            disabled={event.lockedAt != null || lockEventMutation.isPending}
-            onClick={() => lockEventMutation.mutate(undefined)}
-          >
-            Lock Team Repositories
-          </Button>
-          <Button
-            disabled={event.lockedAt == null || unlockEventMutation.isPending}
-            onClick={() => unlockEventMutation.mutate(undefined)}
-            variant="outline"
-          >
-            Unlock Team Repositories
-          </Button>
-        </OperationSection>
-
+    <LifecycleControls event={event}>
+      <div className="space-y-6 border-t pt-6">
         <OperationSection title="Group Phase">
           <Button
             disabled={
-              event.currentRound !== 0 || startSwissMatchesMutation.isPending
+              !tournamentReady ||
+              event.currentRound !== 0 ||
+              startSwissMatchesMutation.isPending
             }
             onClick={() => startSwissMatchesMutation.mutate(undefined)}
             variant="secondary"
@@ -697,7 +665,9 @@ function OperationTab({
 
         <OperationSection title="Tournament Phase">
           <Button
-            disabled={startTournamentMatchesMutation.isPending}
+            disabled={
+              !tournamentReady || startTournamentMatchesMutation.isPending
+            }
             onClick={() => startTournamentMatchesMutation.mutate(undefined)}
             variant="secondary"
           >
@@ -731,93 +701,8 @@ function OperationTab({
             Clean Up Tournament Matches
           </Button>
         </OperationSection>
-
-        <div className="border-t pt-8">
-          <h3 className="mb-4 text-[10px] font-bold tracking-wider text-muted-foreground/80 uppercase">
-            Scheduling Auto-Lock
-          </h3>
-          <div className="flex max-w-md flex-wrap items-end gap-4">
-            <div className="min-w-60 flex-1 space-y-2">
-              <Label>Repo Lock Date & Time</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !teamAutoLockTime && 'text-muted-foreground',
-                    )}
-                  >
-                    <CalendarIcon className="h-4 w-4" />
-                    {teamAutoLockTime
-                      ? format(new Date(teamAutoLockTime), 'PPP p')
-                      : 'Pick a date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={
-                      teamAutoLockTime ? new Date(teamAutoLockTime) : undefined
-                    }
-                    onSelect={(date) =>
-                      date && setTeamAutoLockTime(date.toISOString())
-                    }
-                  />
-                  <div className="border-t p-3">
-                    <Input
-                      type="time"
-                      value={
-                        teamAutoLockTime
-                          ? format(new Date(teamAutoLockTime), 'HH:mm')
-                          : ''
-                      }
-                      onChange={(changeEvent) => {
-                        const value = changeEvent.target.value
-                        if (!value) return
-
-                        const [hours, minutes] = value
-                          .split(':')
-                          .map((part) => Number.parseInt(part, 10))
-                        if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-                          return
-                        }
-
-                        const current = teamAutoLockTime
-                          ? new Date(teamAutoLockTime)
-                          : new Date()
-                        const date = Number.isNaN(current.getTime())
-                          ? new Date()
-                          : current
-                        date.setHours(hours, minutes, 0, 0)
-                        setTeamAutoLockTime(date.toISOString())
-                      }}
-                    />
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <Button
-              onClick={() =>
-                setTeamsLockDateMutation.mutate(
-                  teamAutoLockTime
-                    ? new Date(teamAutoLockTime).getTime()
-                    : null,
-                )
-              }
-            >
-              Save
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => setTeamsLockDateMutation.mutate(null)}
-            >
-              Reset
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </LifecycleControls>
   )
 }
 
@@ -880,10 +765,37 @@ function SettingsTab({
               onChange={(value) => updatePendingSetting('startDate', value)}
             />
             <DashboardInput
-              label="End Date"
+              label="Submission Deadline"
               type="datetime-local"
-              value={formatDateTimeInput(pendingSettings.endDate)}
-              onChange={(value) => updatePendingSetting('endDate', value)}
+              value={formatDateTimeInput(pendingSettings.submissionDeadline)}
+              onChange={(value) =>
+                updatePendingSetting('submissionDeadline', value)
+              }
+            />
+            <DashboardInput
+              label="Scheduled End (informational)"
+              type="datetime-local"
+              value={formatDateTimeInput(pendingSettings.scheduledEndDate)}
+              onChange={(value) =>
+                updatePendingSetting('scheduledEndDate', value)
+              }
+            />
+            <label className="flex items-center gap-3">
+              Optional introduction
+              <Switch
+                checked={pendingSettings.introEnabled ?? false}
+                onCheckedChange={(value) =>
+                  updatePendingSetting('introEnabled', value)
+                }
+              />
+            </label>
+            <DashboardInput
+              label="Introduction lead (minutes)"
+              type="number"
+              value={pendingSettings.introLeadMinutes ?? 15}
+              onChange={(value) =>
+                updatePendingSetting('introLeadMinutes', Number(value))
+              }
             />
           </div>
         </CardContent>
@@ -1619,6 +1531,11 @@ function formatDateTimeInput(value: string | number | undefined) {
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
+  if (isAxiosError<{ message?: string | string[] }>(error)) {
+    const message = error.response?.data?.message
+    if (Array.isArray(message)) return message.join(', ')
+    if (message) return message
+  }
   if (error instanceof Error && error.message) {
     return error.message
   }

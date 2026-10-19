@@ -14,6 +14,17 @@ function event(id: string, startDate: string, endDate: string): Event {
     name: `Event ${id}`,
     startDate,
     endDate,
+    state:
+      new Date(endDate).getTime() < NOW
+        ? 'COMPLETED'
+        : new Date(startDate).getTime() > NOW
+          ? 'REGISTRATION'
+          : 'PLAYING',
+    submissionDeadline: endDate,
+    scheduledEndDate: endDate,
+    completedAt: new Date(endDate).getTime() < NOW ? endDate : null,
+    introEnabled: false,
+    introLeadMinutes: 15,
     minTeamSize: 1,
     maxTeamSize: 4,
     currentRound: 0,
@@ -167,7 +178,24 @@ describe('events view model', () => {
 })
 
 describe('event status', () => {
-  it('uses event dates rather than tournament rounds', () => {
+  it('does not complete showcase or reopened play at the scheduled end', () => {
+    const past = event('past', '2026-08-01T12:00:00Z', '2026-08-02T12:00:00Z')
+    expect(
+      getEventStatus({ ...past, state: 'SHOWCASE', completedAt: null }, NOW),
+    ).toBe('live')
+    expect(
+      getEventStatus(
+        {
+          ...past,
+          state: 'PLAYING',
+          completedAt: null,
+          submissionDeadline: '2026-08-07T12:00:00Z',
+        },
+        NOW,
+      ),
+    ).toBe('live')
+  })
+  it('uses lifecycle state rather than tournament rounds', () => {
     expect(
       getEventStatus(
         event(

@@ -42,7 +42,10 @@ const formSchema = z
       .min(1, 'GitHub organization secret is required'),
     location: z.string().optional(),
     startDate: z.date({ message: 'Start date is required' }),
-    endDate: z.date({ message: 'End date is required' }),
+    submissionDeadline: z.date({ message: 'Submission deadline is required' }),
+    scheduledEndDate: z.date({ message: 'Scheduled end is required' }),
+    introEnabled: z.boolean(),
+    introLeadMinutes: z.number().int().min(0),
     minTeamSize: z.number().min(1).max(10),
     maxTeamSize: z.number().min(1).max(10),
     monorepoUrl: z.string().min(1, 'Monorepo URL is required'),
@@ -62,6 +65,10 @@ const formSchema = z
     message: 'Max team size must be at least the min team size',
     path: ['maxTeamSize'],
   })
+  .refine((value) => value.submissionDeadline > value.startDate, {
+    message: 'Submission deadline must be after play starts',
+    path: ['submissionDeadline'],
+  })
 
 type FormValues = z.infer<typeof formSchema>
 
@@ -72,7 +79,10 @@ const defaultValues: FormValues = {
   githubOrgSecret: '',
   location: '',
   startDate: new Date(),
-  endDate: new Date(),
+  submissionDeadline: new Date(Date.now() + 3600000),
+  scheduledEndDate: new Date(Date.now() + 7200000),
+  introEnabled: false,
+  introLeadMinutes: 15,
   minTeamSize: 1,
   maxTeamSize: 4,
   monorepoUrl: 'https://github.com/42core-team/monorepo',
@@ -247,7 +257,10 @@ function CreateEventRoute() {
         githubOrgSecret: values.githubOrgSecret,
         location: values.location?.trim() || '',
         startDate: values.startDate.getTime(),
-        endDate: values.endDate.getTime(),
+        submissionDeadline: values.submissionDeadline.getTime(),
+        scheduledEndDate: values.scheduledEndDate.getTime(),
+        introEnabled: values.introEnabled,
+        introLeadMinutes: values.introLeadMinutes,
         minTeamSize: values.minTeamSize,
         maxTeamSize: values.maxTeamSize,
         monorepoUrl: values.monorepoUrl.trim(),
@@ -526,11 +539,11 @@ function CreateEventRoute() {
                 />
 
                 <form.Field
-                  name="endDate"
+                  name="submissionDeadline"
                   children={(field) => (
                     <DateTimeField
                       errors={field.state.meta.errors}
-                      label="End Date *"
+                      label="Submission Deadline *"
                       value={field.state.value}
                       onChange={field.handleChange}
                     />
@@ -538,6 +551,45 @@ function CreateEventRoute() {
                 />
               </div>
 
+              <form.Field
+                name="scheduledEndDate"
+                children={(field) => (
+                  <DateTimeField
+                    errors={field.state.meta.errors}
+                    label="Scheduled End (informational) *"
+                    value={field.state.value}
+                    onChange={field.handleChange}
+                  />
+                )}
+              />
+              <form.Field
+                name="introEnabled"
+                children={(field) => (
+                  <label className="flex items-center gap-3">
+                    Optional introduction
+                    <Switch
+                      checked={field.state.value}
+                      onCheckedChange={field.handleChange}
+                    />
+                  </label>
+                )}
+              />
+              <form.Field
+                name="introLeadMinutes"
+                children={(field) => (
+                  <label>
+                    Introduction lead (minutes)
+                    <Input
+                      type="number"
+                      min={0}
+                      value={field.state.value}
+                      onChange={(e) =>
+                        field.handleChange(Number(e.target.value))
+                      }
+                    />
+                  </label>
+                )}
+              />
               <form.Field
                 name="isPrivate"
                 children={(field) => (

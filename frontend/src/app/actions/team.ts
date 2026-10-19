@@ -28,7 +28,20 @@ export interface QueueOpponent extends TeamAppearance {
   name: string
 }
 
-export interface Team extends TeamAppearance {
+export interface RepositoryState {
+  repositoryStatus?:
+    | 'PENDING'
+    | 'PROVISIONING'
+    | 'READY'
+    | 'LOCKING'
+    | 'LOCKED'
+    | 'UNLOCKING'
+    | 'FAILED'
+  repositoryError?: string | null
+  tournamentExcluded?: boolean
+}
+
+export interface Team extends TeamAppearance, RepositoryState {
   id: string
   name: string
   repo: string
@@ -57,7 +70,7 @@ export interface TeamMember {
   tags: string[]
 }
 
-export interface TeamApiResponse extends TeamAppearance {
+export interface TeamApiResponse extends TeamAppearance, RepositoryState {
   id: string
   name: string
   repo?: string | null
@@ -308,7 +321,12 @@ export function mapTeamResponse(team: TeamApiResponse): Team {
     score: team.score ?? 0,
     buchholzPoints: team.buchholzPoints ?? 0,
     hadBye: team.hadBye ?? false,
-    locked: team.locked,
+    locked: team.repositoryStatus
+      ? team.repositoryStatus === 'LOCKED'
+      : team.locked,
+    repositoryStatus: team.repositoryStatus,
+    repositoryError: team.repositoryError,
+    tournamentExcluded: team.tournamentExcluded,
     createdAt: team.createdAt,
     updatedAt: team.updatedAt,
     membersCount: team.userCount,

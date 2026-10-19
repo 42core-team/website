@@ -3,6 +3,7 @@ import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
 import { getRabbitmqConfig } from "../main";
 import { decryptSecret } from "../common/encryption";
+import { lastValueFrom, timeout } from "rxjs";
 
 @Injectable()
 export class GithubApiService {
@@ -78,13 +79,17 @@ export class GithubApiService {
     githubOrg: string,
     encryptedSecret: string,
   ) {
-    this.githubClient.emit("remove_user_from_repository", {
-      repositoryName,
-      username,
-      githubId,
-      githubOrg,
-      encryptedSecret,
-    });
+    await lastValueFrom(
+      this.githubClient
+        .send("remove_user_from_repository", {
+          repositoryName,
+          username,
+          githubId,
+          githubOrg,
+          encryptedSecret,
+        })
+        .pipe(timeout(60000)),
+    );
   }
 
   async deleteRepository(
@@ -119,24 +124,46 @@ export class GithubApiService {
     gameConfig: string,
     serverConfig: string,
     starterTemplateId?: string,
+    operationId?: string,
+    submissionDeadline?: string,
   ) {
-    this.githubClient.emit("create_team_repository", {
-      name,
-      teamName,
-      githubUsers,
-      githubOrg,
-      encryptedSecret,
-      teamId,
-      monoRepoUrl,
-      monoRepoVersion,
-      myCoreBotDockerImage,
-      visualizerDockerImage,
-      eventId,
-      basePath,
-      gameConfig,
-      serverConfig,
-      starterTemplateId,
-      apiBaseUrl: this.configService.getOrThrow<string>("API_BASE_URL"),
-    });
+    await lastValueFrom(
+      this.githubClient.emit("create_team_repository", {
+        operationId,
+        submissionDeadline,
+        name,
+        teamName,
+        githubUsers,
+        githubOrg,
+        encryptedSecret,
+        teamId,
+        monoRepoUrl,
+        monoRepoVersion,
+        myCoreBotDockerImage,
+        visualizerDockerImage,
+        eventId,
+        basePath,
+        gameConfig,
+        serverConfig,
+        starterTemplateId,
+        apiBaseUrl: this.configService.getOrThrow<string>("API_BASE_URL"),
+      }),
+    );
+  }
+
+  async setRepositoryAccess(data: {
+    teamId: string;
+    operationId: string;
+    repositoryName: string;
+    githubOrg: string;
+    encryptedSecret: string;
+    locked: boolean;
+    githubUsers: {
+      username: string;
+      githubId: string;
+      githubAccessToken: string;
+    }[];
+  }) {
+    await lastValueFrom(this.githubClient.emit("set_repository_access", data));
   }
 }

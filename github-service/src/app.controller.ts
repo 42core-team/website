@@ -1,11 +1,22 @@
 import { Controller, Logger } from "@nestjs/common";
 import { AppService } from "./app.service";
-import { EventPattern } from "@nestjs/microservices";
+import { EventPattern, MessagePattern } from "@nestjs/microservices";
 
 @Controller()
 export class AppController {
   private readonly logger = new Logger(AppController.name);
   constructor(private readonly appService: AppService) {}
+
+  @EventPattern("set_repository_access")
+  async handleSetRepositoryAccess(
+    data: Parameters<AppService["setRepositoryAccess"]>[0],
+  ) {
+    await this.appService.runRepositoryOperation(
+      data.teamId,
+      data.operationId,
+      () => this.appService.setRepositoryAccess(data),
+    );
+  }
 
   @EventPattern("remove_write_permissions")
   async handleRemoveWritePermissions(data: {
@@ -84,7 +95,7 @@ export class AppController {
     );
   }
 
-  @EventPattern("remove_user_from_repository")
+  @MessagePattern("remove_user_from_repository")
   async handleRemoveUserFromRepository(data: {
     repositoryName: string;
     username: string;
@@ -100,13 +111,14 @@ export class AppController {
     this.logger.log(
       `remove_user_from_repository event received ${JSON.stringify(safeData)}`,
     );
-    return await this.appService.removeUserFromRepository(
+    await this.appService.removeUserFromRepository(
       data.repositoryName,
       data.username,
       data.githubId,
       data.githubOrg,
       data.encryptedSecret,
     );
+    return { success: true };
   }
 
   @EventPattern("delete_repository")
@@ -150,6 +162,8 @@ export class AppController {
     gameConfig: string;
     serverConfig: string;
     starterTemplateId?: string;
+    operationId?: string;
+    submissionDeadline?: string;
     apiBaseUrl: string;
   }) {
     const safeData = {
@@ -171,23 +185,30 @@ export class AppController {
     this.logger.log(
       `create_team_repository event received ${JSON.stringify(safeData)}`,
     );
-    await this.appService.createTeamRepository(
-      data.name,
-      data.teamName,
-      data.githubUsers,
-      data.githubOrg,
-      data.encryptedSecret,
+    await this.appService.runRepositoryOperation(
       data.teamId,
-      data.monoRepoUrl,
-      data.monoRepoVersion,
-      data.myCoreBotDockerImage,
-      data.visualizerDockerImage,
-      data.eventId,
-      data.basePath,
-      data.gameConfig,
-      data.serverConfig,
-      data.apiBaseUrl,
-      data.starterTemplateId,
+      data.operationId,
+      () =>
+        this.appService.createTeamRepository(
+          data.name,
+          data.teamName,
+          data.githubUsers,
+          data.githubOrg,
+          data.encryptedSecret,
+          data.teamId,
+          data.monoRepoUrl,
+          data.monoRepoVersion,
+          data.myCoreBotDockerImage,
+          data.visualizerDockerImage,
+          data.eventId,
+          data.basePath,
+          data.gameConfig,
+          data.serverConfig,
+          data.apiBaseUrl,
+          data.starterTemplateId,
+          data.operationId,
+          data.submissionDeadline,
+        ),
     );
   }
 }

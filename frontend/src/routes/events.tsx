@@ -32,6 +32,7 @@ function EventsRoute() {
       return { allEvents: await getEvents(), myEvents: [] }
     },
     enabled: status !== 'loading',
+    refetchInterval: isEventsIndex ? 10000 : false,
   })
   const canCreateQuery = useQuery({
     queryKey: ['events', 'can-create'],

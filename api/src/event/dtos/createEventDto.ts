@@ -6,6 +6,7 @@ import {
   Min,
   IsNotEmpty,
   IsBoolean,
+  IsInt,
 } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 
@@ -40,8 +41,26 @@ export class CreateEventDto {
   startDate: number;
 
   @ApiProperty()
+  @IsOptional()
   @IsNumber()
-  endDate: number;
+  endDate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  submissionDeadline?: number;
+
+  @IsOptional()
+  @IsNumber()
+  scheduledEndDate?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  introEnabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  introLeadMinutes?: number;
 
   @ApiProperty()
   @IsNumber()

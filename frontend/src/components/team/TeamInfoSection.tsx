@@ -25,6 +25,7 @@ import { TeamProfileHeader } from './TeamProfileHeader'
 import { TeamAppearanceEditor } from './TeamAppearanceEditor'
 
 interface TeamInfoSectionProps {
+  canEdit?: boolean
   myTeam: Team
   onLeaveTeam: () => Promise<boolean>
   isLeaving: boolean
@@ -42,6 +43,7 @@ export function TeamInfoSection({
   isRepoPending,
   isRepoCreating,
   githubOrg,
+  canEdit = true,
 }: Readonly<TeamInfoSectionProps>) {
   const eventId = useParams().id as string
   const [isOpen, setIsOpen] = useState(false)
@@ -83,15 +85,36 @@ export function TeamInfoSection({
         team={myTeam}
         showBack={false}
         cover={
-          <TeamAppearanceEditor
-            team={myTeam}
-            eventId={eventId}
-            kind="background"
-          />
+          canEdit ? (
+            <TeamAppearanceEditor
+              team={myTeam}
+              eventId={eventId}
+              kind="background"
+            />
+          ) : undefined
         }
-        picture={<TeamAppearanceEditor team={myTeam} eventId={eventId} />}
+        picture={
+          canEdit ? (
+            <TeamAppearanceEditor team={myTeam} eventId={eventId} />
+          ) : undefined
+        }
       />
       <CardContent className="flex flex-col gap-2">
+        {myTeam.repositoryStatus && (
+          <p role="status">
+            Repository: {myTeam.repositoryStatus}.{' '}
+            {myTeam.repositoryStatus === 'UNLOCKING' &&
+              'Restoring write access; match making will resume when ready.'}
+          </p>
+        )}
+        {myTeam.repositoryError && (
+          <p role="alert" className="text-destructive">
+            {myTeam.repositoryError} Contact an event admin to retry.
+          </p>
+        )}
+        {myTeam.tournamentExcluded && (
+          <p>This team is excluded from the tournament.</p>
+        )}
         <div className="mb-6">
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Repository</p>
@@ -154,7 +177,7 @@ export function TeamInfoSection({
         <section aria-label="Team members" className="rounded-xl border p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="text-lg font-semibold">Members</h3>
-            {!myTeam.locked && (
+            {canEdit && (
               <Button size="sm" onClick={() => setIsOpen(true)}>
                 <Plus className="size-4" />
                 Invite Others
@@ -186,7 +209,7 @@ export function TeamInfoSection({
             </div>
           )}
           <div className="flex items-center justify-end">
-            {!myTeam.locked && (
+            {canEdit && (
               <Dialog
                 open={isLeaveDialogOpen}
                 onOpenChange={setIsLeaveDialogOpen}
@@ -235,7 +258,7 @@ export function TeamInfoSection({
 
         {/* Invite Modal */}
         <TeamInviteModal
-          isOpen={isOpen}
+          isOpen={isOpen && canEdit}
           onClose={() => setIsOpen(false)}
           teamId={myTeam.id}
           eventId={eventId}
