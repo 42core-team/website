@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-19
 - Issue: [#684 – token refresh logic so you do not have to login](https://github.com/42core-team/website/issues/684)
+- See also: [ADR 0003 – End sessions when the GitHub grant is revoked](0003-github-grant-check.md)
 
 ## Context
 
