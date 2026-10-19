@@ -135,6 +135,8 @@ function ImageEditor({
 }) {
   const queryClient = useQueryClient()
   const input = useRef<HTMLInputElement>(null)
+  const dragDepth = useRef(0)
+  const [dragging, setDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState('')
   const [dimensions, setDimensions] = useState<{
@@ -172,6 +174,25 @@ function ImageEditor({
     }
   }, [file])
 
+  function chooseFile(next: File | undefined) {
+    if (busy || !next) return
+    if (
+      next.size > 10 * 1024 * 1024 ||
+      !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(
+        next.type,
+      )
+    ) {
+      toast.error('Choose a JPEG, PNG, WebP or GIF image up to 10 MB')
+      return
+    }
+    setDimensions(null)
+    setPreview('')
+    setFile(next)
+    setX(50)
+    setY(50)
+    setScale(1)
+  }
+
   async function save(remove = false) {
     setBusy(true)
     try {
@@ -203,86 +224,106 @@ function ImageEditor({
         onChange={(event) => {
           const next = event.target.files?.[0]
           event.target.value = ''
-          if (!next) return
-          if (
-            next.size > 10 * 1024 * 1024 ||
-            !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(
-              next.type,
-            )
-          ) {
-            toast.error('Choose a JPEG, PNG, WebP or GIF image up to 10 MB')
-            return
-          }
-          setDimensions(null)
-          setPreview('')
-          setFile(next)
-          setX(50)
-          setY(50)
-          setScale(1)
+          chooseFile(next)
         }}
       />
-      {preview && dimensions ? (
-        <>
-          <TeamImageCrop
-            src={preview}
-            {...dimensions}
-            ratio={kind === 'picture' ? 1 : 10 / 3}
-            x={x}
-            y={y}
-            scale={scale}
+      <div
+        className={`relative rounded-xl ${dragging ? 'ring-2 ring-primary' : ''}`}
+        onDragEnter={(event) => {
+          if (!event.dataTransfer.types.includes('Files')) return
+          event.preventDefault()
+          dragDepth.current += 1
+          if (!busy) setDragging(true)
+        }}
+        onDragOver={(event) => {
+          if (!event.dataTransfer.types.includes('Files')) return
+          event.preventDefault()
+          event.dataTransfer.dropEffect = busy ? 'none' : 'copy'
+        }}
+        onDragLeave={(event) => {
+          event.preventDefault()
+          dragDepth.current = Math.max(0, dragDepth.current - 1)
+          if (dragDepth.current === 0) setDragging(false)
+        }}
+        onDrop={(event) => {
+          event.preventDefault()
+          dragDepth.current = 0
+          setDragging(false)
+          chooseFile(event.dataTransfer.files[0])
+        }}
+      >
+        {preview && dimensions ? (
+          <>
+            <TeamImageCrop
+              src={preview}
+              {...dimensions}
+              ratio={kind === 'picture' ? 1 : 10 / 3}
+              x={x}
+              y={y}
+              scale={scale}
+              disabled={busy}
+              onChange={(nextX, nextY, nextScale = scale) => {
+                setScale(nextScale)
+                setX(nextX)
+                setY(nextY)
+              }}
+            />
+            <p
+              id="crop-instructions"
+              className="mt-4 text-center text-sm text-muted-foreground"
+            >
+              Drag the corners to crop closer. Drag inside the frame to move it.
+              <span className="sr-only">
+                {' '}
+                You can also focus the frame and use the arrow keys.
+              </span>
+            </p>
+          </>
+        ) : (
+          <button
+            type="button"
             disabled={busy}
-            onChange={(nextX, nextY, nextScale = scale) => {
-              setScale(nextScale)
-              setX(nextX)
-              setY(nextY)
-            }}
-          />
-          <p
-            id="crop-instructions"
-            className="text-center text-sm text-muted-foreground"
+            onClick={() => input.current?.click()}
+            className="flex min-h-56 w-full flex-col items-center justify-center gap-4 rounded-xl border border-dashed bg-muted/30 p-6 transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
           >
-            Drag the corners to crop closer. Drag inside the frame to move it.
-            <span className="sr-only">
-              {' '}
-              You can also focus the frame and use the arrow keys.
-            </span>
-          </p>
-        </>
-      ) : (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => input.current?.click()}
-          className="flex min-h-56 w-full flex-col items-center justify-center gap-4 rounded-xl border border-dashed bg-muted/30 p-6 transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
-        >
-          {team[kind] ? (
-            kind === 'picture' ? (
-              <TeamPicture team={team} large />
+            {team[kind] ? (
+              kind === 'picture' ? (
+                <TeamPicture team={team} large />
+              ) : (
+                <div className="w-full overflow-hidden rounded-lg">
+                  <TeamCover team={team} />
+                </div>
+              )
             ) : (
-              <div className="w-full overflow-hidden rounded-lg">
-                <TeamCover team={team} />
-              </div>
-            )
-          ) : (
-            <span className="flex size-14 items-center justify-center rounded-full bg-muted">
-              <ImagePlus className="size-6 text-muted-foreground" />
+              <span className="flex size-14 items-center justify-center rounded-full bg-muted">
+                <ImagePlus className="size-6 text-muted-foreground" />
+              </span>
+            )}
+            <span className="text-sm font-medium">
+              {file
+                ? 'Opening image…'
+                : team[kind]
+                  ? 'Choose a replacement image'
+                  : 'Choose an image'}
+              <span className="mt-1 block text-center font-normal text-muted-foreground">
+                or drag and drop here
+              </span>
             </span>
-          )}
-          <span className="text-sm font-medium">
-            {file
-              ? 'Opening image…'
-              : team[kind]
-                ? 'Choose a replacement image'
-                : 'Choose an image'}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            JPEG, PNG, WebP or GIF · Up to 10 MB
-            <span className="mt-1 block">
-              GIFs stay animated · Up to 200 frames and 25 million total pixels
+            <span className="text-xs text-muted-foreground">
+              JPEG, PNG, WebP or GIF · Up to 10 MB
+              <span className="mt-1 block">
+                GIFs stay animated · Up to 200 frames and 25 million total
+                pixels
+              </span>
             </span>
-          </span>
-        </button>
-      )}
+          </button>
+        )}
+        {dragging && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/90 text-sm font-medium text-primary">
+            Drop image here
+          </div>
+        )}
+      </div>
       {file && (
         <div className="flex min-w-0 items-center justify-between gap-3">
           <span className="truncate text-sm text-muted-foreground">
