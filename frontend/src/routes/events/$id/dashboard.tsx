@@ -45,6 +45,7 @@ import {
 } from '@/app/actions/tournament'
 import { searchUsers } from '@/app/actions/user'
 import { StarterTemplatesManagement } from '@/components/dashboard/starter-templates-management'
+import { ManualMatchesManagement } from '@/components/dashboard/manual-matches-management'
 import { MatchesAnalytics } from '@/components/dashboard/matches-analytics'
 import { WhitelistManagement } from '@/components/dashboard/whitelist-management'
 import { Button } from '@/components/ui/button'
@@ -440,6 +441,7 @@ function DashboardRoute() {
 
         <TabsContent value="matches" className="space-y-6">
           <MatchesAnalytics eventId={id} />
+          <ManualMatchesManagement eventId={id} />
         </TabsContent>
 
         <TabsContent value="operation" className="space-y-6">

@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   Logger,
   Param,
   ParseBoolPipe,
   ParseUUIDPipe,
+  Post,
   Put,
   Query,
   UnauthorizedException,
@@ -16,6 +18,7 @@ import { EventService } from "../event/event.service";
 import { UserId } from "../guards/UserGuard";
 import { MatchEntity, MatchPhase } from "./entites/match.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { CreateManualMatchDto } from "./dtos/createManualMatchDto";
 
 @Controller("match")
 export class MatchController {
@@ -121,6 +124,46 @@ export class MatchController {
         "You are not authorized to view all match making matches.",
       );
     return await this.matchService.getAllQueueMatches(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get("manual/:eventId")
+  async getManualMatches(
+    @Param("eventId", ParseUUIDPipe) eventId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to view manual matches.",
+      );
+    return await this.matchService.getManualMatches(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("manual/:eventId")
+  async createManualMatch(
+    @Param("eventId", ParseUUIDPipe) eventId: string,
+    @UserId() userId: string,
+    @Body() body: CreateManualMatchDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to start manual matches.",
+      );
+
+    this.logger.log({
+      action: "attempt_create_manual_match",
+      userId,
+      eventId,
+      teamOneId: body.teamOneId,
+      teamTwoId: body.teamTwoId,
+    });
+
+    return this.matchService.createManualMatch(
+      eventId,
+      body.teamOneId,
+      body.teamTwoId,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

@@ -43,6 +43,11 @@ const PHASE_DETAILS: Record<
     background: 'rgba(217, 119, 6, 0.78)',
     border: 'rgb(217, 119, 6)',
   },
+  [MatchPhase.MANUAL]: {
+    label: 'Manual',
+    background: 'rgba(100, 116, 139, 0.78)',
+    border: 'rgb(100, 116, 139)',
+  },
 }
 
 interface ChartTheme {

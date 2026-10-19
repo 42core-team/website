@@ -25,6 +25,7 @@ export enum MatchPhase {
   ELIMINATION = "ELIMINATION",
   QUEUE = "QUEUE",
   GAMBLING = "GAMBLING",
+  MANUAL = "MANUAL",
 }
 
 @Entity("matches")

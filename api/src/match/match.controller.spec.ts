@@ -3,6 +3,7 @@ jest.mock("../event/event.service", () => ({
   EventService: class EventService {},
 }));
 
+import { UnauthorizedException } from "@nestjs/common";
 import { EventService } from "../event/event.service";
 import { MatchEntity, MatchPhase, MatchState } from "./entites/match.entity";
 import { MatchController } from "./match.controller";
@@ -66,4 +67,44 @@ describe("match detail results", () => {
       expect(response.results[0].score).toBe(1234);
     },
   );
+});
+
+describe("manual matches", () => {
+  function setup(isAdmin: boolean) {
+    const createManualMatch = jest.fn().mockResolvedValue({ id: "match" });
+    const getManualMatches = jest.fn().mockResolvedValue([]);
+    const controller = new MatchController(
+      { createManualMatch, getManualMatches } as unknown as MatchService,
+      {
+        isEventAdmin: jest.fn().mockResolvedValue(isAdmin),
+      } as unknown as EventService,
+    );
+    return { controller, createManualMatch, getManualMatches };
+  }
+
+  it("lets event admins start a manual match", async () => {
+    const { controller, createManualMatch } = setup(true);
+    await expect(
+      controller.createManualMatch("event", "admin", {
+        teamOneId: "a",
+        teamTwoId: "b",
+      }),
+    ).resolves.toEqual({ id: "match" });
+    expect(createManualMatch).toHaveBeenCalledWith("event", "a", "b");
+  });
+
+  it("rejects non-admins", async () => {
+    const { controller, createManualMatch, getManualMatches } = setup(false);
+    await expect(
+      controller.createManualMatch("event", "user", {
+        teamOneId: "a",
+        teamTwoId: "b",
+      }),
+    ).rejects.toThrow(UnauthorizedException);
+    await expect(controller.getManualMatches("event", "user")).rejects.toThrow(
+      UnauthorizedException,
+    );
+    expect(createManualMatch).not.toHaveBeenCalled();
+    expect(getManualMatches).not.toHaveBeenCalled();
+  });
 });

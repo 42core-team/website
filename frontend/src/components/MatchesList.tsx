@@ -23,8 +23,15 @@ export default function MatchesList(props: {
   matches: QueueMatch[]
   isInsideCard?: boolean
   teamId?: string
+  emptyMessage?: string
 }) {
-  const { eventId, matches, isInsideCard, teamId } = props
+  const {
+    eventId,
+    matches,
+    isInsideCard,
+    teamId,
+    emptyMessage = 'No match making matches found',
+  } = props
 
   if (matches.length === 0) {
     return (
@@ -34,9 +41,7 @@ export default function MatchesList(props: {
           !isInsideCard && 'border rounded-lg bg-muted/10',
         )}
       >
-        <p className="font-medium text-muted-foreground">
-          No match making matches found
-        </p>
+        <p className="font-medium text-muted-foreground">{emptyMessage}</p>
       </div>
     )
   }
@@ -85,6 +90,7 @@ export default function MatchesList(props: {
                   {match.phase === MatchPhase.QUEUE && 'Match Making'}
                   {match.phase === MatchPhase.SWISS && 'Swiss'}
                   {match.phase === MatchPhase.ELIMINATION && 'Tournament'}
+                  {match.phase === MatchPhase.MANUAL && 'Manual'}
                 </Badge>
               </div>
               <span className="text-xs font-medium text-muted-foreground">
