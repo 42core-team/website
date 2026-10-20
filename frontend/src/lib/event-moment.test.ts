@@ -95,6 +95,16 @@ describe('eventMoment', () => {
     })
   })
 
+  it('shows code freeze as a calm, neutral waiting state', () => {
+    expect(
+      eventMoment(event, member('LOCKED'), { now: deadline }),
+    ).toMatchObject({ tone: 'neutral', headline: 'Your bot is locked in' })
+    expect(eventMoment(event, spectator, { now: deadline })).toMatchObject({
+      tone: 'neutral',
+      headline: 'Bots are locked in',
+    })
+  })
+
   it('offers the stream during Showtime', () => {
     const live = {
       ...event,

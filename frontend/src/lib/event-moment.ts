@@ -162,11 +162,12 @@ function momentFor(
   if (phase === 'SUBMISSIONS_CLOSED') {
     return {
       phase,
-      tone: 'warning',
+      // A calm waiting state: nothing for participants to do until Showtime.
+      tone: 'neutral',
       kicker: 'Code freeze',
-      headline: 'Pencils down',
+      headline: viewer.team ? 'Your bot is locked in' : 'Bots are locked in',
       description:
-        'Repositories are being locked and the tournament is being prepared. Showtime starts when organizers are ready.',
+        'Repositories are locked and the tournament is being prepared. Showtime starts when organizers are ready.',
       countdownTo: null,
       countdownLabel: null,
       status: 'Waiting for Showtime',
