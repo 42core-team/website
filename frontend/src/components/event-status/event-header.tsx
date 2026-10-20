@@ -20,12 +20,7 @@ import { usePathname } from '@/lib/router-hooks'
 import { cn } from '@/lib/utils'
 import { MomentActions, toneStyles } from './shared'
 
-function StatusCapsule({
-  eventId,
-  moment,
-  now,
-}: Readonly<{ eventId: string; moment: EventMoment; now: number }>) {
-  const tone = toneStyles[moment.tone]
+function statusText(moment: EventMoment, now: number) {
   const remaining = momentRemainingMs(moment, now)
   const detail =
     remaining !== null
@@ -41,50 +36,39 @@ function StatusCapsule({
   const isAlert =
     moment.tone === 'danger' && moment.headline !== moment.countdownLabel
   const label = isAlert ? moment.headline : lifecycleLabels[moment.phase]
-  const pulsing =
-    moment.phase === 'SHOWCASE' ||
-    moment.tone === 'warning' ||
-    moment.tone === 'danger'
+  return { remaining, detail, isAlert, label }
+}
+
+function StatusLine({
+  eventId,
+  moment,
+  now,
+}: Readonly<{ eventId: string; moment: EventMoment; now: number }>) {
+  const tone = toneStyles[moment.tone]
+  const { remaining, detail, isAlert, label } = statusText(moment, now)
 
   return (
     <Popover>
       <PopoverTrigger
         aria-label={`Event status: ${label}. Show details`}
-        className={cn(
-          'inline-flex h-8 shrink-0 items-center gap-2 rounded-full border bg-background/60 pr-2 pl-3 text-xs font-medium transition-colors hover:bg-accent',
-          tone.border,
-        )}
+        className="flex max-w-full items-center gap-1 rounded-sm text-xs whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground"
       >
-        <span className="relative flex size-2">
-          {pulsing && (
-            <span
-              className={cn(
-                'absolute inline-flex size-full animate-ping rounded-full opacity-60',
-                tone.dot,
-              )}
-            />
-          )}
-          <span className={cn('relative size-2 rounded-full', tone.dot)} />
+        <span
+          className={cn('truncate', isAlert && cn('font-medium', tone.text))}
+        >
+          {label}
         </span>
-        <span>{label}</span>
         {detail && (
-          <span
-            className={cn(
-              'font-mono tabular-nums',
-              tone.text,
-              // The alert label is long; the popover still has the countdown.
-              isAlert && 'hidden sm:inline',
-            )}
-          >
-            {detail}
-          </span>
+          <>
+            <span aria-hidden="true">·</span>
+            <span className={cn('font-mono tabular-nums', tone.text)}>
+              {detail}
+            </span>
+          </>
         )}
-        <ChevronDown
-          className="size-3.5 text-muted-foreground"
-          aria-hidden="true"
-        />
+        <ChevronDown className="size-3 shrink-0" aria-hidden="true" />
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 space-y-3">
+      <PopoverContent align="start" className="w-80 space-y-3">
         <div className="space-y-1">
           <p className={cn('text-xs font-medium', tone.text)}>
             {moment.kicker}
@@ -190,38 +174,37 @@ function TabLink({
 const GAP_PX = 12
 
 /**
- * The bar is one row (name | tabs | status) only when every tab fits next to
- * the name and the status capsule; otherwise the tabs move to their own row,
- * so a long status never cuts off a tab.
+ * The bar is one row (event identity | tabs) only when every tab fits next to
+ * the identity block; otherwise the tabs move to their own row, so no tab is
+ * ever cut off.
  */
 function useSingleRowFit() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const nameRef = useRef<HTMLDivElement>(null)
+  const identityRef = useRef<HTMLDivElement>(null)
   const tabsRef = useRef<HTMLUListElement>(null)
-  const chipRef = useRef<HTMLDivElement>(null)
   const [fits, setFits] = useState(true)
 
   useLayoutEffect(() => {
     const measure = () => {
       const container = containerRef.current
-      // The label's natural width, even while the name column is stretched.
-      const name = nameRef.current?.querySelector('.truncate')
+      const identity = identityRef.current
       const tabs = tabsRef.current
-      const chip = chipRef.current?.firstElementChild
-      if (!container || !name || !tabs || !chip) return
+      if (!container || !identity || !tabs) return
       const style = getComputedStyle(container)
       const inner =
         container.clientWidth -
         Number.parseFloat(style.paddingLeft) -
         Number.parseFloat(style.paddingRight)
-      // Name column with its divider (pr-3 + border), then two column gaps.
+      // A hidden copy of the name and status line gives their natural width,
+      // even while the visible ones are truncated or stretched.
+      const identityWidth = Math.max(
+        ...[...identity.querySelectorAll('[data-measure]')].map(
+          (element) => element.getBoundingClientRect().width,
+        ),
+      )
+      // Stripe and its gap, the divider (pr-3 + border), then the column gap.
       const needed =
-        name.scrollWidth +
-        GAP_PX +
-        1 +
-        tabs.scrollWidth +
-        chip.getBoundingClientRect().width +
-        2 * GAP_PX
+        3 + GAP_PX + identityWidth + GAP_PX + 1 + GAP_PX + tabs.scrollWidth
       setFits(window.innerWidth >= 1024 && needed <= inner)
     }
     measure()
@@ -229,13 +212,13 @@ function useSingleRowFit() {
     for (const element of [
       containerRef.current,
       tabsRef.current,
-      chipRef.current?.firstElementChild,
+      ...(identityRef.current?.querySelectorAll('[data-measure]') ?? []),
     ])
       if (element) observer.observe(element)
     return () => observer.disconnect()
   }, [])
 
-  return { containerRef, nameRef, tabsRef, chipRef, fits }
+  return { containerRef, identityRef, tabsRef, fits }
 }
 
 /**
@@ -261,14 +244,8 @@ export default function EventHeader({
   const tone = toneStyles[moment.tone]
   const needsAttention = moment.tone === 'warning' || moment.tone === 'danger'
   const [infoTab, ...otherTabs] = tabs
-  const infoLink = (
-    <TabLink
-      tab={infoTab}
-      label={eventName}
-      active={isTabActive(infoTab, 0, pathname)}
-      className="min-w-0 px-0 font-semibold text-foreground after:inset-x-0 md:text-base"
-    />
-  )
+  const infoActive = isTabActive(infoTab, 0, pathname)
+  const status = statusText(moment, now)
 
   useEffect(() => {
     navRef.current
@@ -286,31 +263,73 @@ export default function EventHeader({
       <div
         ref={singleRow.containerRef}
         className={cn(
-          'mx-auto grid w-full max-w-7xl items-center gap-x-3 px-4',
+          'mx-auto grid w-full max-w-7xl gap-x-3 px-4',
           singleRow.fits
-            ? 'grid-cols-[minmax(0,max-content)_minmax(0,1fr)_auto]'
-            : 'grid-cols-[minmax(0,1fr)_auto]',
+            ? 'grid-cols-[minmax(0,max-content)_minmax(0,1fr)]'
+            : 'grid-cols-1',
         )}
       >
+        {/* The event name is the Info tab; it sits on the tab-label line with
+            the status line hanging below it. */}
         <div
-          ref={singleRow.nameRef}
+          ref={singleRow.identityRef}
           className={cn(
-            'flex min-w-0 items-center',
+            'relative flex h-[72px] min-w-0 gap-3 pt-[26px]',
             singleRow.fits && 'border-r pr-3',
           )}
         >
-          {infoLink}
+          <span
+            aria-hidden="true"
+            className={cn('mb-[22px] w-[3px] shrink-0 rounded-full', tone.dot)}
+          />
+          <div className="min-w-0">
+            <Link
+              href={infoTab.path}
+              aria-current={infoActive ? 'page' : undefined}
+              className="block truncate leading-5 font-semibold md:text-base"
+            >
+              {eventName}
+            </Link>
+            <div className="mt-1">
+              <StatusLine eventId={eventId} moment={moment} now={now} />
+            </div>
+          </div>
+          <div
+            aria-hidden="true"
+            className="invisible absolute top-0 left-0 flex flex-col items-start whitespace-nowrap"
+          >
+            <span data-measure className="font-semibold md:text-base">
+              {eventName}
+            </span>
+            <span data-measure className="pr-4 text-xs">
+              {status.label}
+              {status.detail && (
+                <span className="font-mono"> · {status.detail}</span>
+              )}
+            </span>
+          </div>
+          {infoActive && (
+            <span
+              aria-hidden="true"
+              className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-foreground"
+            />
+          )}
         </div>
         <nav
           ref={navRef}
           aria-label="Event navigation"
           className={cn(
             'min-w-0 overflow-x-auto [scrollbar-width:none]',
-            !singleRow.fits && 'order-last col-span-2 -mx-4 px-4',
+            // One row: tabs span the full bar height so their labels share the
+            // name's line and their underline sits on the bar's edge.
+            singleRow.fits ? '[&_li>*]:h-[72px]' : '-mx-4 border-t px-4',
           )}
         >
           <TooltipProvider delayDuration={0}>
-            <ul ref={singleRow.tabsRef} className="flex w-max items-center">
+            <ul
+              ref={singleRow.tabsRef}
+              className="flex h-full w-max items-center"
+            >
               {otherTabs.map((tab, index) => (
                 <Fragment key={tab.path}>
                   {index > 0 && tab.group !== otherTabs[index - 1].group && (
@@ -330,9 +349,6 @@ export default function EventHeader({
             </ul>
           </TooltipProvider>
         </nav>
-        <div ref={singleRow.chipRef} className="flex justify-end">
-          <StatusCapsule eventId={eventId} moment={moment} now={now} />
-        </div>
       </div>
     </div>
   )
