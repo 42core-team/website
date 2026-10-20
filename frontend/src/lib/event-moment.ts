@@ -153,7 +153,7 @@ function momentFor(
     return {
       phase,
       tone: 'warning',
-      kicker: 'Coding closed',
+      kicker: 'Code freeze',
       headline: 'Pencils down',
       description:
         'Repositories are being locked and the tournament is being prepared. Showtime starts when organizers are ready.',

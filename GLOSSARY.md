@@ -15,9 +15,9 @@ _Avoid_: Playing (in participant-facing text)
 The scheduled boundary after which development, participant matchmaking, registration, roster changes, and new bets close.
 _Avoid_: Event end, repo lock date
 
-**Coding closed**:
+**Code freeze**:
 The phase between coding and showtime, during which repositories are locked and the tournament can be prepared. Stored as `SUBMISSIONS_CLOSED`.
-_Avoid_: Submissions closed, Break (in participant-facing text)
+_Avoid_: Coding closed, Submissions closed, Repos locked, Break (in participant-facing text)
 
 **Showtime**:
 The presentation phase in which administrators present tournament games and reveal results to participants and spectators. Stored as `SHOWCASE`.

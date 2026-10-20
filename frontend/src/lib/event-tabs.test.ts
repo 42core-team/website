@@ -82,7 +82,7 @@ describe('eventTabs', () => {
     ])
   })
 
-  it('shows tournament tabs from coding closed on, and always to admins', () => {
+  it('shows tournament tabs from code freeze on, and always to admins', () => {
     expect(names(eventTabs({ ...base, now: start + 1 }))).not.toContain(
       'Group Phase',
     )

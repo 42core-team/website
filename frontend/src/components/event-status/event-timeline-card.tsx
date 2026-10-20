@@ -42,7 +42,7 @@ function PanelMeta({
   const parts: string[] = []
   if (moment.countdownTo) parts.push(formatEventDateTime(moment.countdownTo))
   if (moment.phase === 'SUBMISSIONS_CLOSED')
-    parts.push(`Closed ${formatEventDateTime(event.submissionDeadline)}`)
+    parts.push(`Frozen since ${formatEventDateTime(event.submissionDeadline)}`)
   if (moment.phase === 'REGISTRATION' && intro && intro.getTime() > now)
     parts.push(`Livestream intro ${formatEventTime(intro.toISOString(), now)}`)
   if (parts.length === 0) return null

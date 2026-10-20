@@ -15,7 +15,7 @@ export const LIFECYCLE_ORDER: Event['state'][] = [
 export const lifecycleLabels: Record<Event['state'], string> = {
   REGISTRATION: 'Registration',
   PLAYING: 'Coding',
-  SUBMISSIONS_CLOSED: 'Coding closed',
+  SUBMISSIONS_CLOSED: 'Code freeze',
   SHOWCASE: 'Showtime',
   COMPLETED: 'Completed',
 }

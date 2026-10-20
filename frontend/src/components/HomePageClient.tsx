@@ -186,9 +186,7 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
                       <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-4 sm:justify-end sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
                         <div className="flex min-w-0 flex-col sm:items-end sm:text-right">
                           <span className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-                            {timeLeftMs > 0
-                              ? 'Coding ends in'
-                              : 'Coding closed'}
+                            {timeLeftMs > 0 ? 'Coding ends in' : 'Code freeze'}
                           </span>
                           <span className="font-mono text-sm font-bold text-foreground tabular-nums sm:text-base">
                             {timeLeftMs > 0
