@@ -1,4 +1,4 @@
-import { FindOperator, Repository } from "typeorm";
+import { EntityManager, FindOperator, Repository } from "typeorm";
 import { RefreshTokenEntity } from "../entities/refresh-token.entity";
 
 /**
@@ -34,8 +34,39 @@ export function createInMemoryRefreshTokenRepository(): {
 } {
   const records: RefreshTokenEntity[] = [];
   let nextId = 1;
+  let transactionTail = Promise.resolve();
 
   const repository = {
+    manager: {
+      transaction: async <T>(
+        work: (manager: EntityManager) => Promise<T>,
+      ): Promise<T> => {
+        const previous = transactionTail;
+        let release!: () => void;
+        transactionTail = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        await previous;
+        const snapshot = records.map((record) => ({ ...record }));
+        try {
+          return await work({
+            getRepository: (entity: unknown) =>
+              entity === RefreshTokenEntity
+                ? repository
+                : {
+                    findOne: async ({ where }: { where: { id: string } }) => ({
+                      id: where.id,
+                    }),
+                  },
+          } as unknown as EntityManager);
+        } catch (error) {
+          records.splice(0, records.length, ...snapshot);
+          throw error;
+        } finally {
+          release();
+        }
+      },
+    },
     create: (value: Partial<RefreshTokenEntity>) => ({ ...value }),
     save: async (value: RefreshTokenEntity) => {
       if (records.some((record) => record.tokenHash === value.tokenHash)) {
