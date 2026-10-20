@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
+import type { LucideIcon } from 'lucide-react'
+import { MapPin, UserRound, Users, UsersRound } from 'lucide-react'
 import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import {
@@ -11,6 +13,7 @@ import {
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import GithubLoginButton from '@/components/github'
 import EventHeader from '@/components/event-status/event-header'
+import EventMomentCard from '@/components/event-status/event-moment-card'
 import EventTimelineCard from '@/components/event-status/event-timeline-card'
 import { formatEventTime } from '@/components/event-status/shared'
 import { MarkdownContent } from '@/components/MarkdownContent'
@@ -32,16 +35,19 @@ export const Route = createFileRoute('/events/$id')({
   component: EventRoute,
 })
 
-function StatCard({ title, value }: { title: string; value: ReactNode }) {
+function EventFact({
+  icon: Icon,
+  label,
+  value,
+}: Readonly<{ icon: LucideIcon; label: string; value: ReactNode }>) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="mb-2 text-lg font-semibold">{title}</CardTitle>
-        <CardDescription className="text-3xl font-bold">
-          {value}
-        </CardDescription>
-      </CardHeader>
-    </Card>
+    <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+      <dt className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Icon className="size-4" aria-hidden="true" />
+        {label}
+      </dt>
+      <dd className="text-right font-medium">{value}</dd>
+    </div>
   )
 }
 
@@ -180,53 +186,56 @@ function EventRoute() {
       {/* The event name is shown in the event header. */}
       <h1 className="sr-only">{event.name}</h1>
 
-      <div className="mb-8">
-        <EventTimelineCard event={event} moment={moment} now={now} />
-      </div>
-
-      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <StatCard
-          title="Participants"
-          value={participantsCountQuery.data ?? '-'}
-        />
-        <StatCard title="Teams" value={teamsCountQuery.data ?? '-'} />
-        <StatCard title="Location" value={event.location || 'TBA'} />
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold">Event Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Description
-            </h3>
-            {event.description ? (
-              <MarkdownContent
-                className="mt-1 text-foreground"
-                content={event.description}
-              />
-            ) : (
-              <p className="mt-1 text-muted-foreground">
-                No description provided.
-              </p>
-            )}
+      <div className="space-y-6">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <EventMomentCard event={event} moment={moment} now={now} />
           </div>
+          <dl className="divide-y rounded-xl border bg-card p-6">
+            <EventFact
+              icon={UserRound}
+              label="Participants"
+              value={participantsCountQuery.data ?? '-'}
+            />
+            <EventFact
+              icon={Users}
+              label="Teams"
+              value={teamsCountQuery.data ?? '-'}
+            />
+            <EventFact
+              icon={UsersRound}
+              label="Team size"
+              value={`${event.minTeamSize}–${event.maxTeamSize} members`}
+            />
+            <EventFact
+              icon={MapPin}
+              label="Location"
+              value={event.location || 'TBA'}
+            />
+          </dl>
+        </div>
 
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Team Size
-            </h3>
-            <p className="mt-1">
-              {event.minTeamSize}
-              {' - '}
-              {event.maxTeamSize}
-              {' members'}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+        {event.description && (
+          <section
+            aria-labelledby="event-about-heading"
+            className="rounded-xl border bg-card p-6 sm:p-8"
+          >
+            <h2
+              id="event-about-heading"
+              className="mb-3 text-sm font-medium tracking-wider text-muted-foreground uppercase"
+            >
+              About this event
+            </h2>
+            {/* The first paragraph reads as the event's lead. */}
+            <MarkdownContent
+              className="text-foreground [&>p:first-child]:text-lg [&>p:first-child]:leading-relaxed"
+              content={event.description}
+            />
+          </section>
+        )}
+
+        <EventTimelineCard event={event} moment={moment} />
+      </div>
     </main>,
   )
 }
