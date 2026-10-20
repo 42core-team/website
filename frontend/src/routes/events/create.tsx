@@ -50,6 +50,10 @@ const formSchema = z
       z.literal(''),
       z.url('Stream URL must be a valid URL'),
     ]),
+    showtimeStreamUrl: z.union([
+      z.literal(''),
+      z.url('Showtime stream URL must be a valid URL'),
+    ]),
     minTeamSize: z.number().min(1).max(10),
     maxTeamSize: z.number().min(1).max(10),
     monorepoUrl: z.string().min(1, 'Monorepo URL is required'),
@@ -88,6 +92,7 @@ const defaultValues: FormValues = {
   introEnabled: false,
   introLeadMinutes: 15,
   streamUrl: '',
+  showtimeStreamUrl: '',
   minTeamSize: 1,
   maxTeamSize: 4,
   monorepoUrl: 'https://github.com/42core-team/monorepo',
@@ -267,6 +272,7 @@ function CreateEventRoute() {
         introEnabled: values.introEnabled,
         introLeadMinutes: values.introLeadMinutes,
         streamUrl: values.streamUrl.trim() || undefined,
+        showtimeStreamUrl: values.showtimeStreamUrl.trim() || undefined,
         minTeamSize: values.minTeamSize,
         maxTeamSize: values.maxTeamSize,
         monorepoUrl: values.monorepoUrl.trim(),
@@ -601,6 +607,21 @@ function CreateEventRoute() {
                 children={(field) => (
                   <label>
                     Stream URL (intro and Showtime)
+                    <Input
+                      type="url"
+                      placeholder="https://youtube.com/..."
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                    />
+                  </label>
+                )}
+              />
+              <form.Field
+                name="showtimeStreamUrl"
+                children={(field) => (
+                  <label>
+                    Showtime stream URL (optional, replaces the stream URL
+                    during Showtime)
                     <Input
                       type="url"
                       placeholder="https://youtube.com/..."

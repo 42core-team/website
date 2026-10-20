@@ -18,7 +18,7 @@ Events previously used independent dates and flags to control registration, repo
 
 `scheduledEndDate` is the advertised finish of the whole event, including showcase. It has no automatic completion effect. `completedAt` records the actual finish. The optional livestream intro is an informational milestone, defaulting to 15 minutes before `startDate` with configurable lead time; it is not another permission-changing state.
 
-Participant-facing text names the phases Registration, Coding, Code freeze, Showtime, and Completed; the stored states keep their names. An optional stream URL (the Showtime stream) is offered for the intro and during Showtime. A timed agenda for the period between code freeze and showtime is out of scope until separately decided.
+Participant-facing text names the phases Registration, Coding, Code freeze, Showtime, and Completed; the stored states keep their names. An optional stream URL is offered for the intro and during Showtime; an optional separate Showtime stream replaces it during Showtime only. A timed agenda for the period between code freeze and showtime is out of scope until separately decided.
 
 ## Repository operations
 

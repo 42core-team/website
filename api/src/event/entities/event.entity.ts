@@ -69,6 +69,10 @@ export class EventEntity {
   @Column({ type: "varchar", nullable: true })
   streamUrl: string | null;
 
+  /** Separate Showtime stream; when null, Showtime uses `streamUrl`. */
+  @Column({ type: "varchar", nullable: true })
+  showtimeStreamUrl: string | null;
+
   @Column({ type: "timestamp" })
   endDate: Date;
 

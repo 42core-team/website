@@ -312,6 +312,7 @@ export class EventService {
       introEnabled?: boolean;
       introLeadMinutes?: number;
       streamUrl?: string;
+      showtimeStreamUrl?: string;
     } = {},
   ) {
     const dates = {
@@ -325,6 +326,10 @@ export class EventService {
     };
     this.validateLifecycleDates(dates);
     const streamUrl = normalizeStreamUrl(lifecycle.streamUrl);
+    const showtimeStreamUrl = normalizeStreamUrl(
+      lifecycle.showtimeStreamUrl,
+      "showtimeStreamUrl",
+    );
     await Promise.all(
       [gameServerDockerImage, myCoreBotDockerImage, visualizerDockerImage].map(
         assertImageExists,
@@ -346,6 +351,7 @@ export class EventService {
       maxTeamSize,
       ...dates,
       streamUrl,
+      showtimeStreamUrl,
       state: getEventState(dates),
       canCreateTeam: isRegistrationOpen(dates),
       processQueue: isRegistrationOpen(dates),
@@ -726,6 +732,7 @@ export class EventService {
       introEnabled?: boolean;
       introLeadMinutes?: number;
       streamUrl?: string;
+      showtimeStreamUrl?: string;
       minTeamSize?: number;
       maxTeamSize?: number;
       gameServerDockerImage?: string;
@@ -805,6 +812,13 @@ export class EventService {
 
     if (settings.streamUrl !== undefined) {
       update.streamUrl = normalizeStreamUrl(settings.streamUrl);
+    }
+
+    if (settings.showtimeStreamUrl !== undefined) {
+      update.showtimeStreamUrl = normalizeStreamUrl(
+        settings.showtimeStreamUrl,
+        "showtimeStreamUrl",
+      );
     }
 
     if (settings.startDate !== undefined) {
@@ -1107,16 +1121,19 @@ export class EventService {
 }
 
 /** Empty clears the stream link; anything else must be an http(s) URL, stored as entered. */
-export function normalizeStreamUrl(value: string | undefined): string | null {
+export function normalizeStreamUrl(
+  value: string | undefined,
+  field = "streamUrl",
+): string | null {
   const trimmed = value?.trim();
   if (!trimmed) return null;
   let url: URL;
   try {
     url = new URL(trimmed);
   } catch {
-    throw new BadRequestException("streamUrl must be a valid URL");
+    throw new BadRequestException(`${field} must be a valid URL`);
   }
   if (url.protocol !== "https:" && url.protocol !== "http:")
-    throw new BadRequestException("streamUrl must use http or https");
+    throw new BadRequestException(`${field} must use http or https`);
   return trimmed;
 }

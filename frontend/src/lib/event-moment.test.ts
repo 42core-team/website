@@ -13,6 +13,7 @@ const event: MomentEvent & { gamblingEnabled: boolean } = {
   introEnabled: false,
   introLeadMinutes: 15,
   streamUrl: null,
+  showtimeStreamUrl: null,
   gamblingEnabled: true,
 }
 
@@ -97,6 +98,18 @@ describe('eventMoment', () => {
     ).toEqual([])
   })
 
+  it('prefers the separate Showtime stream during Showtime', () => {
+    const live = {
+      ...event,
+      state: 'SHOWCASE' as const,
+      streamUrl: 'https://s',
+      showtimeStreamUrl: 'https://showtime',
+    }
+    expect(eventMoment(live, spectator).actions).toEqual([
+      { kind: 'link', label: 'Watch stream', href: 'https://showtime' },
+    ])
+  })
+
   it('has no call to action once completed', () => {
     const moment = eventMoment(
       { ...event, state: 'COMPLETED' },
@@ -114,6 +127,14 @@ describe('eventMoment', () => {
     expect(
       labels(eventMoment(withIntro, spectator, { now: intro }).actions),
     ).toEqual(['Watch intro'])
+    // The intro keeps the main stream even when a Showtime stream is set.
+    expect(
+      eventMoment(
+        { ...withIntro, showtimeStreamUrl: 'https://showtime' },
+        spectator,
+        { now: intro },
+      ).actions,
+    ).toEqual([{ kind: 'link', label: 'Watch intro', href: 'https://s' }])
   })
 })
 

@@ -11,6 +11,8 @@ export interface Event {
   introEnabled: boolean
   introLeadMinutes: number
   streamUrl: string | null
+  /** Showtime stream; when null, Showtime uses `streamUrl`. */
+  showtimeStreamUrl: string | null
   id: string
   startDate: string
   name: string
@@ -119,6 +121,7 @@ export interface EventCreateParams {
   introEnabled: boolean
   introLeadMinutes: number
   streamUrl?: string
+  showtimeStreamUrl?: string
   minTeamSize: number
   maxTeamSize: number
   monorepoVersion: string
@@ -179,6 +182,7 @@ export async function updateEventSettings(
     introEnabled?: boolean
     introLeadMinutes?: number
     streamUrl?: string
+    showtimeStreamUrl?: string
     minTeamSize?: number
     maxTeamSize?: number
     gameServerDockerImage?: string

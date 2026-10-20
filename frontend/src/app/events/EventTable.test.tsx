@@ -29,6 +29,7 @@ function event(index: number): Event {
     introEnabled: false,
     introLeadMinutes: 15,
     streamUrl: null,
+    showtimeStreamUrl: null,
     minTeamSize: 1,
     maxTeamSize: 4,
     currentRound: 0,

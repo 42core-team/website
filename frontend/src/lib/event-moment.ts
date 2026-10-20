@@ -16,6 +16,7 @@ export type MomentEvent = Pick<
   | 'introEnabled'
   | 'introLeadMinutes'
   | 'streamUrl'
+  | 'showtimeStreamUrl'
 >
 
 export interface MomentViewer {
@@ -165,8 +166,9 @@ function momentFor(
   }
 
   if (phase === 'SHOWCASE') {
-    const actions: MomentAction[] = event.streamUrl
-      ? [{ kind: 'link', label: 'Watch stream', href: event.streamUrl }]
+    const streamUrl = event.showtimeStreamUrl ?? event.streamUrl
+    const actions: MomentAction[] = streamUrl
+      ? [{ kind: 'link', label: 'Watch stream', href: streamUrl }]
       : []
     return {
       phase,

@@ -31,6 +31,13 @@ export class UpdateEventSettingsDto {
   @IsString()
   streamUrl?: string;
 
+  @ApiPropertyOptional({
+    description: "Showtime stream; falls back to streamUrl when empty",
+  })
+  @IsOptional()
+  @IsString()
+  showtimeStreamUrl?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()

@@ -13,6 +13,7 @@ const event: MomentEvent & { gamblingEnabled: boolean } = {
   introEnabled: false,
   introLeadMinutes: 15,
   streamUrl: null,
+  showtimeStreamUrl: null,
   gamblingEnabled: true,
 }
 

@@ -67,6 +67,13 @@ export class CreateEventDto {
   @IsString()
   streamUrl?: string;
 
+  @ApiPropertyOptional({
+    description: "Showtime stream; falls back to streamUrl when empty",
+  })
+  @IsOptional()
+  @IsString()
+  showtimeStreamUrl?: string;
+
   @ApiProperty()
   @IsNumber()
   @Min(1)

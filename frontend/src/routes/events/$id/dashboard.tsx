@@ -132,6 +132,7 @@ const SETTINGS_FIELDS = [
   'introEnabled',
   'introLeadMinutes',
   'streamUrl',
+  'showtimeStreamUrl',
 ] as const
 
 function DashboardRoute() {
@@ -804,6 +805,15 @@ function SettingsTab({
               placeholder="https://youtube.com/..."
               value={pendingSettings.streamUrl ?? ''}
               onChange={(value) => updatePendingSetting('streamUrl', value)}
+            />
+            <DashboardInput
+              label="Showtime stream URL (optional, replaces the stream URL during Showtime)"
+              type="url"
+              placeholder="https://youtube.com/..."
+              value={pendingSettings.showtimeStreamUrl ?? ''}
+              onChange={(value) =>
+                updatePendingSetting('showtimeStreamUrl', value)
+              }
             />
           </div>
         </CardContent>

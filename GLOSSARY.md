@@ -33,8 +33,11 @@ The administrator-declared actual finish of the event, which may differ from its
 **Livestream intro**:
 An optional introductory presentation before coding starts, without changing participant permissions.
 
+**Stream URL**:
+The optional main stream link of an event, offered for the livestream intro and, unless a showtime stream is set, during showtime.
+
 **Showtime stream**:
-The optional stream link of an event, offered for the livestream intro and during showtime.
+An optional second stream link used only during showtime, replacing the stream URL there. The intro always uses the stream URL.
 
 **Implicit registration**:
 Every signed-in user counts as registered for a public event and can create or join a team directly. Private events require explicit joining, restricted by the whitelist.

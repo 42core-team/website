@@ -18,6 +18,12 @@ describe("normalizeStreamUrl", () => {
     );
   });
 
+  it("names the offending field in the error", () => {
+    expect(() => normalizeStreamUrl("not a url", "showtimeStreamUrl")).toThrow(
+      "showtimeStreamUrl must be a valid URL",
+    );
+  });
+
   it("rejects malformed and non-http URLs", () => {
     expect(() => normalizeStreamUrl("not a url")).toThrow(BadRequestException);
     expect(() => normalizeStreamUrl("javascript:alert(1)")).toThrow(
