@@ -95,6 +95,25 @@ describe('eventMoment', () => {
     })
   })
 
+  it('teases the Showtime stream during code freeze', () => {
+    const withStream = {
+      ...event,
+      streamUrl: 'https://s',
+      showtimeStreamUrl: 'https://showtime',
+    }
+    expect(
+      eventMoment(withStream, spectator, { now: deadline }).actions,
+    ).toEqual([
+      { kind: 'link', label: 'Showtime stream', href: 'https://showtime' },
+    ])
+    expect(
+      eventMoment({ ...withStream, showtimeStreamUrl: null }, spectator, {
+        now: deadline,
+      }).actions,
+    ).toEqual([{ kind: 'link', label: 'Showtime stream', href: 'https://s' }])
+    expect(eventMoment(event, spectator, { now: deadline }).actions).toEqual([])
+  })
+
   it('shows code freeze as a calm, neutral waiting state', () => {
     expect(
       eventMoment(event, member('LOCKED'), { now: deadline }),

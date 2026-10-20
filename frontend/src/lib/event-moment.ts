@@ -89,6 +89,7 @@ function momentFor(
   { now = Date.now() }: MomentOptions,
 ): EventMoment {
   const phase = eventState(event, now)
+  const showtimeStream = event.showtimeStreamUrl ?? event.streamUrl
 
   if (phase === 'REGISTRATION' || phase === 'PLAYING') {
     const coding = phase === 'PLAYING'
@@ -171,14 +172,16 @@ function momentFor(
       countdownTo: null,
       countdownLabel: null,
       status: 'Waiting for Showtime',
-      actions: [],
+      // Tease the Showtime stream so people can open it before it goes live.
+      actions: showtimeStream
+        ? [{ kind: 'link', label: 'Showtime stream', href: showtimeStream }]
+        : [],
     }
   }
 
   if (phase === 'SHOWCASE') {
-    const streamUrl = event.showtimeStreamUrl ?? event.streamUrl
-    const actions: MomentAction[] = streamUrl
-      ? [{ kind: 'link', label: 'Watch stream', href: streamUrl }]
+    const actions: MomentAction[] = showtimeStream
+      ? [{ kind: 'link', label: 'Watch stream', href: showtimeStream }]
       : []
     return {
       phase,
