@@ -1,5 +1,9 @@
 import type { Event } from '@/app/actions/event'
-import { LIFECYCLE_ORDER, eventState } from '@/lib/event-lifecycle'
+import {
+  LIFECYCLE_ORDER,
+  eventState,
+  registrationOpen,
+} from '@/lib/event-lifecycle'
 import type { MomentEvent } from '@/lib/event-moment'
 
 export type EventTabGroup = 'info' | 'teams' | 'team' | 'tournament' | 'admin'
@@ -50,7 +54,14 @@ export function eventTabs({
   ]
 
   if (isRegistered) {
-    tabs.push({ name: 'My Team', path: `${eventPath}/my-team`, group: 'team' })
+    tabs.push({
+      name: 'My Team',
+      path: `${eventPath}/my-team`,
+      group: 'team',
+      // Without a team there is nothing to see once team creation has closed.
+      lockedReason:
+        !hasTeam && !registrationOpen(event, now) ? 'Closed' : undefined,
+    })
     if (supportsUnitBuilder)
       tabs.push({
         name: 'Unit Builder',

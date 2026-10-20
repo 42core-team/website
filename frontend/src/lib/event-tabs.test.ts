@@ -53,6 +53,15 @@ describe('eventTabs', () => {
     ).toBe('Closed')
   })
 
+  it('locks My Team for teamless members once team creation has closed', () => {
+    const myTeam = (now: number, hasTeam: boolean) =>
+      eventTabs({ ...base, hasTeam, now }).find((t) => t.name === 'My Team')
+        ?.lockedReason
+    expect(myTeam(start + 1, false)).toBeUndefined()
+    expect(myTeam(deadline, false)).toBe('Closed')
+    expect(myTeam(deadline, true)).toBeUndefined()
+  })
+
   it('groups tabs in journey order with admin last', () => {
     const tabs = eventTabs({
       ...base,
