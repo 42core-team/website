@@ -171,7 +171,7 @@ function momentFor(
         'Repositories are locked and the tournament is being prepared. Showtime starts when organizers are ready.',
       countdownTo: null,
       countdownLabel: null,
-      status: 'Waiting for Showtime',
+      status: null,
       // Tease the Showtime stream so people can open it before it goes live.
       actions: showtimeStream
         ? [{ kind: 'link', label: 'Showtime stream', href: showtimeStream }]
