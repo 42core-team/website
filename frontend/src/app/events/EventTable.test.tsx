@@ -28,6 +28,7 @@ function event(index: number): Event {
     completedAt: null,
     introEnabled: false,
     introLeadMinutes: 15,
+    streamUrl: null,
     minTeamSize: 1,
     maxTeamSize: 4,
     currentRound: 0,

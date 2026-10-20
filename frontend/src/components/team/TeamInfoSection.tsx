@@ -100,16 +100,10 @@ export function TeamInfoSection({
         }
       />
       <CardContent className="flex flex-col gap-2">
-        {myTeam.repositoryStatus && (
-          <p role="status">
-            Repository: {myTeam.repositoryStatus}.{' '}
-            {myTeam.repositoryStatus === 'UNLOCKING' &&
-              'Restoring write access; match making will resume when ready.'}
-          </p>
-        )}
-        {myTeam.repositoryError && (
+        {myTeam.repositoryStatus === 'FAILED' && (
           <p role="alert" className="text-destructive">
-            {myTeam.repositoryError} Contact an event admin to retry.
+            {myTeam.repositoryError ?? 'Repository setup failed.'} Contact an
+            event admin to retry.
           </p>
         )}
         {myTeam.tournamentExcluded && (

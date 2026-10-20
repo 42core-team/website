@@ -62,6 +62,10 @@ export class CreateEventDto {
   @Min(0)
   introLeadMinutes?: number;
 
+  @IsOptional()
+  @IsString()
+  streamUrl?: string;
+
   @ApiProperty()
   @IsNumber()
   @Min(1)

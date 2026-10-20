@@ -311,6 +311,7 @@ export class EventService {
       scheduledEndDate?: number;
       introEnabled?: boolean;
       introLeadMinutes?: number;
+      streamUrl?: string;
     } = {},
   ) {
     const dates = {
@@ -323,6 +324,7 @@ export class EventService {
       introLeadMinutes: lifecycle.introLeadMinutes ?? 15,
     };
     this.validateLifecycleDates(dates);
+    const streamUrl = normalizeStreamUrl(lifecycle.streamUrl);
     await Promise.all(
       [gameServerDockerImage, myCoreBotDockerImage, visualizerDockerImage].map(
         assertImageExists,
@@ -343,6 +345,7 @@ export class EventService {
       minTeamSize,
       maxTeamSize,
       ...dates,
+      streamUrl,
       state: getEventState(dates),
       canCreateTeam: isRegistrationOpen(dates),
       processQueue: isRegistrationOpen(dates),
@@ -722,6 +725,7 @@ export class EventService {
       scheduledEndDate?: number;
       introEnabled?: boolean;
       introLeadMinutes?: number;
+      streamUrl?: string;
       minTeamSize?: number;
       maxTeamSize?: number;
       gameServerDockerImage?: string;
@@ -797,6 +801,10 @@ export class EventService {
       if (typeof settings[field] === "number") {
         update[field] = settings[field];
       }
+    }
+
+    if (settings.streamUrl !== undefined) {
+      update.streamUrl = normalizeStreamUrl(settings.streamUrl);
     }
 
     if (settings.startDate !== undefined) {
@@ -1096,4 +1104,19 @@ export class EventService {
       })),
     );
   }
+}
+
+/** Empty clears the stream link; anything else must be an http(s) URL. */
+export function normalizeStreamUrl(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    throw new BadRequestException("streamUrl must be a valid URL");
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:")
+    throw new BadRequestException("streamUrl must use http or https");
+  return url.toString();
 }

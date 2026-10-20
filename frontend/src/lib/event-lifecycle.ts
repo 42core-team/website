@@ -3,11 +3,12 @@ import type { Team } from '@/app/actions/team'
 
 type LifecycleEvent = Pick<Event, 'state' | 'startDate' | 'submissionDeadline'>
 
+/** Participant-facing phase names (see GLOSSARY.md); stored states keep their names. */
 export const lifecycleLabels: Record<Event['state'], string> = {
   REGISTRATION: 'Registration',
-  PLAYING: 'Playing',
-  SUBMISSIONS_CLOSED: 'Submissions closed',
-  SHOWCASE: 'Showcase',
+  PLAYING: 'Coding',
+  SUBMISSIONS_CLOSED: 'Coding closed',
+  SHOWCASE: 'Showtime',
   COMPLETED: 'Completed',
 }
 

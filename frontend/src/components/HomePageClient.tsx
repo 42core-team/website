@@ -9,6 +9,7 @@ import { CoreLogoWhite } from '@/components/social'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { getVisualizerUrl } from '@/lib/env'
+import { lifecycleLabels } from '@/lib/event-lifecycle'
 import WorldChampionshipBanner from '@/components/world-championship-banner'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
@@ -167,7 +168,7 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
                             <span className="relative h-2 w-2 rounded-full bg-destructive" />
                           </span>
                           <span className="text-xs font-semibold tracking-widest text-destructive uppercase">
-                            {props.currentLiveEvent.state.replaceAll('_', ' ')}
+                            {lifecycleLabels[props.currentLiveEvent.state]}
                           </span>
                         </div>
                         <CardTitle className="mt-2 text-lg font-bold leading-snug tracking-tight text-foreground transition-colors group-hover:text-primary sm:text-2xl">
@@ -179,8 +180,8 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
                         <div className="flex min-w-0 flex-col sm:items-end sm:text-right">
                           <span className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
                             {timeLeftMs > 0
-                              ? 'Submissions close in'
-                              : 'Submissions closed'}
+                              ? 'Coding ends in'
+                              : 'Coding closed'}
                           </span>
                           <span className="font-mono text-sm font-bold text-foreground tabular-nums sm:text-base">
                             {timeLeftMs > 0

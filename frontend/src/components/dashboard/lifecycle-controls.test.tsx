@@ -35,6 +35,7 @@ const event: Event = {
   completedAt: null,
   introEnabled: false,
   introLeadMinutes: 15,
+  streamUrl: null,
   minTeamSize: 1,
   maxTeamSize: 4,
   currentRound: 0,
@@ -79,7 +80,7 @@ describe('lifecycle controls', () => {
     await screen.findByText('Pending team')
     expect(
       screen
-        .getByRole('button', { name: 'Start showcase' })
+        .getByRole('button', { name: 'Start Showtime' })
         .hasAttribute('disabled'),
     ).toBe(true)
     vi.mocked(getTeamsForEventTable).mockResolvedValue([
@@ -94,11 +95,11 @@ describe('lifecycle controls', () => {
     await waitFor(() =>
       expect(
         screen
-          .getByRole('button', { name: 'Start showcase' })
+          .getByRole('button', { name: 'Start Showtime' })
           .hasAttribute('disabled'),
       ).toBe(false),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Start showcase' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start Showtime' }))
     await waitFor(() =>
       expect(transitionEvent).toHaveBeenCalledWith('event', {
         action: 'showcase',
@@ -149,7 +150,10 @@ describe('lifecycle controls', () => {
       }),
     ])
     const client = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
     })
     render(
       <QueryClientProvider client={client}>

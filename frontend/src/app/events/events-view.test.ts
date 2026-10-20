@@ -25,6 +25,7 @@ function event(id: string, startDate: string, endDate: string): Event {
     completedAt: new Date(endDate).getTime() < NOW ? endDate : null,
     introEnabled: false,
     introLeadMinutes: 15,
+    streamUrl: null,
     minTeamSize: 1,
     maxTeamSize: 4,
     currentRound: 0,

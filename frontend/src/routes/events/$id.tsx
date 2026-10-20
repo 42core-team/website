@@ -9,14 +9,17 @@ import {
   isUserRegisteredForEvent,
 } from '@/app/actions/event'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
+import { getTournamentMatches } from '@/app/actions/tournament'
 import GithubLoginButton from '@/components/github'
-import EventInfoNotice from '@/components/event-info-notice'
-import EventNavbar from '@/components/event-navbar'
+import EventHeader from '@/components/event-status/event-header'
+import EventStatusStrip from '@/components/event-status/event-status-strip'
+import EventTimelineCard from '@/components/event-status/event-timeline-card'
+import { formatEventTime } from '@/components/event-status/shared'
 import { MarkdownContent } from '@/components/MarkdownContent'
-import { EventLifecycleNotice } from '@/components/event-lifecycle-notice'
-import { registrationOpen } from '@/lib/event-lifecycle'
+import { readComponentsConfig } from '@/components/unit-builder/config'
+import { eventState } from '@/lib/event-lifecycle'
+import { eventMoment, eventTabs } from '@/lib/event-moment'
 import { useEventClock } from '@/hooks/use-event-clock'
-import TimeBadge from '@/components/timeBadge'
 import {
   Card,
   CardContent,
@@ -90,6 +93,18 @@ function EventRoute() {
     queryKey: myTeamQueryKey(id),
     queryFn: () => myTeamQueryFn(id),
     enabled: Boolean(userId) && Boolean(isUserRegisteredQuery.data),
+    refetchInterval: 3000,
+  })
+
+  const isShowtime =
+    eventQuery.data !== undefined &&
+    eventState(eventQuery.data, now) === 'SHOWCASE'
+  // Elimination matches exist once the tournament tree has started.
+  const tournamentMatchesQuery = useQuery({
+    queryKey: ['event', id, 'tournament-matches', { adminReveal: false }],
+    queryFn: () => getTournamentMatches(id, false),
+    enabled: isShowtime,
+    refetchInterval: 30_000,
   })
 
   if (status === 'loading' || (userId && eventQuery.isPending)) {
@@ -132,36 +147,54 @@ function EventRoute() {
 
   const event = eventQuery.data
   const isUserRegistered = isUserRegisteredQuery.data ?? false
+  const myTeam = myTeamQuery.data ?? null
+  const moment = eventMoment(
+    event,
+    { isRegistered: isUserRegistered, team: myTeam },
+    {
+      now,
+      tournamentStage: tournamentMatchesQuery.data?.length
+        ? 'bracket'
+        : 'groups',
+    },
+  )
+  const tabs = eventTabs({
+    event,
+    now,
+    isRegistered: isUserRegistered,
+    hasTeam: Boolean(myTeam),
+    isAdmin: isEventAdminQuery.data ?? false,
+    supportsUnitBuilder: readComponentsConfig(event.gameConfig) !== null,
+    formatTime: (iso) => formatEventTime(iso, now),
+  })
   const eventShell = (children: ReactNode) => (
     <div className="relative flex min-h-lvh flex-col">
-      {userId && registrationOpen(event, now) && (
-        <EventInfoNotice
-          userId={userId}
-          startDate={event.startDate}
-          eventId={id}
-          isPrivate={event.isPrivate}
-          isUserRegistered={isUserRegistered}
-        />
-      )}
-      <EventNavbar
-        event={event}
-        eventId={id}
-        isUserRegistered={isUserRegistered}
-        hasTeam={Boolean(myTeamQuery.data)}
-        isEventAdmin={isEventAdminQuery.data ?? false}
+      <EventHeader
+        eventName={event.name}
+        moment={moment}
+        tabs={tabs}
+        now={now}
       />
-      <EventLifecycleNotice event={event} />
       {children}
     </div>
   )
 
   if (!isEventOverview) {
-    return eventShell(<Outlet />)
+    return eventShell(
+      <>
+        <EventStatusStrip eventId={id} moment={moment} now={now} />
+        <Outlet />
+      </>,
+    )
   }
 
   return eventShell(
     <main className="container mx-auto max-w-7xl px-4 py-8">
       <h1 className="mb-8 text-3xl font-bold">{event.name}</h1>
+
+      <div className="mb-8">
+        <EventTimelineCard event={event} moment={moment} now={now} />
+      </div>
 
       <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
@@ -193,21 +226,6 @@ function EventRoute() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">
-                Start Date
-              </h3>
-              <TimeBadge className="mt-1" time={event.startDate} />
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">
-                Scheduled End (informational)
-              </h3>
-              <TimeBadge className="mt-1" time={event.scheduledEndDate} />
-            </div>
-          </div>
-
           <div>
             <h3 className="text-sm font-medium text-muted-foreground">
               Team Size
@@ -219,12 +237,6 @@ function EventRoute() {
               {' members'}
             </p>
           </div>
-
-          {event.completedAt && (
-            <p>
-              Completed: <TimeBadge time={event.completedAt} />
-            </p>
-          )}
         </CardContent>
       </Card>
     </main>,

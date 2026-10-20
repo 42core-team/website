@@ -131,6 +131,7 @@ const SETTINGS_FIELDS = [
   'scheduledEndDate',
   'introEnabled',
   'introLeadMinutes',
+  'streamUrl',
 ] as const
 
 function DashboardRoute() {
@@ -796,6 +797,13 @@ function SettingsTab({
               onChange={(value) =>
                 updatePendingSetting('introLeadMinutes', Number(value))
               }
+            />
+            <DashboardInput
+              label="Stream URL (intro and Showtime)"
+              type="url"
+              placeholder="https://youtube.com/..."
+              value={pendingSettings.streamUrl ?? ''}
+              onChange={(value) => updatePendingSetting('streamUrl', value)}
             />
           </div>
         </CardContent>

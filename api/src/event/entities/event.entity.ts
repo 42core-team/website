@@ -66,6 +66,9 @@ export class EventEntity {
   @Column({ default: 15 })
   introLeadMinutes: number;
 
+  @Column({ type: "varchar", nullable: true })
+  streamUrl: string | null;
+
   @Column({ type: "timestamp" })
   endDate: Date;
 

@@ -46,6 +46,10 @@ const formSchema = z
     scheduledEndDate: z.date({ message: 'Scheduled end is required' }),
     introEnabled: z.boolean(),
     introLeadMinutes: z.number().int().min(0),
+    streamUrl: z.union([
+      z.literal(''),
+      z.url('Stream URL must be a valid URL'),
+    ]),
     minTeamSize: z.number().min(1).max(10),
     maxTeamSize: z.number().min(1).max(10),
     monorepoUrl: z.string().min(1, 'Monorepo URL is required'),
@@ -83,6 +87,7 @@ const defaultValues: FormValues = {
   scheduledEndDate: new Date(Date.now() + 7200000),
   introEnabled: false,
   introLeadMinutes: 15,
+  streamUrl: '',
   minTeamSize: 1,
   maxTeamSize: 4,
   monorepoUrl: 'https://github.com/42core-team/monorepo',
@@ -261,6 +266,7 @@ function CreateEventRoute() {
         scheduledEndDate: values.scheduledEndDate.getTime(),
         introEnabled: values.introEnabled,
         introLeadMinutes: values.introLeadMinutes,
+        streamUrl: values.streamUrl.trim() || undefined,
         minTeamSize: values.minTeamSize,
         maxTeamSize: values.maxTeamSize,
         monorepoUrl: values.monorepoUrl.trim(),
@@ -586,6 +592,20 @@ function CreateEventRoute() {
                       onChange={(e) =>
                         field.handleChange(Number(e.target.value))
                       }
+                    />
+                  </label>
+                )}
+              />
+              <form.Field
+                name="streamUrl"
+                children={(field) => (
+                  <label>
+                    Stream URL (intro and Showtime)
+                    <Input
+                      type="url"
+                      placeholder="https://youtube.com/..."
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
                     />
                   </label>
                 )}

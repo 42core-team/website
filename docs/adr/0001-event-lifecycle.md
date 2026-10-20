@@ -10,13 +10,15 @@ Events previously used independent dates and flags to control registration, repo
 
 `REGISTRATION → PLAYING → SUBMISSIONS_CLOSED → SHOWCASE → COMPLETED`
 
-- Registration permits event joining, team creation, and roster changes without repository creation.
+- Registration permits event joining (explicit and whitelisted for private events; implicit for public events, where every signed-in user counts as registered), team creation, and roster changes without repository creation.
 - Playing begins automatically at `startDate`. Registration and roster changes remain open until `submissionDeadline`; late teams receive repositories during playing. Each team must have confirmed repository readiness before matchmaking.
 - Submissions close automatically at `submissionDeadline`. New participant matches, registrations, roster changes, and bets stop immediately. Already-running matches may finish. Repository permission locking runs asynchronously.
 - Admins enter Showcase after participating repositories are confirmed locked or affected teams are explicitly excluded. Existing Swiss/elimination execution and individual reveal controls remain the presentation workflow.
 - Admins mark the event Completed, recording `completedAt`. Completion does not require every game to have been revealed. Viewing teams, existing replays, and published results remains available after submission closure.
 
 `scheduledEndDate` is the advertised finish of the whole event, including showcase. It has no automatic completion effect. `completedAt` records the actual finish. The optional livestream intro is an informational milestone, defaulting to 15 minutes before `startDate` with configurable lead time; it is not another permission-changing state.
+
+Participant-facing text names the phases Registration, Coding, Coding closed, Showtime, and Completed; the stored states keep their names. An optional stream URL (the Showtime stream) is offered for the intro and during Showtime. A timed agenda for the period between coding closed and showtime is out of scope until separately decided.
 
 ## Repository operations
 

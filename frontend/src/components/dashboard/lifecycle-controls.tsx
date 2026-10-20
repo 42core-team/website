@@ -63,9 +63,8 @@ export function LifecycleControls({
       <CardHeader>
         <CardTitle>Lifecycle: {lifecycleLabels[state]}</CardTitle>
         <CardDescription>
-          Play and submission closure are automatic. Scheduled end is
-          informational. Showcase requires every repository locked or its team
-          excluded.
+          Coding start and close are automatic. Scheduled end is informational.
+          Showtime requires every repository locked or its team excluded.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -87,7 +86,7 @@ export function LifecycleControls({
                 )
               }
             >
-              Start showcase
+              Start Showtime
             </Button>
             <Button
               disabled={state !== 'SHOWCASE' || mutation.isPending}

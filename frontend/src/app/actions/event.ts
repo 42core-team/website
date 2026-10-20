@@ -10,6 +10,7 @@ export interface Event {
   completedAt: string | null
   introEnabled: boolean
   introLeadMinutes: number
+  streamUrl: string | null
   id: string
   startDate: string
   name: string
@@ -117,6 +118,7 @@ export interface EventCreateParams {
   scheduledEndDate: number
   introEnabled: boolean
   introLeadMinutes: number
+  streamUrl?: string
   minTeamSize: number
   maxTeamSize: number
   monorepoVersion: string
@@ -176,6 +178,7 @@ export async function updateEventSettings(
     scheduledEndDate?: number
     introEnabled?: boolean
     introLeadMinutes?: number
+    streamUrl?: string
     minTeamSize?: number
     maxTeamSize?: number
     gameServerDockerImage?: string
