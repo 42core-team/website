@@ -38,6 +38,10 @@ function StatusCapsule({
   // An alert replaces the phase name so it is readable without opening the popover.
   const label =
     moment.tone === 'danger' ? moment.headline : lifecycleLabels[moment.phase]
+  // Pages are reached through the tabs; only joining and external links stay.
+  const popoverActions = moment.actions.filter(
+    (action) => action.kind !== 'link' || action.external,
+  )
   const pulsing =
     moment.phase === 'SHOWCASE' ||
     moment.tone === 'warning' ||
@@ -74,7 +78,7 @@ function StatusCapsule({
           aria-hidden="true"
         />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 space-y-3">
+      <PopoverContent align="end" className="w-80 space-y-3">
         <div className="space-y-1">
           <p className={cn('text-xs font-medium', tone.text)}>
             {moment.kicker}
@@ -95,7 +99,7 @@ function StatusCapsule({
         </div>
         <p className="text-sm text-muted-foreground">{moment.description}</p>
         {moment.status && <p className="text-sm">{moment.status}</p>}
-        <MomentActions eventId={eventId} actions={moment.actions} size="sm" />
+        <MomentActions eventId={eventId} actions={popoverActions} size="sm" />
       </PopoverContent>
     </Popover>
   )
@@ -109,8 +113,15 @@ function isTabActive(tab: EventTab, index: number, pathname: string) {
 
 function TabLink({
   tab,
+  label = tab.name,
   active,
-}: Readonly<{ tab: EventTab; active: boolean }>) {
+  className,
+}: Readonly<{
+  tab: EventTab
+  label?: string
+  active: boolean
+  className?: string
+}>) {
   const link = (
     <Link
       href={tab.path}
@@ -124,12 +135,13 @@ function TabLink({
         active
           ? 'font-medium text-foreground after:bg-foreground'
           : 'text-muted-foreground hover:text-foreground',
+        className,
       )}
     >
       {tab.lockedReason && (
         <Lock className="size-3.5 opacity-70" aria-hidden="true" />
       )}
-      {tab.name}
+      <span className="truncate">{label}</span>
     </Link>
   )
   if (!tab.lockedReason) return link
@@ -142,16 +154,18 @@ function TabLink({
 }
 
 /**
- * Second tier of the site header on event pages: the current moment
- * (status capsule + primary action) and the event tabs in one bar.
+ * Second tier of the site header on event pages: the event tabs, led by the
+ * event name as the Info tab, and the status capsule on the right.
  */
 export default function EventHeader({
   eventId,
+  eventName,
   moment,
   tabs,
   now,
 }: Readonly<{
   eventId: string
+  eventName: string
   moment: EventMoment
   tabs: EventTab[]
   now: number
@@ -160,9 +174,14 @@ export default function EventHeader({
   const navRef = useRef<HTMLElement>(null)
   const tone = toneStyles[moment.tone]
   const needsAttention = moment.tone === 'warning' || moment.tone === 'danger'
-  // The primary action never points to the page you are already on.
-  const primary = moment.actions.find(
-    (action) => action.kind !== 'link' || action.href !== pathname,
+  const [infoTab, ...otherTabs] = tabs
+  const infoLink = (
+    <TabLink
+      tab={infoTab}
+      label={eventName}
+      active={isTabActive(infoTab, 0, pathname)}
+      className="min-w-0 px-0 font-semibold text-foreground after:inset-x-0 md:text-base"
+    />
   )
 
   useEffect(() => {
@@ -178,9 +197,9 @@ export default function EventHeader({
         needsAttention && cn(tone.panel, tone.border),
       )}
     >
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-[1fr_auto] items-center gap-x-3 px-4 pt-2 md:grid-cols-[auto_1fr_auto] md:pt-0">
-        <div className="min-w-0">
-          <StatusCapsule eventId={eventId} moment={moment} now={now} />
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 md:grid-cols-[minmax(0,max-content)_minmax(0,1fr)_auto]">
+        <div className="flex min-w-0 items-center md:border-r md:pr-3">
+          {infoLink}
         </div>
         <nav
           ref={navRef}
@@ -189,9 +208,9 @@ export default function EventHeader({
         >
           <TooltipProvider delayDuration={0}>
             <ul className="flex items-center">
-              {tabs.map((tab, index) => (
+              {otherTabs.map((tab, index) => (
                 <Fragment key={tab.path}>
-                  {index > 0 && tab.group !== tabs[index - 1].group && (
+                  {index > 0 && tab.group !== otherTabs[index - 1].group && (
                     <li
                       aria-hidden="true"
                       className="mx-1 h-5 w-px shrink-0 bg-border"
@@ -200,7 +219,7 @@ export default function EventHeader({
                   <li className="shrink-0">
                     <TabLink
                       tab={tab}
-                      active={isTabActive(tab, index, pathname)}
+                      active={isTabActive(tab, index + 1, pathname)}
                     />
                   </li>
                 </Fragment>
@@ -209,9 +228,7 @@ export default function EventHeader({
           </TooltipProvider>
         </nav>
         <div className="flex justify-end">
-          {primary && (
-            <MomentActions eventId={eventId} actions={[primary]} size="sm" />
-          )}
+          <StatusCapsule eventId={eventId} moment={moment} now={now} />
         </div>
       </div>
     </div>

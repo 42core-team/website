@@ -31,9 +31,9 @@ describe('eventTabs', () => {
     const tabs = eventTabs({ ...base, now: start - 1 })
     expect(names(tabs)).toEqual([
       'Info',
+      'Teams',
       'My Team',
       'Match Making',
-      'Teams',
       'Gambling',
     ])
     expect(tabs.find((t) => t.name === 'Match Making')?.lockedReason).toBe(
@@ -54,15 +54,21 @@ describe('eventTabs', () => {
   })
 
   it('groups tabs in journey order with admin last', () => {
-    const tabs = eventTabs({ ...base, isAdmin: true, now: deadline })
+    const tabs = eventTabs({
+      ...base,
+      isAdmin: true,
+      supportsUnitBuilder: true,
+      now: deadline,
+    })
     expect(tabs.map((t) => `${t.group}:${t.name}`)).toEqual([
-      'team:Info',
+      'info:Info',
+      'teams:Teams',
       'team:My Team',
+      'team:Unit Builder',
       'team:Match Making',
-      'event:Teams',
-      'event:Group Phase',
-      'event:Tournament Tree',
-      'event:Gambling',
+      'team:Gambling',
+      'tournament:Group Phase',
+      'tournament:Tournament Tree',
       'admin:Dashboard',
     ])
   })

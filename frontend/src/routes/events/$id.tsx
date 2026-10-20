@@ -178,7 +178,13 @@ function EventRoute() {
   })
   const eventShell = (children: ReactNode) => (
     <div className="relative flex min-h-lvh flex-col">
-      <EventHeader eventId={id} moment={moment} tabs={tabs} now={now} />
+      <EventHeader
+        eventId={id}
+        eventName={event.name}
+        moment={moment}
+        tabs={tabs}
+        now={now}
+      />
       {children}
     </div>
   )
@@ -189,7 +195,8 @@ function EventRoute() {
 
   return eventShell(
     <main className="container mx-auto max-w-7xl px-4 py-8">
-      <h1 className="mb-8 text-3xl font-bold">{event.name}</h1>
+      {/* The event name is shown in the event header. */}
+      <h1 className="sr-only">{event.name}</h1>
 
       <div className="mb-8">
         <EventTimelineCard event={event} moment={moment} now={now} />
