@@ -249,9 +249,13 @@ export class AppService {
           repoName,
           user,
         );
+        // Org owners and team-based access keep write through inheritance, which a
+        // repository collaborator change cannot revoke. Don't fail the lock for it.
         if (!["read", "none"].includes(permission))
-          throw new Error(
-            "Collaborator still has inherited write permissions.",
+          this.logger.warn(
+            `Collaborator keeps inherited ${permission} access after locking ${JSON.stringify(
+              { username: user, repoOwner, repoName },
+            )}`,
           );
       },
     );

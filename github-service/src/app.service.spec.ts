@@ -30,6 +30,44 @@ describe("AppService", () => {
     jest.restoreAllMocks();
   });
 
+  it("locks a repository even when a member keeps inherited write access", async () => {
+    jest
+      .spyOn(ClientProxyFactory, "create")
+      .mockReturnValue({ emit: jest.fn() } as never);
+    const service = new AppService({} as never);
+    jest.spyOn(service, "decryptSecret").mockReturnValue("token");
+    const updateCollaboratorPermission = jest.fn().mockResolvedValue(undefined);
+    jest.mocked(RepositoryApi).mockImplementationOnce(
+      () =>
+        ({
+          updateCollaboratorPermission,
+          getCollaboratorPermission: jest.fn().mockResolvedValue("admin"),
+        }) as never,
+    );
+    const warn = jest
+      .spyOn(Reflect.get(service, "logger"), "warn")
+      .mockImplementation(() => undefined);
+
+    await expect(
+      service.removeWritePermissionsForUser(
+        "owner",
+        "1",
+        "org",
+        "repo",
+        "secret",
+      ),
+    ).resolves.toBeUndefined();
+    expect(updateCollaboratorPermission).toHaveBeenCalledWith(
+      "org",
+      "repo",
+      "owner",
+      "pull",
+    );
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("inherited admin access"),
+    );
+  });
+
   it("acknowledges READY only after collaborators have access", async () => {
     const emit = jest.fn().mockReturnValue(of(undefined));
     jest.spyOn(ClientProxyFactory, "create").mockReturnValue({ emit } as never);
