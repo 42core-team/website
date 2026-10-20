@@ -12,7 +12,6 @@ import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import { getTournamentMatches } from '@/app/actions/tournament'
 import GithubLoginButton from '@/components/github'
 import EventHeader from '@/components/event-status/event-header'
-import EventStatusStrip from '@/components/event-status/event-status-strip'
 import EventTimelineCard from '@/components/event-status/event-timeline-card'
 import { formatEventTime } from '@/components/event-status/shared'
 import { MarkdownContent } from '@/components/MarkdownContent'
@@ -179,23 +178,13 @@ function EventRoute() {
   })
   const eventShell = (children: ReactNode) => (
     <div className="relative flex min-h-lvh flex-col">
-      <EventHeader
-        eventName={event.name}
-        moment={moment}
-        tabs={tabs}
-        now={now}
-      />
+      <EventHeader eventId={id} moment={moment} tabs={tabs} now={now} />
       {children}
     </div>
   )
 
   if (!isEventOverview) {
-    return eventShell(
-      <>
-        <EventStatusStrip eventId={id} moment={moment} now={now} />
-        <Outlet />
-      </>,
-    )
+    return eventShell(<Outlet />)
   }
 
   return eventShell(

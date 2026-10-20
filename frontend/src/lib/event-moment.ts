@@ -43,8 +43,6 @@ export interface EventMoment {
   /** Short right-aligned status, e.g. "Waiting for coding to begin". */
   status: string | null
   actions: MomentAction[]
-  /** Whether the compact strip on event subpages adds anything beyond the header pill. */
-  showStrip: boolean
 }
 
 export type TournamentStage = 'groups' | 'bracket'
@@ -70,7 +68,7 @@ interface MomentOptions {
 /**
  * The single source for what the event status UI says right now:
  * headline, countdown, tone and call to action for this viewer.
- * A `null` viewer is still loading: no calls to action, no strip.
+ * A `null` viewer is still loading: no calls to action yet.
  */
 export function eventMoment(
   event: MomentEvent,
@@ -81,7 +79,6 @@ export function eventMoment(
   return {
     ...momentFor(event, { isRegistered: false, team: null }, options),
     actions: [],
-    showStrip: false,
   }
 }
 
@@ -109,7 +106,6 @@ function momentFor(
       countdownLabel: coding ? 'Coding ends in' : 'Coding starts in',
       status: coding ? null : 'Waiting for coding to begin',
       actions: [],
-      showStrip: closingSoon,
     }
 
     const intro = introTime(event)
@@ -133,7 +129,6 @@ function momentFor(
         description:
           'This is a private event. Join it first, then create a team or accept an invite.',
         actions: [{ kind: 'join', label: 'Join event' }, ...base.actions],
-        showStrip: true,
       }
     }
 
@@ -145,7 +140,6 @@ function momentFor(
           { kind: 'link', label: 'My team', href: myTeamHref },
           ...base.actions,
         ],
-        showStrip: true,
       }
     }
 
@@ -158,7 +152,6 @@ function momentFor(
         description:
           'GitHub did not confirm your repository. Matchmaking stays paused; contact an event admin to retry.',
         actions: [{ kind: 'link', label: 'My team', href: myTeamHref }],
-        showStrip: true,
       }
     }
 
@@ -200,7 +193,6 @@ function momentFor(
       countdownLabel: null,
       status: 'Waiting for Showtime',
       actions: [],
-      showStrip: true,
     }
   }
 
@@ -237,7 +229,6 @@ function momentFor(
       countdownLabel: null,
       status: null,
       actions,
-      showStrip: true,
     }
   }
 
@@ -252,7 +243,6 @@ function momentFor(
     countdownLabel: null,
     status: null,
     actions: [],
-    showStrip: false,
   }
 }
 

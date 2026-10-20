@@ -31,7 +31,6 @@ describe('eventMoment', () => {
       phase: 'REGISTRATION',
       headline: 'Coding starts in',
       countdownTo: event.startDate,
-      showStrip: false,
     })
   })
 
@@ -49,15 +48,13 @@ describe('eventMoment', () => {
     const moment = eventMoment(event, noTeam, { now: start + 1 })
     expect(moment.description).toMatch(/create a team or join one/)
     expect(labels(moment.actions)).toEqual(['My team'])
-    expect(moment.showStrip).toBe(true)
   })
 
-  it('stays quiet during steady-state coding with a ready repository', () => {
+  it('points teams to match making during coding', () => {
     const moment = eventMoment(event, member('READY'), { now: start + 1 })
     expect(moment).toMatchObject({
       headline: 'Coding ends in',
       tone: 'active',
-      showStrip: false,
     })
     expect(labels(moment.actions)).toEqual(['Match Making'])
   })
@@ -66,7 +63,7 @@ describe('eventMoment', () => {
     const moment = eventMoment(event, member('READY'), {
       now: deadline - 60 * 60 * 1000,
     })
-    expect(moment).toMatchObject({ tone: 'warning', showStrip: true })
+    expect(moment).toMatchObject({ tone: 'warning', kicker: 'Final hours' })
   })
 
   it('lets a failed repository override the headline but keeps the deadline countdown', () => {
@@ -75,7 +72,6 @@ describe('eventMoment', () => {
       tone: 'danger',
       headline: 'Repository setup failed',
       countdownLabel: 'Coding ends in',
-      showStrip: true,
     })
   })
 
@@ -84,7 +80,6 @@ describe('eventMoment', () => {
     expect(moment).toMatchObject({
       phase: 'SUBMISSIONS_CLOSED',
       countdownTo: null,
-      showStrip: true,
     })
   })
 
@@ -108,12 +103,12 @@ describe('eventMoment', () => {
     ).toEqual(['Group Phase'])
   })
 
-  it('has no call to action or strip once completed', () => {
+  it('has no call to action once completed', () => {
     const moment = eventMoment(
       { ...event, state: 'COMPLETED' },
       member('LOCKED'),
     )
-    expect(moment).toMatchObject({ actions: [], showStrip: false })
+    expect(moment).toMatchObject({ actions: [] })
   })
 
   it('offers the intro stream shortly before the intro', () => {
@@ -129,12 +124,11 @@ describe('eventMoment', () => {
 })
 
 describe('loading viewer', () => {
-  it('shows no call to action or strip until the viewer is known', () => {
+  it('shows no call to action until the viewer is known', () => {
     const priv = { ...event, isPrivate: true }
     expect(eventMoment(priv, null, { now: start - 1 })).toMatchObject({
       headline: 'Coding starts in',
       actions: [],
-      showStrip: false,
     })
   })
 })

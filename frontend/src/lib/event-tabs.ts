@@ -2,13 +2,18 @@ import type { Event } from '@/app/actions/event'
 import { LIFECYCLE_ORDER, eventState } from '@/lib/event-lifecycle'
 import type { MomentEvent } from '@/lib/event-moment'
 
+export type EventTabGroup = 'team' | 'event' | 'admin'
+
 export interface EventTab {
   name: string
   path: string
-  /** Set when the tab is muted for the current phase, e.g. "Opens 09:00". */
-  hint?: string
+  /** Tabs are rendered in groups: your team's work, the event at large, admin. */
+  group: EventTabGroup
+  /** Why the tab is locked in the current phase, e.g. "Opens 09:00". */
+  lockedReason?: string
 }
 
+/** Tabs in journey order: your team's work first, then spectating, then admin. */
 export function eventTabs({
   event,
   now = Date.now(),
@@ -28,41 +33,35 @@ export function eventTabs({
 }): EventTab[] {
   const phase = eventState(event, now)
   const eventPath = `/events/${event.id}`
-  const opensHint = `Opens ${formatTime(event.startDate)}`
-  const playHint =
+  const opensReason = `Opens ${formatTime(event.startDate)}`
+  const codingReason =
     phase === 'REGISTRATION'
-      ? opensHint
+      ? opensReason
       : phase === 'PLAYING'
         ? undefined
         : 'Closed'
 
-  const tabs: EventTab[] = [
-    { name: 'Info', path: eventPath },
-    { name: 'Teams', path: `${eventPath}/teams` },
-  ]
+  const tabs: EventTab[] = [{ name: 'Info', path: eventPath, group: 'team' }]
 
   if (isRegistered) {
-    tabs.push({ name: 'My Team', path: `${eventPath}/my-team` })
+    tabs.push({ name: 'My Team', path: `${eventPath}/my-team`, group: 'team' })
+    if (hasTeam)
+      tabs.push({
+        name: 'Match Making',
+        path: `${eventPath}/queue`,
+        group: 'team',
+        lockedReason: codingReason,
+      })
     if (supportsUnitBuilder)
       tabs.push({
         name: 'Unit Builder',
         path: `${eventPath}/unit-builder`,
-        hint: phase === 'REGISTRATION' ? opensHint : undefined,
+        group: 'team',
+        lockedReason: phase === 'REGISTRATION' ? opensReason : undefined,
       })
-    if (hasTeam) {
-      tabs.push({
-        name: 'Match Making',
-        path: `${eventPath}/queue`,
-        hint: playHint,
-      })
-      if (event.gamblingEnabled)
-        tabs.push({
-          name: 'Gambling',
-          path: `${eventPath}/gambling`,
-          hint: playHint,
-        })
-    }
   }
+
+  tabs.push({ name: 'Teams', path: `${eventPath}/teams`, group: 'event' })
 
   if (
     isAdmin ||
@@ -70,11 +69,24 @@ export function eventTabs({
       LIFECYCLE_ORDER.indexOf('SUBMISSIONS_CLOSED')
   )
     tabs.push(
-      { name: 'Group Phase', path: `${eventPath}/groups` },
-      { name: 'Tournament Tree', path: `${eventPath}/bracket` },
+      { name: 'Group Phase', path: `${eventPath}/groups`, group: 'event' },
+      { name: 'Tournament Tree', path: `${eventPath}/bracket`, group: 'event' },
     )
 
-  if (isAdmin) tabs.push({ name: 'Dashboard', path: `${eventPath}/dashboard` })
+  if (isRegistered && hasTeam && event.gamblingEnabled)
+    tabs.push({
+      name: 'Gambling',
+      path: `${eventPath}/gambling`,
+      group: 'event',
+      lockedReason: codingReason,
+    })
+
+  if (isAdmin)
+    tabs.push({
+      name: 'Dashboard',
+      path: `${eventPath}/dashboard`,
+      group: 'admin',
+    })
 
   return tabs
 }

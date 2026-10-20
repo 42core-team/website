@@ -27,30 +27,44 @@ describe('eventTabs', () => {
   }
   const names = (tabs: { name: string }[]) => tabs.map((t) => t.name)
 
-  it('keeps participant tools visible but muted before coding', () => {
+  it('keeps participant tools visible but locked before coding', () => {
     const tabs = eventTabs({ ...base, now: start - 1 })
     expect(names(tabs)).toEqual([
       'Info',
-      'Teams',
       'My Team',
       'Match Making',
+      'Teams',
       'Gambling',
     ])
-    expect(tabs.find((t) => t.name === 'Match Making')?.hint).toBe(
+    expect(tabs.find((t) => t.name === 'Match Making')?.lockedReason).toBe(
       'Opens 09:00',
     )
   })
 
-  it('unmutes during coding and marks tools closed afterwards', () => {
+  it('unlocks during coding and marks tools closed afterwards', () => {
     expect(
       eventTabs({ ...base, now: start + 1 }).find(
         (t) => t.name === 'Match Making',
-      )?.hint,
+      )?.lockedReason,
     ).toBeUndefined()
     expect(
       eventTabs({ ...base, now: deadline }).find((t) => t.name === 'Gambling')
-        ?.hint,
+        ?.lockedReason,
     ).toBe('Closed')
+  })
+
+  it('groups tabs in journey order with admin last', () => {
+    const tabs = eventTabs({ ...base, isAdmin: true, now: deadline })
+    expect(tabs.map((t) => `${t.group}:${t.name}`)).toEqual([
+      'team:Info',
+      'team:My Team',
+      'team:Match Making',
+      'event:Teams',
+      'event:Group Phase',
+      'event:Tournament Tree',
+      'event:Gambling',
+      'admin:Dashboard',
+    ])
   })
 
   it('shows tournament tabs from coding closed on, and always to admins', () => {
