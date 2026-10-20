@@ -70,16 +70,13 @@ export default function EventTimelineCard({
       className="overflow-hidden rounded-xl border bg-card"
     >
       <div className="space-y-8 p-6 sm:p-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm text-muted-foreground">Event timeline</p>
-            <h2
-              id="event-timeline-heading"
-              className="mt-1 text-xl font-semibold tracking-tight"
-            >
-              From first commit to final reveal
-            </h2>
-          </div>
+        <div className="flex items-center justify-between gap-4">
+          <h2
+            id="event-timeline-heading"
+            className="text-2xl font-semibold tracking-tight"
+          >
+            Event timeline
+          </h2>
           <span className="shrink-0 rounded-full border px-3 py-1 text-sm">
             {lifecycleLabels[moment.phase]}
           </span>
