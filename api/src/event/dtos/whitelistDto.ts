@@ -1,11 +1,4 @@
-import {
-  ArrayNotEmpty,
-  IsArray,
-  IsEnum,
-  IsString,
-  IsUUID,
-  ValidateNested,
-} from "class-validator";
+import { ArrayNotEmpty, IsArray, IsEnum, IsString, IsUUID, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
 import { WhitelistPlatform } from "../entities/event-whitelist.entity";
 
