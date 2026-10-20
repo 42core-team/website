@@ -9,7 +9,7 @@ import { CoreLogoWhite } from '@/components/social'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { getVisualizerUrl } from '@/lib/env'
-import { lifecycleLabels } from '@/lib/event-lifecycle'
+import { eventState, lifecycleLabels } from '@/lib/event-lifecycle'
 import WorldChampionshipBanner from '@/components/world-championship-banner'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
@@ -168,7 +168,14 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
                             <span className="relative h-2 w-2 rounded-full bg-destructive" />
                           </span>
                           <span className="text-xs font-semibold tracking-widest text-destructive uppercase">
-                            {lifecycleLabels[props.currentLiveEvent.state]}
+                            {
+                              lifecycleLabels[
+                                eventState(
+                                  props.currentLiveEvent,
+                                  now.getTime(),
+                                )
+                              ]
+                            }
                           </span>
                         </div>
                         <CardTitle className="mt-2 text-lg font-bold leading-snug tracking-tight text-foreground transition-colors group-hover:text-primary sm:text-2xl">

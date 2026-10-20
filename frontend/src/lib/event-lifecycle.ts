@@ -3,6 +3,14 @@ import type { Team } from '@/app/actions/team'
 
 type LifecycleEvent = Pick<Event, 'state' | 'startDate' | 'submissionDeadline'>
 
+export const LIFECYCLE_ORDER: Event['state'][] = [
+  'REGISTRATION',
+  'PLAYING',
+  'SUBMISSIONS_CLOSED',
+  'SHOWCASE',
+  'COMPLETED',
+]
+
 /** Participant-facing phase names (see GLOSSARY.md); stored states keep their names. */
 export const lifecycleLabels: Record<Event['state'], string> = {
   REGISTRATION: 'Registration',

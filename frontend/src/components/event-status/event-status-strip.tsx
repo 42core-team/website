@@ -1,13 +1,8 @@
 import type { EventMoment } from '@/lib/event-moment'
-import { formatCountdown } from '@/lib/event-moment'
+import { formatCountdown, momentRemainingMs } from '@/lib/event-moment'
+import { usePathname } from '@/lib/router-hooks'
 import { cn } from '@/lib/utils'
-import {
-  MomentActions,
-  toneBorder,
-  toneDot,
-  tonePanel,
-  toneText,
-} from './shared'
+import { MomentActions, toneStyles } from './shared'
 
 /** Compact current-moment notice for event subpages; renders only when it adds information. */
 export default function EventStatusStrip({
@@ -15,11 +10,14 @@ export default function EventStatusStrip({
   moment,
   now,
 }: Readonly<{ eventId: string; moment: EventMoment; now: number }>) {
-  if (!moment.showStrip) return null
+  const pathname = usePathname()
+  // A strip that points to the page you are on repeats what that page already shows.
+  const pointsHere = moment.actions.some(
+    (action) => action.kind === 'link' && action.href === pathname,
+  )
+  if (!moment.showStrip || pointsHere) return null
 
-  const remaining = moment.countdownTo
-    ? new Date(moment.countdownTo).getTime() - now
-    : null
+  const remaining = momentRemainingMs(moment, now)
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 pt-4">
@@ -27,8 +25,8 @@ export default function EventStatusStrip({
         role={moment.tone === 'danger' ? 'alert' : 'status'}
         className={cn(
           'flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between',
-          tonePanel[moment.tone],
-          toneBorder[moment.tone],
+          toneStyles[moment.tone].panel,
+          toneStyles[moment.tone].border,
         )}
       >
         <div className="min-w-0 space-y-1">
@@ -36,13 +34,16 @@ export default function EventStatusStrip({
             <span
               className={cn(
                 'size-2 shrink-0 rounded-full',
-                toneDot[moment.tone],
+                toneStyles[moment.tone].dot,
               )}
             />
             {moment.headline}
             {remaining !== null && (
               <span
-                className={cn('font-mono tabular-nums', toneText[moment.tone])}
+                className={cn(
+                  'font-mono tabular-nums',
+                  toneStyles[moment.tone].text,
+                )}
               >
                 {moment.countdownLabel !== moment.headline &&
                   `${moment.countdownLabel} `}

@@ -26,6 +26,7 @@ export class UpdateEventSettingsDto {
   @Min(0)
   introLeadMinutes?: number;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   streamUrl?: string;

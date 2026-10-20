@@ -7,15 +7,15 @@ import {
 
 describe('extractVisualizerTag', () => {
   it('extracts a tag after the image name', () => {
-    expect(
-      extractVisualizerTag('ghcr.io/42core-team/visualizer:1.2.3'),
-    ).toBe('1.2.3')
+    expect(extractVisualizerTag('ghcr.io/42core-team/visualizer:1.2.3')).toBe(
+      '1.2.3',
+    )
   })
 
   it('ignores a registry port', () => {
-    expect(
-      extractVisualizerTag('registry.example:5000/visualizer:1.2.3'),
-    ).toBe('1.2.3')
+    expect(extractVisualizerTag('registry.example:5000/visualizer:1.2.3')).toBe(
+      '1.2.3',
+    )
     expect(extractVisualizerTag('registry.example:5000/visualizer')).toBe(
       undefined,
     )

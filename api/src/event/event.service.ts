@@ -1106,7 +1106,7 @@ export class EventService {
   }
 }
 
-/** Empty clears the stream link; anything else must be an http(s) URL. */
+/** Empty clears the stream link; anything else must be an http(s) URL, stored as entered. */
 export function normalizeStreamUrl(value: string | undefined): string | null {
   const trimmed = value?.trim();
   if (!trimmed) return null;
@@ -1118,5 +1118,5 @@ export function normalizeStreamUrl(value: string | undefined): string | null {
   }
   if (url.protocol !== "https:" && url.protocol !== "http:")
     throw new BadRequestException("streamUrl must use http or https");
-  return url.toString();
+  return trimmed;
 }

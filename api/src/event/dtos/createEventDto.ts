@@ -8,7 +8,7 @@ import {
   IsBoolean,
   IsInt,
 } from "class-validator";
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class CreateEventDto {
   @ApiProperty()
@@ -62,6 +62,7 @@ export class CreateEventDto {
   @Min(0)
   introLeadMinutes?: number;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   streamUrl?: string;

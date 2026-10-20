@@ -9,7 +9,10 @@ describe("normalizeStreamUrl", () => {
     expect(normalizeStreamUrl("   ")).toBeNull();
   });
 
-  it("accepts http(s) URLs", () => {
+  it("accepts http(s) URLs and stores them as entered", () => {
+    expect(normalizeStreamUrl("https://youtube.com")).toBe(
+      "https://youtube.com",
+    );
     expect(normalizeStreamUrl(" https://youtube.com/live/abc ")).toBe(
       "https://youtube.com/live/abc",
     );

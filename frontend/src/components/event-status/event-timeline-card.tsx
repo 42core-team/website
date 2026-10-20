@@ -1,17 +1,18 @@
 import { Check } from 'lucide-react'
 import type { Event } from '@/app/actions/event'
 import type { EventMoment } from '@/lib/event-moment'
-import { PHASE_ORDER, formatCountdown, introTime } from '@/lib/event-moment'
-import { lifecycleLabels } from '@/lib/event-lifecycle'
+import {
+  formatCountdown,
+  introTime,
+  momentRemainingMs,
+} from '@/lib/event-moment'
+import { LIFECYCLE_ORDER, lifecycleLabels } from '@/lib/event-lifecycle'
 import { cn } from '@/lib/utils'
 import {
   MomentActions,
   formatEventDateTime,
   formatEventTime,
-  toneDot,
-  toneRing,
-  toneText,
-  tonePanel,
+  toneStyles,
   viewerTimeZone,
 } from './shared'
 
@@ -58,10 +59,8 @@ export default function EventTimelineCard({
   moment,
   now,
 }: Readonly<{ event: Event; moment: EventMoment; now: number }>) {
-  const current = PHASE_ORDER.indexOf(moment.phase)
-  const remaining = moment.countdownTo
-    ? new Date(moment.countdownTo).getTime() - now
-    : null
+  const current = LIFECYCLE_ORDER.indexOf(moment.phase)
+  const remaining = momentRemainingMs(moment, now)
   const showCountdownLabel =
     moment.countdownLabel && moment.countdownLabel !== moment.headline
 
@@ -87,7 +86,7 @@ export default function EventTimelineCard({
         </div>
 
         <ol className="grid gap-4 sm:grid-cols-5 sm:gap-2">
-          {PHASE_ORDER.map((phase, index) => {
+          {LIFECYCLE_ORDER.map((phase, index) => {
             const done = index < current
             const active = index === current
             return (
@@ -96,7 +95,7 @@ export default function EventTimelineCard({
                 aria-current={active ? 'step' : undefined}
                 className={cn(
                   'relative flex gap-3 sm:flex-col',
-                  index < PHASE_ORDER.length - 1 &&
+                  index < LIFECYCLE_ORDER.length - 1 &&
                     'sm:after:absolute sm:after:top-4 sm:after:right-3 sm:after:left-11 sm:after:h-px sm:after:bg-border',
                 )}
               >
@@ -106,8 +105,8 @@ export default function EventTimelineCard({
                     active
                       ? cn(
                           'text-white ring-4',
-                          toneDot[moment.tone],
-                          toneRing[moment.tone],
+                          toneStyles[moment.tone].dot,
+                          toneStyles[moment.tone].ring,
                         )
                       : done
                         ? 'bg-muted text-foreground'
@@ -145,12 +144,20 @@ export default function EventTimelineCard({
       </div>
 
       <div
-        className={cn('space-y-4 border-y p-6 sm:p-8', tonePanel[moment.tone])}
+        className={cn(
+          'space-y-4 border-y p-6 sm:p-8',
+          toneStyles[moment.tone].panel,
+        )}
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-1">
-            <p className={cn('text-sm font-medium', toneText[moment.tone])}>
-              {moment.eyebrow}
+            <p
+              className={cn(
+                'text-sm font-medium',
+                toneStyles[moment.tone].text,
+              )}
+            >
+              {moment.kicker}
             </p>
             <h3 className="text-2xl font-semibold tracking-tight">
               {moment.headline}
@@ -167,7 +174,7 @@ export default function EventTimelineCard({
                 role="timer"
                 className={cn(
                   'font-mono text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl',
-                  toneText[moment.tone],
+                  toneStyles[moment.tone].text,
                 )}
               >
                 {formatCountdown(remaining)}
@@ -200,9 +207,7 @@ export default function EventTimelineCard({
         ) : (
           <>
             <div>
-              <p className="text-sm text-muted-foreground">
-                Expected event finish
-              </p>
+              <p className="text-sm text-muted-foreground">Scheduled end</p>
               <p className="font-medium">
                 {formatEventDateTime(event.scheduledEndDate)}
               </p>

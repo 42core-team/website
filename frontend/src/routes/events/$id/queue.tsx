@@ -158,8 +158,8 @@ function QueueRoute() {
     <main className="container mx-auto max-w-4xl space-y-6 px-4 py-8">
       {!playable && (
         <p role="status">
-          Match making requires active play and a READY repository. Match
-          history remains available.
+          Match making is available during Coding. Match history remains
+          available.
         </p>
       )}
       <Card>

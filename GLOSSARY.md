@@ -24,7 +24,7 @@ The presentation phase in which administrators present tournament games and reve
 _Avoid_: Showcase (in participant-facing text)
 
 **Scheduled end**:
-The advertised finish time of the whole event, including its showcase.
+The advertised finish time of the whole event, including its showtime.
 _Avoid_: Submission deadline
 
 **Completion**:
@@ -40,7 +40,7 @@ The optional stream link of an event, offered for the livestream intro and durin
 Every signed-in user counts as registered for a public event and can create or join a team directly. Private events require explicit joining, restricted by the whitelist.
 
 **Reopening**:
-An administrator's decision to resume playing with a new submission deadline while retaining existing tournament progress and results.
+An administrator's decision to resume coding with a new submission deadline while retaining existing tournament progress and results.
 
 **Tournament exclusion**:
 An explicit administrator decision to omit a team from tournament participation.

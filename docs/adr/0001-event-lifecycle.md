@@ -24,7 +24,7 @@ Participant-facing text names the phases Registration, Coding, Coding closed, Sh
 
 Provisioning, locking, and unlocking have their own progress, failure, and acknowledgement states. Publishing a message is not evidence that GitHub has completed an operation. Failed operations can be retried; delayed results must be reconciled with the current event phase. Tournament generation requires confirmed locks for all nonexcluded entrants.
 
-The submission mechanism is repository permission locking, rather than immutable per-team commit snapshots. This is an explicit product choice: tournament execution continues to use repository contents. Consequently the scheduled cutoff and confirmed external push denial are distinct moments; operational progress must remain visible.
+The submission mechanism is repository permission locking, rather than immutable per-team commit snapshots. This is an explicit product choice: tournament execution continues to use repository contents. Consequently the scheduled cutoff and confirmed external push denial are distinct moments; operational progress must remain visible to admins. Participants only see repository failures; in-progress operations are not shown to them.
 
 ## Administrative reopening
 
@@ -38,6 +38,6 @@ Existing `endDate` supplies the scheduled end; `repoLockDate` supplies the submi
 
 ## Consequences
 
-Backend request-time checks enforce competition boundaries independently of scheduler latency. UI availability reflects the same lifecycle, while repository progress is shown separately. The scheduled event finish no longer removes an ongoing showcase from the live event experience. Reopening deliberately preserves previously computed results, so lifecycle transitions do not imply tournament resets.
+Backend request-time checks enforce competition boundaries independently of scheduler latency. UI availability reflects the same lifecycle, while repository progress is shown separately on the admin dashboard. The scheduled event finish no longer removes an ongoing showcase from the live event experience. Reopening deliberately preserves previously computed results, so lifecycle transitions do not imply tournament resets.
 
 The API and GitHub service must both support the acknowledged repository-operation protocol. Apply the database migrations and deploy both service changes together. Closing new betting is a lifecycle restriction, not disabling the betting feature: existing bets must remain viewable and eligible for settlement.

@@ -18,7 +18,8 @@ import { formatEventTime } from '@/components/event-status/shared'
 import { MarkdownContent } from '@/components/MarkdownContent'
 import { readComponentsConfig } from '@/components/unit-builder/config'
 import { eventState } from '@/lib/event-lifecycle'
-import { eventMoment, eventTabs } from '@/lib/event-moment'
+import { eventMoment } from '@/lib/event-moment'
+import { eventTabs } from '@/lib/event-tabs'
 import { useEventClock } from '@/hooks/use-event-clock'
 import {
   Card,
@@ -93,7 +94,13 @@ function EventRoute() {
     queryKey: myTeamQueryKey(id),
     queryFn: () => myTeamQueryFn(id),
     enabled: Boolean(userId) && Boolean(isUserRegisteredQuery.data),
-    refetchInterval: 3000,
+    // Poll quickly only while GitHub is still applying a repository change.
+    refetchInterval: (query) =>
+      ['PROVISIONING', 'LOCKING', 'UNLOCKING'].includes(
+        query.state.data?.repositoryStatus ?? '',
+      )
+        ? 3000
+        : 30_000,
   })
 
   const isShowtime =
@@ -148,9 +155,12 @@ function EventRoute() {
   const event = eventQuery.data
   const isUserRegistered = isUserRegisteredQuery.data ?? false
   const myTeam = myTeamQuery.data ?? null
+  const viewerKnown =
+    isUserRegisteredQuery.isSuccess &&
+    (!isUserRegistered || myTeamQuery.isSuccess)
   const moment = eventMoment(
     event,
-    { isRegistered: isUserRegistered, team: myTeam },
+    viewerKnown ? { isRegistered: isUserRegistered, team: myTeam } : null,
     {
       now,
       tournamentStage: tournamentMatchesQuery.data?.length

@@ -1,19 +1,18 @@
 import { useEffect, useRef } from 'react'
 import Link from '@/components/app-link'
-import type { EventMoment, EventTab } from '@/lib/event-moment'
+import type { EventMoment } from '@/lib/event-moment'
+import type { EventTab } from '@/lib/event-tabs'
 import { lifecycleLabels } from '@/lib/event-lifecycle'
-import { formatCountdown } from '@/lib/event-moment'
+import { formatCountdown, momentRemainingMs } from '@/lib/event-moment'
 import { usePathname } from '@/lib/router-hooks'
 import { cn } from '@/lib/utils'
-import { toneBorder, toneDot, toneText } from './shared'
+import { toneStyles } from './shared'
 
 function PhasePill({
   moment,
   now,
 }: Readonly<{ moment: EventMoment; now: number }>) {
-  const remaining = moment.countdownTo
-    ? new Date(moment.countdownTo).getTime() - now
-    : null
+  const remaining = momentRemainingMs(moment, now)
   const detail =
     remaining !== null
       ? moment.phase === 'REGISTRATION'
@@ -28,7 +27,7 @@ function PhasePill({
       role="status"
       className={cn(
         'inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium',
-        toneBorder[moment.tone],
+        toneStyles[moment.tone].border,
       )}
     >
       <span className="relative flex size-2">
@@ -36,17 +35,20 @@ function PhasePill({
           <span
             className={cn(
               'absolute inline-flex size-full animate-ping rounded-full opacity-60',
-              toneDot[moment.tone],
+              toneStyles[moment.tone].dot,
             )}
           />
         )}
         <span
-          className={cn('relative size-2 rounded-full', toneDot[moment.tone])}
+          className={cn(
+            'relative size-2 rounded-full',
+            toneStyles[moment.tone].dot,
+          )}
         />
       </span>
       <span>{lifecycleLabels[moment.phase]}</span>
       {detail && (
-        <span className={cn('tabular-nums', toneText[moment.tone])}>
+        <span className={cn('tabular-nums', toneStyles[moment.tone].text)}>
           {detail}
         </span>
       )}

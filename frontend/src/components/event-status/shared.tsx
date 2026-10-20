@@ -8,39 +8,38 @@ import Link from '@/components/app-link'
 import { Button } from '@/components/ui/button'
 import type { MomentAction, MomentTone } from '@/lib/event-moment'
 
-export const toneText: Record<MomentTone, string> = {
-  neutral: 'text-muted-foreground',
-  active: 'text-emerald-600 dark:text-emerald-400',
-  warning: 'text-amber-600 dark:text-amber-400',
-  danger: 'text-destructive',
-}
-
-export const tonePanel: Record<MomentTone, string> = {
-  neutral: 'bg-muted/40',
-  active: 'bg-emerald-500/[0.07] dark:bg-emerald-500/10',
-  warning: 'bg-amber-500/[0.07] dark:bg-amber-500/10',
-  danger: 'bg-destructive/[0.07] dark:bg-destructive/10',
-}
-
-export const toneBorder: Record<MomentTone, string> = {
-  neutral: 'border-border',
-  active: 'border-emerald-500/25',
-  warning: 'border-amber-500/30',
-  danger: 'border-destructive/30',
-}
-
-export const toneRing: Record<MomentTone, string> = {
-  neutral: 'ring-muted-foreground/20',
-  active: 'ring-emerald-500/20',
-  warning: 'ring-amber-500/20',
-  danger: 'ring-destructive/20',
-}
-
-export const toneDot: Record<MomentTone, string> = {
-  neutral: 'bg-muted-foreground',
-  active: 'bg-emerald-500',
-  warning: 'bg-amber-500',
-  danger: 'bg-destructive',
+export const toneStyles: Record<
+  MomentTone,
+  { text: string; panel: string; border: string; ring: string; dot: string }
+> = {
+  neutral: {
+    text: 'text-muted-foreground',
+    panel: 'bg-muted/40',
+    border: 'border-border',
+    ring: 'ring-muted-foreground/20',
+    dot: 'bg-muted-foreground',
+  },
+  active: {
+    text: 'text-emerald-600 dark:text-emerald-400',
+    panel: 'bg-emerald-500/[0.07] dark:bg-emerald-500/10',
+    border: 'border-emerald-500/25',
+    ring: 'ring-emerald-500/20',
+    dot: 'bg-emerald-500',
+  },
+  warning: {
+    text: 'text-amber-600 dark:text-amber-400',
+    panel: 'bg-amber-500/[0.07] dark:bg-amber-500/10',
+    border: 'border-amber-500/30',
+    ring: 'ring-amber-500/20',
+    dot: 'bg-amber-500',
+  },
+  danger: {
+    text: 'text-destructive',
+    panel: 'bg-destructive/[0.07] dark:bg-destructive/10',
+    border: 'border-destructive/30',
+    ring: 'ring-destructive/20',
+    dot: 'bg-destructive',
+  },
 }
 
 /** "Oct 16, 09:00" in the viewer's time zone. */
