@@ -5,6 +5,8 @@ import { eventState } from '@/lib/event-lifecycle'
 type Phase = Event['state']
 
 export const DEADLINE_WARNING_MS = 3 * 60 * 60 * 1000
+/** The last stretch before repositories lock, shown in red. */
+export const DEADLINE_DANGER_MS = 15 * 60 * 1000
 
 export type MomentEvent = Pick<
   Event,
@@ -92,10 +94,17 @@ function momentFor(
     const coding = phase === 'PLAYING'
     const deadlineMs = new Date(event.submissionDeadline).getTime() - now
     const closingSoon = coding && deadlineMs <= DEADLINE_WARNING_MS
+    const lastMinutes = coding && deadlineMs <= DEADLINE_DANGER_MS
     const base: EventMoment = {
       phase,
-      tone: closingSoon ? 'warning' : 'active',
-      kicker: coding ? (closingSoon ? 'Final hours' : 'Coding') : 'Get ready',
+      tone: lastMinutes ? 'danger' : closingSoon ? 'warning' : 'active',
+      kicker: !coding
+        ? 'Get ready'
+        : lastMinutes
+          ? 'Final minutes'
+          : closingSoon
+            ? 'Final hours'
+            : 'Coding',
       headline: coding ? 'Coding ends in' : 'Coding starts in',
       description: coding
         ? 'Push to your repository and queue for matches. Repositories lock at the deadline.'

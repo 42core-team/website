@@ -67,6 +67,17 @@ describe('eventMoment', () => {
     expect(moment).toMatchObject({ tone: 'warning', kicker: 'Final hours' })
   })
 
+  it('turns red in the last 15 minutes before repositories lock', () => {
+    const moment = eventMoment(event, member('READY'), {
+      now: deadline - 15 * 60 * 1000,
+    })
+    expect(moment).toMatchObject({
+      tone: 'danger',
+      kicker: 'Final minutes',
+      headline: 'Coding ends in',
+    })
+  })
+
   it('lets a failed repository override the headline but keeps the deadline countdown', () => {
     const moment = eventMoment(event, member('FAILED'), { now: start + 1 })
     expect(moment).toMatchObject({

@@ -35,9 +35,12 @@ function StatusCapsule({
       : moment.phase === 'SHOWCASE'
         ? 'live'
         : null
-  // An alert replaces the phase name so it is readable without opening the popover.
-  const label =
-    moment.tone === 'danger' ? moment.headline : lifecycleLabels[moment.phase]
+  // An alert (its headline differs from the countdown) replaces the phase name
+  // so it is readable without opening the popover. The red final minutes of
+  // coding are not an alert and keep the phase name.
+  const isAlert =
+    moment.tone === 'danger' && moment.headline !== moment.countdownLabel
+  const label = isAlert ? moment.headline : lifecycleLabels[moment.phase]
   const pulsing =
     moment.phase === 'SHOWCASE' ||
     moment.tone === 'warning' ||
@@ -70,7 +73,7 @@ function StatusCapsule({
               'font-mono tabular-nums',
               tone.text,
               // The alert label is long; the popover still has the countdown.
-              moment.tone === 'danger' && 'hidden sm:inline',
+              isAlert && 'hidden sm:inline',
             )}
           >
             {detail}
