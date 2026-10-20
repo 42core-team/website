@@ -125,32 +125,44 @@ function TabLink({
   active: boolean
   className?: string
 }>) {
-  const link = (
-    <Link
-      href={tab.path}
-      aria-current={active ? 'page' : undefined}
-      aria-label={
-        tab.lockedReason ? `${tab.name} (${tab.lockedReason})` : undefined
-      }
-      className={cn(
-        'relative flex h-11 items-center gap-1.5 px-3 text-sm whitespace-nowrap transition-colors',
-        'after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full',
-        active
-          ? 'font-medium text-foreground after:bg-foreground'
-          : 'text-muted-foreground hover:text-foreground',
-        className,
-      )}
-    >
-      {tab.lockedReason && (
-        <Lock className="size-3.5 opacity-70" aria-hidden="true" />
-      )}
-      <span className="truncate">{label}</span>
-    </Link>
+  const tabClassName = cn(
+    'relative flex h-11 items-center gap-1.5 px-3 text-sm whitespace-nowrap transition-colors',
+    'after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full',
+    active
+      ? 'font-medium text-foreground after:bg-foreground'
+      : 'text-muted-foreground hover:text-foreground',
+    className,
   )
-  if (!tab.lockedReason) return link
+  if (!tab.lockedReason)
+    return (
+      <Link
+        href={tab.path}
+        aria-current={active ? 'page' : undefined}
+        className={tabClassName}
+      >
+        <span className="truncate">{label}</span>
+      </Link>
+    )
+  // Locked tabs are not links; they stay focusable so the reason is reachable.
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{link}</TooltipTrigger>
+      <TooltipTrigger asChild>
+        <span
+          role="link"
+          aria-disabled="true"
+          aria-current={active ? 'page' : undefined}
+          aria-label={`${tab.name} (${tab.lockedReason})`}
+          tabIndex={0}
+          className={cn(
+            tabClassName,
+            'cursor-not-allowed',
+            !active && 'opacity-60 hover:text-muted-foreground',
+          )}
+        >
+          <Lock className="size-3.5" aria-hidden="true" />
+          <span className="truncate">{label}</span>
+        </span>
+      </TooltipTrigger>
       <TooltipContent>{tab.lockedReason}</TooltipContent>
     </Tooltip>
   )
