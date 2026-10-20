@@ -143,7 +143,24 @@ function TabLink({
         <span className="truncate">{label}</span>
       </Link>
     )
-  // Locked tabs are not links; they stay focusable so the reason is reachable.
+  if (!tab.disabled)
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Link
+            href={tab.path}
+            aria-current={active ? 'page' : undefined}
+            aria-label={`${tab.name} (${tab.lockedReason})`}
+            className={tabClassName}
+          >
+            <Lock className="size-3.5 opacity-70" aria-hidden="true" />
+            <span className="truncate">{label}</span>
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent>{tab.lockedReason}</TooltipContent>
+      </Tooltip>
+    )
+  // Disabled tabs are not links; they stay focusable so the reason is reachable.
   return (
     <Tooltip>
       <TooltipTrigger asChild>

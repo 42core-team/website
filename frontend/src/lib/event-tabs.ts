@@ -1,8 +1,10 @@
 import type { Event } from '@/app/actions/event'
+import type { Team } from '@/app/actions/team'
 import {
   LIFECYCLE_ORDER,
   eventState,
   registrationOpen,
+  teamEditsOpen,
 } from '@/lib/event-lifecycle'
 import type { MomentEvent } from '@/lib/event-moment'
 
@@ -13,8 +15,10 @@ export interface EventTab {
   path: string
   /** Tabs are rendered in groups, separated by dividers. */
   group: EventTabGroup
-  /** Why the tab is locked in the current phase, e.g. "Opens 09:00". */
+  /** Why the tab shows a lock, e.g. "Opens 09:00" or "Closed". */
   lockedReason?: string
+  /** A locked tab stays clickable unless its page has nothing to show yet. */
+  disabled?: boolean
 }
 
 /**
@@ -25,7 +29,7 @@ export function eventTabs({
   event,
   now = Date.now(),
   isRegistered,
-  hasTeam,
+  team,
   isAdmin,
   supportsUnitBuilder,
   formatTime,
@@ -33,7 +37,7 @@ export function eventTabs({
   event: MomentEvent & Pick<Event, 'gamblingEnabled'>
   now?: number
   isRegistered: boolean
-  hasTeam: boolean
+  team: Pick<Team, 'locked' | 'repositoryStatus'> | null
   isAdmin: boolean
   supportsUnitBuilder: boolean
   formatTime: (iso: string) => string
@@ -41,12 +45,14 @@ export function eventTabs({
   const phase = eventState(event, now)
   const eventPath = `/events/${event.id}`
   const opensReason = `Opens ${formatTime(event.startDate)}`
-  const codingReason =
+  // Before coding the tools are locked and closed; afterwards they stay
+  // readable (history, results) but are marked as closed.
+  const codingLock: Pick<EventTab, 'lockedReason' | 'disabled'> =
     phase === 'REGISTRATION'
-      ? opensReason
+      ? { lockedReason: opensReason, disabled: true }
       : phase === 'PLAYING'
-        ? undefined
-        : 'Closed'
+        ? {}
+        : { lockedReason: 'Closed' }
 
   const tabs: EventTab[] = [
     { name: 'Info', path: eventPath, group: 'info' },
@@ -58,30 +64,37 @@ export function eventTabs({
       name: 'My Team',
       path: `${eventPath}/my-team`,
       group: 'team',
-      // Without a team there is nothing to see once team creation has closed.
-      lockedReason:
-        !hasTeam && !registrationOpen(event, now) ? 'Closed' : undefined,
+      ...(team
+        ? teamEditsOpen(event, team, now)
+          ? {}
+          : { lockedReason: 'Read only' }
+        : registrationOpen(event, now)
+          ? {}
+          : // Without a team there is nothing to see once team creation has closed.
+            { lockedReason: 'Closed', disabled: true }),
     })
     if (supportsUnitBuilder)
       tabs.push({
         name: 'Unit Builder',
         path: `${eventPath}/unit-builder`,
         group: 'team',
-        lockedReason: phase === 'REGISTRATION' ? opensReason : undefined,
+        ...(phase === 'REGISTRATION'
+          ? { lockedReason: opensReason, disabled: true }
+          : {}),
       })
-    if (hasTeam)
+    if (team)
       tabs.push({
         name: 'Match Making',
         path: `${eventPath}/queue`,
         group: 'team',
-        lockedReason: codingReason,
+        ...codingLock,
       })
-    if (hasTeam && event.gamblingEnabled)
+    if (team && event.gamblingEnabled)
       tabs.push({
         name: 'Gambling',
         path: `${eventPath}/gambling`,
         group: 'team',
-        lockedReason: codingReason,
+        ...codingLock,
       })
   }
 

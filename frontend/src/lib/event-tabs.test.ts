@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import type { Team } from '@/app/actions/team'
 import type { MomentEvent } from './event-moment'
 import { eventTabs } from './event-tabs'
+
+type TabTeam = Pick<Team, 'locked' | 'repositoryStatus'>
 
 const start = Date.parse('2026-10-16T09:00:00Z')
 const deadline = Date.parse('2026-10-17T18:00:00Z')
@@ -21,7 +24,7 @@ describe('eventTabs', () => {
   const base = {
     event,
     isRegistered: true,
-    hasTeam: true,
+    team: { locked: false, repositoryStatus: 'READY' } as TabTeam | null,
     isAdmin: false,
     supportsUnitBuilder: false,
     formatTime: () => '09:00',
@@ -37,30 +40,47 @@ describe('eventTabs', () => {
       'Match Making',
       'Gambling',
     ])
-    expect(tabs.find((t) => t.name === 'Match Making')?.lockedReason).toBe(
-      'Opens 09:00',
-    )
+    expect(tabs.find((t) => t.name === 'Match Making')).toMatchObject({
+      lockedReason: 'Opens 09:00',
+      disabled: true,
+    })
   })
 
-  it('unlocks during coding and marks tools closed afterwards', () => {
+  it('unlocks during coding and keeps closed tools readable afterwards', () => {
+    const tab = (now: number, name: string) =>
+      eventTabs({ ...base, now }).find((t) => t.name === name)
+    expect(tab(start + 1, 'Match Making')?.lockedReason).toBeUndefined()
+    for (const name of ['Match Making', 'Gambling'])
+      expect(tab(deadline, name)).toEqual(
+        expect.objectContaining({ lockedReason: 'Closed' }),
+      )
+    expect(tab(deadline, 'Gambling')?.disabled).toBeUndefined()
+  })
+
+  it('marks My Team read only once the team can no longer change', () => {
+    const myTeam = (now: number, team: TabTeam | null) =>
+      eventTabs({ ...base, team, now }).find((t) => t.name === 'My Team')
+    expect(myTeam(start + 1, base.team)?.lockedReason).toBeUndefined()
+    expect(myTeam(deadline, base.team)).toMatchObject({
+      lockedReason: 'Read only',
+    })
+    expect(myTeam(deadline, base.team)?.disabled).toBeUndefined()
     expect(
-      eventTabs({ ...base, now: start + 1 }).find(
-        (t) => t.name === 'Match Making',
+      myTeam(start + 1, { locked: true, repositoryStatus: 'LOCKED' }),
+    ).toMatchObject({ lockedReason: 'Read only' })
+  })
+
+  it('disables My Team for teamless members once team creation has closed', () => {
+    expect(
+      eventTabs({ ...base, team: null, now: start + 1 }).find(
+        (t) => t.name === 'My Team',
       )?.lockedReason,
     ).toBeUndefined()
     expect(
-      eventTabs({ ...base, now: deadline }).find((t) => t.name === 'Gambling')
-        ?.lockedReason,
-    ).toBe('Closed')
-  })
-
-  it('locks My Team for teamless members once team creation has closed', () => {
-    const myTeam = (now: number, hasTeam: boolean) =>
-      eventTabs({ ...base, hasTeam, now }).find((t) => t.name === 'My Team')
-        ?.lockedReason
-    expect(myTeam(start + 1, false)).toBeUndefined()
-    expect(myTeam(deadline, false)).toBe('Closed')
-    expect(myTeam(deadline, true)).toBeUndefined()
+      eventTabs({ ...base, team: null, now: deadline }).find(
+        (t) => t.name === 'My Team',
+      ),
+    ).toMatchObject({ lockedReason: 'Closed', disabled: true })
   })
 
   it('groups tabs in journey order with admin last', () => {

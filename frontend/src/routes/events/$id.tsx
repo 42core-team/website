@@ -153,7 +153,7 @@ function EventRoute() {
     event,
     now,
     isRegistered: isUserRegistered,
-    hasTeam: Boolean(myTeam),
+    team: myTeam,
     isAdmin: isEventAdminQuery.data ?? false,
     supportsUnitBuilder: readComponentsConfig(event.gameConfig) !== null,
     formatTime: (iso) => formatEventTime(iso, now),
