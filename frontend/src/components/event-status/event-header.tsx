@@ -1,5 +1,5 @@
 import { ChevronDown, Lock } from 'lucide-react'
-import { Fragment, useEffect, useRef } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Link from '@/components/app-link'
 import {
   Popover,
@@ -187,6 +187,57 @@ function TabLink({
   )
 }
 
+const GAP_PX = 12
+
+/**
+ * The bar is one row (name | tabs | status) only when every tab fits next to
+ * the name and the status capsule; otherwise the tabs move to their own row,
+ * so a long status never cuts off a tab.
+ */
+function useSingleRowFit() {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const nameRef = useRef<HTMLDivElement>(null)
+  const tabsRef = useRef<HTMLUListElement>(null)
+  const chipRef = useRef<HTMLDivElement>(null)
+  const [fits, setFits] = useState(true)
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const container = containerRef.current
+      // The label's natural width, even while the name column is stretched.
+      const name = nameRef.current?.querySelector('.truncate')
+      const tabs = tabsRef.current
+      const chip = chipRef.current?.firstElementChild
+      if (!container || !name || !tabs || !chip) return
+      const style = getComputedStyle(container)
+      const inner =
+        container.clientWidth -
+        Number.parseFloat(style.paddingLeft) -
+        Number.parseFloat(style.paddingRight)
+      // Name column with its divider (pr-3 + border), then two column gaps.
+      const needed =
+        name.scrollWidth +
+        GAP_PX +
+        1 +
+        tabs.scrollWidth +
+        chip.getBoundingClientRect().width +
+        2 * GAP_PX
+      setFits(window.innerWidth >= 1024 && needed <= inner)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    for (const element of [
+      containerRef.current,
+      tabsRef.current,
+      chipRef.current?.firstElementChild,
+    ])
+      if (element) observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
+  return { containerRef, nameRef, tabsRef, chipRef, fits }
+}
+
 /**
  * Second tier of the site header on event pages: the event tabs, led by the
  * event name as the Info tab, and the status capsule on the right.
@@ -206,6 +257,7 @@ export default function EventHeader({
 }>) {
   const pathname = usePathname()
   const navRef = useRef<HTMLElement>(null)
+  const singleRow = useSingleRowFit()
   const tone = toneStyles[moment.tone]
   const needsAttention = moment.tone === 'warning' || moment.tone === 'danger'
   const [infoTab, ...otherTabs] = tabs
@@ -231,17 +283,34 @@ export default function EventHeader({
         needsAttention && cn(tone.panel, tone.border),
       )}
     >
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 lg:grid-cols-[minmax(0,max-content)_minmax(0,1fr)_auto]">
-        <div className="flex min-w-0 items-center lg:border-r lg:pr-3">
+      <div
+        ref={singleRow.containerRef}
+        className={cn(
+          'mx-auto grid w-full max-w-7xl items-center gap-x-3 px-4',
+          singleRow.fits
+            ? 'grid-cols-[minmax(0,max-content)_minmax(0,1fr)_auto]'
+            : 'grid-cols-[minmax(0,1fr)_auto]',
+        )}
+      >
+        <div
+          ref={singleRow.nameRef}
+          className={cn(
+            'flex min-w-0 items-center',
+            singleRow.fits && 'border-r pr-3',
+          )}
+        >
           {infoLink}
         </div>
         <nav
           ref={navRef}
           aria-label="Event navigation"
-          className="order-last col-span-2 -mx-4 min-w-0 overflow-x-auto px-4 [scrollbar-width:none] lg:order-none lg:col-span-1 lg:mx-0 lg:px-0"
+          className={cn(
+            'min-w-0 overflow-x-auto [scrollbar-width:none]',
+            !singleRow.fits && 'order-last col-span-2 -mx-4 px-4',
+          )}
         >
           <TooltipProvider delayDuration={0}>
-            <ul className="flex items-center">
+            <ul ref={singleRow.tabsRef} className="flex w-max items-center">
               {otherTabs.map((tab, index) => (
                 <Fragment key={tab.path}>
                   {index > 0 && tab.group !== otherTabs[index - 1].group && (
@@ -261,7 +330,7 @@ export default function EventHeader({
             </ul>
           </TooltipProvider>
         </nav>
-        <div className="flex justify-end">
+        <div ref={singleRow.chipRef} className="flex justify-end">
           <StatusCapsule eventId={eventId} moment={moment} now={now} />
         </div>
       </div>
