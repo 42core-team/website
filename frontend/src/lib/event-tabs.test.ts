@@ -31,19 +31,43 @@ describe('eventTabs', () => {
   }
   const names = (tabs: { name: string }[]) => tabs.map((t) => t.name)
 
-  it('keeps participant tools visible but locked before coding', () => {
+  it('shows every tab but Dashboard and locks tools before coding', () => {
     const tabs = eventTabs({ ...base, now: start - 1 })
     expect(names(tabs)).toEqual([
       'Info',
       'Teams',
       'My Team',
+      'Unit Builder',
       'Match Making',
       'Gambling',
+      'Group Phase',
+      'Tournament Tree',
     ])
     expect(tabs.find((t) => t.name === 'Match Making')).toMatchObject({
       lockedReason: 'Opens 09:00',
       disabled: true,
     })
+    expect(tabs.find((t) => t.name === 'Unit Builder')).toMatchObject({
+      lockedReason: 'Not used in this event',
+      disabled: true,
+    })
+  })
+
+  it('locks team tools for viewers without making them clickable', () => {
+    const tab = (isRegistered: boolean, name: string) =>
+      eventTabs({ ...base, isRegistered, team: null, now: start + 1 }).find(
+        (t) => t.name === name,
+      )
+    expect(tab(true, 'Match Making')).toMatchObject({
+      lockedReason: 'Join a team first',
+      disabled: true,
+    })
+    expect(tab(false, 'Gambling')).toMatchObject({
+      lockedReason: 'Join the event first',
+      disabled: true,
+    })
+    expect(tab(false, 'My Team')).toMatchObject({ disabled: true })
+    expect(tab(true, 'My Team')?.lockedReason).toBeUndefined()
   })
 
   it('unlocks during coding and keeps closed tools readable afterwards', () => {
@@ -103,17 +127,14 @@ describe('eventTabs', () => {
     ])
   })
 
-  it('shows tournament tabs from code freeze on, and always to admins', () => {
-    expect(names(eventTabs({ ...base, now: start + 1 }))).not.toContain(
-      'Group Phase',
-    )
-    expect(names(eventTabs({ ...base, now: deadline }))).toContain(
-      'Tournament Tree',
-    )
-    expect(
-      names(eventTabs({ ...base, isAdmin: true, now: start + 1 })),
-    ).toEqual(
-      expect.arrayContaining(['Group Phase', 'Tournament Tree', 'Dashboard']),
-    )
+  it('opens tournament tabs from code freeze on, and always to admins', () => {
+    const groups = (now: number, isAdmin = false) =>
+      eventTabs({ ...base, isAdmin, now }).find((t) => t.name === 'Group Phase')
+    expect(groups(start + 1)).toMatchObject({
+      lockedReason: 'Opens 09:00',
+      disabled: true,
+    })
+    expect(groups(deadline)?.lockedReason).toBeUndefined()
+    expect(groups(start + 1, true)?.lockedReason).toBeUndefined()
   })
 })

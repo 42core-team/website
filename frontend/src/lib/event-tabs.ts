@@ -21,9 +21,13 @@ export interface EventTab {
   disabled?: boolean
 }
 
+type Lock = Pick<EventTab, 'lockedReason' | 'disabled'>
+
 /**
  * Tabs in journey order: Info, Teams, your team's work, the tournament, then
- * admin. The header shows the event name as the label of the Info tab.
+ * admin. Only Dashboard is ever hidden; every other tab is shown and locked
+ * when it does not apply yet or not to this viewer. The header shows the
+ * event name as the label of the Info tab.
  */
 export function eventTabs({
   event,
@@ -45,72 +49,82 @@ export function eventTabs({
   const phase = eventState(event, now)
   const eventPath = `/events/${event.id}`
   const opensReason = `Opens ${formatTime(event.startDate)}`
+  const closed = { lockedReason: 'Closed' }
+  const lockedOut = (lockedReason: string) => ({ lockedReason, disabled: true })
+  // Viewers see every tool, locked; only participants can open team tools.
+  const viewerLock = lockedOut(
+    isRegistered ? 'Join a team first' : 'Join the event first',
+  )
   // Before coding the tools are locked and closed; afterwards they stay
   // readable (history, results) but are marked as closed.
-  const codingLock: Pick<EventTab, 'lockedReason' | 'disabled'> =
+  const codingLock: Lock =
     phase === 'REGISTRATION'
-      ? { lockedReason: opensReason, disabled: true }
+      ? lockedOut(opensReason)
       : phase === 'PLAYING'
         ? {}
-        : { lockedReason: 'Closed' }
+        : closed
+  const tournamentOpen =
+    LIFECYCLE_ORDER.indexOf(phase) >=
+    LIFECYCLE_ORDER.indexOf('SUBMISSIONS_CLOSED')
+
+  const myTeamLock: Lock = team
+    ? teamEditsOpen(event, team, now)
+      ? {}
+      : { lockedReason: 'Read only' }
+    : !isRegistered
+      ? lockedOut('Join the event first')
+      : registrationOpen(event, now)
+        ? {}
+        : // Without a team there is nothing to see once team creation has closed.
+          lockedOut('Closed')
 
   const tabs: EventTab[] = [
     { name: 'Info', path: eventPath, group: 'info' },
     { name: 'Teams', path: `${eventPath}/teams`, group: 'teams' },
-  ]
-
-  if (isRegistered) {
-    tabs.push({
+    {
       name: 'My Team',
       path: `${eventPath}/my-team`,
       group: 'team',
-      ...(team
-        ? teamEditsOpen(event, team, now)
-          ? {}
-          : { lockedReason: 'Read only' }
-        : registrationOpen(event, now)
-          ? {}
-          : // Without a team there is nothing to see once team creation has closed.
-            { lockedReason: 'Closed', disabled: true }),
-    })
-    if (supportsUnitBuilder)
-      tabs.push({
-        name: 'Unit Builder',
-        path: `${eventPath}/unit-builder`,
-        group: 'team',
-        ...(phase === 'REGISTRATION'
-          ? { lockedReason: opensReason, disabled: true }
-          : {}),
-      })
-    if (team)
-      tabs.push({
-        name: 'Match Making',
-        path: `${eventPath}/queue`,
-        group: 'team',
-        ...codingLock,
-      })
-    if (team && event.gamblingEnabled)
-      tabs.push({
-        name: 'Gambling',
-        path: `${eventPath}/gambling`,
-        group: 'team',
-        ...codingLock,
-      })
-  }
-
-  if (
-    isAdmin ||
-    LIFECYCLE_ORDER.indexOf(phase) >=
-      LIFECYCLE_ORDER.indexOf('SUBMISSIONS_CLOSED')
-  )
-    tabs.push(
-      { name: 'Group Phase', path: `${eventPath}/groups`, group: 'tournament' },
-      {
-        name: 'Tournament Tree',
-        path: `${eventPath}/bracket`,
-        group: 'tournament',
-      },
-    )
+      ...myTeamLock,
+    },
+    {
+      name: 'Unit Builder',
+      path: `${eventPath}/unit-builder`,
+      group: 'team',
+      ...(!supportsUnitBuilder
+        ? lockedOut('Not used in this event')
+        : !isRegistered
+          ? viewerLock
+          : phase === 'REGISTRATION'
+            ? lockedOut(opensReason)
+            : {}),
+    },
+    {
+      name: 'Match Making',
+      path: `${eventPath}/queue`,
+      group: 'team',
+      ...(team ? codingLock : viewerLock),
+    },
+    {
+      name: 'Gambling',
+      path: `${eventPath}/gambling`,
+      group: 'team',
+      ...(!event.gamblingEnabled
+        ? lockedOut('Not enabled')
+        : team
+          ? codingLock
+          : viewerLock),
+    },
+    ...(['Group Phase', 'Tournament Tree'] as const).map((name): EventTab => ({
+      name,
+      path: `${eventPath}/${name === 'Group Phase' ? 'groups' : 'bracket'}`,
+      group: 'tournament',
+      // Admins prepare the tournament before it is public.
+      ...(tournamentOpen || isAdmin
+        ? {}
+        : lockedOut(`Opens ${formatTime(event.submissionDeadline)}`)),
+    })),
+  ]
 
   if (isAdmin)
     tabs.push({
