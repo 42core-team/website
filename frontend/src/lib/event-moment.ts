@@ -44,8 +44,6 @@ export interface EventMoment {
   countdownTo: string | null
   /** What the countdown means; differs from the headline when an alert replaces it. */
   countdownLabel: string | null
-  /** Short right-aligned status, e.g. "Waiting for coding to begin". */
-  status: string | null
   actions: MomentAction[]
 }
 
@@ -112,7 +110,6 @@ function momentFor(
         : 'Form your team now. Repositories are created when coding starts.',
       countdownTo: coding ? event.submissionDeadline : event.startDate,
       countdownLabel: coding ? 'Coding ends in' : 'Coding starts in',
-      status: coding ? null : 'Waiting for coding to begin',
       actions: [],
     }
 
@@ -171,7 +168,6 @@ function momentFor(
         'Repositories are locked and the tournament is being prepared. Showtime starts when organizers are ready.',
       countdownTo: null,
       countdownLabel: null,
-      status: null,
       // Tease the Showtime stream so people can open it before it goes live.
       actions: showtimeStream
         ? [{ kind: 'link', label: 'Showtime stream', href: showtimeStream }]
@@ -192,7 +188,6 @@ function momentFor(
         'Organizers are presenting tournament games and revealing results.',
       countdownTo: null,
       countdownLabel: null,
-      status: null,
       actions,
     }
   }
@@ -206,7 +201,6 @@ function momentFor(
       'Thanks for taking part. Matches and results remain available.',
     countdownTo: null,
     countdownLabel: null,
-    status: null,
     actions: [],
   }
 }

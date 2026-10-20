@@ -104,7 +104,6 @@ function StatusCapsule({
           )}
         </div>
         <p className="text-sm text-muted-foreground">{moment.description}</p>
-        {moment.status && <p className="text-sm">{moment.status}</p>}
         <MomentActions eventId={eventId} actions={moment.actions} size="sm" />
       </PopoverContent>
     </Popover>

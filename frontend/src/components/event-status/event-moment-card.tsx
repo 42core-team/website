@@ -91,9 +91,6 @@ export default function EventMomentCard({
           <PanelMeta event={event} moment={moment} now={now} />
         </div>
         <div className="flex flex-wrap items-center gap-3 sm:justify-end">
-          {moment.status && (
-            <p className="text-sm font-medium">{moment.status}</p>
-          )}
           <MomentActions eventId={event.id} actions={moment.actions} />
         </div>
       </div>
