@@ -7,7 +7,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import type { AxiosError } from 'axios'
 import { motion } from 'framer-motion'
-import { CircleDollarSign, LogIn, Search, Swords } from 'lucide-react'
+import { CircleDollarSign, Lock, LogIn, Search, Swords } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -157,10 +158,14 @@ function QueueRoute() {
   return (
     <main className="container mx-auto max-w-4xl space-y-6 px-4 py-8">
       {!playable && (
-        <p role="status">
-          Match making is available during Coding. Match history remains
-          available.
-        </p>
+        <Alert role="status">
+          <Lock className="size-4" aria-hidden="true" />
+          <AlertTitle>Match making closed</AlertTitle>
+          <AlertDescription>
+            Match making is available during Coding. Match history remains
+            available.
+          </AlertDescription>
+        </Alert>
       )}
       <Card>
         <CardContent className="flex flex-col gap-5 p-6">

@@ -1,11 +1,18 @@
 import type { Team, TeamMember } from '@/app/actions/team'
 
 import { DialogTrigger } from '@radix-ui/react-dialog'
-import { ExternalLink, Lock, Plus } from 'lucide-react'
+import {
+  CircleAlert,
+  ExternalLink,
+  Lock,
+  Plus,
+  TriangleAlert,
+} from 'lucide-react'
 import { useParams } from '@/lib/router-hooks'
 import { useState } from 'react'
 
 import { GithubIcon } from '@/components/icons'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -101,13 +108,24 @@ export function TeamInfoSection({
       />
       <CardContent className="flex flex-col gap-2">
         {myTeam.repositoryStatus === 'FAILED' && (
-          <p role="alert" className="text-destructive">
-            {myTeam.repositoryError ?? 'Repository setup failed.'} Contact an
-            event admin to retry.
-          </p>
+          <Alert variant="destructive">
+            <CircleAlert className="size-4" aria-hidden="true" />
+            <AlertTitle>Repository setup failed</AlertTitle>
+            <AlertDescription>
+              {myTeam.repositoryError ??
+                'GitHub did not confirm your repository.'}{' '}
+              Ask an event admin to fix it.
+            </AlertDescription>
+          </Alert>
         )}
         {myTeam.tournamentExcluded && (
-          <p>This team is excluded from the tournament.</p>
+          <Alert variant="warning" role="status">
+            <TriangleAlert className="size-4" aria-hidden="true" />
+            <AlertTitle>Excluded from the tournament</AlertTitle>
+            <AlertDescription>
+              This team will not play in the tournament.
+            </AlertDescription>
+          </Alert>
         )}
         <div className="mb-6">
           <div className="space-y-2">

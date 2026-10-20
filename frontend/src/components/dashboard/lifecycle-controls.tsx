@@ -10,6 +10,8 @@ import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { isAxiosError } from 'axios'
 import { toast } from 'sonner'
+import { CircleAlert } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -141,7 +143,13 @@ export function LifecycleControls({
         </div>
         {children}
         {teams.isError && (
-          <p role="alert">Could not load repository progress.</p>
+          <Alert variant="destructive">
+            <CircleAlert className="size-4" aria-hidden="true" />
+            <AlertTitle>Couldn't load repository progress</AlertTitle>
+            <AlertDescription>
+              The list refreshes automatically; reload the page if this stays.
+            </AlertDescription>
+          </Alert>
         )}
         <ul className="space-y-3">
           {teams.data?.map((team) => (

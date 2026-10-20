@@ -18,6 +18,7 @@ import {
   GamblingSidebar,
   getGamblingErrorMessage,
 } from '@/components/gambling'
+import { Lock } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Spinner } from '@/components/ui/spinner'
 
@@ -107,9 +108,13 @@ function GamblingRoute() {
   return (
     <main className="container mx-auto max-w-6xl space-y-6 px-4 py-8">
       {!canBet && (
-        <p role="status">
-          Betting is closed. Existing bets and results remain available.
-        </p>
+        <Alert role="status">
+          <Lock className="size-4" aria-hidden="true" />
+          <AlertTitle>Betting closed</AlertTitle>
+          <AlertDescription>
+            Existing bets and results remain available.
+          </AlertDescription>
+        </Alert>
       )}
       <GamblingHeader
         round={snapshot.round}
