@@ -8,6 +8,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { format } from 'date-fns'
 import {
   Loader2,
+  Lock,
   Maximize2,
   Minimize2,
   Save,
@@ -45,6 +46,7 @@ import { searchUsers } from '@/app/actions/user'
 import { StarterTemplatesManagement } from '@/components/dashboard/starter-templates-management'
 import { MatchesAnalytics } from '@/components/dashboard/matches-analytics'
 import { WhitelistManagement } from '@/components/dashboard/whitelist-management'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -78,7 +80,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useTabParam } from '@/hooks/useTabParam'
 import { useEventClock } from '@/hooks/use-event-clock'
 import { useSession } from '@/lib/auth'
-import { eventState } from '@/lib/event-lifecycle'
+import { eventState, registrationOpen } from '@/lib/event-lifecycle'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/events/$id/dashboard')({
@@ -140,6 +142,7 @@ function DashboardRoute() {
   const session = useSession()
   const queryClient = useQueryClient()
   const { currentTab, onTabChange } = useTabParam('overview')
+  const now = useEventClock()
 
   const [userSearchQuery, setUserSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([])
@@ -439,6 +442,8 @@ function DashboardRoute() {
             isServerConfigExpanded={isServerConfigExpanded}
             setIsServerConfigExpanded={setIsServerConfigExpanded}
             eventId={id}
+            playClosed={!registrationOpen(event, now)}
+            onOpenOperation={() => onTabChange('operation')}
           />
         </TabsContent>
 
@@ -716,6 +721,8 @@ function SettingsTab({
   isServerConfigExpanded,
   setIsServerConfigExpanded,
   eventId,
+  playClosed,
+  onOpenOperation,
 }: {
   pendingSettings: PendingEventSettings
   updatePendingSetting: <TKey extends keyof PendingEventSettings>(
@@ -727,7 +734,23 @@ function SettingsTab({
   isServerConfigExpanded: boolean
   setIsServerConfigExpanded: (value: boolean) => void
   eventId: string
+  /** After coding, the deadline and playing capabilities only change by reopening play. */
+  playClosed: boolean
+  onOpenOperation: () => void
 }) {
+  const reopenNotice = playClosed && (
+    <Alert role="status" className="md:col-span-2 lg:col-span-4">
+      <Lock className="size-4" aria-hidden="true" />
+      <AlertTitle>Coding is closed</AlertTitle>
+      <AlertDescription className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        To set a new submission deadline or turn team creation, match making or
+        gambling back on, reopen play with a new deadline.
+        <Button size="sm" variant="outline" onClick={onOpenOperation}>
+          Reopen play in Operation
+        </Button>
+      </AlertDescription>
+    </Alert>
+  )
   return (
     <>
       <Card>
@@ -760,6 +783,7 @@ function SettingsTab({
           </div>
 
           <div className="grid grid-cols-1 gap-6 border-t pt-4 md:grid-cols-2">
+            {reopenNotice}
             <DashboardInput
               label="Start Date"
               type="datetime-local"
@@ -770,6 +794,7 @@ function SettingsTab({
               label="Submission Deadline"
               type="datetime-local"
               value={formatDateTimeInput(pendingSettings.submissionDeadline)}
+              disabled={playClosed}
               onChange={(value) =>
                 updatePendingSetting('submissionDeadline', value)
               }
@@ -872,11 +897,13 @@ function SettingsTab({
 
           <div className="space-y-4 border-t pt-4">
             <h3 className="text-sm font-semibold">Toggles</h3>
+            {reopenNotice}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               <SettingSwitch
                 id="canCreateTeam"
                 label="Allow Team Creation"
                 checked={pendingSettings.canCreateTeam || false}
+                disabled={playClosed && !pendingSettings.canCreateTeam}
                 onCheckedChange={(value) =>
                   updatePendingSetting('canCreateTeam', value)
                 }
@@ -885,6 +912,7 @@ function SettingsTab({
                 id="processQueue"
                 label="Enable Match Making"
                 checked={pendingSettings.processQueue || false}
+                disabled={playClosed && !pendingSettings.processQueue}
                 onCheckedChange={(value) =>
                   updatePendingSetting('processQueue', value)
                 }
@@ -893,6 +921,7 @@ function SettingsTab({
                 id="gamblingEnabled"
                 label="Enable Gambling"
                 checked={pendingSettings.gamblingEnabled ?? true}
+                disabled={playClosed && !pendingSettings.gamblingEnabled}
                 onCheckedChange={(value) =>
                   updatePendingSetting('gamblingEnabled', value)
                 }
@@ -1445,11 +1474,13 @@ function SettingSwitch({
   id,
   label,
   checked,
+  disabled,
   onCheckedChange,
 }: {
   id: string
   label: string
   checked: boolean
+  disabled?: boolean
   onCheckedChange: (checked: boolean) => void
 }) {
   return (
@@ -1457,7 +1488,12 @@ function SettingSwitch({
       <Label className="cursor-pointer" htmlFor={id}>
         {label}
       </Label>
-      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+      <Switch
+        id={id}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onCheckedChange}
+      />
     </div>
   )
 }
@@ -1470,6 +1506,7 @@ function DashboardInput({
   placeholder,
   min,
   max,
+  disabled,
 }: {
   label: string
   value: string | number
@@ -1478,6 +1515,7 @@ function DashboardInput({
   placeholder?: string
   min?: number
   max?: number
+  disabled?: boolean
 }) {
   return (
     <div className="space-y-2">
@@ -1488,6 +1526,7 @@ function DashboardInput({
         placeholder={placeholder}
         min={min}
         max={max}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
       />
     </div>
