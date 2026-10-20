@@ -196,28 +196,31 @@ export default function EventTimelineCard({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 p-6 sm:flex-row sm:items-end sm:justify-between sm:px-8">
-        {moment.phase === 'COMPLETED' && event.completedAt ? (
-          <div>
-            <p className="text-sm text-muted-foreground">Event finished</p>
-            <p className="font-medium">
-              {formatEventDateTime(event.completedAt)}
-            </p>
-          </div>
-        ) : (
-          <>
+      {/* Once completed, the estimate is meaningless; show the finish time if known. */}
+      {(moment.phase !== 'COMPLETED' || event.completedAt) && (
+        <div className="flex flex-col gap-2 p-6 sm:flex-row sm:items-end sm:justify-between sm:px-8">
+          {event.completedAt ? (
             <div>
-              <p className="text-sm text-muted-foreground">Scheduled end</p>
+              <p className="text-sm text-muted-foreground">Event finished</p>
               <p className="font-medium">
-                {formatEventDateTime(event.scheduledEndDate)}
+                {formatEventDateTime(event.completedAt)}
               </p>
             </div>
-            <p className="max-w-xs text-sm text-muted-foreground sm:text-right">
-              Estimate · completion follows the final reveal
-            </p>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <div>
+                <p className="text-sm text-muted-foreground">Scheduled end</p>
+                <p className="font-medium">
+                  {formatEventDateTime(event.scheduledEndDate)}
+                </p>
+              </div>
+              <p className="max-w-xs text-sm text-muted-foreground sm:text-right">
+                Estimate · completion follows the final reveal
+              </p>
+            </>
+          )}
+        </div>
+      )}
     </section>
   )
 }

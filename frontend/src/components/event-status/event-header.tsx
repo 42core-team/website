@@ -38,10 +38,6 @@ function StatusCapsule({
   // An alert replaces the phase name so it is readable without opening the popover.
   const label =
     moment.tone === 'danger' ? moment.headline : lifecycleLabels[moment.phase]
-  // Pages are reached through the tabs; only joining and external links stay.
-  const popoverActions = moment.actions.filter(
-    (action) => action.kind !== 'link' || action.external,
-  )
   const pulsing =
     moment.phase === 'SHOWCASE' ||
     moment.tone === 'warning' ||
@@ -69,7 +65,14 @@ function StatusCapsule({
         </span>
         <span>{label}</span>
         {detail && (
-          <span className={cn('font-mono tabular-nums', tone.text)}>
+          <span
+            className={cn(
+              'font-mono tabular-nums',
+              tone.text,
+              // The alert label is long; the popover still has the countdown.
+              moment.tone === 'danger' && 'hidden sm:inline',
+            )}
+          >
             {detail}
           </span>
         )}
@@ -99,7 +102,7 @@ function StatusCapsule({
         </div>
         <p className="text-sm text-muted-foreground">{moment.description}</p>
         {moment.status && <p className="text-sm">{moment.status}</p>}
-        <MomentActions eventId={eventId} actions={popoverActions} size="sm" />
+        <MomentActions eventId={eventId} actions={moment.actions} size="sm" />
       </PopoverContent>
     </Popover>
   )
@@ -197,14 +200,14 @@ export default function EventHeader({
         needsAttention && cn(tone.panel, tone.border),
       )}
     >
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 md:grid-cols-[minmax(0,max-content)_minmax(0,1fr)_auto]">
-        <div className="flex min-w-0 items-center md:border-r md:pr-3">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 lg:grid-cols-[minmax(0,max-content)_minmax(0,1fr)_auto]">
+        <div className="flex min-w-0 items-center lg:border-r lg:pr-3">
           {infoLink}
         </div>
         <nav
           ref={navRef}
           aria-label="Event navigation"
-          className="order-last col-span-2 -mx-4 min-w-0 overflow-x-auto px-4 [scrollbar-width:none] md:order-none md:col-span-1 md:mx-0 md:px-0"
+          className="order-last col-span-2 -mx-4 min-w-0 overflow-x-auto px-4 [scrollbar-width:none] lg:order-none lg:col-span-1 lg:mx-0 lg:px-0"
         >
           <TooltipProvider delayDuration={0}>
             <ul className="flex items-center">

@@ -44,19 +44,19 @@ describe('eventMoment', () => {
     )
   })
 
-  it('sends registered viewers without a team to My Team', () => {
+  it('tells registered viewers without a team to form one', () => {
     const moment = eventMoment(event, noTeam, { now: start + 1 })
     expect(moment.description).toMatch(/create a team or join one/)
-    expect(labels(moment.actions)).toEqual(['My team'])
+    expect(moment.actions).toEqual([])
   })
 
-  it('points teams to match making during coding', () => {
+  it('counts down coding without in-app links, which the tabs cover', () => {
     const moment = eventMoment(event, member('READY'), { now: start + 1 })
     expect(moment).toMatchObject({
       headline: 'Coding ends in',
       tone: 'active',
+      actions: [],
     })
-    expect(labels(moment.actions)).toEqual(['Match Making'])
   })
 
   it('warns in the final three hours of coding', () => {
@@ -83,7 +83,7 @@ describe('eventMoment', () => {
     })
   })
 
-  it('points Showtime to the stream and the active tournament view', () => {
+  it('offers the stream during Showtime', () => {
     const live = {
       ...event,
       state: 'SHOWCASE' as const,
@@ -91,16 +91,10 @@ describe('eventMoment', () => {
     }
     expect(labels(eventMoment(live, spectator).actions)).toEqual([
       'Watch stream',
-      'Group Phase',
     ])
     expect(
-      labels(
-        eventMoment(live, spectator, { tournamentStage: 'bracket' }).actions,
-      ),
-    ).toEqual(['Watch stream', 'Tournament Tree'])
-    expect(
-      labels(eventMoment({ ...live, streamUrl: null }, spectator).actions),
-    ).toEqual(['Group Phase'])
+      eventMoment({ ...live, streamUrl: null }, spectator).actions,
+    ).toEqual([])
   })
 
   it('has no call to action once completed', () => {

@@ -9,14 +9,12 @@ import {
   isUserRegisteredForEvent,
 } from '@/app/actions/event'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
-import { getTournamentMatches } from '@/app/actions/tournament'
 import GithubLoginButton from '@/components/github'
 import EventHeader from '@/components/event-status/event-header'
 import EventTimelineCard from '@/components/event-status/event-timeline-card'
 import { formatEventTime } from '@/components/event-status/shared'
 import { MarkdownContent } from '@/components/MarkdownContent'
 import { readComponentsConfig } from '@/components/unit-builder/config'
-import { eventState } from '@/lib/event-lifecycle'
 import { eventMoment } from '@/lib/event-moment'
 import { eventTabs } from '@/lib/event-tabs'
 import { useEventClock } from '@/hooks/use-event-clock'
@@ -102,17 +100,6 @@ function EventRoute() {
         : 30_000,
   })
 
-  const isShowtime =
-    eventQuery.data !== undefined &&
-    eventState(eventQuery.data, now) === 'SHOWCASE'
-  // Elimination matches exist once the tournament tree has started.
-  const tournamentMatchesQuery = useQuery({
-    queryKey: ['event', id, 'tournament-matches', { adminReveal: false }],
-    queryFn: () => getTournamentMatches(id, false),
-    enabled: isShowtime,
-    refetchInterval: 30_000,
-  })
-
   if (status === 'loading' || (userId && eventQuery.isPending)) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center">
@@ -160,12 +147,7 @@ function EventRoute() {
   const moment = eventMoment(
     event,
     viewerKnown ? { isRegistered: isUserRegistered, team: myTeam } : null,
-    {
-      now,
-      tournamentStage: tournamentMatchesQuery.data?.length
-        ? 'bracket'
-        : 'groups',
-    },
+    { now },
   )
   const tabs = eventTabs({
     event,

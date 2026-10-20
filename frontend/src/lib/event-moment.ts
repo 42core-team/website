@@ -25,9 +25,10 @@ export interface MomentViewer {
 
 export type MomentTone = 'neutral' | 'active' | 'warning' | 'danger'
 
+/** Pages are reached through the event tabs, so links only point off-site (streams). */
 export type MomentAction =
   | { kind: 'join'; label: string }
-  | { kind: 'link'; label: string; href: string; external?: boolean }
+  | { kind: 'link'; label: string; href: string }
 
 export interface EventMoment {
   phase: Phase
@@ -45,8 +46,6 @@ export interface EventMoment {
   actions: MomentAction[]
 }
 
-export type TournamentStage = 'groups' | 'bracket'
-
 export function introTime(event: MomentEvent): Date | null {
   if (!event.introEnabled) return null
   return new Date(
@@ -62,7 +61,6 @@ export function momentRemainingMs(moment: EventMoment, now: number) {
 
 interface MomentOptions {
   now?: number
-  tournamentStage?: TournamentStage
 }
 
 /**
@@ -85,10 +83,9 @@ export function eventMoment(
 function momentFor(
   event: MomentEvent,
   viewer: MomentViewer,
-  { now = Date.now(), tournamentStage = 'groups' }: MomentOptions,
+  { now = Date.now() }: MomentOptions,
 ): EventMoment {
   const phase = eventState(event, now)
-  const myTeamHref = `/events/${event.id}/my-team`
 
   if (phase === 'REGISTRATION' || phase === 'PLAYING') {
     const coding = phase === 'PLAYING'
@@ -119,7 +116,6 @@ function momentFor(
         kind: 'link',
         label: 'Watch intro',
         href: event.streamUrl,
-        external: true,
       })
     }
 
@@ -136,10 +132,6 @@ function momentFor(
       return {
         ...base,
         description: 'Get started: create a team or join one with an invite.',
-        actions: [
-          { kind: 'link', label: 'My team', href: myTeamHref },
-          ...base.actions,
-        ],
       }
     }
 
@@ -151,30 +143,6 @@ function momentFor(
         headline: 'Repository setup failed',
         description:
           'GitHub did not confirm your repository. Matchmaking stays paused; contact an event admin to retry.',
-        actions: [{ kind: 'link', label: 'My team', href: myTeamHref }],
-      }
-    }
-
-    if (viewer.team && coding) {
-      return {
-        ...base,
-        actions: [
-          {
-            kind: 'link',
-            label: 'Match Making',
-            href: `/events/${event.id}/queue`,
-          },
-        ],
-      }
-    }
-
-    if (viewer.team) {
-      return {
-        ...base,
-        actions: [
-          { kind: 'link', label: 'My team', href: myTeamHref },
-          ...base.actions,
-        ],
       }
     }
 
@@ -197,27 +165,9 @@ function momentFor(
   }
 
   if (phase === 'SHOWCASE') {
-    const actions: MomentAction[] = []
-    if (event.streamUrl)
-      actions.push({
-        kind: 'link',
-        label: 'Watch stream',
-        href: event.streamUrl,
-        external: true,
-      })
-    actions.push(
-      tournamentStage === 'bracket'
-        ? {
-            kind: 'link',
-            label: 'Tournament Tree',
-            href: `/events/${event.id}/bracket`,
-          }
-        : {
-            kind: 'link',
-            label: 'Group Phase',
-            href: `/events/${event.id}/groups`,
-          },
-    )
+    const actions: MomentAction[] = event.streamUrl
+      ? [{ kind: 'link', label: 'Watch stream', href: event.streamUrl }]
+      : []
     return {
       phase,
       tone: 'active',

@@ -4,7 +4,6 @@ import { ExternalLink, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { joinEvent } from '@/app/actions/event'
 import { myTeamQueryKey } from '@/app/events/my-team-queries'
-import Link from '@/components/app-link'
 import { Button } from '@/components/ui/button'
 import type { MomentAction, MomentTone } from '@/lib/event-moment'
 
@@ -117,14 +116,10 @@ export function MomentActions({
           )
         return (
           <Button key={action.label} size={size} variant={variant} asChild>
-            {action.external ? (
-              <a href={action.href} target="_blank" rel="noreferrer">
-                {action.label}
-                <ExternalLink aria-hidden="true" />
-              </a>
-            ) : (
-              <Link href={action.href}>{action.label}</Link>
-            )}
+            <a href={action.href} target="_blank" rel="noreferrer">
+              {action.label}
+              <ExternalLink aria-hidden="true" />
+            </a>
           </Button>
         )
       })}
