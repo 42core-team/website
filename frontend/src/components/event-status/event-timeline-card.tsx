@@ -27,9 +27,7 @@ function stepDate(event: Event, phase: Event['state']) {
     case 'SHOWCASE':
       return 'When organizers start'
     case 'COMPLETED':
-      return event.completedAt
-        ? formatEventDateTime(event.completedAt)
-        : 'After the final reveal'
+      return formatEventDateTime(event.completedAt ?? event.scheduledEndDate)
   }
 }
 
@@ -192,32 +190,6 @@ export default function EventTimelineCard({
           </div>
         </div>
       </div>
-
-      {/* Once completed, the estimate is meaningless; show the finish time if known. */}
-      {(moment.phase !== 'COMPLETED' || event.completedAt) && (
-        <div className="flex flex-col gap-2 p-6 sm:flex-row sm:items-end sm:justify-between sm:px-8">
-          {event.completedAt ? (
-            <div>
-              <p className="text-sm text-muted-foreground">Event finished</p>
-              <p className="font-medium">
-                {formatEventDateTime(event.completedAt)}
-              </p>
-            </div>
-          ) : (
-            <>
-              <div>
-                <p className="text-sm text-muted-foreground">Scheduled end</p>
-                <p className="font-medium">
-                  {formatEventDateTime(event.scheduledEndDate)}
-                </p>
-              </div>
-              <p className="max-w-xs text-sm text-muted-foreground sm:text-right">
-                Estimate · completion follows the final reveal
-              </p>
-            </>
-          )}
-        </div>
-      )}
     </section>
   )
 }
