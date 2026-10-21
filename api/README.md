@@ -77,7 +77,8 @@ SESSION_TEST_DATABASE_URL=postgresql://postgres:session-tests@localhost:55439/po
 
 The tests overlap rotation with logout, logout-all and reuse detection, and
 verify that concurrent refreshes share one successor and failed rotations roll
-back. They are skipped when the test database URL is absent.
+back. They also overlap an old GitHub grant check with a new login to ensure
+the new session survives. They are skipped when the test database URL is absent.
 
 ## Environment Variables
 

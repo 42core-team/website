@@ -1,4 +1,5 @@
 import { EntityManager, FindOperator, Repository } from "typeorm";
+import { UserEntity } from "../../user/entities/user.entity";
 import { RefreshTokenEntity } from "../entities/refresh-token.entity";
 
 /**
@@ -28,7 +29,14 @@ function matches(record: RefreshTokenEntity, where: Where): boolean {
   });
 }
 
-export function createInMemoryRefreshTokenRepository(): {
+export function createInMemoryRefreshTokenRepository(
+  getUser: (
+    id: string,
+  ) => Pick<UserEntity, "id" | "githubAccessToken"> | undefined = (id) => ({
+    id,
+    githubAccessToken: "",
+  }),
+): {
   repository: Repository<RefreshTokenEntity>;
   records: RefreshTokenEntity[];
 } {
@@ -54,9 +62,10 @@ export function createInMemoryRefreshTokenRepository(): {
               entity === RefreshTokenEntity
                 ? repository
                 : {
-                    findOne: async ({ where }: { where: { id: string } }) => ({
-                      id: where.id,
-                    }),
+                    findOne: async ({ where }: { where: { id: string } }) => {
+                      const user = getUser(where.id);
+                      return user ? { ...user } : null;
+                    },
                   },
           } as unknown as EntityManager);
         } catch (error) {

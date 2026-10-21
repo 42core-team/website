@@ -72,8 +72,12 @@ export class GithubGrantService {
       case "revoked": {
         // A login during the check stores a fresh token and starts a new
         // session; the 401 for the old token must not end that session.
-        const current = await this.users.getUserById(user.id).catch(() => null);
-        if (current?.githubAccessToken !== user.githubAccessToken) {
+        const revoked =
+          await this.refreshTokens.revokeAllForUserIfGithubTokenMatches(
+            user.id,
+            user.githubAccessToken,
+          );
+        if (!revoked) {
           this.logger.log({
             action: "github_grant_revoke_skipped",
             userId: user.id,
@@ -81,7 +85,6 @@ export class GithubGrantService {
           });
           return;
         }
-        await this.refreshTokens.revokeAllForUser(user.id);
         this.logger.log({ action: "github_grant_revoked", userId: user.id });
         return;
       }

@@ -164,7 +164,8 @@ describe("AuthController sessions", () => {
         },
         {
           provide: getRepositoryToken(RefreshTokenEntity),
-          useValue: createInMemoryRefreshTokenRepository().repository,
+          useValue: createInMemoryRefreshTokenRepository((id) => users.get(id))
+            .repository,
         },
         { provide: UserService, useValue: userService },
         { provide: SocialAccountService, useValue: {} },

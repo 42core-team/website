@@ -114,6 +114,23 @@ export class RefreshTokenService {
     );
   }
 
+  /** Revoke only if this is still the GitHub grant that was checked. */
+  async revokeAllForUserIfGithubTokenMatches(
+    userId: string,
+    githubAccessToken: string,
+  ): Promise<boolean> {
+    return (
+      (await this.withLockedUser(userId, async (tokens, user) => {
+        if (user.githubAccessToken !== githubAccessToken) return false;
+        await tokens.update(
+          { userId, revokedAt: IsNull() },
+          { revokedAt: new Date() },
+        );
+        return true;
+      })) ?? false
+    );
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_4AM)
   async deleteStaleTokens(): Promise<void> {
     const now = new Date();
@@ -128,19 +145,24 @@ export class RefreshTokenService {
   /**
    * All session mutations lock the same existing user row, across replicas.
    * Always acquire this lock before touching token rows to avoid deadlocks.
+   * OAuth's user UPDATE takes the same row lock, so a grant check cannot
+   * compare the old token and then revoke a family from a newer login.
    */
   private withLockedUser<T>(
     userId: string,
-    work: (tokens: Repository<RefreshTokenEntity>) => Promise<T>,
+    work: (
+      tokens: Repository<RefreshTokenEntity>,
+      user: Pick<UserEntity, "id" | "githubAccessToken">,
+    ) => Promise<T>,
   ): Promise<T | null> {
     return this.tokens.manager.transaction(async (manager) => {
       const user = await manager.getRepository(UserEntity).findOne({
-        select: { id: true },
+        select: { id: true, githubAccessToken: true },
         where: { id: userId },
         lock: { mode: "pessimistic_write" },
       });
       if (!user) return null;
-      return work(manager.getRepository(RefreshTokenEntity));
+      return work(manager.getRepository(RefreshTokenEntity), user);
     });
   }
 

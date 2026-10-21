@@ -1,3 +1,10 @@
+import { ConfigService } from "@nestjs/config";
+import { encryptSecret } from "../common/encryption";
+import { UserEntity } from "../user/entities/user.entity";
+import { UserService } from "../user/user.service";
+import { BackgroundTasks } from "./background-tasks";
+import { GithubGrantChecker } from "./github-grant-checker";
+import { GithubGrantService } from "./github-grant.service";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { DataSource, Repository } from "typeorm";
@@ -111,6 +118,89 @@ postgres("session concurrency (PostgreSQL)", () => {
     expect(await tokens.count()).toBe(1);
     await expect(service.rotate(login.refreshToken)).resolves.toMatchObject({
       status: "rotated",
+    });
+  });
+
+  it("an old GitHub 401 cannot revoke a login between its token read and revocation", async () => {
+    const config = new ConfigService({
+      API_SECRET_ENCRYPTION_KEY: "session-concurrency-test-key",
+    });
+    const oldToken = encryptSecret(
+      "old-grant",
+      config.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
+    );
+    await database.query(
+      `UPDATE "${schema}".users SET "githubAccessToken" = $1`,
+      [oldToken],
+    );
+    const oldSession = await service.startFamily(userId);
+    const users = new UserService(database.getRepository(UserEntity), config);
+    // Only these fields exist in this minimal database fixture.
+    jest.spyOn(users, "getUserById").mockImplementation(async (id) => {
+      const user = await database.getRepository(UserEntity).findOne({
+        select: { id: true, githubAccessToken: true },
+        where: { id },
+      });
+      if (!user) throw new Error("Missing test user");
+      return user;
+    });
+    const checker = new GithubGrantChecker();
+    jest.spyOn(checker, "check").mockResolvedValue({ status: "revoked" });
+    const tasks = new BackgroundTasks();
+    const grants = new GithubGrantService(
+      checker,
+      users,
+      service,
+      config,
+      tasks,
+    );
+    const tokenRead = deferred();
+    const resumeCheck = deferred();
+    const findOne = Repository.prototype.findOne;
+    let paused = false;
+    jest
+      .spyOn(Repository.prototype, "findOne")
+      .mockImplementation(async function (
+        this: Repository<UserEntity>,
+        ...args: Parameters<typeof findOne>
+      ) {
+        const result = await findOne.apply(this, args);
+        if (this.target === UserEntity && !paused) {
+          paused = true;
+          tokenRead.resolve();
+          await resumeCheck.promise;
+        }
+        return result;
+      });
+    grants.checkInBackground({
+      id: userId,
+      githubAccessToken: oldToken,
+      githubCheckedAt: null,
+      username: "user",
+      name: "User",
+      profilePicture: "",
+    });
+    await tokenRead.promise;
+    const login = (async () => {
+      // The OAuth callback updates the user first, then starts its family.
+      await database.query(
+        `UPDATE "${schema}".users SET "githubAccessToken" = 'new-grant' WHERE id = $1`,
+        [userId],
+      );
+      return service.startFamily(userId);
+    })();
+    try {
+      await blockedOrFinished(login);
+    } finally {
+      resumeCheck.resolve();
+    }
+    await tasks.drain();
+    const newSession = await login;
+    await expect(
+      service.rotate(newSession.refreshToken),
+    ).resolves.toMatchObject({ status: "rotated" });
+    await expect(service.rotate(oldSession.refreshToken)).resolves.toEqual({
+      status: "rejected",
     });
   });
 
