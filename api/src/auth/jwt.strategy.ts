@@ -4,11 +4,14 @@ import { Strategy } from "passport-jwt";
 import { ConfigService } from "@nestjs/config";
 import { Request } from "express";
 import { UserService } from "../user/user.service";
+import { getAuthCookieName } from "./session.constants";
 
 export interface JwtPayload {
   sub: string; // user id
   email?: string;
   username?: string;
+  /** Refresh token family (session) id; absent on legacy 30-day JWTs. */
+  fid?: string;
 }
 
 @Injectable()
@@ -17,7 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly config: ConfigService,
     private readonly users: UserService,
   ) {
-    const cookieName = config.get<string>("AUTH_COOKIE_NAME") || "token";
+    const cookieName = getAuthCookieName(config);
 
     super({
       jwtFromRequest: (req: Request) => {
@@ -35,6 +38,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload) {
     const userId = payload.sub;
     if (!userId) throw new UnauthorizedException();
+    // Legacy tokens without a family id must be exchanged via /auth/refresh.
+    if (!payload.fid) throw new UnauthorizedException();
     // Load current user; if missing, reject token
     const user = await this.users.getUserById(userId).catch(() => null);
     if (!user) throw new UnauthorizedException();

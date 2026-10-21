@@ -45,6 +45,18 @@ jobs:
     permissions:
       contents: read
       actions: write
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: session-tests
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -70,6 +82,12 @@ jobs:
         run: |
           pnpm lint
           git diff --exit-code ..
+
+      - name: Test API including session concurrency
+        working-directory: ./api
+        env:
+          SESSION_TEST_DATABASE_URL: postgresql://postgres:session-tests@localhost:5432/postgres
+        run: pnpm test --runInBand
 
       - name: Cancel workflow on failure
         if: failure()
