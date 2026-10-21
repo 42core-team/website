@@ -91,20 +91,16 @@ export function TeamInfoSection({
       <TeamProfileHeader
         team={myTeam}
         showBack={false}
+        // Artwork stays editable when the roster is locked; canEdit only
+        // governs roster changes.
         cover={
-          canEdit ? (
-            <TeamAppearanceEditor
-              team={myTeam}
-              eventId={eventId}
-              kind="background"
-            />
-          ) : undefined
+          <TeamAppearanceEditor
+            team={myTeam}
+            eventId={eventId}
+            kind="background"
+          />
         }
-        picture={
-          canEdit ? (
-            <TeamAppearanceEditor team={myTeam} eventId={eventId} />
-          ) : undefined
-        }
+        picture={<TeamAppearanceEditor team={myTeam} eventId={eventId} />}
       />
       <CardContent className="flex flex-col gap-2">
         {myTeam.repositoryStatus === 'FAILED' && (

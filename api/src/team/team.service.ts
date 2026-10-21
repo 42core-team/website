@@ -8,6 +8,7 @@ import {
 } from "@nestjs/common";
 import { InjectDataSource, InjectRepository } from "@nestjs/typeorm";
 import { RepositoryStatus, TeamEntity } from "./entities/team.entity";
+import { isMatchmakingReady } from "./team-readiness";
 import { randomUUID } from "crypto";
 import { isPlaying, isRegistrationOpen } from "../event/event-lifecycle";
 import { MediaUploadEntity } from "../media/entities/media-upload.entity";
@@ -22,7 +23,6 @@ import {
 } from "typeorm";
 import { GithubApiService } from "../github-api/github-api.service";
 import { EventService } from "../event/event.service";
-import { UserService } from "../user/user.service";
 import { MatchService } from "../match/match.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { LockKeys } from "../constants";
@@ -54,7 +54,6 @@ export class TeamService {
     private readonly githubApiService: GithubApiService,
     @Inject(forwardRef(() => EventService))
     private readonly eventService: EventService,
-    private readonly userService: UserService,
     @Inject(forwardRef(() => MatchService))
     private readonly matchService: MatchService,
     @InjectDataSource()
@@ -135,12 +134,25 @@ export class TeamService {
                 await this.retryRepositoryOperation(team.id);
                 continue;
               }
+              if (
+                team.locked &&
+                isRegistrationOpen(team.event) &&
+                team.repositoryStatus === RepositoryStatus.LOCKING &&
+                !team.repositoryOperationId
+              ) {
+                // A migrated manual lock has never been confirmed by GitHub.
+                await this.lockTeam(team.id, false);
+                continue;
+              }
               if (!isRegistrationOpen(team.event)) {
                 if (
                   [RepositoryStatus.READY, RepositoryStatus.PENDING].includes(
                     team.repositoryStatus,
                   ) ||
-                  (team.repositoryStatus === RepositoryStatus.LOCKING &&
+                  ([
+                    RepositoryStatus.LOCKING,
+                    RepositoryStatus.UNLOCKING,
+                  ].includes(team.repositoryStatus) &&
                     !team.repositoryOperationId)
                 )
                   await this.lockTeam(team.id);
@@ -253,6 +265,11 @@ export class TeamService {
 
   async unlockTeam(teamId: string) {
     return this.changeRepositoryAccess(teamId, false);
+  }
+
+  /** Applies the access the current event phase requires to the current roster. */
+  private syncRepositoryAccess(teamId: string) {
+    return this.changeRepositoryAccess(teamId, false, true);
   }
 
   private async changeRepositoryAccess(
@@ -434,6 +451,33 @@ export class TeamService {
 
   async assertTeamMembershipOpen(teamId: string, eventId?: string) {
     const team = await this.getTeamById(teamId, { event: true });
+    this.assertMembershipOpen(team, eventId);
+  }
+
+  /**
+   * Locks the team row for a roster change. Every roster mutation and the
+   * repository status transition it triggers happen under this lock, so a
+   * permission operation never starts from a roster that is being changed.
+   */
+  private async lockTeamForMembershipChange(
+    manager: EntityManager,
+    teamId: string,
+  ) {
+    const repository = manager.getRepository(TeamEntity);
+    await repository.findOneOrFail({
+      where: { id: teamId },
+      lock: { mode: "pessimistic_write" },
+      loadEagerRelations: false,
+    });
+    const team = await repository.findOneOrFail({
+      where: { id: teamId },
+      relations: { event: true, users: true },
+    });
+    this.assertMembershipOpen(team);
+    return team;
+  }
+
+  private assertMembershipOpen(team: TeamEntity, eventId?: string) {
     if (
       (eventId && team.event.id !== eventId) ||
       !isRegistrationOpen(team.event) ||
@@ -644,29 +688,27 @@ export class TeamService {
   }
 
   async leaveTeam(teamId: string, userId: string) {
-    await this.assertTeamMembershipOpen(teamId);
-    const team = await this.getTeamById(teamId, {
-      users: true,
-      event: true,
-    });
-    const user = await this.userService.getUserById(userId);
+    const { repo, lastMember } = await this.dataSource.transaction(
+      async (manager) => {
+        const team = await this.lockTeamForMembershipChange(manager, teamId);
+        const lastMember = team.users.length <= 1;
+        await manager
+          .createQueryBuilder()
+          .relation(TeamEntity, "users")
+          .of(teamId)
+          .remove(userId);
+        if (!lastMember && team.repo)
+          await manager.update(TeamEntity, teamId, {
+            repositoryStatus: RepositoryStatus.UNLOCKING,
+          });
+        return { repo: team.repo, lastMember };
+      },
+    );
 
-    if (team.users.length > 1 && team.repo) {
-      await this.githubApiService.removeUserFromRepository(
-        team.repo,
-        user.username,
-        user.githubId,
-        team.event.githubOrg,
-        team.event.githubOrgSecret,
-      );
-    }
-    await this.teamRepository
-      .createQueryBuilder()
-      .relation("users")
-      .of(teamId)
-      .remove(userId);
-
-    if (team.users.length <= 1) return this.deleteTeam(teamId);
+    if (lastMember) return this.deleteTeam(teamId);
+    // The permission operation reconciles collaborators against the new
+    // roster, which removes the departed member from the repository.
+    if (repo) await this.syncRepositoryAccess(teamId);
   }
 
   getTeamCountForEvent(eventId: string): Promise<number> {
@@ -725,27 +767,25 @@ export class TeamService {
   }
 
   async acceptTeamInvite(userId: string, teamId: string): Promise<void> {
-    await this.assertTeamMembershipOpen(teamId);
-    const team = await this.getTeamById(teamId, {
-      event: true,
+    const team = await this.dataSource.transaction(async (manager) => {
+      const team = await this.lockTeamForMembershipChange(manager, teamId);
+      if (team.repo)
+        await manager.update(TeamEntity, teamId, {
+          repositoryStatus: RepositoryStatus.UNLOCKING,
+        });
+      await manager
+        .createQueryBuilder()
+        .relation(TeamEntity, "teamInvites")
+        .of(teamId)
+        .remove(userId);
+      await manager
+        .createQueryBuilder()
+        .relation(TeamEntity, "users")
+        .of(teamId)
+        .add(userId);
+      return team;
     });
-    if (team.repo)
-      await this.teamRepository.update(teamId, {
-        repositoryStatus: RepositoryStatus.UNLOCKING,
-      });
-
-    await this.teamRepository
-      .createQueryBuilder()
-      .relation("teamInvites")
-      .of(teamId)
-      .remove(userId);
-
-    await this.teamRepository
-      .createQueryBuilder()
-      .relation("users")
-      .of(teamId)
-      .add(userId);
-    if (team.repo) await this.unlockTeam(teamId);
+    if (team.repo) await this.syncRepositoryAccess(teamId);
   }
 
   declineTeamInvite(userId: string, teamId: string) {
@@ -981,11 +1021,7 @@ export class TeamService {
 
       if (!event.processQueue)
         throw new BadRequestException("Match making is disabled.");
-      if (
-        !isPlaying(event) ||
-        team.repositoryStatus !== RepositoryStatus.READY ||
-        team.locked
-      )
+      if (!isPlaying(event) || !isMatchmakingReady(team))
         throw new BadRequestException("Match making is not available.");
 
       const match = await this.createBestQueueMatch(team, entityManager);
@@ -1101,12 +1137,7 @@ export class TeamService {
 
   async getQueueOpponents(eventId: string, teamId: string) {
     const team = await this.getTeamById(teamId, { event: true });
-    if (
-      !isPlaying(team.event) ||
-      team.repositoryStatus !== RepositoryStatus.READY ||
-      team.locked
-    )
-      return [];
+    if (!isPlaying(team.event) || !isMatchmakingReady(team)) return [];
     const opponents = await this.teamRepository.find({
       select: { id: true, name: true },
       where: {
@@ -1144,13 +1175,7 @@ export class TeamService {
       const event = await entityManager.findOneOrFail(EventEntity, {
         where: { id: challenger.eventId },
       });
-      if (
-        !isPlaying(event) ||
-        [challenger, target].some(
-          (team) =>
-            team.repositoryStatus !== RepositoryStatus.READY || team.locked,
-        )
-      )
+      if (!isPlaying(event) || ![challenger, target].every(isMatchmakingReady))
         throw new BadRequestException(
           "Match making requires playing teams with ready repositories.",
         );

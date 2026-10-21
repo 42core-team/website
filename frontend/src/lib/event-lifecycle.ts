@@ -46,6 +46,13 @@ export function matchmakingOpen(
   )
 }
 
+/** Tournament generation needs every nonexcluded repository confirmed locked. */
+export function repositoryConfirmedForTournament(
+  team: Pick<Team, 'repositoryStatus' | 'tournamentExcluded'>,
+) {
+  return team.tournamentExcluded || team.repositoryStatus === 'LOCKED'
+}
+
 export function bettingOpen(
   event: LifecycleEvent & Pick<Event, 'gamblingEnabled'>,
   now = Date.now(),

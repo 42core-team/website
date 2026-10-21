@@ -30,11 +30,11 @@ The submission mechanism is repository permission locking, rather than immutable
 
 Admins may reopen from Submissions closed, Showcase, or Completed, regardless of tournament progress. Reopening requires a new future submission deadline, clears `completedAt`, and restores registration, roster changes, matchmaking, and betting under their existing eligibility rules. Each team's matchmaking waits for confirmed restoration of write access.
 
-Existing matches, tournament progress, reveals, standings, and bets are retained. Settled bets are not reopened or refunded automatically. No tournament-progress guard or automatic reset is introduced: the administrator intentionally controls reopening even after results exist.
+Existing matches, tournament progress, reveals, standings, and bets are retained. Settled bets are not reopened or refunded automatically. No tournament-progress guard or automatic reset is introduced: the administrator intentionally controls reopening even after results exist. A tournament round that finishes while submissions are reopened pauses before creating the next round's matches; progression resumes once submissions are closed again and the repository lock gate is satisfied.
 
 ## Migration
 
-Existing `endDate` supplies the scheduled end; `repoLockDate` supplies the submission deadline. Historical events whose old end date has passed become Completed, using that end date as an inferred historical completion time. Other events are classified using their lock/deadline and start dates. These historical completion times are estimates, not newly observed admin actions.
+Existing `endDate` supplies the scheduled end; `repoLockDate` supplies the submission deadline. Historical events whose old end date has passed become Completed, using that end date as an inferred historical completion time. Other events are classified using their lock/deadline and start dates. These historical completion times are estimates, not newly observed admin actions. Legacy team locks were recorded when permission requests were published, so migrated locked repositories start as `LOCKING` and must be confirmed by GitHub before they satisfy the tournament gate.
 
 ## Consequences
 

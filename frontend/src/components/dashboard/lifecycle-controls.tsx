@@ -21,7 +21,11 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { eventState, lifecycleLabels } from '@/lib/event-lifecycle'
+import {
+  eventState,
+  lifecycleLabels,
+  repositoryConfirmedForTournament,
+} from '@/lib/event-lifecycle'
 import { useEventClock } from '@/hooks/use-event-clock'
 
 export function LifecycleControls({
@@ -56,9 +60,7 @@ export function LifecycleControls({
   const state = eventState(event, now)
   const closed = ['SUBMISSIONS_CLOSED', 'SHOWCASE', 'COMPLETED'].includes(state)
   const confirmed =
-    teams.data?.filter(
-      (team) => team.repositoryStatus === 'LOCKED' || team.tournamentExcluded,
-    ).length ?? 0
+    teams.data?.filter(repositoryConfirmedForTournament).length ?? 0
   const locksConfirmed = teams.isSuccess && confirmed === teams.data.length
   return (
     <Card>

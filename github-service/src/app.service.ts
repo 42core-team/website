@@ -76,6 +76,14 @@ export class AppService {
   }) {
     let error: string | undefined;
     try {
+      // Former members may have regained access through an earlier operation
+      // that was still queued when they left, so reconcile against the roster.
+      await this.removeFormerCollaborators(
+        data.githubOrg,
+        data.repositoryName,
+        data.encryptedSecret,
+        data.githubUsers,
+      );
       // Await every collaborator before acknowledging: one failure must not hide
       // outstanding writes or let a retry race a still-running permission change.
       for (const user of data.githubUsers) {
@@ -327,6 +335,61 @@ export class AppService {
           throw new Error("Collaborator write access was not established.");
       },
     );
+  }
+
+  async removeFormerCollaborators(
+    githubOrg: string,
+    repositoryName: string,
+    encryptedSecret: string,
+    githubUsers: { username: string; githubId: string }[],
+  ) {
+    const githubIds = new Set(githubUsers.map((user) => String(user.githubId)));
+    const usernames = new Set(
+      githubUsers.map((user) => user.username.toLowerCase()),
+    );
+    const isMember = (user: { id: number; login: string }) =>
+      githubIds.has(String(user.id)) || usernames.has(user.login.toLowerCase());
+    const repositoryApi = new RepositoryApi(
+      new GitHubApiClient({ token: this.decryptSecret(encryptedSecret) }),
+    );
+
+    for (let page = 1; ; page++) {
+      const collaborators = await repositoryApi.listCollaborators(
+        githubOrg,
+        repositoryName,
+        { affiliation: "direct", per_page: 100, page },
+      );
+      for (const collaborator of collaborators) {
+        // Admin collaborators are organization staff, never team members.
+        if (isMember(collaborator) || collaborator.permissions?.admin) continue;
+        this.logger.log(
+          `Removing former collaborator ${JSON.stringify({ repositoryName, username: collaborator.login })}`,
+        );
+        await repositoryApi.removeCollaborator(
+          githubOrg,
+          repositoryName,
+          collaborator.login,
+        );
+      }
+      if (collaborators.length < 100) break;
+    }
+
+    for (let page = 1; ; page++) {
+      const invitations = await repositoryApi.listInvitations(
+        githubOrg,
+        repositoryName,
+        { per_page: 100, page },
+      );
+      for (const invitation of invitations) {
+        if (!invitation.invitee || isMember(invitation.invitee)) continue;
+        await repositoryApi.deleteInvitation(
+          githubOrg,
+          repositoryName,
+          invitation.id,
+        );
+      }
+      if (invitations.length < 100) break;
+    }
   }
 
   async removeUserFromRepository(

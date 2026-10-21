@@ -105,3 +105,99 @@ describe("betting lifecycle mutation gate", () => {
     expect(manager.save).not.toHaveBeenCalled();
   });
 });
+
+describe("gambling entry and match scheduling lifecycle gate", () => {
+  function readyTeam(id: string) {
+    return { id, repositoryStatus: "READY", locked: false };
+  }
+
+  function expiredBettingRound() {
+    const context = setup();
+    Object.assign(context.round, {
+      phaseEndsAt: new Date(Date.now() - 1000),
+      teamOne: readyTeam("one"),
+      teamTwo: readyTeam("two"),
+    });
+    const createMatch = jest.fn();
+    Object.assign(context.service, { createGamblingMatch: createMatch });
+    const advance = () =>
+      Reflect.get(context.service, "getAdvanceAction").call(
+        context.service,
+        context.manager,
+        "event",
+      );
+    return { ...context, createMatch, advance };
+  }
+
+  it.each([
+    EventState.SUBMISSIONS_CLOSED,
+    EventState.SHOWCASE,
+    EventState.COMPLETED,
+  ])("blocks entering in %s", async (state) => {
+    const { event, manager, service } = setup();
+    event.state = state;
+    manager.findOne.mockResolvedValue(readyTeam("bettor"));
+    await expect(service.join("event", "user")).rejects.toThrow(
+      "only available",
+    );
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it.each(["PENDING", "PROVISIONING", "UNLOCKING", "LOCKED", "FAILED"])(
+    "blocks entering with a %s repository",
+    async (repositoryStatus) => {
+      const { manager, service } = setup();
+      manager.findOne.mockResolvedValue({
+        ...readyTeam("bettor"),
+        repositoryStatus,
+      });
+      await expect(service.join("event", "user")).rejects.toThrow(
+        "ready repository",
+      );
+      expect(manager.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    EventState.SUBMISSIONS_CLOSED,
+    EventState.SHOWCASE,
+    EventState.COMPLETED,
+  ])("creates no new match in %s", async (state) => {
+    const { event, round, createMatch, advance } = expiredBettingRound();
+    event.state = state;
+    await expect(advance()).resolves.toBeNull();
+    expect(createMatch).not.toHaveBeenCalled();
+    expect(round.phase).toBe(GamblingRoundPhase.BETTING);
+  });
+
+  it("still settles an already-created match after closure", async () => {
+    const { event, round, advance } = expiredBettingRound();
+    event.state = EventState.SUBMISSIONS_CLOSED;
+    Object.assign(round, {
+      phase: GamblingRoundPhase.PLAYING,
+      match: { id: "match", state: "FINISHED", winner: { id: "one" } },
+    });
+    await expect(advance()).resolves.toEqual({
+      type: "settle",
+      matchId: "match",
+      winnerId: "one",
+    });
+  });
+
+  it("waits for both selected teams to have ready repositories", async () => {
+    const { round, createMatch, advance } = expiredBettingRound();
+    Object.assign(round.teamTwo, { repositoryStatus: "UNLOCKING" });
+    await expect(advance()).resolves.toBeNull();
+    expect(createMatch).not.toHaveBeenCalled();
+  });
+
+  it("creates the match while playing with ready teams", async () => {
+    const { createMatch, advance } = expiredBettingRound();
+    createMatch.mockResolvedValue({ id: "match" });
+    await expect(advance()).resolves.toEqual({
+      type: "start",
+      matchId: "match",
+    });
+    expect(createMatch).toHaveBeenCalledWith(expect.anything(), "one", "two");
+  });
+});

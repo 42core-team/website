@@ -18,7 +18,8 @@ import {
 import { MatchStatsEntity } from "../match/entites/matchStats.entity";
 import { MatchService } from "../match/match.service";
 import { spendQueueCredits } from "../team/team-credits";
-import { TeamEntity } from "../team/entities/team.entity";
+import { RepositoryStatus, TeamEntity } from "../team/entities/team.entity";
+import { isMatchmakingReady } from "../team/team-readiness";
 import { PlaceGamblingBetDto } from "./dtos/place-gambling-bet.dto";
 import { GamblingBetEntity } from "./entities/gambling-bet.entity";
 import { GamblingEntryEntity } from "./entities/gambling-entry.entity";
@@ -31,7 +32,6 @@ import {
   toSettledGamblingBetSummary,
 } from "./gambling-bet-summary";
 import {
-  hasGamblingStarted,
   requireGamblingEnabled,
   requireGamblingStarted,
   requireGamblingTeam,
@@ -173,8 +173,12 @@ export class GamblingService {
   async join(eventId: string, userId: string) {
     await this.dataSource.transaction(async (manager) => {
       await this.lockEvent(manager, eventId);
-      await this.getStartedEvent(manager, eventId);
+      await this.getBettingEvent(manager, eventId);
       const team = await this.getUserTeam(manager, eventId, userId);
+      if (!isMatchmakingReady(team))
+        throw new BadRequestException(
+          "Your team needs a ready repository to enter.",
+        );
       const exists = await manager.exists(GamblingEntryEntity, {
         where: { event: { id: eventId }, team: { id: team.id } },
       });
@@ -395,25 +399,14 @@ export class GamblingService {
   ): Promise<GamblingAdvanceAction> {
     await this.lockEvent(manager, eventId);
     const event = await manager.findOneOrFail(EventEntity, {
-      select: { id: true, startDate: true, gamblingEnabled: true },
       where: { id: eventId },
     });
-    if (!event.gamblingEnabled) {
+    // Outside playing, rounds freeze so no new participant match is created;
+    // already-created matches still run and settle their bets.
+    if (!event.gamblingEnabled || !isPlaying(event)) {
       const round = await this.getLatestRoundWithManager(manager, eventId);
-      if (
-        round?.phase === GamblingRoundPhase.PLAYING &&
-        round.match?.state === MatchState.FINISHED &&
-        round.match.winner
-      ) {
-        return {
-          type: "settle",
-          matchId: round.match.id,
-          winnerId: round.match.winner.id,
-        };
-      }
-      return null;
+      return round ? this.getPlayingRoundAction(round) : null;
     }
-    if (!hasGamblingStarted(event.startDate)) return null;
 
     const round = await this.getOrCreateCurrentRound(manager, eventId);
     const now = new Date();
@@ -459,6 +452,10 @@ export class GamblingService {
       .innerJoin("entry.team", "team")
       .where('"entry"."eventId" = :eventId', { eventId })
       .andWhere('"team"."deletedAt" IS NULL')
+      .andWhere('"team"."repositoryStatus" = :ready', {
+        ready: RepositoryStatus.READY,
+      })
+      .andWhere('"team"."locked" = false')
       .orderBy("RANDOM()")
       .limit(2)
       .getRawMany<{ teamId: string }>();
@@ -474,6 +471,8 @@ export class GamblingService {
       return null;
     if (!round.teamOne || !round.teamTwo)
       throw new Error(`Gambling round ${round.id} has no teams.`);
+    // After a reopen, wait until both teams have their write access back.
+    if (![round.teamOne, round.teamTwo].every(isMatchmakingReady)) return null;
 
     const match = await this.createGamblingMatch(
       manager,

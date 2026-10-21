@@ -110,3 +110,72 @@ describe("tournament lifecycle mutation gates", () => {
     },
   );
 });
+
+describe("Swiss progression across a reopen", () => {
+  function setupFourEntrants() {
+    const context = setup(EventState.PLAYING);
+    const { service, event } = context;
+    event.teams = ["a", "b", "c", "d"].map((id) =>
+      Object.assign(new TeamEntity(), {
+        id,
+        score: 0,
+        hadBye: false,
+        repositoryStatus: "LOCKED",
+        tournamentExcluded: false,
+      }),
+    );
+    Object.assign(Reflect.get(service, "eventService"), {
+      increaseEventRound: jest.fn(async () => {
+        event.currentRound += 1;
+      }),
+    });
+    const runner = {
+      connect: jest.fn(),
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      rollbackTransaction: jest.fn(),
+      release: jest.fn(),
+      query: jest.fn(),
+    };
+    Reflect.set(service, "dataSource", {
+      createQueryRunner: () => runner,
+      getRepository: () => ({ find: jest.fn().mockResolvedValue([event]) }),
+    });
+    return context;
+  }
+
+  it("pauses a round finished while reopened and resumes it after reclosing", async () => {
+    const { service, event, save } = setupFourEntrants();
+    await expect(
+      service.processSwissFinishRound(event.id),
+    ).resolves.toBeUndefined();
+    expect(event.currentRound).toBe(1);
+    expect(save).not.toHaveBeenCalled();
+    expect(await service.getPausedProgressionPhase(event)).toBe(
+      MatchPhase.SWISS,
+    );
+
+    // Still reopened: the resume job must not create matches.
+    await service.resumePausedTournaments();
+    expect(save).not.toHaveBeenCalled();
+
+    event.state = EventState.SUBMISSIONS_CLOSED;
+    await service.resumePausedTournaments();
+    expect(save).toHaveBeenCalledTimes(2);
+    for (const [match] of save.mock.calls) {
+      expect(match.round).toBe(1);
+      expect(match.phase).toBe(MatchPhase.SWISS);
+    }
+  });
+
+  it("does not resume a round that already has matches", async () => {
+    const { service, event, save } = setupFourEntrants();
+    event.state = EventState.SUBMISSIONS_CLOSED;
+    event.currentRound = 1;
+    Object.assign(Reflect.get(service, "matchRepository"), {
+      countBy: jest.fn().mockResolvedValue(2),
+    });
+    await service.resumeTournamentProgression(event.id);
+    expect(save).not.toHaveBeenCalled();
+  });
+});
