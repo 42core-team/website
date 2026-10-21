@@ -108,6 +108,60 @@ describe("AppService", () => {
     );
   });
 
+  it("removes former members before acknowledging a permission change", async () => {
+    const emit = jest.fn().mockReturnValue(of(undefined));
+    jest.spyOn(ClientProxyFactory, "create").mockReturnValue({ emit } as never);
+    const repositoryApi = {
+      listCollaborators: jest.fn().mockResolvedValue([
+        { id: 1, login: "member", permissions: { admin: false } },
+        { id: 2, login: "departed", permissions: { admin: false } },
+        { id: 3, login: "org-admin", permissions: { admin: true } },
+      ]),
+      removeCollaborator: jest.fn().mockResolvedValue(undefined),
+      listInvitations: jest.fn().mockResolvedValue([
+        { id: 10, invitee: { id: 1, login: "member" } },
+        { id: 11, invitee: { id: 4, login: "invited-then-left" } },
+      ]),
+      deleteInvitation: jest.fn().mockResolvedValue(undefined),
+    };
+    jest
+      .mocked(RepositoryApi)
+      .mockImplementationOnce(() => repositoryApi as never);
+    const service = new AppService({} as never);
+    jest.spyOn(service, "decryptSecret").mockReturnValue("token");
+    const removeWrite = jest
+      .spyOn(service, "removeWritePermissionsForUser")
+      .mockResolvedValue(undefined);
+    await service.setRepositoryAccess({
+      teamId: "team",
+      operationId: "op",
+      repositoryName: "repo",
+      githubOrg: "org",
+      encryptedSecret: "secret",
+      locked: true,
+      githubUsers: [
+        { username: "member", githubId: "1", githubAccessToken: "token" },
+      ],
+    });
+    expect(repositoryApi.removeCollaborator).toHaveBeenCalledTimes(1);
+    expect(repositoryApi.removeCollaborator).toHaveBeenCalledWith(
+      "org",
+      "repo",
+      "departed",
+    );
+    expect(repositoryApi.deleteInvitation).toHaveBeenCalledTimes(1);
+    expect(repositoryApi.deleteInvitation).toHaveBeenCalledWith(
+      "org",
+      "repo",
+      11,
+    );
+    expect(removeWrite).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith(
+      "repository_operation_completed",
+      expect.not.objectContaining({ error: expect.anything() }),
+    );
+  });
+
   it("skips obsolete commands before touching GitHub", async () => {
     jest
       .spyOn(ClientProxyFactory, "create")

@@ -3,6 +3,7 @@ import {
   GitHubRepository,
   GitHubIssue,
   GitHubUser,
+  GitHubCollaborator,
   GitHubCollaboratorPermission,
   GitHubRepositoryInvitation,
 } from "./response-types";
@@ -132,8 +133,8 @@ export class RepositoryApi {
       per_page?: number;
       page?: number;
     } = {},
-  ): Promise<GitHubUser[]> {
-    return this.client.get<GitHubUser[]>(
+  ): Promise<GitHubCollaborator[]> {
+    return this.client.get<GitHubCollaborator[]>(
       `repos/${owner}/${repo}/collaborators`,
       {
         params: options,

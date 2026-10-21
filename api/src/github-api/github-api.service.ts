@@ -3,7 +3,7 @@ import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
 import { getRabbitmqConfig } from "../main";
 import { decryptSecret } from "../common/encryption";
-import { lastValueFrom, timeout } from "rxjs";
+import { lastValueFrom } from "rxjs";
 
 @Injectable()
 export class GithubApiService {
@@ -70,26 +70,6 @@ export class GithubApiService {
       encryptedSecret,
       githubAccessToken,
     });
-  }
-
-  async removeUserFromRepository(
-    repositoryName: string,
-    username: string,
-    githubId: string,
-    githubOrg: string,
-    encryptedSecret: string,
-  ) {
-    await lastValueFrom(
-      this.githubClient
-        .send("remove_user_from_repository", {
-          repositoryName,
-          username,
-          githubId,
-          githubOrg,
-          encryptedSecret,
-        })
-        .pipe(timeout(60000)),
-    );
   }
 
   async deleteRepository(

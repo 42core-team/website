@@ -8,7 +8,11 @@ vi.mock('@/lib/router-hooks', () => ({
   useParams: () => ({ id: 'event' }),
   useRouter: () => ({ back: vi.fn() }),
 }))
-vi.mock('./TeamAppearanceEditor', () => ({ TeamAppearanceEditor: () => null }))
+vi.mock('./TeamAppearanceEditor', () => ({
+  TeamAppearanceEditor: ({ kind = 'picture' }: { kind?: string }) => (
+    <button type="button">Edit {kind}</button>
+  ),
+}))
 vi.mock('./TeamInviteModal', () => ({ default: () => null }))
 afterEach(cleanup)
 
@@ -65,5 +69,25 @@ describe('repository lock indicator', () => {
     const status = screen.getByLabelText('Repository locked')
     expect(name.parentElement?.contains(status)).toBe(true)
     expect(name.parentElement?.className).toContain('text-destructive')
+  })
+})
+
+describe('closed roster', () => {
+  it('keeps artwork editable while hiding roster changes', () => {
+    render(
+      <TeamInfoSection
+        myTeam={{ ...team, locked: true }}
+        canEdit={false}
+        githubOrg="core"
+        teamMembers={[]}
+        onLeaveTeam={vi.fn()}
+        isLeaving={false}
+        isRepoPending={false}
+        isRepoCreating={false}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Edit picture' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Edit background' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Invite Others/ })).toBeNull()
   })
 })

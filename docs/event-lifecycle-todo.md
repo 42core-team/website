@@ -16,8 +16,8 @@ Decision record: [ADR 0001](adr/0001-event-lifecycle.md).
 
 ## Verification
 
-- API: 194 tests passed; final event/repository regression rerun: 44 passed.
-- GitHub service: 14 tests passed.
-- Frontend: 116 tests passed, TypeScript check and production build passed.
+- API: 213 tests passed, including roster-race, gambling-gate, and Swiss-resume regressions.
+- GitHub service: 15 tests passed, including former-collaborator reconciliation.
+- Frontend: 118 tests passed, TypeScript check and production build passed.
 - API and GitHub service builds passed; targeted lint and diff checks passed.
 - Both migrations passed upgrade/backfill/downgrade checks in isolated PostgreSQL verification, including repository-lock confirmation behavior.

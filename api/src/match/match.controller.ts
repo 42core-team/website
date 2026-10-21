@@ -56,7 +56,18 @@ export class MatchController {
       );
     const event = await this.eventService.getEventById(eventId);
     if (event.currentRound != 0) {
-      throw new BadRequestException("swiss matches have already started");
+      // A round that finished while submissions were reopened is resumed here.
+      if (
+        (await this.matchService.getPausedProgressionPhase(event)) !==
+        MatchPhase.SWISS
+      )
+        throw new BadRequestException("swiss matches have already started");
+      this.logger.log({
+        action: "attempt_resume_swiss_matches",
+        userId,
+        eventId,
+      });
+      return this.matchService.resumeTournamentProgression(eventId);
     }
 
     this.logger.log({ action: "attempt_start_swiss_matches", userId, eventId });

@@ -7,9 +7,12 @@ export class TeamRepositoryStatus1792400001000 implements MigrationInterface {
       ADD "repositoryOperationId" uuid,
       ADD "repositoryError" text,
       ADD "tournamentExcluded" boolean NOT NULL DEFAULT false`);
+    // Legacy locks were recorded when permission requests were published, not
+    // when GitHub confirmed them. Leave them LOCKING without an operation so
+    // reconciliation dispatches an acknowledged lock before showcase.
     await queryRunner.query(`UPDATE "teams" SET "repositoryStatus" =
       CASE WHEN "repo" IS NULL OR "repo" = '' THEN 'PENDING'
-      WHEN "locked" THEN 'LOCKED' ELSE 'READY' END`);
+      WHEN "locked" THEN 'LOCKING' ELSE 'READY' END`);
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
