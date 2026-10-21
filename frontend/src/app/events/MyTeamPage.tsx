@@ -7,7 +7,6 @@ import {
 import { useEventClock } from '@/hooks/use-event-clock'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
-import type { ReactNode } from 'react'
 import { useState } from 'react'
 import axiosInstance from '@/app/actions/axios'
 import { getEventById, getEventGithubOrg } from '@/app/actions/event'
@@ -41,11 +40,12 @@ const REPO_CREATION_POLL_INTERVAL_MS = 2000
  */
 export function MyTeamPage({
   eventId: id,
-  header,
+  showBack = false,
   onLeft,
 }: Readonly<{
   eventId: string
-  header?: ReactNode
+  /** Show the profile's back button, e.g. when opened from the Teams list. */
+  showBack?: boolean
   /** Called after leaving the team, before the team data is refreshed. */
   onLeft?: () => void
 }>) {
@@ -179,7 +179,6 @@ export function MyTeamPage({
 
   return (
     <main className="container mx-auto max-w-5xl px-4 py-8">
-      {header}
       {myTeamQuery.data ? (
         <div className="space-y-6">
           <TeamInfoSection
@@ -190,6 +189,7 @@ export function MyTeamPage({
               return true
             }}
             isLeaving={leaveTeamMutation.isPending}
+            showBack={showBack}
             teamMembers={teamMembersQuery.data ?? []}
             githubOrg={githubOrgQuery.data ?? ''}
             isRepoPending={eventState(eventQuery.data, now) === 'REGISTRATION'}

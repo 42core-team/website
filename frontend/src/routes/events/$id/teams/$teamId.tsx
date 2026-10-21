@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import type { AxiosError } from 'axios'
-import { ArrowLeft, Swords } from 'lucide-react'
+import { Swords } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getTeamById,
@@ -11,7 +11,6 @@ import {
 import { getMatchesForTeam } from '@/app/actions/tournament'
 import { MyTeamPage } from '@/app/events/MyTeamPage'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
-import Link from '@/components/app-link'
 import { TeamMatchHistory, TeamPublicProfile } from '@/components/team'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -100,14 +99,7 @@ function TeamRoute() {
             queryClient.removeQueries({ queryKey: ['team', teamId] }),
           )
         }}
-        header={
-          <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
-            <Link href={`/events/${id}/teams`}>
-              <ArrowLeft />
-              Back to teams
-            </Link>
-          </Button>
-        }
+        showBack
       />
     )
   }
