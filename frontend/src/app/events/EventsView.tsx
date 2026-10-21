@@ -3,6 +3,7 @@
 import { ArrowRight, CalendarDays, MapPin } from 'lucide-react'
 import type { Event } from '@/app/actions/event'
 import EventsTable from '@/app/events/EventTable'
+import { eventDescriptionPreview } from '@/app/events/event-description-preview'
 import {
   buildEventsViewModel,
   buildPublicEventsViewModel,
@@ -38,6 +39,7 @@ function FeaturedEvent({
   showJoined: boolean
 }) {
   const status = getEventStatus(event, now)
+  const description = eventDescriptionPreview(event.description ?? '')
   const presentation = {
     upcoming: {
       eyebrow: 'Coming up',
@@ -82,9 +84,9 @@ function FeaturedEvent({
                 >
                   {event.name}
                 </CardTitle>
-                {event.description && (
+                {description && (
                   <CardDescription className="mt-2 line-clamp-2 max-w-3xl text-base">
-                    {event.description}
+                    {description}
                   </CardDescription>
                 )}
               </div>
