@@ -207,6 +207,20 @@ export interface GitHubIssue {
 /**
  * GitHub Collaborator Permission
  */
+/**
+ * GitHub Repository Collaborator
+ */
+export interface GitHubCollaborator extends GitHubUser {
+  permissions?: {
+    admin: boolean;
+    maintain?: boolean;
+    push: boolean;
+    triage?: boolean;
+    pull: boolean;
+  };
+  role_name?: string;
+}
+
 export interface GitHubCollaboratorPermission {
   permission: "admin" | "maintain" | "write" | "triage" | "read";
   role_name: string;

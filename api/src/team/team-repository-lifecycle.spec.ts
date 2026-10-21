@@ -188,7 +188,7 @@ describe("repository lifecycle", () => {
     );
   });
 
-  it.each(["READY", "PENDING", "LOCKING"])(
+  it.each(["READY", "PENDING", "LOCKING", "UNLOCKING"])(
     "reconciles migrated closed events with %s repositories",
     async (status) => {
       const { service, team, repository } = setup(status, true);
@@ -296,6 +296,112 @@ describe("repository lifecycle", () => {
       expect(manager.save).not.toHaveBeenCalled();
     },
   );
+
+  function setupRoster(status = "READY", afterStatusChange = () => {}) {
+    const context = setup(status);
+    const { team, manager, repository } = context;
+    team.repo = "repo";
+    Reflect.set(team, "repositoryOperationId", null);
+    team.users = [
+      { id: "stays", username: "stays", githubId: "1" },
+      { id: "leaves", username: "leaves", githubId: "2" },
+    ] as never;
+    const order: string[] = [];
+    repository.findOneOrFail.mockImplementation(async (options) => {
+      if (options?.lock) order.push("lock");
+      return team;
+    });
+    repository.update.mockImplementation(async (_id, data) =>
+      Object.assign(team, data),
+    );
+    Object.assign(manager, {
+      update: jest.fn(async (_entity, _id, data) => {
+        order.push("status");
+        Object.assign(team, data);
+        afterStatusChange();
+      }),
+      createQueryBuilder: () => ({
+        relation: (_entity: unknown, relation: string) => ({
+          of: () => ({
+            remove: jest.fn(async (userId: string) => {
+              order.push(`remove:${relation}`);
+              if (relation === "users")
+                team.users = team.users.filter(
+                  (user: { id: string }) => user.id !== userId,
+                );
+            }),
+            add: jest.fn(async () => order.push(`add:${relation}`)),
+          }),
+        }),
+      }),
+    });
+    return { ...context, order };
+  }
+
+  it("removes a departing member under the team lock and reconciles the repository roster", async () => {
+    const { service, github, order, team } = setupRoster();
+    await service.leaveTeam("team", "leaves");
+    expect(order).toEqual(["lock", "remove:users", "status"]);
+    expect(team.repositoryStatus).toBe("UNLOCKING");
+    expect(github.setRepositoryAccess).toHaveBeenCalledTimes(1);
+    expect(github.setRepositoryAccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locked: false,
+        githubUsers: [expect.objectContaining({ username: "stays" })],
+      }),
+    );
+  });
+
+  it("rejects leaving while an invite acceptance is restoring access", async () => {
+    const { service, github, order } = setupRoster("UNLOCKING");
+    await expect(service.leaveTeam("team", "leaves")).rejects.toThrow(
+      "retry shortly",
+    );
+    expect(order).toEqual(["lock"]);
+    expect(github.setRepositoryAccess).not.toHaveBeenCalled();
+  });
+
+  it("accepts an invite under the team lock before dispatching access", async () => {
+    const { service, github, order } = setupRoster();
+    await service.acceptTeamInvite("joins", "team");
+    expect(order).toEqual([
+      "lock",
+      "status",
+      "remove:teamInvites",
+      "add:users",
+    ]);
+    expect(github.setRepositoryAccess).toHaveBeenCalledWith(
+      expect.objectContaining({ locked: false }),
+    );
+  });
+
+  it("locks rather than unlocks when a roster change races submission closure", async () => {
+    const { service, github, event } = setupRoster("READY", () => {
+      event.submissionDeadline = new Date(0);
+    });
+    await service.leaveTeam("team", "leaves");
+    expect(github.setRepositoryAccess).toHaveBeenCalledWith(
+      expect.objectContaining({ locked: true }),
+    );
+  });
+
+  it("confirms migrated manual locks on open events through GitHub", async () => {
+    const { service, team, repository } = setup("LOCKING");
+    team.repo = "repo";
+    team.locked = true;
+    Reflect.set(team, "repositoryOperationId", null);
+    Reflect.set(repository, "find", jest.fn().mockResolvedValue([team]));
+    const runner = {
+      connect: jest.fn(),
+      release: jest.fn(),
+      query: jest.fn().mockResolvedValue([{ pg_try_advisory_lock: true }]),
+    };
+    Reflect.set(service, "dataSource", { createQueryRunner: () => runner });
+    Reflect.set(service, "logger", { log: jest.fn(), error: jest.fn() });
+    const lock = jest.spyOn(service, "lockTeam").mockResolvedValue(undefined);
+    await service.autoCreateRepos();
+    expect(lock).toHaveBeenCalledWith("team", false);
+  });
 
   it("blocks membership changes at the exact submission cutoff", async () => {
     const { service } = setup("READY", true);

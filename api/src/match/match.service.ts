@@ -13,6 +13,7 @@ import { getCreditWagerRefund } from "./match-credit-wager";
 import {
   DataSource,
   In,
+  MoreThan,
   Not,
   Repository,
   type FindOptionsRelations,
@@ -25,6 +26,7 @@ import { EventEntity } from "../event/entities/event.entity";
 import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
 import { getRabbitmqConfig } from "../main";
 import { ConfigService } from "@nestjs/config";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import { TeamEntity } from "../team/entities/team.entity";
 import { GithubApiService } from "../github-api/github-api.service";
 import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
@@ -294,7 +296,90 @@ export class MatchService {
       return;
     }
 
+    if (!this.isTournamentReady(event)) {
+      this.logPausedProgression(event, finishedRound + 1);
+      return;
+    }
     await this.createNextSwissMatches(event.id);
+  }
+
+  private logPausedProgression(event: EventEntity, round: number) {
+    this.logger.warn(
+      `Tournament progression for event ${event.name} is paused before round ${round} until submissions are closed and repositories are locked.`,
+    );
+  }
+
+  /**
+   * Creates the matches of a round whose predecessor finished while the
+   * tournament gate was closed (for example during a reopen). Idempotent:
+   * a round that already has matches is left alone.
+   */
+  async resumeTournamentProgression(eventId: string) {
+    const [lockPart1, lockPart2] = this.getEventLockKey(eventId);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      await queryRunner.query("SELECT pg_advisory_xact_lock($1, $2)", [
+        lockPart1,
+        lockPart2,
+      ]);
+      const event = await this.eventService.getEventById(eventId, {
+        teams: true,
+      });
+      const phase = await this.getPausedProgressionPhase(event);
+      // Creation rechecks the tournament gate and rejects if it closed again.
+      if (phase) {
+        this.logger.log(
+          `Resuming ${phase} round ${event.currentRound} for event ${event.name}.`,
+        );
+        if (phase === MatchPhase.SWISS)
+          await this.createNextSwissMatches(eventId);
+        else await this.createNextTournamentMatches(eventId);
+      }
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  /** The phase whose current round finished its predecessor but has no matches. */
+  async getPausedProgressionPhase(event: EventEntity) {
+    if (event.currentRound === 0) return null;
+    const countMatches = (phase: MatchPhase, round?: number) =>
+      this.matchRepository.countBy({
+        teams: { event: { id: event.id } },
+        phase,
+        round,
+      });
+    const phase =
+      (await countMatches(MatchPhase.ELIMINATION)) > 0
+        ? MatchPhase.ELIMINATION
+        : MatchPhase.SWISS;
+    if ((await countMatches(phase, event.currentRound)) > 0) return null;
+    return phase;
+  }
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async resumePausedTournaments() {
+    const events = await this.dataSource.getRepository(EventEntity).find({
+      where: { currentRound: MoreThan(0) },
+      relations: { teams: true },
+    });
+    for (const event of events) {
+      if (!this.isTournamentReady(event)) continue;
+      try {
+        await this.resumeTournamentProgression(event.id);
+      } catch (error) {
+        this.logger.error(
+          `Could not resume tournament progression for event ${event.id}`,
+          error,
+        );
+      }
+    }
   }
 
   async processTournamentFinishRound(event: EventEntity) {
@@ -338,6 +423,10 @@ export class MatchService {
     const finishedRound = event.currentRound;
     await this.eventService.increaseEventRound(event.id);
     this.logger.log(`Event ${event.name} has finished round ${finishedRound}.`);
+    if (!this.isTournamentReady(event)) {
+      this.logPausedProgression(event, finishedRound + 1);
+      return;
+    }
     await this.createNextTournamentMatches(event.id);
   }
 
@@ -807,6 +896,15 @@ export class MatchService {
 
   private getTournamentEntrants(event: EventEntity) {
     return event.teams.filter((team) => !team.tournamentExcluded);
+  }
+
+  private isTournamentReady(event: EventEntity) {
+    try {
+      this.requireTournamentReady(event);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private requireTournamentReady(event: EventEntity) {

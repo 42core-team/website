@@ -78,7 +78,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { useTabParam } from '@/hooks/useTabParam'
 import { useEventClock } from '@/hooks/use-event-clock'
 import { useSession } from '@/lib/auth'
-import { eventState } from '@/lib/event-lifecycle'
+import {
+  eventState,
+  repositoryConfirmedForTournament,
+} from '@/lib/event-lifecycle'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/events/$id/dashboard')({
@@ -616,9 +619,7 @@ function OperationTab({
   const tournamentReady =
     ['SUBMISSIONS_CLOSED', 'SHOWCASE'].includes(eventState(event, now)) &&
     repositories.isSuccess &&
-    repositories.data.every(
-      (team) => team.tournamentExcluded || team.repositoryStatus === 'LOCKED',
-    )
+    repositories.data.every(repositoryConfirmedForTournament)
   return (
     <LifecycleControls event={event}>
       <div className="space-y-6 border-t pt-6">
