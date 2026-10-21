@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsNumber,
   MinLength,
+  MaxLength,
   Min,
   IsNotEmpty,
   IsBoolean,
@@ -65,6 +66,7 @@ export class CreateEventDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(2048)
   streamUrl?: string;
 
   @ApiPropertyOptional({
@@ -72,6 +74,7 @@ export class CreateEventDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(2048)
   showtimeStreamUrl?: string;
 
   @ApiProperty()

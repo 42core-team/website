@@ -1,5 +1,5 @@
 import { ChevronDown, Lock } from 'lucide-react'
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useLayoutEffect, useRef, useState } from 'react'
 import Link from '@/components/app-link'
 import { Button } from '@/components/ui/button'
 import {
@@ -33,9 +33,8 @@ function statusText(moment: EventMoment, now: number) {
       : moment.phase === 'SHOWCASE'
         ? 'live'
         : null
-  // An alert (its headline differs from the countdown) replaces the phase name
-  // so it is readable without opening the popover. The red final minutes of
-  // coding are not an alert and keep the phase name.
+  // An alert (its headline differs from the countdown) replaces the phase name.
+  // The red final minutes of coding are not an alert and keep the phase name.
   const isAlert =
     moment.tone === 'danger' && moment.headline !== moment.countdownLabel
   const label = isAlert ? moment.headline : lifecycleLabels[moment.phase]
@@ -74,21 +73,15 @@ function isTabActive(tab: EventTab, index: number, pathname: string) {
 
 function TabLink({
   tab,
-  label = tab.name,
   active,
-  className,
-}: Readonly<{
-  tab: EventTab
-  label?: string
-  active: boolean
-  className?: string
-}>) {
+}: Readonly<{ tab: EventTab; active: boolean }>) {
+  // Tooltips do not open on tap, so a tap on a disabled tab opens it instead.
+  const [reasonOpen, setReasonOpen] = useState(false)
   const tabClassName = cn(
     'flex h-9 items-center gap-1.5 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors',
     active
       ? 'bg-accent text-accent-foreground'
       : 'text-foreground/80 hover:bg-accent hover:text-accent-foreground',
-    className,
   )
   if (!tab.lockedReason)
     return (
@@ -97,7 +90,7 @@ function TabLink({
         aria-current={active ? 'page' : undefined}
         className={tabClassName}
       >
-        <span className="truncate">{label}</span>
+        <span className="truncate">{tab.name}</span>
       </Link>
     )
   if (!tab.disabled)
@@ -111,7 +104,7 @@ function TabLink({
             className={tabClassName}
           >
             <Lock className="size-3.5 opacity-70" aria-hidden="true" />
-            <span className="truncate">{label}</span>
+            <span className="truncate">{tab.name}</span>
           </Link>
         </TooltipTrigger>
         <TooltipContent>{tab.lockedReason}</TooltipContent>
@@ -119,10 +112,11 @@ function TabLink({
     )
   // Disabled tabs are not links; they stay focusable so the reason is reachable.
   return (
-    <Tooltip>
+    <Tooltip open={reasonOpen} onOpenChange={setReasonOpen}>
       <TooltipTrigger asChild>
         <span
           role="link"
+          onClick={() => setReasonOpen(true)}
           aria-disabled="true"
           aria-current={active ? 'page' : undefined}
           aria-label={`${tab.name} (${tab.lockedReason})`}
@@ -135,7 +129,7 @@ function TabLink({
           )}
         >
           <Lock className="size-3.5" aria-hidden="true" />
-          <span className="truncate">{label}</span>
+          <span className="truncate">{tab.name}</span>
         </span>
       </TooltipTrigger>
       <TooltipContent>{tab.lockedReason}</TooltipContent>
@@ -154,8 +148,13 @@ function EventTabsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="shrink-0 sm:hidden">
-          {activeTab?.name ?? 'Sections'}
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label={`Event sections${activeTab ? `, current: ${activeTab.name}` : ''}`}
+          className="shrink-0 sm:hidden"
+        >
+          {activeTab?.name ?? 'Menu'}
           <ChevronDown aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
@@ -203,6 +202,10 @@ function TabsMenuLabel({ tab }: Readonly<{ tab: EventTab }>) {
 }
 
 const GAP_PX = 12
+const SAFETY_MARGIN_PX = 16
+
+/** A computed length in pixels; unset values count as 0. */
+const px = (value: string) => Number.parseFloat(value) || 0
 
 /**
  * The bar is one row (event identity | tabs) only when every tab fits next to
@@ -223,9 +226,7 @@ function useSingleRowFit() {
       if (!container || !identity || !tabs) return
       const style = getComputedStyle(container)
       const inner =
-        container.clientWidth -
-        Number.parseFloat(style.paddingLeft) -
-        Number.parseFloat(style.paddingRight)
+        container.clientWidth - px(style.paddingLeft) - px(style.paddingRight)
       // A hidden copy of the name and status line gives their natural width,
       // even while the visible ones are truncated or stretched.
       const identityWidth = Math.max(
@@ -233,21 +234,29 @@ function useSingleRowFit() {
           (element) => element.getBoundingClientRect().width,
         ),
       )
-      // Pill padding, stripe and its gap, the divider (pr-3 + border), then
-      // the column gap.
-      // The tabs may be wrapped, so add up their natural widths instead.
+      // The tabs may be wrapped, so add up their natural widths.
       const tabsWidth = [...tabs.children].reduce((sum, element, index) => {
         const itemStyle = getComputedStyle(element)
         return (
           sum +
           element.getBoundingClientRect().width +
-          Number.parseFloat(itemStyle.marginLeft) +
-          Number.parseFloat(itemStyle.marginRight) +
-          (index > 0 ? Number.parseFloat(getComputedStyle(tabs).columnGap) : 0)
+          px(itemStyle.marginLeft) +
+          px(itemStyle.marginRight) +
+          (index > 0 ? px(getComputedStyle(tabs).columnGap) : 0)
         )
       }, 0)
+      // Pill padding, stripe and its gap, the divider (pr-3 + border), the
+      // column gap, and a margin because the hidden copy is approximate.
       const needed =
-        2 * GAP_PX + 3 + 10 + identityWidth + GAP_PX + 1 + GAP_PX + tabsWidth
+        2 * GAP_PX +
+        3 +
+        10 +
+        identityWidth +
+        GAP_PX +
+        1 +
+        GAP_PX +
+        tabsWidth +
+        SAFETY_MARGIN_PX
       setFits(window.innerWidth >= 1024 && needed <= inner)
     }
     measure()
@@ -280,7 +289,6 @@ export default function EventHeader({
   now: number
 }>) {
   const pathname = usePathname()
-  const navRef = useRef<HTMLElement>(null)
   const singleRow = useSingleRowFit()
   const tone = toneStyles[moment.tone]
   const needsAttention = moment.tone === 'warning' || moment.tone === 'danger'
@@ -288,23 +296,24 @@ export default function EventHeader({
   const infoActive = isTabActive(infoTab, 0, pathname)
   const status = statusText(moment, now)
 
-  useEffect(() => {
-    navRef.current
-      ?.querySelector('[aria-current="page"]')
-      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-  }, [pathname])
-
   return (
     <div
       className={cn(
         'sticky top-16 z-40 border-b bg-background/95 px-4 backdrop-blur md:px-6',
-        needsAttention && cn(tone.panel, tone.border),
+        needsAttention && tone.border,
       )}
     >
+      {/* The tint sits on its own layer so the bar keeps its solid background. */}
+      {needsAttention && (
+        <div
+          aria-hidden="true"
+          className={cn('pointer-events-none absolute inset-0', tone.panel)}
+        />
+      )}
       <div
         ref={singleRow.containerRef}
         className={cn(
-          'container mx-auto grid max-w-(--breakpoint-2xl) gap-x-3',
+          'relative container mx-auto grid max-w-(--breakpoint-2xl) gap-x-3',
           singleRow.fits
             ? 'grid-cols-[minmax(0,max-content)_minmax(0,max-content)] justify-center'
             : 'grid-cols-1',
@@ -358,7 +367,6 @@ export default function EventHeader({
           )}
         </div>
         <nav
-          ref={navRef}
           aria-label="Event navigation"
           className={cn(
             'min-w-0',

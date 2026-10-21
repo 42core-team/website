@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import type { AxiosError } from 'axios'
 import { ArrowLeft, Swords } from 'lucide-react'
 import { toast } from 'sonner'
@@ -29,6 +29,7 @@ export const Route = createFileRoute('/events/$id/teams/$teamId')({
 function TeamRoute() {
   const { id, teamId } = Route.useParams()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const teamQuery = useQuery({
     queryKey: ['team', teamId],
     queryFn: () => getTeamById(teamId),
@@ -88,6 +89,17 @@ function TeamRoute() {
     return (
       <MyTeamPage
         eventId={id}
+        // This page no longer belongs to the viewer, and the team may be gone.
+        onLeft={() => {
+          void navigate({
+            to: '/events/$id/teams',
+            params: { id },
+            replace: true,
+          }).then(() =>
+            // The team may have been deleted with its last member.
+            queryClient.removeQueries({ queryKey: ['team', teamId] }),
+          )
+        }}
         header={
           <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
             <Link href={`/events/${id}/teams`}>

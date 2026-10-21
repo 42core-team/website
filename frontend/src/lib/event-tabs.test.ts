@@ -26,7 +26,6 @@ describe('eventTabs', () => {
     isRegistered: true,
     team: { locked: false, repositoryStatus: 'READY' } as TabTeam | null,
     isAdmin: false,
-    supportsUnitBuilder: false,
     formatTime: () => '09:00',
   }
   const names = (tabs: { name: string }[]) => tabs.map((t) => t.name)
@@ -47,10 +46,41 @@ describe('eventTabs', () => {
       lockedReason: 'Opens 09:00',
       disabled: true,
     })
-    expect(tabs.find((t) => t.name === 'Unit Builder')).toMatchObject({
-      lockedReason: 'Not used in this event',
-      disabled: true,
+  })
+
+  it('never locks Unit Builder', () => {
+    for (const now of [start - 1, start + 1, deadline])
+      for (const [isRegistered, team] of [
+        [false, null],
+        [true, null],
+        [true, base.team],
+      ] as const) {
+        const tab = eventTabs({ ...base, isRegistered, team, now }).find(
+          (t) => t.name === 'Unit Builder',
+        )
+        expect(tab?.lockedReason).toBeUndefined()
+      }
+  })
+
+  it('waits for the viewer before showing viewer locks', () => {
+    const tabs = eventTabs({
+      ...base,
+      isRegistered: false,
+      team: null,
+      viewerKnown: false,
+      now: start + 1,
     })
+    for (const name of ['My Team', 'Match Making', 'Gambling'])
+      expect(tabs.find((t) => t.name === name)?.lockedReason).toBeUndefined()
+    // Phase locks do not depend on the viewer and still apply.
+    expect(
+      eventTabs({
+        ...base,
+        viewerKnown: false,
+        team: null,
+        now: start - 1,
+      }).find((t) => t.name === 'Match Making'),
+    ).toMatchObject({ lockedReason: 'Opens 09:00', disabled: true })
   })
 
   it('locks team tools for viewers without making them clickable', () => {
@@ -92,6 +122,11 @@ describe('eventTabs', () => {
     expect(
       myTeam(start + 1, { locked: true, repositoryStatus: 'LOCKED' }),
     ).toMatchObject({ lockedReason: 'Read only' })
+    // Setting up or unlocking a repository passes; the tab stays unlocked.
+    for (const repositoryStatus of ['PROVISIONING', 'UNLOCKING'] as const)
+      expect(
+        myTeam(start + 1, { locked: false, repositoryStatus })?.lockedReason,
+      ).toBeUndefined()
   })
 
   it('disables My Team for teamless members once team creation has closed', () => {
@@ -111,7 +146,6 @@ describe('eventTabs', () => {
     const tabs = eventTabs({
       ...base,
       isAdmin: true,
-      supportsUnitBuilder: true,
       now: deadline,
     })
     expect(tabs.map((t) => `${t.group}:${t.name}`)).toEqual([

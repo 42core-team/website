@@ -42,7 +42,13 @@ const REPO_CREATION_POLL_INTERVAL_MS = 2000
 export function MyTeamPage({
   eventId: id,
   header,
-}: Readonly<{ eventId: string; header?: ReactNode }>) {
+  onLeft,
+}: Readonly<{
+  eventId: string
+  header?: ReactNode
+  /** Called after leaving the team, before the team data is refreshed. */
+  onLeft?: () => void
+}>) {
   const now = useEventClock()
   const queryClient = useQueryClient()
   const [newTeamName, setNewTeamName] = useState('')
@@ -126,6 +132,7 @@ export function MyTeamPage({
   const leaveTeamMutation = useMutation({
     mutationFn: async () => leaveTeam(id),
     onSuccess: async () => {
+      onLeft?.()
       await queryClient.invalidateQueries({ queryKey: myTeamQueryKey(id) })
     },
   })

@@ -158,6 +158,21 @@ function momentFor(
   }
 
   if (phase === 'SUBMISSIONS_CLOSED') {
+    // The lock failed or the team never got a repository, so its bot is not
+    // locked in; an admin has to step in before the tournament.
+    if (viewer.team?.repositoryStatus === 'FAILED') {
+      return {
+        phase,
+        tone: 'danger',
+        kicker: 'Repository problem',
+        headline: 'Repository lock failed',
+        description:
+          'GitHub did not confirm that your repository is locked. Contact an event admin to retry before the tournament.',
+        countdownTo: null,
+        countdownLabel: null,
+        actions: [],
+      }
+    }
     return {
       phase,
       // A calm waiting state: nothing for participants to do until Showtime.

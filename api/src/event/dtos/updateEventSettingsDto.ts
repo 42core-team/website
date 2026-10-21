@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
 } from "class-validator";
 
@@ -29,6 +30,7 @@ export class UpdateEventSettingsDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(2048)
   streamUrl?: string;
 
   @ApiPropertyOptional({
@@ -36,6 +38,7 @@ export class UpdateEventSettingsDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(2048)
   showtimeStreamUrl?: string;
 
   @ApiPropertyOptional()

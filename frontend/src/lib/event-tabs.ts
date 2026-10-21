@@ -4,7 +4,6 @@ import {
   LIFECYCLE_ORDER,
   eventState,
   registrationOpen,
-  teamEditsOpen,
 } from '@/lib/event-lifecycle'
 import type { MomentEvent } from '@/lib/event-moment'
 
@@ -34,16 +33,17 @@ export function eventTabs({
   now = Date.now(),
   isRegistered,
   team,
+  viewerKnown = true,
   isAdmin,
-  supportsUnitBuilder,
   formatTime,
 }: {
   event: MomentEvent & Pick<Event, 'gamblingEnabled'>
   now?: number
   isRegistered: boolean
   team: Pick<Team, 'locked' | 'repositoryStatus'> | null
+  /** False while registration and team are loading; their locks wait. */
+  viewerKnown?: boolean
   isAdmin: boolean
-  supportsUnitBuilder: boolean
   formatTime: (iso: string) => string
 }): EventTab[] {
   const phase = eventState(event, now)
@@ -67,16 +67,22 @@ export function eventTabs({
     LIFECYCLE_ORDER.indexOf(phase) >=
     LIFECYCLE_ORDER.indexOf('SUBMISSIONS_CLOSED')
 
-  const myTeamLock: Lock = team
-    ? teamEditsOpen(event, team, now)
-      ? {}
-      : { lockedReason: 'Read only' }
-    : !isRegistered
-      ? lockedOut('Join the event first')
-      : registrationOpen(event, now)
+  // Read only once the roster is locked for good; a repository being set up or
+  // unlocked is a passing state and keeps the tab unlocked.
+  const myTeamLock: Lock = !viewerKnown
+    ? {}
+    : team
+      ? registrationOpen(event, now) &&
+        !team.locked &&
+        !['LOCKING', 'LOCKED'].includes(team.repositoryStatus ?? 'PENDING')
         ? {}
-        : // Without a team there is nothing to see once team creation has closed.
-          lockedOut('Closed')
+        : { lockedReason: 'Read only' }
+      : !isRegistered
+        ? lockedOut('Join the event first')
+        : registrationOpen(event, now)
+          ? {}
+          : // Without a team there is nothing to see once team creation has closed.
+            lockedOut('Closed')
 
   const tabs: EventTab[] = [
     { name: 'Info', path: eventPath, group: 'info' },
@@ -90,20 +96,14 @@ export function eventTabs({
     {
       name: 'Unit Builder',
       path: `${eventPath}/unit-builder`,
+      // Open to everyone at all times.
       group: 'team',
-      ...(!supportsUnitBuilder
-        ? lockedOut('Not used in this event')
-        : !isRegistered
-          ? viewerLock
-          : phase === 'REGISTRATION'
-            ? lockedOut(opensReason)
-            : {}),
     },
     {
       name: 'Match Making',
       path: `${eventPath}/queue`,
       group: 'team',
-      ...(team ? codingLock : viewerLock),
+      ...(team || !viewerKnown ? codingLock : viewerLock),
     },
     {
       name: 'Gambling',
@@ -111,7 +111,7 @@ export function eventTabs({
       group: 'team',
       ...(!event.gamblingEnabled
         ? lockedOut('Not enabled')
-        : team
+        : team || !viewerKnown
           ? codingLock
           : viewerLock),
     },

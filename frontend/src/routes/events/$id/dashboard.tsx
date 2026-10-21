@@ -141,6 +141,13 @@ const SETTINGS_FIELDS = [
   'showtimeStreamUrl',
 ] as const
 
+/** An emptied URL field equals an unset one, so it does not count as a change. */
+function settingChanged(field: string, pending: unknown, saved: unknown) {
+  return field === 'streamUrl' || field === 'showtimeStreamUrl'
+    ? (pending || null) !== (saved || null)
+    : pending !== saved
+}
+
 function DashboardRoute() {
   const { id } = Route.useParams()
   const session = useSession()
@@ -321,8 +328,11 @@ function DashboardRoute() {
   const hasChanges = SETTINGS_FIELDS.some(
     (key) =>
       key in pendingSettings &&
-      pendingSettings[key as keyof PendingEventSettings] !==
+      settingChanged(
+        key,
+        pendingSettings[key as keyof PendingEventSettings],
         event[key as keyof Event],
+      ),
   )
 
   const handleSaveSettings = () => {
@@ -331,7 +341,11 @@ function DashboardRoute() {
     SETTINGS_FIELDS.forEach((field) => {
       if (
         field in pendingSettings &&
-        pendingSettings[field] !== event[field as keyof Event]
+        settingChanged(
+          field,
+          pendingSettings[field],
+          event[field as keyof Event],
+        )
       ) {
         Object.assign(updates, { [field]: pendingSettings[field] })
       }
@@ -447,6 +461,7 @@ function DashboardRoute() {
             setIsServerConfigExpanded={setIsServerConfigExpanded}
             eventId={id}
             playClosed={!registrationOpen(event, now)}
+            saved={event}
             onOpenOperation={() => onTabChange('operation')}
           />
         </TabsContent>
@@ -724,6 +739,7 @@ function SettingsTab({
   setIsServerConfigExpanded,
   eventId,
   playClosed,
+  saved,
   onOpenOperation,
 }: {
   pendingSettings: PendingEventSettings
@@ -738,6 +754,8 @@ function SettingsTab({
   eventId: string
   /** After coding, the deadline and playing capabilities only change by reopening play. */
   playClosed: boolean
+  /** Saved values: switches that were off when play closed stay off. */
+  saved: Pick<Event, 'canCreateTeam' | 'processQueue' | 'gamblingEnabled'>
   onOpenOperation: () => void
 }) {
   const reopenNotice = playClosed && (
@@ -905,7 +923,7 @@ function SettingsTab({
                 id="canCreateTeam"
                 label="Allow Team Creation"
                 checked={pendingSettings.canCreateTeam || false}
-                disabled={playClosed && !pendingSettings.canCreateTeam}
+                disabled={playClosed && !saved.canCreateTeam}
                 onCheckedChange={(value) =>
                   updatePendingSetting('canCreateTeam', value)
                 }
@@ -914,7 +932,7 @@ function SettingsTab({
                 id="processQueue"
                 label="Enable Match Making"
                 checked={pendingSettings.processQueue || false}
-                disabled={playClosed && !pendingSettings.processQueue}
+                disabled={playClosed && !saved.processQueue}
                 onCheckedChange={(value) =>
                   updatePendingSetting('processQueue', value)
                 }
@@ -923,7 +941,7 @@ function SettingsTab({
                 id="gamblingEnabled"
                 label="Enable Gambling"
                 checked={pendingSettings.gamblingEnabled ?? true}
-                disabled={playClosed && !pendingSettings.gamblingEnabled}
+                disabled={playClosed && !saved.gamblingEnabled}
                 onCheckedChange={(value) =>
                   updatePendingSetting('gamblingEnabled', value)
                 }

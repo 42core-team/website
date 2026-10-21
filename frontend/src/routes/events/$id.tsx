@@ -17,7 +17,6 @@ import EventMomentCard from '@/components/event-status/event-moment-card'
 import EventTimelineCard from '@/components/event-status/event-timeline-card'
 import { formatEventTime } from '@/components/event-status/shared'
 import { MarkdownContent } from '@/components/MarkdownContent'
-import { readComponentsConfig } from '@/components/unit-builder/config'
 import { eventMoment } from '@/lib/event-moment'
 import { eventTabs } from '@/lib/event-tabs'
 import { useEventClock } from '@/hooks/use-event-clock'
@@ -160,8 +159,8 @@ function EventRoute() {
     now,
     isRegistered: isUserRegistered,
     team: myTeam,
+    viewerKnown,
     isAdmin: isEventAdminQuery.data ?? false,
-    supportsUnitBuilder: readComponentsConfig(event.gameConfig) !== null,
     formatTime: (iso) => formatEventTime(iso, now),
   })
   const eventShell = (children: ReactNode) => (

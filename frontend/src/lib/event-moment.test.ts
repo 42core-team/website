@@ -124,6 +124,16 @@ describe('eventMoment', () => {
     })
   })
 
+  it('flags a failed repository during code freeze', () => {
+    expect(
+      eventMoment(event, member('FAILED'), { now: deadline }),
+    ).toMatchObject({
+      tone: 'danger',
+      kicker: 'Repository problem',
+      headline: 'Repository lock failed',
+    })
+  })
+
   it('offers the stream during Showtime', () => {
     const live = {
       ...event,
