@@ -1,11 +1,6 @@
-import { ChevronDown, Lock } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Link from '@/components/app-link'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
 import {
   Tooltip,
   TooltipContent,
@@ -18,7 +13,7 @@ import { formatCountdown, momentRemainingMs } from '@/lib/event-moment'
 import type { EventTab } from '@/lib/event-tabs'
 import { usePathname } from '@/lib/router-hooks'
 import { cn } from '@/lib/utils'
-import { MomentActions, toneStyles } from './shared'
+import { toneStyles } from './shared'
 
 function statusText(moment: EventMoment, now: number) {
   const remaining = momentRemainingMs(moment, now)
@@ -36,61 +31,30 @@ function statusText(moment: EventMoment, now: number) {
   const isAlert =
     moment.tone === 'danger' && moment.headline !== moment.countdownLabel
   const label = isAlert ? moment.headline : lifecycleLabels[moment.phase]
-  return { remaining, detail, isAlert, label }
+  return { detail, isAlert, label }
 }
 
 function StatusLine({
-  eventId,
   moment,
   now,
-}: Readonly<{ eventId: string; moment: EventMoment; now: number }>) {
+}: Readonly<{ moment: EventMoment; now: number }>) {
   const tone = toneStyles[moment.tone]
-  const { remaining, detail, isAlert, label } = statusText(moment, now)
+  const { detail, isAlert, label } = statusText(moment, now)
 
   return (
-    <Popover>
-      <PopoverTrigger
-        aria-label={`Event status: ${label}. Show details`}
-        className="flex max-w-full items-center gap-1 rounded-sm text-xs whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <span
-          className={cn('truncate', isAlert && cn('font-medium', tone.text))}
-        >
-          {label}
-        </span>
-        {detail && (
-          <>
-            <span aria-hidden="true">·</span>
-            <span className={cn('font-mono tabular-nums', tone.text)}>
-              {detail}
-            </span>
-          </>
-        )}
-        <ChevronDown className="size-3 shrink-0" aria-hidden="true" />
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 space-y-3">
-        <div className="space-y-1">
-          <p className={cn('text-xs font-medium', tone.text)}>
-            {moment.kicker}
-          </p>
-          <p className="font-semibold tracking-tight">{moment.headline}</p>
-          {remaining !== null && (
-            <p className="text-sm">
-              {moment.countdownLabel !== moment.headline && (
-                <span className="text-muted-foreground">
-                  {moment.countdownLabel}{' '}
-                </span>
-              )}
-              <span className={cn('font-mono tabular-nums', tone.text)}>
-                {formatCountdown(remaining)}
-              </span>
-            </p>
-          )}
-        </div>
-        <p className="text-sm text-muted-foreground">{moment.description}</p>
-        <MomentActions eventId={eventId} actions={moment.actions} size="sm" />
-      </PopoverContent>
-    </Popover>
+    <span className="flex items-center gap-1 text-xs font-normal whitespace-nowrap text-muted-foreground">
+      <span className={cn('truncate', isAlert && cn('font-medium', tone.text))}>
+        {label}
+      </span>
+      {detail && (
+        <>
+          <span aria-hidden="true">·</span>
+          <span className={cn('font-mono tabular-nums', tone.text)}>
+            {detail}
+          </span>
+        </>
+      )}
+    </span>
   )
 }
 
@@ -222,17 +186,15 @@ function useSingleRowFit() {
 }
 
 /**
- * Second tier of the site header on event pages: the event tabs, led by the
- * event name as the Info tab, and the status capsule on the right.
+ * Second tier of the site header on event pages: the event name and its
+ * status line (together the Info tab), followed by the event tabs.
  */
 export default function EventHeader({
-  eventId,
   eventName,
   moment,
   tabs,
   now,
 }: Readonly<{
-  eventId: string
   eventName: string
   moment: EventMoment
   tabs: EventTab[]
@@ -269,31 +231,30 @@ export default function EventHeader({
             : 'grid-cols-1',
         )}
       >
-        {/* The event name is the Info tab; it sits on the tab-label line with
-            the status line hanging below it. */}
+        {/* The event name and its status line form the Info tab. */}
         <div
           ref={singleRow.identityRef}
           className={cn(
-            'relative flex h-[72px] min-w-0 gap-3 pt-[26px]',
+            'relative flex h-[72px] min-w-0 items-center',
             singleRow.fits && 'border-r pr-3',
           )}
         >
-          <span
-            aria-hidden="true"
-            className={cn('mb-[22px] w-[3px] shrink-0 rounded-full', tone.dot)}
-          />
-          <div className="min-w-0">
-            <Link
-              href={infoTab.path}
-              aria-current={infoActive ? 'page' : undefined}
-              className="block truncate leading-5 font-semibold md:text-base"
-            >
-              {eventName}
-            </Link>
-            <div className="mt-1">
-              <StatusLine eventId={eventId} moment={moment} now={now} />
-            </div>
-          </div>
+          <Link
+            href={infoTab.path}
+            aria-current={infoActive ? 'page' : undefined}
+            className="flex min-w-0 items-stretch gap-3"
+          >
+            <span
+              aria-hidden="true"
+              className={cn('w-[3px] shrink-0 rounded-full', tone.dot)}
+            />
+            <span className="flex min-w-0 flex-col gap-1">
+              <span className="truncate leading-5 font-semibold md:text-base">
+                {eventName}
+              </span>
+              <StatusLine moment={moment} now={now} />
+            </span>
+          </Link>
           <div
             aria-hidden="true"
             className="invisible absolute top-0 left-0 flex flex-col items-start whitespace-nowrap"
@@ -301,7 +262,7 @@ export default function EventHeader({
             <span data-measure className="font-semibold md:text-base">
               {eventName}
             </span>
-            <span data-measure className="pr-4 text-xs">
+            <span data-measure className="text-xs">
               {status.label}
               {status.detail && (
                 <span className="font-mono"> · {status.detail}</span>

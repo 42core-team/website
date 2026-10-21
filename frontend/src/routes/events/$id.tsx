@@ -167,7 +167,6 @@ function EventRoute() {
   const eventShell = (children: ReactNode) => (
     <div className="relative flex min-h-lvh flex-col">
       <EventHeader
-        eventId={id}
         eventName={event.name}
         moment={moment}
         tabs={tabs}
