@@ -22,6 +22,16 @@ import type { TeamImage, TeamBackground } from "../team-image.service";
 import { MediaUploadEntity } from "../../media/entities/media-upload.entity";
 import { mediaArtwork } from "../../media/media-artwork";
 
+export enum RepositoryStatus {
+  PENDING = "PENDING",
+  PROVISIONING = "PROVISIONING",
+  READY = "READY",
+  LOCKING = "LOCKING",
+  LOCKED = "LOCKED",
+  UNLOCKING = "UNLOCKING",
+  FAILED = "FAILED",
+}
+
 @Entity("teams")
 export class TeamEntity {
   @PrimaryGeneratedColumn("uuid")
@@ -68,6 +78,18 @@ export class TeamEntity {
 
   @Column({ default: false })
   locked: boolean;
+
+  @Column({ type: "varchar", default: RepositoryStatus.PENDING })
+  repositoryStatus: RepositoryStatus;
+
+  @Column({ type: "uuid", nullable: true })
+  repositoryOperationId: string | null;
+
+  @Column({ type: "text", nullable: true })
+  repositoryError: string | null;
+
+  @Column({ default: false })
+  tournamentExcluded: boolean;
 
   @Column({ nullable: true })
   repo: string;

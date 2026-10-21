@@ -9,6 +9,7 @@ import { CoreLogoWhite } from '@/components/social'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { getVisualizerUrl } from '@/lib/env'
+import { eventState, lifecycleLabels } from '@/lib/event-lifecycle'
 import WorldChampionshipBanner from '@/components/world-championship-banner'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
@@ -93,7 +94,8 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
   }, [visualizerTheme])
 
   const timeLeftMs = props.currentLiveEvent
-    ? new Date(props.currentLiveEvent.endDate).getTime() - now.getTime()
+    ? new Date(props.currentLiveEvent.submissionDeadline).getTime() -
+      now.getTime()
     : 0
 
   return (
@@ -140,69 +142,79 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
             </Button>
           </div>
 
-          {props.currentLiveEvent && timeLeftMs > 0 && (
-            <motion.div
-              className="mt-7 w-full max-w-xl sm:mt-9"
-              initial={
-                prefersReducedMotion
-                  ? false
-                  : { scale: 0.95, opacity: 0, y: 10 }
-              }
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-            >
-              <Link
-                href={`/events/${props.currentLiveEvent.id}`}
-                className="group block rounded-xl focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+          {props.currentLiveEvent &&
+            props.currentLiveEvent.state !== 'COMPLETED' && (
+              <motion.div
+                className="mt-7 w-full max-w-xl sm:mt-9"
+                initial={
+                  prefersReducedMotion
+                    ? false
+                    : { scale: 0.95, opacity: 0, y: 10 }
+                }
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
               >
-                <Card className="relative overflow-hidden border-white/10 bg-background/60 shadow-xl backdrop-blur-xl transition-all duration-300 group-hover:border-primary/50 group-hover:bg-background/80 group-hover:shadow-2xl group-active:scale-[0.99] motion-safe:sm:group-hover:-translate-y-1">
-                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50 transition-opacity group-hover:opacity-100" />
-                  <CardHeader className="flex flex-col gap-5 space-y-0 p-4 text-left sm:flex-row sm:items-center sm:justify-between sm:p-6">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="relative flex h-2 w-2 shrink-0">
-                          <span className="absolute inset-0 animate-ping rounded-full bg-destructive opacity-75" />
-                          <span className="relative h-2 w-2 rounded-full bg-destructive" />
-                        </span>
-                        <span className="text-xs font-semibold tracking-widest text-destructive uppercase">
-                          Live now
-                        </span>
+                <Link
+                  href={`/events/${props.currentLiveEvent.id}`}
+                  className="group block rounded-xl focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+                >
+                  <Card className="relative overflow-hidden border-white/10 bg-background/60 shadow-xl backdrop-blur-xl transition-all duration-300 group-hover:border-primary/50 group-hover:bg-background/80 group-hover:shadow-2xl group-active:scale-[0.99] motion-safe:sm:group-hover:-translate-y-1">
+                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50 transition-opacity group-hover:opacity-100" />
+                    <CardHeader className="flex flex-col gap-5 space-y-0 p-4 text-left sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="relative flex h-2 w-2 shrink-0">
+                            <span className="absolute inset-0 animate-ping rounded-full bg-destructive opacity-75" />
+                            <span className="relative h-2 w-2 rounded-full bg-destructive" />
+                          </span>
+                          <span className="text-xs font-semibold tracking-widest text-destructive uppercase">
+                            {
+                              lifecycleLabels[
+                                eventState(
+                                  props.currentLiveEvent,
+                                  now.getTime(),
+                                )
+                              ]
+                            }
+                          </span>
+                        </div>
+                        <CardTitle className="mt-2 text-lg font-bold leading-snug tracking-tight text-foreground transition-colors group-hover:text-primary sm:text-2xl">
+                          {props.currentLiveEvent.name}
+                        </CardTitle>
                       </div>
-                      <CardTitle className="mt-2 text-lg font-bold leading-snug tracking-tight text-foreground transition-colors group-hover:text-primary sm:text-2xl">
-                        {props.currentLiveEvent.name}
-                      </CardTitle>
-                    </div>
 
-                    <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-4 sm:justify-end sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
-                      <div className="flex min-w-0 flex-col sm:items-end sm:text-right">
-                        <span className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-                          Closing in
-                        </span>
-                        <span className="font-mono text-sm font-bold text-foreground tabular-nums sm:text-base">
-                          {formatTimeLeft(timeLeftMs)}
+                      <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-4 sm:justify-end sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+                        <div className="flex min-w-0 flex-col sm:items-end sm:text-right">
+                          <span className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
+                            {timeLeftMs > 0 ? 'Coding ends in' : 'Code freeze'}
+                          </span>
+                          <span className="font-mono text-sm font-bold text-foreground tabular-nums sm:text-base">
+                            {timeLeftMs > 0
+                              ? formatTimeLeft(timeLeftMs)
+                              : 'View event'}
+                          </span>
+                        </div>
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-105">
+                          <svg
+                            className="h-5 w-5"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                          </svg>
                         </span>
                       </div>
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-105">
-                        <svg
-                          className="h-5 w-5"
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                        >
-                          <path d="M5 12h14M12 5l7 7-7 7" />
-                        </svg>
-                      </span>
-                    </div>
-                  </CardHeader>
-                </Card>
-              </Link>
-            </motion.div>
-          )}
+                    </CardHeader>
+                  </Card>
+                </Link>
+              </motion.div>
+            )}
         </div>
 
         <div className="mx-auto mt-10 w-full max-w-6xl sm:mt-14">

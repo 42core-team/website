@@ -3,6 +3,16 @@ import type { WhitelistPlatform } from '@/lib/constants/whitelist'
 import axiosInstance from '@/app/actions/axios'
 
 export interface Event {
+  state:
+    'REGISTRATION' | 'PLAYING' | 'SUBMISSIONS_CLOSED' | 'SHOWCASE' | 'COMPLETED'
+  submissionDeadline: string
+  scheduledEndDate: string
+  completedAt: string | null
+  introEnabled: boolean
+  introLeadMinutes: number
+  streamUrl: string | null
+  /** Showtime stream; when null, Showtime uses `streamUrl`. */
+  showtimeStreamUrl: string | null
   id: string
   startDate: string
   name: string
@@ -106,7 +116,12 @@ export interface EventCreateParams {
   githubOrgSecret: string
   location?: string
   startDate: number
-  endDate: number
+  submissionDeadline: number
+  scheduledEndDate: number
+  introEnabled: boolean
+  introLeadMinutes: number
+  streamUrl?: string
+  showtimeStreamUrl?: string
   minTeamSize: number
   maxTeamSize: number
   monorepoVersion: string
@@ -162,6 +177,12 @@ export async function updateEventSettings(
     location?: string
     startDate?: number
     endDate?: number
+    submissionDeadline?: number
+    scheduledEndDate?: number
+    introEnabled?: boolean
+    introLeadMinutes?: number
+    streamUrl?: string
+    showtimeStreamUrl?: string
     minTeamSize?: number
     maxTeamSize?: number
     gameServerDockerImage?: string
@@ -176,6 +197,34 @@ export async function updateEventSettings(
 ): Promise<Event> {
   return (await axiosInstance.put<Event>(`event/${eventId}/settings`, settings))
     .data
+}
+
+export async function transitionEvent(
+  eventId: string,
+  data: {
+    action: 'showcase' | 'complete' | 'reopen'
+    submissionDeadline?: number
+  },
+): Promise<Event> {
+  return (await axiosInstance.post<Event>(`event/${eventId}/lifecycle`, data))
+    .data
+}
+
+export async function retryRepository(
+  eventId: string,
+  teamId: string,
+): Promise<void> {
+  await axiosInstance.post(`event/${eventId}/repositories/retry`, { teamId })
+}
+
+export async function setTeamExclusion(
+  eventId: string,
+  teamId: string,
+  excluded: boolean,
+): Promise<void> {
+  await axiosInstance.post(`event/${eventId}/teams/${teamId}/exclusion`, {
+    excluded,
+  })
 }
 
 export async function getEventAdmins(

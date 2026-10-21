@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import type { AxiosError } from 'axios'
-import { Swords } from 'lucide-react'
+import { ArrowLeft, Swords } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getTeamById,
@@ -9,7 +9,9 @@ import {
   startDirectMatch,
 } from '@/app/actions/team'
 import { getMatchesForTeam } from '@/app/actions/tournament'
+import { MyTeamPage } from '@/app/events/MyTeamPage'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
+import Link from '@/components/app-link'
 import { TeamMatchHistory, TeamPublicProfile } from '@/components/team'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -27,6 +29,7 @@ export const Route = createFileRoute('/events/$id/teams/$teamId')({
 function TeamRoute() {
   const { id, teamId } = Route.useParams()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const teamQuery = useQuery({
     queryKey: ['team', teamId],
     queryFn: () => getTeamById(teamId),
@@ -65,7 +68,8 @@ function TeamRoute() {
     onError: (error: Error) => toast.error(getErrorMessage(error)),
   })
 
-  if (teamQuery.isPending) {
+  // Wait for the viewer's team too, so their own team never flashes the public view.
+  if (teamQuery.isPending || myTeamQuery.isPending) {
     return (
       <main className="flex min-h-[45vh] items-center justify-center">
         <Spinner />
@@ -78,6 +82,33 @@ function TeamRoute() {
       <main className="container mx-auto max-w-5xl px-4 py-8">
         <p className="text-center text-destructive">Team not found.</p>
       </main>
+    )
+  }
+
+  if (myTeamQuery.data?.id === teamId) {
+    return (
+      <MyTeamPage
+        eventId={id}
+        // This page no longer belongs to the viewer, and the team may be gone.
+        onLeft={() => {
+          void navigate({
+            to: '/events/$id/teams',
+            params: { id },
+            replace: true,
+          }).then(() =>
+            // The team may have been deleted with its last member.
+            queryClient.removeQueries({ queryKey: ['team', teamId] }),
+          )
+        }}
+        header={
+          <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
+            <Link href={`/events/${id}/teams`}>
+              <ArrowLeft />
+              Back to teams
+            </Link>
+          </Button>
+        }
+      />
     )
   }
 

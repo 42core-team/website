@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
+import type { LucideIcon } from 'lucide-react'
+import { MapPin, UserRound, Users, UsersRound } from 'lucide-react'
 import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import {
@@ -10,11 +12,14 @@ import {
 } from '@/app/actions/event'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import GithubLoginButton from '@/components/github'
-import EventInfoNotice from '@/components/event-info-notice'
-import EventNavbar from '@/components/event-navbar'
+import EventHeader from '@/components/event-status/event-header'
+import EventMomentCard from '@/components/event-status/event-moment-card'
+import EventTimelineCard from '@/components/event-status/event-timeline-card'
+import { formatEventTime } from '@/components/event-status/shared'
 import { MarkdownContent } from '@/components/MarkdownContent'
-import RepositoryLockdownNotice from '@/components/repository-lockdown-notice'
-import TimeBadge from '@/components/timeBadge'
+import { eventMoment } from '@/lib/event-moment'
+import { eventTabs } from '@/lib/event-tabs'
+import { useEventClock } from '@/hooks/use-event-clock'
 import {
   Card,
   CardContent,
@@ -29,20 +34,24 @@ export const Route = createFileRoute('/events/$id')({
   component: EventRoute,
 })
 
-function StatCard({ title, value }: { title: string; value: ReactNode }) {
+function EventFact({
+  icon: Icon,
+  label,
+  value,
+}: Readonly<{ icon: LucideIcon; label: string; value: ReactNode }>) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="mb-2 text-lg font-semibold">{title}</CardTitle>
-        <CardDescription className="text-3xl font-bold">
-          {value}
-        </CardDescription>
-      </CardHeader>
-    </Card>
+    <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+      <dt className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Icon className="size-4" aria-hidden="true" />
+        {label}
+      </dt>
+      <dd className="text-right font-medium">{value}</dd>
+    </div>
   )
 }
 
 function EventRoute() {
+  const now = useEventClock()
   const { id } = Route.useParams()
   const isEventOverview = useLocation({
     select: (location) =>
@@ -55,6 +64,7 @@ function EventRoute() {
   const eventQuery = useQuery({
     queryKey: ['event', id],
     queryFn: async () => getEventById(id),
+    refetchInterval: 1000,
     enabled: Boolean(userId),
   })
 
@@ -86,6 +96,13 @@ function EventRoute() {
     queryKey: myTeamQueryKey(id),
     queryFn: () => myTeamQueryFn(id),
     enabled: Boolean(userId) && Boolean(isUserRegisteredQuery.data),
+    // Poll quickly only while GitHub is still applying a repository change.
+    refetchInterval: (query) =>
+      ['PROVISIONING', 'LOCKING', 'UNLOCKING'].includes(
+        query.state.data?.repositoryStatus ?? '',
+      )
+        ? 3000
+        : 30_000,
   })
 
   if (status === 'loading' || (userId && eventQuery.isPending)) {
@@ -128,27 +145,31 @@ function EventRoute() {
 
   const event = eventQuery.data
   const isUserRegistered = isUserRegisteredQuery.data ?? false
+  const myTeam = myTeamQuery.data ?? null
+  const viewerKnown =
+    isUserRegisteredQuery.isSuccess &&
+    (!isUserRegistered || myTeamQuery.isSuccess)
+  const moment = eventMoment(
+    event,
+    viewerKnown ? { isRegistered: isUserRegistered, team: myTeam } : null,
+    { now },
+  )
+  const tabs = eventTabs({
+    event,
+    now,
+    isRegistered: isUserRegistered,
+    team: myTeam,
+    viewerKnown,
+    isAdmin: isEventAdminQuery.data ?? false,
+    formatTime: (iso) => formatEventTime(iso, now),
+  })
   const eventShell = (children: ReactNode) => (
     <div className="relative flex min-h-lvh flex-col">
-      {userId && (
-        <EventInfoNotice
-          userId={userId}
-          startDate={event.startDate}
-          eventId={id}
-          isPrivate={event.isPrivate}
-          isUserRegistered={isUserRegistered}
-        />
-      )}
-      <EventNavbar
-        event={event}
-        eventId={id}
-        isUserRegistered={isUserRegistered}
-        hasTeam={Boolean(myTeamQuery.data)}
-        isEventAdmin={isEventAdminQuery.data ?? false}
-      />
-      <RepositoryLockdownNotice
-        repoLockDate={event.repoLockDate}
-        lockedAt={event.lockedAt}
+      <EventHeader
+        eventName={event.name}
+        moment={moment}
+        tabs={tabs}
+        now={now}
       />
       {children}
     </div>
@@ -160,74 +181,59 @@ function EventRoute() {
 
   return eventShell(
     <main className="container mx-auto max-w-7xl px-4 py-8">
-      <h1 className="mb-8 text-3xl font-bold">{event.name}</h1>
+      {/* The event name is shown in the event header. */}
+      <h1 className="sr-only">{event.name}</h1>
 
-      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <StatCard
-          title="Participants"
-          value={participantsCountQuery.data ?? '-'}
-        />
-        <StatCard title="Teams" value={teamsCountQuery.data ?? '-'} />
-        <StatCard title="Location" value={event.location || 'TBA'} />
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold">Event Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Description
-            </h3>
-            {event.description ? (
-              <MarkdownContent
-                className="mt-1 text-foreground"
-                content={event.description}
-              />
-            ) : (
-              <p className="mt-1 text-muted-foreground">
-                No description provided.
-              </p>
-            )}
+      <div className="space-y-6">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <EventMomentCard event={event} moment={moment} now={now} />
           </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">
-                Start Date
-              </h3>
-              <TimeBadge className="mt-1" time={event.startDate} />
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">
-                End Date
-              </h3>
-              <TimeBadge className="mt-1" time={event.endDate} />
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Team Size
-            </h3>
-            <p className="mt-1">
-              {event.minTeamSize}
-              {' - '}
-              {event.maxTeamSize}
-              {' members'}
-            </p>
-          </div>
-
-          {event.repoLockDate && (
-            <RepositoryLockdownNotice
-              repoLockDate={event.repoLockDate}
-              lockedAt={event.lockedAt}
-              variant="summary"
+          <dl className="divide-y rounded-xl border bg-card p-6">
+            <EventFact
+              icon={UserRound}
+              label="Participants"
+              value={participantsCountQuery.data ?? '-'}
             />
-          )}
-        </CardContent>
-      </Card>
+            <EventFact
+              icon={Users}
+              label="Teams"
+              value={teamsCountQuery.data ?? '-'}
+            />
+            <EventFact
+              icon={UsersRound}
+              label="Team size"
+              value={`${event.minTeamSize}–${event.maxTeamSize} members`}
+            />
+            <EventFact
+              icon={MapPin}
+              label="Location"
+              value={event.location || 'TBA'}
+            />
+          </dl>
+        </div>
+
+        {event.description && (
+          <section
+            aria-labelledby="event-about-heading"
+            className="rounded-xl border bg-card p-6 sm:p-8"
+          >
+            <h2
+              id="event-about-heading"
+              className="mb-3 text-sm font-medium tracking-wider text-muted-foreground uppercase"
+            >
+              About this event
+            </h2>
+            {/* The first paragraph reads as the event's lead. */}
+            <MarkdownContent
+              className="text-foreground [&>p:first-child]:text-lg [&>p:first-child]:leading-relaxed"
+              content={event.description}
+            />
+          </section>
+        )}
+
+        <EventTimelineCard event={event} moment={moment} />
+      </div>
     </main>,
   )
 }

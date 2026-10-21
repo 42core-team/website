@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { UserEntity } from "./entities/user.entity";
 import { ILike, Repository, UpdateResult } from "typeorm";
@@ -6,6 +6,7 @@ import { EventEntity } from "../event/entities/event.entity";
 import { UserInviteSearchResult } from "./dtos/user-search-invite.dto";
 import { ConfigService } from "@nestjs/config";
 import { encryptSecret } from "../common/encryption";
+import { isRegistrationOpen } from "../event/event-lifecycle";
 
 @Injectable()
 export class UserService {
@@ -96,11 +97,21 @@ export class UserService {
   }
 
   joinEvent(userId: string, eventId: string) {
-    return this.userRepository
-      .createQueryBuilder()
-      .relation(UserEntity, "events")
-      .of(userId)
-      .add(eventId);
+    return this.userRepository.manager.transaction(async (manager) => {
+      // Recheck at the mutation, after identity/whitelist lookups, and serialize
+      // with administrative closure so a previously authorized request cannot join late.
+      const event = await manager.findOneOrFail(EventEntity, {
+        where: { id: eventId },
+        lock: { mode: "pessimistic_read" },
+      });
+      if (!isRegistrationOpen(event))
+        throw new BadRequestException("Event registration is closed");
+      await manager
+        .createQueryBuilder()
+        .relation(UserEntity, "events")
+        .of(userId)
+        .add(eventId);
+    });
   }
 
   canCreateEvent(userId: string): Promise<boolean> {

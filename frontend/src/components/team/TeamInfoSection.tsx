@@ -1,11 +1,18 @@
 import type { Team, TeamMember } from '@/app/actions/team'
 
 import { DialogTrigger } from '@radix-ui/react-dialog'
-import { ExternalLink, Lock, Plus } from 'lucide-react'
+import {
+  CircleAlert,
+  ExternalLink,
+  Lock,
+  Plus,
+  TriangleAlert,
+} from 'lucide-react'
 import { useParams } from '@/lib/router-hooks'
 import { useState } from 'react'
 
 import { GithubIcon } from '@/components/icons'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -25,6 +32,7 @@ import { TeamProfileHeader } from './TeamProfileHeader'
 import { TeamAppearanceEditor } from './TeamAppearanceEditor'
 
 interface TeamInfoSectionProps {
+  canEdit?: boolean
   myTeam: Team
   onLeaveTeam: () => Promise<boolean>
   isLeaving: boolean
@@ -42,6 +50,7 @@ export function TeamInfoSection({
   isRepoPending,
   isRepoCreating,
   githubOrg,
+  canEdit = true,
 }: Readonly<TeamInfoSectionProps>) {
   const eventId = useParams().id as string
   const [isOpen, setIsOpen] = useState(false)
@@ -82,6 +91,8 @@ export function TeamInfoSection({
       <TeamProfileHeader
         team={myTeam}
         showBack={false}
+        // Artwork stays editable when the roster is locked; canEdit only
+        // governs roster changes.
         cover={
           <TeamAppearanceEditor
             team={myTeam}
@@ -92,6 +103,26 @@ export function TeamInfoSection({
         picture={<TeamAppearanceEditor team={myTeam} eventId={eventId} />}
       />
       <CardContent className="flex flex-col gap-2">
+        {myTeam.repositoryStatus === 'FAILED' && (
+          <Alert variant="destructive">
+            <CircleAlert className="size-4" aria-hidden="true" />
+            <AlertTitle>Repository setup failed</AlertTitle>
+            <AlertDescription>
+              {myTeam.repositoryError ??
+                'GitHub did not confirm your repository.'}{' '}
+              Ask an event admin to fix it.
+            </AlertDescription>
+          </Alert>
+        )}
+        {myTeam.tournamentExcluded && (
+          <Alert variant="warning" role="status">
+            <TriangleAlert className="size-4" aria-hidden="true" />
+            <AlertTitle>Excluded from the tournament</AlertTitle>
+            <AlertDescription>
+              This team will not play in the tournament.
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="mb-6">
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Repository</p>
@@ -154,7 +185,7 @@ export function TeamInfoSection({
         <section aria-label="Team members" className="rounded-xl border p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="text-lg font-semibold">Members</h3>
-            {!myTeam.locked && (
+            {canEdit && (
               <Button size="sm" onClick={() => setIsOpen(true)}>
                 <Plus className="size-4" />
                 Invite Others
@@ -186,7 +217,7 @@ export function TeamInfoSection({
             </div>
           )}
           <div className="flex items-center justify-end">
-            {!myTeam.locked && (
+            {canEdit && (
               <Dialog
                 open={isLeaveDialogOpen}
                 onOpenChange={setIsLeaveDialogOpen}
@@ -235,7 +266,7 @@ export function TeamInfoSection({
 
         {/* Invite Modal */}
         <TeamInviteModal
-          isOpen={isOpen}
+          isOpen={isOpen && canEdit}
           onClose={() => setIsOpen(false)}
           teamId={myTeam.id}
           eventId={eventId}
