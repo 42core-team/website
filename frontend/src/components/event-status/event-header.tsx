@@ -76,11 +76,10 @@ function TabLink({
   className?: string
 }>) {
   const tabClassName = cn(
-    'relative flex h-11 items-center gap-1.5 px-3 text-sm whitespace-nowrap transition-colors',
-    'after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full',
+    'flex h-9 items-center gap-1.5 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors',
     active
-      ? 'font-medium text-foreground after:bg-foreground'
-      : 'text-muted-foreground hover:text-foreground',
+      ? 'bg-accent text-accent-foreground'
+      : 'text-foreground/80 hover:bg-accent hover:text-accent-foreground',
     className,
   )
   if (!tab.lockedReason)
@@ -123,7 +122,8 @@ function TabLink({
           className={cn(
             tabClassName,
             'cursor-not-allowed',
-            !active && 'opacity-60 hover:text-muted-foreground',
+            !active &&
+              'opacity-60 hover:bg-transparent hover:text-foreground/80',
           )}
         >
           <Lock className="size-3.5" aria-hidden="true" />
@@ -166,9 +166,17 @@ function useSingleRowFit() {
           (element) => element.getBoundingClientRect().width,
         ),
       )
-      // Stripe and its gap, the divider (pr-3 + border), then the column gap.
+      // Pill padding, stripe and its gap, the divider (pr-3 + border), then
+      // the column gap.
       const needed =
-        3 + GAP_PX + identityWidth + GAP_PX + 1 + GAP_PX + tabs.scrollWidth
+        2 * GAP_PX +
+        3 +
+        10 +
+        identityWidth +
+        GAP_PX +
+        1 +
+        GAP_PX +
+        tabs.scrollWidth
       setFits(window.innerWidth >= 1024 && needed <= inner)
     }
     measure()
@@ -218,14 +226,14 @@ export default function EventHeader({
   return (
     <div
       className={cn(
-        'sticky top-16 z-40 border-b bg-background/95 backdrop-blur',
+        'sticky top-16 z-40 border-b bg-background/95 px-4 backdrop-blur md:px-6',
         needsAttention && cn(tone.panel, tone.border),
       )}
     >
       <div
         ref={singleRow.containerRef}
         className={cn(
-          'mx-auto grid w-full max-w-7xl gap-x-3 px-4',
+          'container mx-auto grid max-w-(--breakpoint-2xl) gap-x-3',
           singleRow.fits
             ? 'grid-cols-[minmax(0,max-content)_minmax(0,1fr)]'
             : 'grid-cols-1',
@@ -235,21 +243,24 @@ export default function EventHeader({
         <div
           ref={singleRow.identityRef}
           className={cn(
-            'relative flex h-[72px] min-w-0 items-center',
+            'relative flex h-14 min-w-0 items-center',
             singleRow.fits && 'border-r pr-3',
           )}
         >
           <Link
             href={infoTab.path}
             aria-current={infoActive ? 'page' : undefined}
-            className="flex min-w-0 items-stretch gap-3"
+            className={cn(
+              'flex min-w-0 items-stretch gap-2.5 rounded-md px-3 py-1.5 transition-colors',
+              infoActive ? 'bg-accent' : 'hover:bg-accent',
+            )}
           >
             <span
               aria-hidden="true"
               className={cn('w-[3px] shrink-0 rounded-full', tone.dot)}
             />
-            <span className="flex min-w-0 flex-col items-center gap-1 text-center">
-              <span className="max-w-full truncate leading-5 font-semibold md:text-base">
+            <span className="flex min-w-0 flex-col items-center text-center">
+              <span className="max-w-full truncate text-sm leading-5 font-semibold">
                 {eventName}
               </span>
               <StatusLine moment={moment} now={now} />
@@ -259,7 +270,7 @@ export default function EventHeader({
             aria-hidden="true"
             className="invisible absolute top-0 left-0 flex flex-col items-start whitespace-nowrap"
           >
-            <span data-measure className="font-semibold md:text-base">
+            <span data-measure className="text-sm font-semibold">
               {eventName}
             </span>
             <span data-measure className="text-xs">
@@ -269,27 +280,21 @@ export default function EventHeader({
               )}
             </span>
           </div>
-          {infoActive && (
-            <span
-              aria-hidden="true"
-              className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-foreground"
-            />
-          )}
         </div>
         <nav
           ref={navRef}
           aria-label="Event navigation"
           className={cn(
             'min-w-0 overflow-x-auto [scrollbar-width:none]',
-            // One row: tabs span the full bar height so their labels share the
-            // name's line and their underline sits on the bar's edge.
-            singleRow.fits ? '[&_li>*]:h-[72px]' : '-mx-4 border-t px-4',
+            singleRow.fits
+              ? 'flex items-center'
+              : '-mx-4 border-t px-4 py-2 md:-mx-6 md:px-6',
           )}
         >
           <TooltipProvider delayDuration={0}>
             <ul
               ref={singleRow.tabsRef}
-              className="flex h-full w-max items-center"
+              className="flex w-max items-center gap-1"
             >
               {otherTabs.map((tab, index) => (
                 <Fragment key={tab.path}>
