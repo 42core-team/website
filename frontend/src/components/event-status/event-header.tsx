@@ -42,7 +42,7 @@ function StatusLine({
   const { detail, isAlert, label } = statusText(moment, now)
 
   return (
-    <span className="flex items-center gap-1 text-xs font-normal whitespace-nowrap text-muted-foreground">
+    <span className="flex max-w-full items-center justify-center gap-1 text-xs font-normal whitespace-nowrap text-muted-foreground">
       <span className={cn('truncate', isAlert && cn('font-medium', tone.text))}>
         {label}
       </span>
@@ -248,8 +248,8 @@ export default function EventHeader({
               aria-hidden="true"
               className={cn('w-[3px] shrink-0 rounded-full', tone.dot)}
             />
-            <span className="flex min-w-0 flex-col gap-1">
-              <span className="truncate leading-5 font-semibold md:text-base">
+            <span className="flex min-w-0 flex-col items-center gap-1 text-center">
+              <span className="max-w-full truncate leading-5 font-semibold md:text-base">
                 {eventName}
               </span>
               <StatusLine moment={moment} now={now} />
