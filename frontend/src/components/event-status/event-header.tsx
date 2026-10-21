@@ -235,7 +235,7 @@ export default function EventHeader({
         className={cn(
           'container mx-auto grid max-w-(--breakpoint-2xl) gap-x-3',
           singleRow.fits
-            ? 'grid-cols-[minmax(0,max-content)_minmax(0,1fr)]'
+            ? 'grid-cols-[minmax(0,max-content)_minmax(0,max-content)] justify-center'
             : 'grid-cols-1',
         )}
       >
@@ -243,7 +243,7 @@ export default function EventHeader({
         <div
           ref={singleRow.identityRef}
           className={cn(
-            'relative flex h-14 min-w-0 items-center',
+            'relative flex h-14 min-w-0 items-center justify-self-center',
             singleRow.fits && 'border-r pr-3',
           )}
         >
@@ -294,7 +294,7 @@ export default function EventHeader({
           <TooltipProvider delayDuration={0}>
             <ul
               ref={singleRow.tabsRef}
-              className="flex w-max items-center gap-1"
+              className="mx-auto flex w-max items-center gap-1"
             >
               {otherTabs.map((tab, index) => (
                 <Fragment key={tab.path}>
