@@ -40,6 +40,7 @@ interface TeamInfoSectionProps {
   githubOrg: string
   isRepoPending: boolean
   isRepoCreating: boolean
+  showBack?: boolean
 }
 
 export function TeamInfoSection({
@@ -51,6 +52,7 @@ export function TeamInfoSection({
   isRepoCreating,
   githubOrg,
   canEdit = true,
+  showBack = false,
 }: Readonly<TeamInfoSectionProps>) {
   const eventId = useParams().id as string
   const [isOpen, setIsOpen] = useState(false)
@@ -90,7 +92,7 @@ export function TeamInfoSection({
     <Card className="gap-0 overflow-hidden pt-0">
       <TeamProfileHeader
         team={myTeam}
-        showBack={false}
+        showBack={showBack}
         // Artwork stays editable when the roster is locked; canEdit only
         // governs roster changes.
         cover={

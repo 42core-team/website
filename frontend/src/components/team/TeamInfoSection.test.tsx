@@ -91,3 +91,30 @@ describe('closed roster', () => {
     expect(screen.queryByRole('button', { name: /Invite Others/ })).toBeNull()
   })
 })
+
+describe('back button', () => {
+  function renderBack(showBack?: boolean) {
+    return render(
+      <TeamInfoSection
+        myTeam={team}
+        showBack={showBack}
+        githubOrg="core"
+        teamMembers={[]}
+        onLeaveTeam={vi.fn()}
+        isLeaving={false}
+        isRepoPending={false}
+        isRepoCreating={false}
+      />,
+    )
+  }
+
+  it('is hidden by default, as on the My Team page', () => {
+    renderBack()
+    expect(screen.queryByRole('button', { name: 'Go back' })).toBeNull()
+  })
+
+  it('shows the shared profile back button when opened from the Teams list', () => {
+    renderBack(true)
+    expect(screen.getByRole('button', { name: 'Go back' })).toBeTruthy()
+  })
+})
