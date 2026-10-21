@@ -1,6 +1,14 @@
-import { Lock } from 'lucide-react'
+import { ChevronDown, Lock } from 'lucide-react'
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Link from '@/components/app-link'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Tooltip,
   TooltipContent,
@@ -135,6 +143,65 @@ function TabLink({
   )
 }
 
+/** The event tabs as a menu, for screens too narrow to show them all. */
+function EventTabsMenu({
+  tabs,
+  pathname,
+}: Readonly<{ tabs: EventTab[]; pathname: string }>) {
+  const activeTab = tabs.find((tab, index) =>
+    isTabActive(tab, index + 1, pathname),
+  )
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="shrink-0 sm:hidden">
+          {activeTab?.name ?? 'Sections'}
+          <ChevronDown aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60">
+        {tabs.map((tab, index) => (
+          <Fragment key={tab.path}>
+            {index > 0 && tab.group !== tabs[index - 1].group && (
+              <DropdownMenuSeparator />
+            )}
+            <DropdownMenuItem
+              asChild={!tab.disabled}
+              disabled={tab.disabled}
+              className={cn(tab === activeTab && 'bg-accent font-medium')}
+            >
+              {tab.disabled ? (
+                <TabsMenuLabel tab={tab} />
+              ) : (
+                <Link
+                  href={tab.path}
+                  aria-current={tab === activeTab ? 'page' : undefined}
+                >
+                  <TabsMenuLabel tab={tab} />
+                </Link>
+              )}
+            </DropdownMenuItem>
+          </Fragment>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function TabsMenuLabel({ tab }: Readonly<{ tab: EventTab }>) {
+  return (
+    <>
+      {tab.lockedReason && <Lock className="size-3.5" aria-hidden="true" />}
+      <span>{tab.name}</span>
+      {tab.lockedReason && (
+        <span className="ml-auto text-xs text-muted-foreground">
+          {tab.lockedReason}
+        </span>
+      )}
+    </>
+  )
+}
+
 const GAP_PX = 12
 
 /**
@@ -168,15 +235,19 @@ function useSingleRowFit() {
       )
       // Pill padding, stripe and its gap, the divider (pr-3 + border), then
       // the column gap.
+      // The tabs may be wrapped, so add up their natural widths instead.
+      const tabsWidth = [...tabs.children].reduce((sum, element, index) => {
+        const itemStyle = getComputedStyle(element)
+        return (
+          sum +
+          element.getBoundingClientRect().width +
+          Number.parseFloat(itemStyle.marginLeft) +
+          Number.parseFloat(itemStyle.marginRight) +
+          (index > 0 ? Number.parseFloat(getComputedStyle(tabs).columnGap) : 0)
+        )
+      }, 0)
       const needed =
-        2 * GAP_PX +
-        3 +
-        10 +
-        identityWidth +
-        GAP_PX +
-        1 +
-        GAP_PX +
-        tabs.scrollWidth
+        2 * GAP_PX + 3 + 10 + identityWidth + GAP_PX + 1 + GAP_PX + tabsWidth
       setFits(window.innerWidth >= 1024 && needed <= inner)
     }
     measure()
@@ -243,8 +314,10 @@ export default function EventHeader({
         <div
           ref={singleRow.identityRef}
           className={cn(
-            'relative flex h-14 min-w-0 items-center justify-self-center',
-            singleRow.fits && 'border-r pr-3',
+            'relative flex h-14 min-w-0 items-center',
+            singleRow.fits
+              ? 'justify-self-center border-r pr-3'
+              : 'justify-between gap-3 sm:justify-self-center',
           )}
         >
           <Link
@@ -280,21 +353,29 @@ export default function EventHeader({
               )}
             </span>
           </div>
+          {!singleRow.fits && (
+            <EventTabsMenu tabs={otherTabs} pathname={pathname} />
+          )}
         </div>
         <nav
           ref={navRef}
           aria-label="Event navigation"
           className={cn(
-            'min-w-0 overflow-x-auto [scrollbar-width:none]',
+            'min-w-0',
             singleRow.fits
               ? 'flex items-center'
-              : '-mx-4 border-t px-4 py-2 md:-mx-6 md:px-6',
+              : // Phones use the menu; wider screens wrap the tabs, so none
+                // is ever cut off or needs horizontal scrolling.
+                '-mx-4 hidden border-t px-4 py-2 sm:block md:-mx-6 md:px-6',
           )}
         >
           <TooltipProvider delayDuration={0}>
             <ul
               ref={singleRow.tabsRef}
-              className="mx-auto flex w-max items-center gap-1"
+              className={cn(
+                'flex items-center gap-1',
+                singleRow.fits ? 'w-max' : 'flex-wrap justify-center',
+              )}
             >
               {otherTabs.map((tab, index) => (
                 <Fragment key={tab.path}>
