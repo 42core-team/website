@@ -44,8 +44,9 @@ export default function Footer() {
               <span className="text-xl font-bold">CORE</span>
             </Link>
             <p className="mt-4 text-muted-foreground">
-              CORE Game is a competitive coding challenge where you design and
-              program your own bots to battle it out in a dynamic 2D arena.
+              CORE is a strategy game you can only play by programming. Write a
+              bot in C or Go, command custom units to mine gems and outsmart
+              your opponent, and destroy the enemy Core.
             </p>
           </div>
 

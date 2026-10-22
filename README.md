@@ -17,6 +17,17 @@ This monorepo contains four application services:
 
 Local development also runs PostgreSQL, RabbitMQ, and SeaweedFS inside a k3d cluster.
 
+### Event lifecycle
+
+Events progress through registration, playing, submissions closed, showcase, and
+completion. The submission deadline closes competition access; the scheduled end
+is the advertised finish of the whole event, and actual completion is controlled
+by an administrator. Repository provisioning and permission changes have separate
+acknowledged operational statuses.
+
+See the [event lifecycle ADR](docs/adr/0001-event-lifecycle.md) for transition,
+reopening, and migration decisions, and the [domain glossary](GLOSSARY.md) for terminology.
+
 ## Quick start
 
 ### Prerequisites

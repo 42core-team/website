@@ -16,6 +16,7 @@ import { TeamEntity } from "src/team/entities/team.entity";
 import { Exclude } from "class-transformer";
 import { EventStarterTemplateEntity } from "./event-starter-template.entity";
 import { EventWhitelistEntity } from "./event-whitelist.entity";
+import { EventState } from "../event-lifecycle";
 
 @Entity("events")
 export class EventEntity {
@@ -46,6 +47,31 @@ export class EventEntity {
 
   @Column({ type: "timestamp" })
   startDate: Date;
+
+  @Column({ type: "enum", enum: EventState, default: EventState.REGISTRATION })
+  state: EventState;
+
+  @Column({ type: "timestamp" })
+  submissionDeadline: Date;
+
+  @Column({ type: "timestamp" })
+  scheduledEndDate: Date;
+
+  @Column({ type: "timestamp", nullable: true })
+  completedAt: Date | null;
+
+  @Column({ default: false })
+  introEnabled: boolean;
+
+  @Column({ default: 15 })
+  introLeadMinutes: number;
+
+  @Column({ type: "varchar", nullable: true })
+  streamUrl: string | null;
+
+  /** Separate Showtime stream; when null, Showtime uses `streamUrl`. */
+  @Column({ type: "varchar", nullable: true })
+  showtimeStreamUrl: string | null;
 
   @Column({ type: "timestamp" })
   endDate: Date;

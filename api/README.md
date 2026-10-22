@@ -64,6 +64,22 @@ brew install pnpm
 - **Build:** `pnpm build`
 - **Start:** `pnpm start:prod`
 
+## Session concurrency tests
+
+`pnpm test` runs the unit and HTTP tests. To also run the PostgreSQL session
+race regression tests, provide `SESSION_TEST_DATABASE_URL` pointing at a test
+PostgreSQL database. The suite creates and drops its own randomly named schema;
+it needs permission to create schemas. CI runs these tests against PostgreSQL 17.
+
+```bash
+SESSION_TEST_DATABASE_URL=postgresql://postgres:session-tests@localhost:55439/postgres pnpm test --runInBand
+```
+
+The tests overlap rotation with logout, logout-all and reuse detection, and
+verify that concurrent refreshes share one successor and failed rotations roll
+back. They also overlap an old GitHub grant check with a new login to ensure
+the new session survives. They are skipped when the test database URL is absent.
+
 ## Environment Variables
 
 ### Database (Required)

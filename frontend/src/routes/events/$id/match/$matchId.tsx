@@ -81,28 +81,33 @@ function MatchRoute() {
 
   return (
     <main className="container mx-auto max-w-7xl px-4 py-8">
-      <h1 className="mb-6 text-3xl font-bold">Match</h1>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <h1 className="text-3xl font-bold">Match</h1>
+        {visualizerUrl && (
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+          >
+            <a href={visualizerUrl} target="_blank" rel="noreferrer">
+              <ExternalLink />
+              Open visualizer
+            </a>
+          </Button>
+        )}
+      </div>
       <div className="space-y-6">
         <MatchTeamHeader match={matchQuery.data} eventId={id} />
         {visualizerUrl && (
-          <section className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <Button asChild variant="outline" size="sm">
-                <a href={visualizerUrl} target="_blank" rel="noreferrer">
-                  <ExternalLink />
-                  Open
-                </a>
-              </Button>
-            </div>
-            <div className="aspect-video overflow-hidden rounded-md border bg-black">
-              <iframe
-                src={visualizerUrl}
-                title="Match visualizer"
-                className="h-full w-full"
-                allowFullScreen
-              />
-            </div>
-          </section>
+          <div className="aspect-video overflow-hidden rounded-md border bg-black">
+            <iframe
+              src={visualizerUrl}
+              title="Match visualizer"
+              className="h-full w-full"
+              allowFullScreen
+            />
+          </div>
         )}
         {logsQuery.data && <MatchLogsDisplay logs={logsQuery.data} />}
       </div>

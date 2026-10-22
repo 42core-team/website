@@ -54,6 +54,7 @@ function TeamChoice({
 }
 
 interface GamblingMatchCardProps {
+  bettingEnabled?: boolean
   eventId: string
   snapshot: GamblingSnapshot
   isBetPending: boolean
@@ -65,6 +66,7 @@ export default function GamblingMatchCard({
   snapshot,
   isBetPending,
   onPlaceBet,
+  bettingEnabled = true,
 }: GamblingMatchCardProps) {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null)
   const [amount, setAmount] = useState('')
@@ -86,6 +88,7 @@ export default function GamblingMatchCard({
     ? Math.max(0, snapshot.myTeam.credits + snapshot.myTeam.maxCredits)
     : 0
   const canPlaceBet =
+    bettingEnabled &&
     round.phase === 'BETTING' &&
     Boolean(selectedTeamId) &&
     selectedTeams.some((team) => team.id === selectedTeamId) &&
@@ -128,6 +131,7 @@ export default function GamblingMatchCard({
                 pool={snapshot.pools.teamOne}
                 selected={selectedTeamId === round.teamOne.id}
                 disabled={
+                  !bettingEnabled ||
                   round.phase !== 'BETTING' ||
                   Boolean(snapshot.myBet) ||
                   isPlayingTeam
@@ -144,6 +148,7 @@ export default function GamblingMatchCard({
                 pool={snapshot.pools.teamTwo}
                 selected={selectedTeamId === round.teamTwo.id}
                 disabled={
+                  !bettingEnabled ||
                   round.phase !== 'BETTING' ||
                   Boolean(snapshot.myBet) ||
                   isPlayingTeam
@@ -180,6 +185,7 @@ export default function GamblingMatchCard({
               <>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Input
+                    disabled={!bettingEnabled}
                     type="number"
                     min="1"
                     max={maximumBet}

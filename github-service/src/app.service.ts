@@ -6,6 +6,7 @@ import { getRabbitmqConfig } from "./main";
 import * as fs from "fs/promises";
 import { RepoUtils } from "./repo.utils";
 import { decryptSecret } from "./secret-crypto";
+import { lastValueFrom, timeout } from "rxjs";
 
 @Injectable()
 export class AppService {
@@ -14,6 +15,110 @@ export class AppService {
   private readonly repoUtils = new RepoUtils();
 
   private readonly TMP_FOLDER = "./tmp";
+  private readonly repositoryOperations = new Map<string, Promise<unknown>>();
+
+  async runRepositoryOperation(
+    teamId: string,
+    operationId: string | undefined,
+    action: () => Promise<void>,
+  ) {
+    const previous = this.repositoryOperations.get(teamId) ?? Promise.resolve();
+    const operation = previous
+      .catch(() => undefined)
+      .then(async () => {
+        if (!operationId) return;
+        const current = await lastValueFrom(
+          this.githubServiceResultsClient
+            .send<boolean>("repository_operation_current", {
+              teamId,
+              operationId,
+            })
+            .pipe(timeout(60000)),
+        );
+        if (current) await action();
+      });
+    this.repositoryOperations.set(teamId, operation);
+    try {
+      await operation;
+    } finally {
+      if (this.repositoryOperations.get(teamId) === operation)
+        this.repositoryOperations.delete(teamId);
+    }
+  }
+
+  async reportRepositoryOperation(data: {
+    teamId: string;
+    operationId?: string;
+    repositoryName: string;
+    error?: string;
+    action?: "CREATE" | "LOCK" | "UNLOCK";
+  }) {
+    await lastValueFrom(
+      this.githubServiceResultsClient.emit(
+        "repository_operation_completed",
+        data,
+      ),
+    );
+  }
+
+  async setRepositoryAccess(data: {
+    teamId: string;
+    operationId: string;
+    repositoryName: string;
+    githubOrg: string;
+    encryptedSecret: string;
+    locked: boolean;
+    githubUsers: {
+      username: string;
+      githubId: string;
+      githubAccessToken: string;
+    }[];
+  }) {
+    let error: string | undefined;
+    try {
+      // Former members may have regained access through an earlier operation
+      // that was still queued when they left, so reconcile against the roster.
+      await this.removeFormerCollaborators(
+        data.githubOrg,
+        data.repositoryName,
+        data.encryptedSecret,
+        data.githubUsers,
+      );
+      // Await every collaborator before acknowledging: one failure must not hide
+      // outstanding writes or let a retry race a still-running permission change.
+      for (const user of data.githubUsers) {
+        if (data.locked) {
+          await this.removeWritePermissionsForUser(
+            user.username,
+            user.githubId,
+            data.githubOrg,
+            data.repositoryName,
+            data.encryptedSecret,
+          );
+        } else {
+          await this.addUserToRepository(
+            data.repositoryName,
+            user.username,
+            user.githubId,
+            data.githubOrg,
+            data.encryptedSecret,
+            user.githubAccessToken,
+          );
+        }
+      }
+    } catch (cause) {
+      this.logger.error("Repository permission operation failed", cause);
+      error =
+        "GitHub collaborator permissions could not be updated. Check organization permissions and retry.";
+    }
+    await this.reportRepositoryOperation({
+      teamId: data.teamId,
+      operationId: data.operationId,
+      repositoryName: data.repositoryName,
+      error,
+      action: data.locked ? "LOCK" : "UNLOCK",
+    });
+  }
 
   constructor(private configService: ConfigService) {
     this.githubServiceResultsClient = ClientProxyFactory.create(
@@ -141,12 +246,25 @@ export class AppService {
       "Removing write permissions for user",
       { username, repoOwner, repoName },
       async (user, repositoryApi) => {
-        return repositoryApi.updateCollaboratorPermission(
+        await repositoryApi.updateCollaboratorPermission(
           repoOwner,
           repoName,
           user,
           "pull",
         );
+        const permission = await repositoryApi.getCollaboratorPermission(
+          repoOwner,
+          repoName,
+          user,
+        );
+        // Org owners and team-based access keep write through inheritance, which a
+        // repository collaborator change cannot revoke. Don't fail the lock for it.
+        if (!["read", "none"].includes(permission))
+          this.logger.warn(
+            `Collaborator keeps inherited ${permission} access after locking ${JSON.stringify(
+              { username: user, repoOwner, repoName },
+            )}`,
+          );
       },
     );
   }
@@ -204,8 +322,74 @@ export class AppService {
           repositoryName,
           githubAccessToken,
         );
+        if (
+          !(await repositoryApi.isCollaborator(githubOrg, repositoryName, user))
+        )
+          throw new Error("Collaborator access was not established.");
+        const permission = await repositoryApi.getCollaboratorPermission(
+          githubOrg,
+          repositoryName,
+          user,
+        );
+        if (!["write", "admin", "maintain"].includes(permission))
+          throw new Error("Collaborator write access was not established.");
       },
     );
+  }
+
+  async removeFormerCollaborators(
+    githubOrg: string,
+    repositoryName: string,
+    encryptedSecret: string,
+    githubUsers: { username: string; githubId: string }[],
+  ) {
+    const githubIds = new Set(githubUsers.map((user) => String(user.githubId)));
+    const usernames = new Set(
+      githubUsers.map((user) => user.username.toLowerCase()),
+    );
+    const isMember = (user: { id: number; login: string }) =>
+      githubIds.has(String(user.id)) || usernames.has(user.login.toLowerCase());
+    const repositoryApi = new RepositoryApi(
+      new GitHubApiClient({ token: this.decryptSecret(encryptedSecret) }),
+    );
+
+    for (let page = 1; ; page++) {
+      const collaborators = await repositoryApi.listCollaborators(
+        githubOrg,
+        repositoryName,
+        { affiliation: "direct", per_page: 100, page },
+      );
+      for (const collaborator of collaborators) {
+        // Admin collaborators are organization staff, never team members.
+        if (isMember(collaborator) || collaborator.permissions?.admin) continue;
+        this.logger.log(
+          `Removing former collaborator ${JSON.stringify({ repositoryName, username: collaborator.login })}`,
+        );
+        await repositoryApi.removeCollaborator(
+          githubOrg,
+          repositoryName,
+          collaborator.login,
+        );
+      }
+      if (collaborators.length < 100) break;
+    }
+
+    for (let page = 1; ; page++) {
+      const invitations = await repositoryApi.listInvitations(
+        githubOrg,
+        repositoryName,
+        { per_page: 100, page },
+      );
+      for (const invitation of invitations) {
+        if (!invitation.invitee || isMember(invitation.invitee)) continue;
+        await repositoryApi.deleteInvitation(
+          githubOrg,
+          repositoryName,
+          invitation.id,
+        );
+      }
+      if (invitations.length < 100) break;
+    }
   }
 
   async removeUserFromRepository(
@@ -279,7 +463,10 @@ export class AppService {
     serverConfig: string,
     apiBaseUrl: string,
     starterTemplateId?: string,
+    operationId?: string,
+    submissionDeadline?: string,
   ) {
+    let initialized = false;
     this.logger.log(
       `Creating team repository ${JSON.stringify({
         name,
@@ -290,61 +477,77 @@ export class AppService {
       })}`,
     );
     try {
+      if (
+        submissionDeadline &&
+        Date.now() >= new Date(submissionDeadline).getTime()
+      )
+        throw new Error("Repository provisioning deadline has passed.");
       const secret = this.decryptSecret(encryptedSecret);
       const githubApi = new GitHubApiClient({
         token: secret,
       });
       const repositoryApi = new RepositoryApi(githubApi);
-      const userApi = new UserApi(githubApi);
       this.logger.log(`Creating repo ${name} in org ${githubOrg}`);
 
       const tempFolderPath = `${this.TMP_FOLDER}/${name}-${Date.now()}`;
+      let createdHere = false;
       try {
-        const [repo, gitRepo] = await Promise.all([
-          (async () => {
-            const repo = await repositoryApi.createRepo(
-              {
-                name,
-                private: true,
-              },
-              githubOrg,
-            );
-            name = repo.name;
-            return repo;
-          })(),
-          (async () => {
-            await fs.mkdir(tempFolderPath);
-            return await this.repoUtils.cloneMonoRepo(
-              monoRepoUrl,
-              monoRepoVersion,
-              myCoreBotDockerImage,
-              visualizerDockerImage,
-              tempFolderPath,
-              eventId,
-              teamName,
-              basePath,
-              gameConfig,
-              serverConfig,
-              apiBaseUrl,
-              starterTemplateId,
-            );
-          })(),
-        ]);
-
-        await this.repoUtils.pushToTeamRepo(
-          repo,
-          secret,
-          tempFolderPath,
-          gitRepo,
-          basePath,
-        );
+        let repo:
+          Awaited<ReturnType<RepositoryApi["getRepository"]>> | undefined;
+        if (operationId) {
+          try {
+            repo = await repositoryApi.getRepository(githubOrg, name);
+          } catch (error) {
+            if (!(
+              error &&
+              typeof error === "object" &&
+              "status" in error &&
+              error.status === 404
+            ))
+              throw error;
+          }
+        }
+        if (!repo) {
+          repo = await repositoryApi.createRepo(
+            { name, private: true },
+            githubOrg,
+          );
+          createdHere = true;
+        }
+        name = repo.name;
+        // A retry must never overwrite a team's submitted code.
+        if (createdHere || !(await repositoryApi.hasCommits(githubOrg, name))) {
+          await fs.mkdir(tempFolderPath);
+          const gitRepo = await this.repoUtils.cloneMonoRepo(
+            monoRepoUrl,
+            monoRepoVersion,
+            myCoreBotDockerImage,
+            visualizerDockerImage,
+            tempFolderPath,
+            eventId,
+            teamName,
+            basePath,
+            gameConfig,
+            serverConfig,
+            apiBaseUrl,
+            starterTemplateId,
+          );
+          await this.repoUtils.pushToTeamRepo(
+            repo,
+            secret,
+            tempFolderPath,
+            gitRepo,
+            basePath,
+          );
+        }
       } catch (error) {
         this.logger.error(
           `Failed to clone mono repo and push to team repo for repo ${name}`,
           error as Error,
         );
         try {
-          await this.deleteRepository(name, githubOrg, encryptedSecret);
+          if (createdHere)
+            await this.deleteRepository(name, githubOrg, encryptedSecret);
         } catch (cleanupError) {
           this.logger.error(
             `Failed to clean up repository ${name} after setup failed`,
@@ -357,40 +560,41 @@ export class AppService {
         this.logger.log(`Removed temp folder ${tempFolderPath}`);
       }
 
-      this.githubServiceResultsClient.emit("repository_created", {
-        repositoryName: name,
-        teamId: teamId,
-      });
+      initialized = true;
 
-      await Promise.all(
-        githubUsers.map(async (user) => {
-          const { username } = user;
-          const { githubAccessToken, githubId } = user;
-          this.logger.log(
-            `Adding user ${username} to repository ${name} in org ${githubOrg}`,
-          );
-
-          await this.executeGitHubAction(
-            username,
-            githubId,
-            encryptedSecret,
-            "Adding user to team repository",
-            { username, name, githubOrg },
-            async (u, repoApi) => {
-              return repoApi.addCollaborator(githubOrg, name, u, "push");
-            },
-          );
-
-          const decryptedGithubAccessToken =
-            this.decryptSecret(githubAccessToken);
-
-          await userApi.acceptRepositoryInvitationByRepo(
-            githubOrg,
-            name,
-            decryptedGithubAccessToken,
-          );
-        }),
+      const collaboratorResults = await Promise.allSettled(
+        githubUsers.map((user) =>
+          submissionDeadline &&
+          Date.now() >= new Date(submissionDeadline).getTime()
+            ? this.removeWritePermissionsForUser(
+                user.username,
+                user.githubId,
+                githubOrg,
+                name,
+                encryptedSecret,
+              )
+            : this.addUserToRepository(
+                name,
+                user.username,
+                user.githubId,
+                githubOrg,
+                encryptedSecret,
+                user.githubAccessToken,
+              ),
+        ),
       );
+
+      const failure = collaboratorResults.find(
+        (result) => result.status === "rejected",
+      );
+      if (failure?.status === "rejected") throw failure.reason;
+      if (operationId)
+        await this.reportRepositoryOperation({
+          repositoryName: name,
+          teamId,
+          operationId,
+          action: "CREATE",
+        });
 
       this.logger.log(
         `Created team repository ${JSON.stringify({
@@ -409,7 +613,15 @@ export class AppService {
         })}`,
         error as Error,
       );
-      throw error;
+      if (!operationId) throw error;
+      await this.reportRepositoryOperation({
+        repositoryName: initialized ? name : "",
+        teamId,
+        operationId,
+        action: "CREATE",
+        error:
+          "GitHub repository setup failed. Check repository and collaborator permissions and retry.",
+      });
     }
   }
 }

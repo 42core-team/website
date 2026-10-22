@@ -3,6 +3,7 @@ import { AppModule } from "./app.module";
 import { MicroserviceOptions, Transport, RmqOptions } from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
 import { Logger } from "@nestjs/common";
+import { HealthService } from "./health/health.service";
 
 export const getRabbitmqConfig = (
   configService: ConfigService,
@@ -23,13 +24,19 @@ export const getRabbitmqConfig = (
 };
 
 async function bootstrap() {
-  const configService = new ConfigService();
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-    AppModule,
+  const app = await NestFactory.create(AppModule);
+  app.useLogger(new Logger());
+  const configService = app.get(ConfigService);
+
+  // The HTTP listener only serves health probes; work arrives via RabbitMQ.
+  const microservice = app.connectMicroservice<MicroserviceOptions>(
     getRabbitmqConfig(configService, "github_service"),
   );
-  app.useLogger(new Logger());
-  await app.listen();
+  const healthService = app.get(HealthService);
+  microservice.status.subscribe((status) => healthService.setRmqStatus(status));
+
+  await app.startAllMicroservices();
+  await app.listen(process.env.PORT ?? 3000);
 }
 
 bootstrap();

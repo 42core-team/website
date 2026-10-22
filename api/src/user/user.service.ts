@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { UserEntity } from "./entities/user.entity";
 import { ILike, Repository, UpdateResult } from "typeorm";
@@ -6,6 +6,12 @@ import { EventEntity } from "../event/entities/event.entity";
 import { UserInviteSearchResult } from "./dtos/user-search-invite.dto";
 import { ConfigService } from "@nestjs/config";
 import { encryptSecret } from "../common/encryption";
+import { isRegistrationOpen } from "../event/event-lifecycle";
+
+/** GitHub profile fields kept in sync by the grant check (ADR 0003). */
+export type GithubSyncedProfile = Partial<
+  Pick<UserEntity, "username" | "name" | "profilePicture">
+>;
 
 @Injectable()
 export class UserService {
@@ -36,6 +42,8 @@ export class UserService {
       profilePicture,
       githubId,
       githubAccessToken: encryptedToken,
+      // Login just fetched GET /user with this token (ADR 0003).
+      githubCheckedAt: new Date(),
       canCreateEvent,
     });
     return this.userRepository.save(newUser);
@@ -61,6 +69,20 @@ export class UserService {
       profilePicture,
       githubId,
       githubAccessToken: encryptedToken,
+      // Login just fetched GET /user with this token (ADR 0003).
+      githubCheckedAt: new Date(),
+    });
+  }
+
+  /** Record a successful GitHub grant check and the profile fields that changed. */
+  async recordGithubCheck(
+    id: string,
+    checkedAt: Date,
+    profile: GithubSyncedProfile,
+  ): Promise<void> {
+    await this.userRepository.update(id, {
+      ...profile,
+      githubCheckedAt: checkedAt,
     });
   }
 
@@ -96,11 +118,21 @@ export class UserService {
   }
 
   joinEvent(userId: string, eventId: string) {
-    return this.userRepository
-      .createQueryBuilder()
-      .relation(UserEntity, "events")
-      .of(userId)
-      .add(eventId);
+    return this.userRepository.manager.transaction(async (manager) => {
+      // Recheck at the mutation, after identity/whitelist lookups, and serialize
+      // with administrative closure so a previously authorized request cannot join late.
+      const event = await manager.findOneOrFail(EventEntity, {
+        where: { id: eventId },
+        lock: { mode: "pessimistic_read" },
+      });
+      if (!isRegistrationOpen(event))
+        throw new BadRequestException("Event registration is closed");
+      await manager
+        .createQueryBuilder()
+        .relation(UserEntity, "events")
+        .of(userId)
+        .add(eventId);
+    });
   }
 
   canCreateEvent(userId: string): Promise<boolean> {

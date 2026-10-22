@@ -1,4 +1,8 @@
-import type { Match, MatchLogs } from '@/app/actions/tournament-model'
+import type {
+  Match,
+  MatchLogs,
+  QueueMatch,
+} from '@/app/actions/tournament-model'
 import axiosInstance from '@/app/actions/axios'
 
 export async function getSwissMatches(eventId: string, adminReveal: boolean) {
@@ -56,6 +60,24 @@ export async function cleanupAllMatches(
   phase: string,
 ): Promise<void> {
   await axiosInstance.put<void>(`/match/cleanup-all/${eventId}/${phase}`)
+}
+
+export async function getManualMatches(eventId: string) {
+  return (await axiosInstance.get<QueueMatch[]>(`/match/manual/${eventId}`))
+    .data
+}
+
+export async function createManualMatch(
+  eventId: string,
+  teamOneId: string,
+  teamTwoId: string,
+) {
+  return (
+    await axiosInstance.post<{ id: string }>(`/match/manual/${eventId}`, {
+      teamOneId,
+      teamTwoId,
+    })
+  ).data
 }
 
 export async function getMatchById(matchId: string): Promise<Match> {

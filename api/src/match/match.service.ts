@@ -1,4 +1,10 @@
-import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+} from "@nestjs/common";
 import { TeamService } from "../team/team.service";
 import { InjectRepository } from "@nestjs/typeorm";
 import { MatchEntity, MatchPhase, MatchState } from "./entites/match.entity";
@@ -7,6 +13,7 @@ import { getCreditWagerRefund } from "./match-credit-wager";
 import {
   DataSource,
   In,
+  MoreThan,
   Not,
   Repository,
   type FindOptionsRelations,
@@ -19,11 +26,13 @@ import { EventEntity } from "../event/entities/event.entity";
 import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
 import { getRabbitmqConfig } from "../main";
 import { ConfigService } from "@nestjs/config";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import { TeamEntity } from "../team/entities/team.entity";
 import { GithubApiService } from "../github-api/github-api.service";
 import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
 import { GamblingService } from "../gambling/gambling.service";
 import { canViewTeamMatchReplay } from "./team-match-visibility";
+import { EventState, getEventState } from "../event/event-lifecycle";
 
 const QUEUE_MATCH_SELECT: FindOptionsSelect<MatchEntity> = {
   id: true,
@@ -190,6 +199,9 @@ export class MatchService {
       return;
     }
 
+    // Manual matches are admin-triggered test games and never affect rounds.
+    if (match.phase === MatchPhase.MANUAL) return;
+
     const event = match.teams[0].event;
     if (!event) {
       throw new Error(`Event for match with id ${matchId} not found.`);
@@ -275,7 +287,10 @@ export class MatchService {
     await this.eventService.increaseEventRound(evenId);
     this.logger.log(`Event ${event.name} has finished round ${finishedRound}.`);
 
-    if (finishedRound + 1 >= this.getMaxSwissRounds(event.teams.length)) {
+    if (
+      finishedRound + 1 >=
+      this.getMaxSwissRounds(this.getTournamentEntrants(event).length)
+    ) {
       this.logger.log(
         `Event ${event.name} has reached the maximum Swiss rounds.`,
       );
@@ -284,7 +299,90 @@ export class MatchService {
       return;
     }
 
+    if (!this.isTournamentReady(event)) {
+      this.logPausedProgression(event, finishedRound + 1);
+      return;
+    }
     await this.createNextSwissMatches(event.id);
+  }
+
+  private logPausedProgression(event: EventEntity, round: number) {
+    this.logger.warn(
+      `Tournament progression for event ${event.name} is paused before round ${round} until submissions are closed and repositories are locked.`,
+    );
+  }
+
+  /**
+   * Creates the matches of a round whose predecessor finished while the
+   * tournament gate was closed (for example during a reopen). Idempotent:
+   * a round that already has matches is left alone.
+   */
+  async resumeTournamentProgression(eventId: string) {
+    const [lockPart1, lockPart2] = this.getEventLockKey(eventId);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      await queryRunner.query("SELECT pg_advisory_xact_lock($1, $2)", [
+        lockPart1,
+        lockPart2,
+      ]);
+      const event = await this.eventService.getEventById(eventId, {
+        teams: true,
+      });
+      const phase = await this.getPausedProgressionPhase(event);
+      // Creation rechecks the tournament gate and rejects if it closed again.
+      if (phase) {
+        this.logger.log(
+          `Resuming ${phase} round ${event.currentRound} for event ${event.name}.`,
+        );
+        if (phase === MatchPhase.SWISS)
+          await this.createNextSwissMatches(eventId);
+        else await this.createNextTournamentMatches(eventId);
+      }
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  /** The phase whose current round finished its predecessor but has no matches. */
+  async getPausedProgressionPhase(event: EventEntity) {
+    if (event.currentRound === 0) return null;
+    const countMatches = (phase: MatchPhase, round?: number) =>
+      this.matchRepository.countBy({
+        teams: { event: { id: event.id } },
+        phase,
+        round,
+      });
+    const phase =
+      (await countMatches(MatchPhase.ELIMINATION)) > 0
+        ? MatchPhase.ELIMINATION
+        : MatchPhase.SWISS;
+    if ((await countMatches(phase, event.currentRound)) > 0) return null;
+    return phase;
+  }
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async resumePausedTournaments() {
+    const events = await this.dataSource.getRepository(EventEntity).find({
+      where: { currentRound: MoreThan(0) },
+      relations: { teams: true },
+    });
+    for (const event of events) {
+      if (!this.isTournamentReady(event)) continue;
+      try {
+        await this.resumeTournamentProgression(event.id);
+      } catch (error) {
+        this.logger.error(
+          `Could not resume tournament progression for event ${event.id}`,
+          error,
+        );
+      }
+    }
   }
 
   async processTournamentFinishRound(event: EventEntity) {
@@ -328,6 +426,10 @@ export class MatchService {
     const finishedRound = event.currentRound;
     await this.eventService.increaseEventRound(event.id);
     this.logger.log(`Event ${event.name} has finished round ${finishedRound}.`);
+    if (!this.isTournamentReady(event)) {
+      this.logPausedProgression(event, finishedRound + 1);
+      return;
+    }
     await this.createNextTournamentMatches(event.id);
   }
 
@@ -442,6 +544,19 @@ export class MatchService {
   }
 
   async createMatch(teamIds: string[], round: number, phase: MatchPhase) {
+    if (phase === MatchPhase.SWISS || phase === MatchPhase.ELIMINATION) {
+      const team = await this.teamService.getTeamById(teamIds[0], {
+        event: true,
+      });
+      const event = await this.eventService.getEventById(team.event.id, {
+        teams: true,
+      });
+      const entrants = this.requireTournamentReady(event);
+      if (teamIds.some((id) => !entrants.some((entrant) => entrant.id === id)))
+        throw new BadRequestException(
+          "Tournament teams must be nonexcluded participants in this event.",
+        );
+    }
     const match = this.matchRepository.create({
       teams: teamIds.map((id) => ({ id })),
       round,
@@ -451,6 +566,34 @@ export class MatchService {
     });
 
     return this.matchRepository.save(match);
+  }
+
+  async createManualMatch(
+    eventId: string,
+    teamOneId: string,
+    teamTwoId: string,
+  ) {
+    if (teamOneId === teamTwoId)
+      throw new BadRequestException("A team cannot play against itself.");
+
+    const teams = await this.dataSource.getRepository(TeamEntity).find({
+      select: { id: true, repo: true },
+      where: { id: In([teamOneId, teamTwoId]), event: { id: eventId } },
+    });
+    if (teams.length !== 2)
+      throw new BadRequestException("Both teams must belong to this event.");
+    if (teams.some((team) => !team.repo))
+      throw new BadRequestException("Both teams need a repository.");
+
+    const match = await this.createMatch(
+      [teamOneId, teamTwoId],
+      0,
+      MatchPhase.MANUAL,
+    );
+    // Manual matches are only listed for admins, so results need no hiding.
+    await this.revealMatch(match.id);
+    await this.startMatch(match.id);
+    return { id: match.id };
   }
 
   async getFormerOpponents(teamId: string): Promise<TeamEntity[]> {
@@ -483,6 +626,7 @@ export class MatchService {
     const event = await this.eventService.getEventById(eventId, {
       teams: true,
     });
+    const entrants = this.requireTournamentReady(event);
 
     const existingMatches = await this.matchRepository.countBy({
       teams: {
@@ -501,7 +645,7 @@ export class MatchService {
       return [];
     }
 
-    const maxSwissRounds = this.getMaxSwissRounds(event.teams.length);
+    const maxSwissRounds = this.getMaxSwissRounds(entrants.length);
     if (event.currentRound >= maxSwissRounds) {
       this.logger.error(
         `Cannot create Swiss matches for event ${event.name} in round ${event.currentRound}. Maximum rounds reached: ${maxSwissRounds}`,
@@ -510,7 +654,7 @@ export class MatchService {
     }
 
     const players: Player[] = await Promise.all(
-      event.teams.map(async (team) => ({
+      entrants.map(async (team) => ({
         id: team.id,
         score: team.score,
         receivedBye: team.hadBye,
@@ -562,7 +706,9 @@ export class MatchService {
   }
 
   async createFirstTournamentMatches(event: EventEntity) {
-    const teamsCount = event.teams.length;
+    event = await this.eventService.getEventById(event.id, { teams: true });
+    const entrants = this.requireTournamentReady(event);
+    const teamsCount = entrants.length;
     const highestPowerOfTwo = Math.pow(2, Math.floor(Math.log2(teamsCount)));
 
     if (highestPowerOfTwo < 2) {
@@ -571,9 +717,9 @@ export class MatchService {
       );
     }
 
-    const sortedTeams = await this.teamService.getSortedTeamsForTournament(
-      event.id,
-    );
+    const sortedTeams = (
+      await this.teamService.getSortedTeamsForTournament(event.id)
+    ).filter((team) => entrants.some((entrant) => entrant.id === team.id));
 
     const existingMatches = await this.matchRepository.countBy({
       teams: {
@@ -625,6 +771,7 @@ export class MatchService {
     const event = await this.eventService.getEventById(eventId, {
       teams: true,
     });
+    this.requireTournamentReady(event);
 
     if (event.currentRound == 0)
       return this.createFirstTournamentMatches(event);
@@ -771,8 +918,41 @@ export class MatchService {
   }
 
   async getTournamentTeamCount(eventId: string) {
-    const teamsCount = await this.teamService.getTeamCountForEvent(eventId);
+    const event = await this.eventService.getEventById(eventId, {
+      teams: true,
+    });
+    const teamsCount = this.getTournamentEntrants(event).length;
     return Math.pow(2, Math.floor(Math.log2(teamsCount)));
+  }
+
+  private getTournamentEntrants(event: EventEntity) {
+    return event.teams.filter((team) => !team.tournamentExcluded);
+  }
+
+  private isTournamentReady(event: EventEntity) {
+    try {
+      this.requireTournamentReady(event);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private requireTournamentReady(event: EventEntity) {
+    if (
+      ![EventState.SUBMISSIONS_CLOSED, EventState.SHOWCASE].includes(
+        getEventState(event),
+      )
+    )
+      throw new BadRequestException(
+        "Tournament generation requires closed submissions or showcase.",
+      );
+    const entrants = this.getTournamentEntrants(event);
+    if (entrants.some((team) => team.repositoryStatus !== "LOCKED"))
+      throw new BadRequestException(
+        "All participating repositories must be confirmed LOCKED before tournament generation.",
+      );
+    return entrants;
   }
 
   async calculateBuchholzPoints(eventId: string): Promise<void> {
@@ -794,6 +974,7 @@ export class MatchService {
         winner: {
           id: teamId,
         },
+        phase: MatchPhase.SWISS,
       },
       relations: {
         teams: true,
@@ -908,6 +1089,7 @@ export class MatchService {
             teams: { id: teamId },
             state: MatchState.FINISHED,
             isRevealed: true,
+            phase: Not(MatchPhase.MANUAL),
           },
         ],
         withDeleted: true,
@@ -939,13 +1121,15 @@ export class MatchService {
         state: match.state,
         phase: match.phase,
         createdAt: match.createdAt,
-        teams: match.teams.map(({ id, name, deletedAt, picture, background }) => ({
-          id,
-          name,
-          deletedAt,
-          picture,
-          background,
-        })),
+        teams: match.teams.map(
+          ({ id, name, deletedAt, picture, background }) => ({
+            id,
+            name,
+            deletedAt,
+            picture,
+            background,
+          }),
+        ),
         winner: match.winner
           ? {
               id: match.winner.id,
@@ -978,7 +1162,7 @@ export class MatchService {
         },
         select: {
           id: true,
-          createdAt: true
+          createdAt: true,
         },
         where: {
           teams: {
@@ -989,7 +1173,7 @@ export class MatchService {
               id: userId,
             },
           },
-          phase: MatchPhase.QUEUE
+          phase: MatchPhase.QUEUE,
         },
       })
     ).map((match) => match.id);
@@ -1003,12 +1187,20 @@ export class MatchService {
       order: {
         createdAt: "DESC",
       },
-    })
+    });
 
-    return matches.map(this.serializeQueueMatch)
+    return matches.map(this.serializeQueueMatch);
   }
 
   async getAllQueueMatches(eventId: string) {
+    return this.getLatestEventMatches(eventId, MatchPhase.QUEUE);
+  }
+
+  async getManualMatches(eventId: string) {
+    return this.getLatestEventMatches(eventId, MatchPhase.MANUAL);
+  }
+
+  private async getLatestEventMatches(eventId: string, phase: MatchPhase) {
     const matches = await this.matchRepository.find({
       select: QUEUE_MATCH_SELECT,
       where: {
@@ -1017,7 +1209,7 @@ export class MatchService {
             id: eventId,
           },
         },
-        phase: MatchPhase.QUEUE,
+        phase,
       },
       relations: QUEUE_MATCH_RELATIONS,
       take: 100,

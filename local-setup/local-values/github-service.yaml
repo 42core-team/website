@@ -19,3 +19,12 @@ resources:
   requests:
     cpu: 1
     memory: 1Gi
+
+startupProbe:
+  enabled: false
+
+livenessProbe:
+  enabled: false
+
+readinessProbe:
+  enabled: false

@@ -77,8 +77,11 @@ export class GitHubApiClient {
 
         // Handle other errors
         if (!response.ok) {
-          throw new Error(
-            `GitHub API error on ${url}: ${response.status} ${response.statusText}`,
+          throw Object.assign(
+            new Error(
+              `GitHub API error on ${url}: ${response.status} ${response.statusText}`,
+            ),
+            { status: response.status },
           );
         }
 

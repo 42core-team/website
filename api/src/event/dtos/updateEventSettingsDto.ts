@@ -5,10 +5,42 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
 } from "class-validator";
 
 export class UpdateEventSettingsDto {
+  @IsOptional()
+  @IsNumber()
+  submissionDeadline?: number;
+
+  @IsOptional()
+  @IsNumber()
+  scheduledEndDate?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  introEnabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  introLeadMinutes?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  streamUrl?: string;
+
+  @ApiPropertyOptional({
+    description: "Showtime stream; falls back to streamUrl when empty",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  showtimeStreamUrl?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
