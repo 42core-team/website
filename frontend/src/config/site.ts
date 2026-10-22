@@ -3,7 +3,7 @@ export type SiteConfig = typeof siteConfig
 export const siteConfig = {
   name: 'CORE',
   description:
-    'CORE game is a competitive coding challenge where you design and program your own bots to battle it out in a dynamic 2D arena.',
+    'CORE is a strategy game you can only play by programming. Write a bot in C or Go, command custom units to mine gems and outsmart your opponent, and destroy the enemy Core.',
   navItems: [
     {
       label: 'Home',
