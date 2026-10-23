@@ -8,8 +8,19 @@ import {
   IsNotEmpty,
   IsBoolean,
   IsInt,
+  Matches,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import {
+  GIT_REF_MESSAGE,
+  GIT_REF_PATTERN,
+  GITHUB_OWNER_MESSAGE,
+  GITHUB_OWNER_PATTERN,
+  GITHUB_REPO_URL_MESSAGE,
+  GITHUB_REPO_URL_PATTERN,
+  REPO_RELATIVE_PATH_MESSAGE,
+  REPO_RELATIVE_PATH_PATTERN,
+} from "../../common/github-validation";
 
 export class CreateEventDto {
   @ApiProperty()
@@ -25,6 +36,7 @@ export class CreateEventDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
+  @Matches(GITHUB_OWNER_PATTERN, { message: GITHUB_OWNER_MESSAGE })
   githubOrg: string;
 
   @ApiProperty()
@@ -101,14 +113,17 @@ export class CreateEventDto {
 
   @ApiProperty()
   @IsString()
+  @Matches(GITHUB_REPO_URL_PATTERN, { message: GITHUB_REPO_URL_MESSAGE })
   monorepoUrl: string;
 
   @ApiProperty()
   @IsString()
+  @Matches(GIT_REF_PATTERN, { message: GIT_REF_MESSAGE })
   monorepoVersion: string;
 
   @ApiProperty()
   @IsString()
+  @Matches(REPO_RELATIVE_PATH_PATTERN, { message: REPO_RELATIVE_PATH_MESSAGE })
   basePath: string;
 
   @ApiProperty()

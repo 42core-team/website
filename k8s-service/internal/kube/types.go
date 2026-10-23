@@ -16,9 +16,13 @@ type Game struct {
 }
 
 type Bot struct {
-	ID      uuid.UUID `json:"id"`
-	RndID   *string   `json:"rndID"`
-	RepoURL string    `json:"repoURL"`
-	Image   string    `json:"image"`
-	Name    *string   `json:"name"`
+	ID    uuid.UUID `json:"id"`
+	RndID *string   `json:"rndID"`
+	// RepoURL is a plain https://github.com/<org>/<repo> URL without credentials.
+	RepoURL string `json:"repoURL"`
+	// RepoToken is the GitHub token used to clone RepoURL. It is handed to the
+	// clone init container through a Kubernetes Secret and must not be logged.
+	RepoToken string  `json:"repoToken,omitempty"`
+	Image     string  `json:"image"`
+	Name      *string `json:"name"`
 }
