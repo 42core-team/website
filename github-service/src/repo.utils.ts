@@ -4,6 +4,41 @@ import * as path from "node:path";
 import * as YAML from "yaml";
 import { Logger } from "@nestjs/common";
 import { GitHubRepository } from "./githubApi";
+import {
+  assertCheckoutInsideFolder,
+  resolveInsideFolder,
+  validateMonoRepoSource,
+} from "./repo-validation";
+
+/** Environment variables passed to git through simple-git's guard. */
+const MONO_REPO_GIT_ENV_KEYS = ["GIT_ALLOW_PROTOCOL", "GIT_TERMINAL_PROMPT"];
+
+/**
+ * A minimal environment for cloning the mono repo: git only gets what it needs
+ * (and none of this service's secrets), may only use https, and never prompts.
+ */
+function monoRepoGitEnv(): Record<string, string> {
+  const env: Record<string, string> = {
+    GIT_ALLOW_PROTOCOL: "https",
+    GIT_TERMINAL_PROMPT: "0",
+  };
+  for (const key of [
+    "PATH",
+    "HOME",
+    "HTTPS_PROXY",
+    "https_proxy",
+    "HTTP_PROXY",
+    "http_proxy",
+    "NO_PROXY",
+    "no_proxy",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+  ]) {
+    const value = process.env[key];
+    if (value !== undefined) env[key] = value;
+  }
+  return env;
+}
 
 export class RepoUtils {
   // TODO: this needs to be dynamic in the future
@@ -25,46 +60,47 @@ export class RepoUtils {
     apiBaseUrl: string,
     starterTemplateId?: string,
   ): Promise<SimpleGit> {
+    validateMonoRepoSource(monoRepoUrl, monoRepoVersion, basePath);
+    const repoRoot = resolveInsideFolder(tempFolderPath, basePath);
+
     this.logger.log(
       `Cloning mono repo ${monoRepoUrl} to temp folder ${tempFolderPath}`,
     );
-    const gitMono = simpleGit(tempFolderPath);
-    await gitMono.clone(monoRepoUrl, "./", [
+    const gitMono = simpleGit({
+      baseDir: tempFolderPath,
+      allowEnvironment: MONO_REPO_GIT_ENV_KEYS,
+    }).env(monoRepoGitEnv());
+    await gitMono.raw([
+      "clone",
       "--filter=blob:none",
       "--sparse",
       "--branch",
       monoRepoVersion,
       "--depth=1",
+      "--",
+      monoRepoUrl,
+      ".",
     ]);
-    await gitMono.raw(["sparse-checkout", "set", basePath]);
+    await gitMono.raw(["sparse-checkout", "set", "--", basePath]);
+    await assertCheckoutInsideFolder(tempFolderPath, repoRoot);
 
     const [gitRepo] = await Promise.all([
-      this.initRepo(tempFolderPath, basePath),
-      this.updateGitignoreFromCoreignore(path.join(tempFolderPath, basePath)),
+      this.initRepo(tempFolderPath, repoRoot),
+      this.updateGitignoreFromCoreignore(repoRoot),
       this.updateDevcontainerDockerCompose(
-        path.join(tempFolderPath, basePath),
+        repoRoot,
         myCoreBotDockerImage,
         visualizerDockerImage,
       ),
-      this.updateTeamName(path.join(tempFolderPath, basePath), teamName),
+      this.updateTeamName(repoRoot, teamName),
+      this.writeJsonConfig(repoRoot, "game.config.json", gameConfig, "game"),
       this.writeJsonConfig(
-        path.join(tempFolderPath, basePath),
-        "game.config.json",
-        gameConfig,
-        "game",
-      ),
-      this.writeJsonConfig(
-        path.join(tempFolderPath, basePath),
+        repoRoot,
         "server.config.json",
         serverConfig,
         "server",
       ),
-      this.updateConfigsUrls(
-        path.join(tempFolderPath, basePath),
-        eventId,
-        apiBaseUrl,
-        starterTemplateId,
-      ),
+      this.updateConfigsUrls(repoRoot, eventId, apiBaseUrl, starterTemplateId),
     ]);
     return gitRepo;
   }
@@ -77,7 +113,7 @@ export class RepoUtils {
     basePath: string,
   ) {
     await this.updateReadmeRepoUrl(
-      path.join(tempFolderPath, basePath),
+      resolveInsideFolder(tempFolderPath, basePath),
       teamRepo.name,
       teamRepo.ssh_url,
     );
@@ -101,17 +137,20 @@ export class RepoUtils {
 
   private async initRepo(
     tempFolderPath: string,
-    basePath: string,
+    repoRoot: string,
   ): Promise<SimpleGit> {
     await Promise.all([
-      fs.rm(`${tempFolderPath}/.git`, { recursive: true, force: true }),
-      fs.rm(`${tempFolderPath}/${basePath}/.git`, {
+      fs.rm(path.join(tempFolderPath, ".git"), {
+        recursive: true,
+        force: true,
+      }),
+      fs.rm(path.join(repoRoot, ".git"), {
         recursive: true,
         force: true,
       }),
     ]);
 
-    const gitRepo = simpleGit(path.join(tempFolderPath, basePath));
+    const gitRepo = simpleGit(repoRoot);
     await gitRepo.init();
 
     return gitRepo;
