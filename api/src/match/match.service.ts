@@ -28,6 +28,10 @@ import { getRabbitmqConfig } from "../main";
 import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { TeamEntity } from "../team/entities/team.entity";
+import {
+  isValidGithubOwner,
+  isValidGithubRepoName,
+} from "../common/github-validation";
 import { GithubApiService } from "../github-api/github-api.service";
 import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
 import { GamblingService } from "../gambling/gambling.service";
@@ -512,10 +516,19 @@ export class MatchService {
 
     const event = match.teams[0].event;
     const orgName = event.githubOrg;
-    const orgSecret = this.githubApiService.decryptSecret(
+    if (!isValidGithubOwner(orgName))
+      throw new Error(
+        `Event ${event.id} has an invalid GitHub organization name.`,
+      );
+    for (const team of match.teams.slice(0, 2)) {
+      if (!isValidGithubRepoName(team.repo))
+        throw new Error(`Team ${team.id} has an invalid repository name.`);
+    }
+    // The token is sent separately from the repo URL; the k8s-service passes
+    // it to the clone step through a Kubernetes Secret.
+    const repoToken = this.githubApiService.decryptSecret(
       event.githubOrgSecret,
     );
-    const repoPrefix = `https://${orgName}:${orgSecret}@github.com/${orgName}/`;
 
     this.gameQueue.emit("new_match", {
       id: matchId,
@@ -526,7 +539,8 @@ export class MatchService {
           image:
             match.teams[0].starterTemplate?.myCoreBotDockerImage ??
             event.myCoreBotDockerImage,
-          repoURL: repoPrefix + match.teams[0].repo,
+          repoURL: `https://github.com/${orgName}/${match.teams[0].repo}`,
+          repoToken,
           name: match.teams[0].name,
         },
         {
@@ -534,7 +548,8 @@ export class MatchService {
           image:
             match.teams[1].starterTemplate?.myCoreBotDockerImage ??
             event.myCoreBotDockerImage,
-          repoURL: repoPrefix + match.teams[1].repo,
+          repoURL: `https://github.com/${orgName}/${match.teams[1].repo}`,
+          repoToken,
           name: match.teams[1].name,
         },
       ],
