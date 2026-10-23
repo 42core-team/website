@@ -104,13 +104,13 @@ func (q *Queue) ConsumeGameQueue(logger *zap.SugaredLogger, kubeClient *kube.Cli
 
 	go func() {
 		for d := range msgs {
-			logger.Info(string(d.Body))
-
+			// The message body carries repository tokens, so it must not be logged.
 			game, err := parseGameMessage(d.Body)
 			if err != nil {
 				logger.Errorln("Failed to parse game message", zap.Error(err))
 				continue
 			}
+			logger.Infoln("Received game message", "gameID", game.ID.String())
 
 			err = kubeClient.CreateGameJob(context.Background(), &game)
 			if err != nil {
@@ -120,7 +120,7 @@ func (q *Queue) ConsumeGameQueue(logger *zap.SugaredLogger, kubeClient *kube.Cli
 
 			err = d.Ack(false)
 			if err != nil {
-				logger.Errorln("There was an error during Acknowledgement", zap.Error(err), zap.Any("delivery", d))
+				logger.Errorln("There was an error during Acknowledgement", zap.Error(err), zap.Uint64("deliveryTag", d.DeliveryTag))
 			}
 		}
 	}()

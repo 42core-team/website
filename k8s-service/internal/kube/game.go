@@ -14,10 +14,86 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// gameResources holds every Kubernetes object needed to run one game.
+type gameResources struct {
+	job       *batchv1.Job
+	configMap *corev1.ConfigMap
+	// credentialsSecret holds the repository clone credentials. It is nil when
+	// no bot needs authentication to clone its repository.
+	credentialsSecret *corev1.Secret
+}
+
 func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 	presignedURL, err := c.s3Client.GeneratePresignedUploadURL(game.ID)
 	if err != nil {
 		return fmt.Errorf("failed to generate presigned URL: %w", err)
+	}
+
+	res, err := buildGameResources(
+		game,
+		c.namespace,
+		presignedURL,
+		c.cfg.RabbitMQHTTP+"/api/exchanges/%2f/amq.default/publish",
+	)
+	if err != nil {
+		return err
+	}
+	configMap := res.configMap
+	configMapName := configMap.Name
+
+	_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Create(ctx, configMap, metav1.CreateOptions{})
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		return fmt.Errorf("failed to create configmap: %w", err)
+	}
+
+	createdJob, err := c.clientset.BatchV1().Jobs(c.namespace).Create(ctx, res.job, metav1.CreateOptions{})
+	if apierrors.IsAlreadyExists(err) {
+		createdJob, err = c.clientset.BatchV1().Jobs(c.namespace).Get(ctx, res.job.Name, metav1.GetOptions{})
+	}
+	if err != nil {
+		// Try to clean up the configmap if job creation fails
+		_ = c.clientset.CoreV1().ConfigMaps(c.namespace).Delete(ctx, configMapName, metav1.DeleteOptions{})
+		return fmt.Errorf("failed to create job: %v", err)
+	}
+
+	jobOwnerReference := metav1.OwnerReference{
+		APIVersion: "batch/v1",
+		Kind:       "Job",
+		Name:       createdJob.Name,
+		UID:        createdJob.UID,
+	}
+
+	// The credentials Secret is created after the Job so that it can carry the
+	// Job as its owner from the start: it is garbage-collected together with the
+	// Job, and the service account only needs "create" on secrets. Until the
+	// Secret exists, the clone init container waits in CreateContainerConfigError
+	// and the kubelet retries it; the pod does not fail because of this ordering.
+	if res.credentialsSecret != nil {
+		res.credentialsSecret.OwnerReferences = []metav1.OwnerReference{jobOwnerReference}
+		_, err = c.clientset.CoreV1().Secrets(c.namespace).Create(ctx, res.credentialsSecret, metav1.CreateOptions{})
+		if err != nil && !apierrors.IsAlreadyExists(err) {
+			return fmt.Errorf("failed to create repository credentials secret: %w", err)
+		}
+	}
+
+	// Set OwnerReference for ConfigMap to the Job for automatic cleanup
+	configMap.ObjectMeta.OwnerReferences = []metav1.OwnerReference{jobOwnerReference}
+	_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Update(ctx, configMap, metav1.UpdateOptions{})
+	if err != nil {
+		c.logger.Errorf("failed to set owner reference on configmap %s: %v", configMapName, err)
+	}
+
+	c.logger.Infoln("Job to run a game successfully created", "jobName", createdJob.Name)
+	return nil
+}
+
+// buildGameResources builds the Job, ConfigMap and (if needed) credentials
+// Secret for a game without talking to the cluster.
+func buildGameResources(game *Game, namespace, presignedURL, rabbitMQPublishURL string) (*gameResources, error) {
+	for _, bot := range game.Bots {
+		if err := validateRepoURL(bot.RepoURL); err != nil {
+			return nil, fmt.Errorf("invalid repository URL for bot %s: %w", bot.ID, err)
+		}
 	}
 
 	var botIDs []string
@@ -26,7 +102,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 	for ind := range game.Bots {
 		id, err := generateRandomID(2)
 		if err != nil {
-			return fmt.Errorf("error generating rnd IDs for bots %w", err)
+			return nil, fmt.Errorf("error generating rnd IDs for bots %w", err)
 		}
 		game.Bots[ind].RndID = &id
 		botIDs = append(botIDs, id)
@@ -42,7 +118,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 
 	botMappingJSON, err := json.Marshal(botIDMapping)
 	if err != nil {
-		return fmt.Errorf("failed to marshal bot ID mapping: %w", err)
+		return nil, fmt.Errorf("failed to marshal bot ID mapping: %w", err)
 	}
 
 	var volumes []corev1.Volume
@@ -65,7 +141,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      configMapName,
-			Namespace: c.namespace,
+			Namespace: namespace,
 		},
 		Data: map[string]string{
 			"game.config.json":   game.GameConfig,
@@ -73,9 +149,10 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 		},
 	}
 
-	_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Create(ctx, configMap, metav1.CreateOptions{})
-	if err != nil && !apierrors.IsAlreadyExists(err) {
-		return fmt.Errorf("failed to create configmap: %w", err)
+	credentialsSecret := newRepoCredentialsSecret(game, namespace)
+	credentialsSecretName := ""
+	if credentialsSecret != nil {
+		credentialsSecretName = credentialsSecret.Name
 	}
 
 	volumes = append(volumes, corev1.Volume{
@@ -111,53 +188,9 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 				},
 			},
 		})
-		initContainers = append(initContainers, corev1.Container{
-			Name:  initContainerName,
-			Image: "alpine/git",
-			Command: []string{
-				"sh", "-c", fmt.Sprintf(`
-					set -eu;
-					echo "Bot ID: '%s'";
-					echo "Bot Name: '%s'";
-					echo '--- Cloning repository (verbose, progress) ---';
-					GIT_TERMINAL_PROMPT=0 git clone --single-branch --depth 1 --verbose --progress '%s' /shared-data;
-					cd /shared-data;
-					echo '--- Repo content ---';
-					ls -F;
-					echo '--- Repository size ---';
-					du -sh /shared-data;
-					echo '--- Last commit ---';
-					git --no-pager log -1 --decorate=short --pretty=fuller;
-					echo '--- Diffstat ---';
-					git --no-pager show --stat -1;
-					echo '--- changing permissions ---';
-					chown -R 2000:2000 /shared-data && chmod -R 770 /shared-data;
-				`, bot.ID.String(), *bot.Name, bot.RepoURL),
-			},
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      volumeName,
-					MountPath: "/shared-data",
-				},
-			},
-			//SecurityContext: &corev1.SecurityContext{
-			//	AllowPrivilegeEscalation: &allowPrivilegeEscalationFalse,
-			//	SeccompProfile: &corev1.SeccompProfile{
-			//		Type: corev1.SeccompProfileTypeRuntimeDefault,
-			//	},
-			//	Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-			//},
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("100m"),
-					corev1.ResourceMemory: resource.MustParse("128Mi"),
-				},
-				Limits: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("500m"),
-					corev1.ResourceMemory: resource.MustParse("512Mi"),
-				},
-			},
-		})
+		initContainers = append(initContainers, newCloneRepoInitContainer(
+			initContainerName, volumeName, bot, credentialsSecretName, botRunAsUser,
+		))
 
 		botContainers = append(botContainers, corev1.Container{
 			Name:            containerName,
@@ -213,7 +246,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 	gameEnv := []corev1.EnvVar{
 		{Name: "GAME_ID", Value: game.ID.String()},
 		{Name: "SEND_RESULTS", Value: "true"},
-		{Name: "RABBITMQ_URL", Value: c.cfg.RabbitMQHTTP + "/api/exchanges/%2f/amq.default/publish"},
+		{Name: "RABBITMQ_URL", Value: rabbitMQPublishURL},
 		{Name: "S3_PRESIGNED_URL", Value: presignedURL},
 		{Name: "UPLOAD_REPLAY", Value: "true"},
 		{Name: "BOT_ID_MAPPING", Value: string(botMappingJSON)},
@@ -309,7 +342,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "game-" + game.ID.String(),
-			Namespace: c.namespace,
+			Namespace: namespace,
 		},
 		Spec: batchv1.JobSpec{
 			Completions:             int32Ptr(1),
@@ -322,29 +355,11 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 		},
 	}
 
-	createdJob, err := c.clientset.BatchV1().Jobs(c.namespace).Create(ctx, job, metav1.CreateOptions{})
-	if err != nil && !apierrors.IsAlreadyExists(err) {
-		// Try to clean up the configmap if job creation fails
-		_ = c.clientset.CoreV1().ConfigMaps(c.namespace).Delete(ctx, configMapName, metav1.DeleteOptions{})
-		return fmt.Errorf("failed to create job: %v", err)
-	}
-
-	// Set OwnerReference for ConfigMap to the Job for automatic cleanup
-	configMap.ObjectMeta.OwnerReferences = []metav1.OwnerReference{
-		{
-			APIVersion: "batch/v1",
-			Kind:       "Job",
-			Name:       createdJob.Name,
-			UID:        createdJob.UID,
-		},
-	}
-	_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Update(ctx, configMap, metav1.UpdateOptions{})
-	if err != nil {
-		c.logger.Errorf("failed to set owner reference on configmap %s: %v", configMapName, err)
-	}
-
-	c.logger.Infoln("Job to run a game successfully created", "jobName", createdJob.Name)
-	return nil
+	return &gameResources{
+		job:               job,
+		configMap:         configMap,
+		credentialsSecret: credentialsSecret,
+	}, nil
 }
 
 // imagePullPolicy returns PullAlways for non-release images (i.e. tags that do

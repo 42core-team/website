@@ -17,6 +17,11 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+  # Per-game repository clone credentials. Each Secret is created with the game
+  # Job as its owner and garbage-collected with it, so only "create" is needed.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
