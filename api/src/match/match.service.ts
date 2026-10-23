@@ -514,6 +514,25 @@ export class MatchService {
       return;
     }
 
+    let message: ReturnType<MatchService["buildNewMatchMessage"]>;
+    try {
+      message = this.buildNewMatchMessage(matchId, match);
+    } catch (error) {
+      // No game was started, so put the match back instead of leaving it
+      // IN_PROGRESS forever.
+      await this.matchRepository
+        .createQueryBuilder()
+        .update(MatchEntity)
+        .set({ state: MatchState.PLANNED })
+        .where("id = :matchId", { matchId })
+        .andWhere("state = :state", { state: MatchState.IN_PROGRESS })
+        .execute();
+      throw error;
+    }
+    this.gameQueue.emit("new_match", message);
+  }
+
+  private buildNewMatchMessage(matchId: string, match: MatchEntity) {
     const event = match.teams[0].event;
     const orgName = event.githubOrg;
     if (!isValidGithubOwner(orgName))
@@ -530,7 +549,7 @@ export class MatchService {
       event.githubOrgSecret,
     );
 
-    this.gameQueue.emit("new_match", {
+    return {
       id: matchId,
       image: event.gameServerDockerImage,
       bots: [
@@ -555,7 +574,7 @@ export class MatchService {
       ],
       gameConfig: event.gameConfig,
       serverConfig: event.serverConfig,
-    });
+    };
   }
 
   async createMatch(teamIds: string[], round: number, phase: MatchPhase) {

@@ -4,15 +4,22 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
+	"go.uber.org/zap"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
+
+// ErrInvalidGame marks game messages that can never be turned into a Job, no
+// matter how often they are retried.
+var ErrInvalidGame = errors.New("invalid game")
 
 // gameResources holds every Kubernetes object needed to run one game.
 type gameResources struct {
@@ -38,22 +45,33 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 	if err != nil {
 		return err
 	}
+	return createGameResources(ctx, c.clientset, c.namespace, c.logger, res)
+}
+
+// createGameResources creates the ConfigMap, Job and credentials Secret of a
+// game in the cluster.
+func createGameResources(ctx context.Context, clientset kubernetes.Interface, namespace string, logger *zap.SugaredLogger, res *gameResources) error {
 	configMap := res.configMap
 	configMapName := configMap.Name
 
-	_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Create(ctx, configMap, metav1.CreateOptions{})
+	_, err := clientset.CoreV1().ConfigMaps(namespace).Create(ctx, configMap, metav1.CreateOptions{})
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create configmap: %w", err)
 	}
 
-	createdJob, err := c.clientset.BatchV1().Jobs(c.namespace).Create(ctx, res.job, metav1.CreateOptions{})
-	if apierrors.IsAlreadyExists(err) {
-		createdJob, err = c.clientset.BatchV1().Jobs(c.namespace).Get(ctx, res.job.Name, metav1.GetOptions{})
-	}
+	createdJob, err := clientset.BatchV1().Jobs(namespace).Create(ctx, res.job, metav1.CreateOptions{})
 	if err != nil {
-		// Try to clean up the configmap if job creation fails
-		_ = c.clientset.CoreV1().ConfigMaps(c.namespace).Delete(ctx, configMapName, metav1.DeleteOptions{})
-		return fmt.Errorf("failed to create job: %v", err)
+		if !apierrors.IsAlreadyExists(err) {
+			// The Job does not exist, so nothing uses the configmap.
+			_ = clientset.CoreV1().ConfigMaps(namespace).Delete(ctx, configMapName, metav1.DeleteOptions{})
+			return fmt.Errorf("failed to create job: %w", err)
+		}
+		// The message was delivered before and the Job already exists. Its pod
+		// mounts the configmap, so the configmap must not be deleted here.
+		createdJob, err = clientset.BatchV1().Jobs(namespace).Get(ctx, res.job.Name, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get existing job: %w", err)
+		}
 	}
 
 	jobOwnerReference := metav1.OwnerReference{
@@ -63,6 +81,15 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 		UID:        createdJob.UID,
 	}
 
+	// Set OwnerReference for ConfigMap to the Job for automatic cleanup. This
+	// happens before the Secret is created, so deleting the Job below also
+	// removes the configmap.
+	configMap.ObjectMeta.OwnerReferences = []metav1.OwnerReference{jobOwnerReference}
+	_, err = clientset.CoreV1().ConfigMaps(namespace).Update(ctx, configMap, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Errorf("failed to set owner reference on configmap %s: %v", configMapName, err)
+	}
+
 	// The credentials Secret is created after the Job so that it can carry the
 	// Job as its owner from the start: it is garbage-collected together with the
 	// Job, and the service account only needs "create" on secrets. Until the
@@ -70,20 +97,20 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 	// and the kubelet retries it; the pod does not fail because of this ordering.
 	if res.credentialsSecret != nil {
 		res.credentialsSecret.OwnerReferences = []metav1.OwnerReference{jobOwnerReference}
-		_, err = c.clientset.CoreV1().Secrets(c.namespace).Create(ctx, res.credentialsSecret, metav1.CreateOptions{})
+		_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, res.credentialsSecret, metav1.CreateOptions{})
 		if err != nil && !apierrors.IsAlreadyExists(err) {
+			// Without the Secret the pod can never start, so remove the Job (and
+			// with it the configmap) instead of leaving it waiting for its deadline.
+			propagation := metav1.DeletePropagationBackground
+			deleteErr := clientset.BatchV1().Jobs(namespace).Delete(ctx, createdJob.Name, metav1.DeleteOptions{PropagationPolicy: &propagation})
+			if deleteErr != nil && !apierrors.IsNotFound(deleteErr) {
+				logger.Errorf("failed to delete job %s after secret creation failed: %v", createdJob.Name, deleteErr)
+			}
 			return fmt.Errorf("failed to create repository credentials secret: %w", err)
 		}
 	}
 
-	// Set OwnerReference for ConfigMap to the Job for automatic cleanup
-	configMap.ObjectMeta.OwnerReferences = []metav1.OwnerReference{jobOwnerReference}
-	_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Update(ctx, configMap, metav1.UpdateOptions{})
-	if err != nil {
-		c.logger.Errorf("failed to set owner reference on configmap %s: %v", configMapName, err)
-	}
-
-	c.logger.Infoln("Job to run a game successfully created", "jobName", createdJob.Name)
+	logger.Infoln("Job to run a game successfully created", "jobName", createdJob.Name)
 	return nil
 }
 
@@ -92,7 +119,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 func buildGameResources(game *Game, namespace, presignedURL, rabbitMQPublishURL string) (*gameResources, error) {
 	for _, bot := range game.Bots {
 		if err := validateRepoURL(bot.RepoURL); err != nil {
-			return nil, fmt.Errorf("invalid repository URL for bot %s: %w", bot.ID, err)
+			return nil, fmt.Errorf("%w: invalid repository URL for bot %s: %v", ErrInvalidGame, bot.ID, err)
 		}
 	}
 
