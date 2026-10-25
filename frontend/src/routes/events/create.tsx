@@ -26,6 +26,11 @@ import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useSession } from '@/lib/auth'
+import {
+  getGithubConfigError,
+  githubConfigSchema,
+  normalizeGithubConfigValue,
+} from '@/lib/github-validation'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/events/create')({
@@ -36,7 +41,7 @@ const formSchema = z
   .object({
     name: z.string().min(1, 'Event name is required'),
     description: z.string().optional(),
-    githubOrg: z.string().min(1, 'GitHub organization is required'),
+    githubOrg: githubConfigSchema('githubOrg'),
     githubOrgSecret: z
       .string()
       .min(1, 'GitHub organization secret is required'),
@@ -56,15 +61,15 @@ const formSchema = z
     ]),
     minTeamSize: z.number().min(1).max(10),
     maxTeamSize: z.number().min(1).max(10),
-    monorepoUrl: z.string().min(1, 'Monorepo URL is required'),
-    monorepoVersion: z.string().min(1, 'Monorepo version is required'),
+    monorepoUrl: githubConfigSchema('monorepoUrl'),
+    monorepoVersion: githubConfigSchema('monorepoVersion'),
     gameServerDockerImage: z.string().min(1, 'Game server image is required'),
     myCoreBotDockerImage: z.string().min(1, 'My Core Bot image is required'),
     visualizerDockerImage: z.string().min(1, 'Visualizer image is required'),
     gameServerImageTag: z.string().optional(),
     myCoreBotImageTag: z.string().optional(),
     visualizerImageTag: z.string().optional(),
-    basePath: z.string().min(1, 'Base path is required'),
+    basePath: githubConfigSchema('basePath'),
     gameConfig: z.string().min(1, 'Game config is required'),
     serverConfig: z.string().min(1, 'Server config is required'),
     isPrivate: z.boolean(),
@@ -254,8 +259,12 @@ function CreateEventRoute() {
       if (!visualizerDockerImage)
         throw new Error('Visualizer image is required')
 
-      const validationError = await validateGithubToken(
+      const githubOrg = normalizeGithubConfigValue(
+        'githubOrg',
         values.githubOrg,
+      )
+      const validationError = await validateGithubToken(
+        githubOrg,
         values.githubOrgSecret,
       )
       if (validationError) throw new Error(validationError)
@@ -263,7 +272,7 @@ function CreateEventRoute() {
       const payload: EventCreateParams = {
         name: values.name.trim(),
         description: values.description?.trim() || '',
-        githubOrg: values.githubOrg,
+        githubOrg,
         githubOrgSecret: values.githubOrgSecret,
         location: values.location?.trim() || '',
         startDate: values.startDate.getTime(),
@@ -275,12 +284,18 @@ function CreateEventRoute() {
         showtimeStreamUrl: values.showtimeStreamUrl.trim() || undefined,
         minTeamSize: values.minTeamSize,
         maxTeamSize: values.maxTeamSize,
-        monorepoUrl: values.monorepoUrl.trim(),
-        monorepoVersion: values.monorepoVersion.trim(),
+        monorepoUrl: normalizeGithubConfigValue(
+          'monorepoUrl',
+          values.monorepoUrl,
+        ),
+        monorepoVersion: normalizeGithubConfigValue(
+          'monorepoVersion',
+          values.monorepoVersion,
+        ),
         gameServerDockerImage,
         myCoreBotDockerImage,
         visualizerDockerImage,
-        basePath: values.basePath.trim(),
+        basePath: normalizeGithubConfigValue('basePath', values.basePath),
         gameConfig: values.gameConfig,
         serverConfig: values.serverConfig,
         isPrivate: values.isPrivate,
@@ -341,26 +356,40 @@ function CreateEventRoute() {
     enabled: Boolean(parsedRepo),
   })
 
+  // Only look up default configs once version and base path are valid.
+  const configVersion = getGithubConfigError(
+    'monorepoVersion',
+    formValues.monorepoVersion,
+  )
+    ? ''
+    : normalizeGithubConfigValue('monorepoVersion', formValues.monorepoVersion)
+  const configBasePath = getGithubConfigError('basePath', formValues.basePath)
+    ? ''
+    : normalizeGithubConfigValue('basePath', formValues.basePath).replace(
+        /\/$/,
+        '',
+      )
+
   const { isLoading: isFetchingConfig } = useQuery({
     queryKey: [
       'github',
       'config',
       parsedRepo?.owner,
       parsedRepo?.repo,
-      formValues.monorepoVersion,
-      formValues.basePath,
+      configVersion,
+      configBasePath,
     ],
     queryFn: async () => {
-      if (!parsedRepo || !formValues.monorepoVersion || !formValues.basePath) {
+      if (!parsedRepo || !configVersion || !configBasePath) {
         return null
       }
 
       const [gameResponse, serverResponse] = await Promise.all([
         fetch(
-          `https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${formValues.monorepoVersion}/${formValues.basePath}/configs/game.config.json`,
+          `https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${configVersion}/${configBasePath}/configs/game.config.json`,
         ),
         fetch(
-          `https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${formValues.monorepoVersion}/${formValues.basePath}/configs/server.config.json`,
+          `https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${configVersion}/${configBasePath}/configs/server.config.json`,
         ),
       ])
 
@@ -374,9 +403,7 @@ function CreateEventRoute() {
       return true
     },
     enabled:
-      Boolean(parsedRepo) &&
-      Boolean(formValues.monorepoVersion) &&
-      Boolean(formValues.basePath),
+      Boolean(parsedRepo) && Boolean(configVersion) && Boolean(configBasePath),
   })
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -763,7 +790,7 @@ function CreateEventRoute() {
                   children={(field) => (
                     <TextField
                       className="md:col-span-2"
-                      description="GitHub repository URL to fetch available tags"
+                      description="https://github.com/<owner>/<repo>, used to fetch available tags"
                       errors={field.state.meta.errors}
                       label="Monorepo URL *"
                     >
@@ -808,7 +835,7 @@ function CreateEventRoute() {
                 name="basePath"
                 children={(field) => (
                   <TextField
-                    description="Path in the monorepo where the game logic is located (e.g., bots/softcore)"
+                    description="Relative path in the monorepo where the game logic is located (e.g., bots/softcore)"
                     errors={field.state.meta.errors}
                     label="Base Path *"
                   >

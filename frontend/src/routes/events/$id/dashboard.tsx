@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { isAxiosError } from 'axios'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { toast } from 'sonner'
 import {
   addEventAdmin,
@@ -82,6 +82,14 @@ import { useTabParam } from '@/hooks/useTabParam'
 import { useEventClock } from '@/hooks/use-event-clock'
 import { useSession } from '@/lib/auth'
 import {
+  GITHUB_CONFIG_FIELDS,
+  GITHUB_CONFIG_LABELS,
+  getGithubConfigError,
+  isGithubConfigField,
+  normalizeGithubConfigValue,
+} from '@/lib/github-validation'
+import type { GithubConfigField } from '@/lib/github-validation'
+import {
   eventState,
   registrationOpen,
   repositoryConfirmedForTournament,
@@ -142,11 +150,37 @@ const SETTINGS_FIELDS = [
   'showtimeStreamUrl',
 ] as const
 
-/** An emptied URL field equals an unset one, so it does not count as a change. */
+type GithubConfigErrors = Partial<Record<GithubConfigField, string>>
+
+/**
+ * An emptied URL field equals an unset one, so it does not count as a change.
+ * GitHub config values are compared after normalization (trimming etc.).
+ */
 function settingChanged(field: string, pending: unknown, saved: unknown) {
-  return field === 'streamUrl' || field === 'showtimeStreamUrl'
-    ? (pending || null) !== (saved || null)
-    : pending !== saved
+  if (field === 'streamUrl' || field === 'showtimeStreamUrl')
+    return (pending || null) !== (saved || null)
+  if (isGithubConfigField(field) && typeof pending === 'string')
+    return normalizeGithubConfigValue(field, pending) !== (saved ?? '')
+  return pending !== saved
+}
+
+/** Errors for the GitHub config fields the admin has changed. */
+function getGithubConfigErrors(
+  pending: PendingEventSettings,
+  saved: Event,
+): GithubConfigErrors {
+  const errors: GithubConfigErrors = {}
+  for (const field of GITHUB_CONFIG_FIELDS) {
+    const value = pending[field]
+    if (
+      typeof value !== 'string' ||
+      !settingChanged(field, value, saved[field])
+    )
+      continue
+    const error = getGithubConfigError(field, value)
+    if (error) errors[field] = error
+  }
+  return errors
 }
 
 function DashboardRoute() {
@@ -336,7 +370,22 @@ function DashboardRoute() {
       ),
   )
 
+  const githubConfigErrors = getGithubConfigErrors(pendingSettings, event)
+
   const handleSaveSettings = () => {
+    const invalidGithubFields = Object.entries(githubConfigErrors)
+    if (invalidGithubFields.length > 0) {
+      toast.error(
+        `Fix the repository settings before saving: ${invalidGithubFields
+          .map(
+            ([field, message]) =>
+              `${GITHUB_CONFIG_LABELS[field as GithubConfigField]}: ${message}`,
+          )
+          .join('; ')}`,
+      )
+      return
+    }
+
     const updates: EventSettingsUpdate = {}
 
     SETTINGS_FIELDS.forEach((field) => {
@@ -348,7 +397,13 @@ function DashboardRoute() {
           event[field as keyof Event],
         )
       ) {
-        Object.assign(updates, { [field]: pendingSettings[field] })
+        const value = pendingSettings[field]
+        Object.assign(updates, {
+          [field]:
+            isGithubConfigField(field) && typeof value === 'string'
+              ? normalizeGithubConfigValue(field, value)
+              : value,
+        })
       }
     })
 
@@ -457,6 +512,7 @@ function DashboardRoute() {
           <SettingsTab
             pendingSettings={{ ...event, ...pendingSettings }}
             updatePendingSetting={updatePendingSetting}
+            githubConfigErrors={githubConfigErrors}
             isGameConfigExpanded={isGameConfigExpanded}
             setIsGameConfigExpanded={setIsGameConfigExpanded}
             isServerConfigExpanded={isServerConfigExpanded}
@@ -735,6 +791,7 @@ function OperationTab({
 function SettingsTab({
   pendingSettings,
   updatePendingSetting,
+  githubConfigErrors,
   isGameConfigExpanded,
   setIsGameConfigExpanded,
   isServerConfigExpanded,
@@ -749,6 +806,8 @@ function SettingsTab({
     key: TKey,
     value: PendingEventSettings[TKey],
   ) => void
+  /** Validation messages for changed GitHub config fields. */
+  githubConfigErrors: GithubConfigErrors
   isGameConfigExpanded: boolean
   setIsGameConfigExpanded: (value: boolean) => void
   isServerConfigExpanded: boolean
@@ -971,20 +1030,26 @@ function SettingsTab({
         <CardContent className="space-y-6">
           <DashboardInput
             label="Monorepo URL"
+            placeholder="https://github.com/<owner>/<repo>"
             value={pendingSettings.monorepoUrl || ''}
+            error={githubConfigErrors.monorepoUrl}
             onChange={(value) => updatePendingSetting('monorepoUrl', value)}
           />
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <DashboardInput
               label="Monorepo Version"
+              placeholder="e.g. dev, v1.2.3"
               value={pendingSettings.monorepoVersion || ''}
+              error={githubConfigErrors.monorepoVersion}
               onChange={(value) =>
                 updatePendingSetting('monorepoVersion', value)
               }
             />
             <DashboardInput
               label="Base Path"
+              placeholder="bots/softcore"
               value={pendingSettings.basePath || ''}
+              error={githubConfigErrors.basePath}
               onChange={(value) => updatePendingSetting('basePath', value)}
             />
           </div>
@@ -1025,6 +1090,7 @@ function SettingsTab({
           <DashboardInput
             label="GitHub Organization"
             value={pendingSettings.githubOrg || ''}
+            error={githubConfigErrors.githubOrg}
             onChange={(value) => updatePendingSetting('githubOrg', value)}
           />
           <DashboardInput
@@ -1529,6 +1595,7 @@ function DashboardInput({
   min,
   max,
   disabled,
+  error,
 }: {
   label: string
   value: string | number
@@ -1538,19 +1605,36 @@ function DashboardInput({
   min?: number
   max?: number
   disabled?: boolean
+  /** Validation message shown below the input. */
+  error?: string
 }) {
+  const id = useId()
+  const errorId = `${id}-error`
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
+      <Label htmlFor={id}>{label}</Label>
       <Input
+        id={id}
         type={type}
         value={value}
         placeholder={placeholder}
         min={min}
         max={max}
         disabled={disabled}
+        aria-invalid={error ? true : undefined}
+        className={
+          error
+            ? 'border-destructive focus-visible:ring-destructive'
+            : undefined
+        }
+        aria-describedby={error ? errorId : undefined}
         onChange={(event) => onChange(event.target.value)}
       />
+      {error && (
+        <p id={errorId} className="text-sm font-medium text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   )
 }
