@@ -48,3 +48,55 @@ export function isValidGithubOwner(value: unknown): value is string {
 export function isValidGithubRepoName(value: unknown): value is string {
   return typeof value === "string" && GITHUB_REPO_NAME_PATTERN.test(value);
 }
+
+/*
+ * Normalization of harmless input differences (surrounding whitespace, a
+ * trailing slash after the repository URL). It runs before validation, so the
+ * patterns above stay exactly as strict as they are. The frontend applies the
+ * same normalization (frontend/src/lib/github-validation.ts).
+ */
+
+function trimString(value: unknown): unknown {
+  return typeof value === "string" ? value.trim() : value;
+}
+
+/** Trims the value and removes a single trailing "/". */
+function normalizeRepoUrl(value: unknown): unknown {
+  const trimmed = trimString(value);
+  return typeof trimmed === "string" && trimmed.endsWith("/")
+    ? trimmed.slice(0, -1)
+    : trimmed;
+}
+
+export const GITHUB_CONFIG_NORMALIZERS = {
+  githubOrg: trimString,
+  monorepoUrl: normalizeRepoUrl,
+  monorepoVersion: trimString,
+  basePath: trimString,
+} as const satisfies Record<string, (value: unknown) => unknown>;
+
+export type GithubConfigField = keyof typeof GITHUB_CONFIG_NORMALIZERS;
+
+export function normalizeGithubConfigValue(
+  field: GithubConfigField,
+  value: unknown,
+): unknown {
+  return GITHUB_CONFIG_NORMALIZERS[field](value);
+}
+
+/**
+ * Returns a copy of a request body with the GitHub config fields normalized.
+ * Fields that are missing or not strings are left untouched.
+ */
+export function normalizeGithubConfigBody<T>(body: T): T {
+  if (typeof body !== "object" || body === null || Array.isArray(body))
+    return body;
+  const normalized = { ...body } as Record<string, unknown>;
+  for (const field of Object.keys(
+    GITHUB_CONFIG_NORMALIZERS,
+  ) as GithubConfigField[]) {
+    if (Object.prototype.hasOwnProperty.call(normalized, field))
+      normalized[field] = normalizeGithubConfigValue(field, normalized[field]);
+  }
+  return normalized as T;
+}

@@ -25,6 +25,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { UserId } from "../guards/UserGuard";
 import { SocialPlatform } from "src/user/entities/social-account.entity";
 import { isRegistrationOpen } from "./event-lifecycle";
+import { NormalizeGithubConfigPipe } from "../common/github-config-normalization";
 import {
   EventLifecycleDto,
   EventTeamExclusionDto,
@@ -101,7 +102,7 @@ export class EventController {
   @Post()
   async createEvent(
     @UserId() userId: string,
-    @Body() createEventDto: CreateEventDto,
+    @Body(NormalizeGithubConfigPipe) createEventDto: CreateEventDto,
   ) {
     if (!(await this.userService.canCreateEvent(userId)))
       throw new UnauthorizedException(
@@ -315,7 +316,7 @@ export class EventController {
   async updateEventSettings(
     @Param("id", new ParseUUIDPipe()) eventId: string,
     @UserId() userId: string,
-    @Body() body: UpdateEventSettingsDto,
+    @Body(NormalizeGithubConfigPipe) body: UpdateEventSettingsDto,
   ) {
     if (!(await this.eventService.isEventAdmin(eventId, userId)))
       throw new UnauthorizedException(
@@ -394,7 +395,7 @@ export class EventController {
   async createStarterTemplate(
     @Param("id", new ParseUUIDPipe()) eventId: string,
     @UserId() userId: string,
-    @Body() body: CreateEventStarterTemplateDto,
+    @Body(NormalizeGithubConfigPipe) body: CreateEventStarterTemplateDto,
   ) {
     if (!(await this.eventService.isEventAdmin(eventId, userId))) {
       throw new UnauthorizedException("You are not an admin of this event");
@@ -420,7 +421,7 @@ export class EventController {
     @Param("id", new ParseUUIDPipe()) eventId: string,
     @Param("templateId", new ParseUUIDPipe()) templateId: string,
     @UserId() userId: string,
-    @Body() body: UpdateEventStarterTemplateDto,
+    @Body(NormalizeGithubConfigPipe) body: UpdateEventStarterTemplateDto,
   ) {
     if (!(await this.eventService.isEventAdmin(eventId, userId))) {
       throw new UnauthorizedException("You are not an admin of this event");
