@@ -5,6 +5,7 @@ import {
   Inject,
   Injectable,
   Logger,
+  NotFoundException,
 } from "@nestjs/common";
 import { TeamService } from "../team/team.service";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -38,6 +39,14 @@ import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
 import { GamblingService } from "../gambling/gambling.service";
 import { canViewTeamMatchReplay } from "./team-match-visibility";
 import { EventState, getEventState } from "../event/event-lifecycle";
+import {
+  isRevealablePhase,
+  toHiddenMatchResponse,
+  toMatchResponse,
+  toVisibleMatchResponse,
+  type HiddenMatchResponse,
+  type MatchResponse,
+} from "./match-response";
 
 const QUEUE_MATCH_SELECT: FindOptionsSelect<MatchEntity> = {
   id: true,
@@ -899,7 +908,11 @@ export class MatchService {
     );
   }
 
-  async getSwissMatches(eventId: string, userId: string, adminReveal: boolean) {
+  async getSwissMatches(
+    eventId: string,
+    userId: string,
+    adminReveal: boolean,
+  ): Promise<MatchResponse[]> {
     const swissMatches = await this.matchRepository.find({
       where: {
         teams: {
@@ -918,22 +931,22 @@ export class MatchService {
       },
     });
 
-    if (
-      userId &&
-      (await this.eventService.isEventAdmin(eventId, userId)) &&
-      adminReveal
-    )
-      return swissMatches;
+    const revealAll = await this.canRevealAll(eventId, userId, adminReveal);
+    return swissMatches.map((match) => toMatchResponse(match, revealAll));
+  }
 
-    return swissMatches.map((match) => {
-      if (match.isRevealed) return match;
-      return {
-        ...match,
-        state: MatchState.PLANNED,
-        winner: null,
-        results: [],
-      };
-    });
+  // Real results of unrevealed matches go out only to a verified event admin
+  // who asked for reveal mode. The query parameter alone is never enough.
+  private async canRevealAll(
+    eventId: string,
+    userId: string | undefined,
+    adminReveal: boolean | undefined,
+  ): Promise<boolean> {
+    return Boolean(
+      adminReveal &&
+      userId &&
+      (await this.eventService.isEventAdmin(eventId, userId)),
+    );
   }
 
   getMaxSwissRounds(teams: number): number {
@@ -1028,7 +1041,7 @@ export class MatchService {
     eventId: string,
     userId: string,
     adminReveal: boolean,
-  ) {
+  ): Promise<MatchResponse[]> {
     const tournamentMatches = await this.matchRepository.find({
       where: {
         teams: {
@@ -1048,24 +1061,10 @@ export class MatchService {
     });
 
     const matchesWithPlacement = this.addPlacementMatchFlags(tournamentMatches);
-
-    if (
-      userId &&
-      (await this.eventService.isEventAdmin(eventId, userId)) &&
-      adminReveal
-    )
-      return matchesWithPlacement;
-
-    return matchesWithPlacement.map((match) => {
-      if (match.isRevealed) return match;
-      return {
-        ...match,
-        state: MatchState.PLANNED,
-        winner: null,
-        results: [],
-        isPlacementMatch: match.isPlacementMatch,
-      };
-    });
+    const revealAll = await this.canRevealAll(eventId, userId, adminReveal);
+    return matchesWithPlacement.map((match) =>
+      toMatchResponse(match, revealAll),
+    );
   }
 
   private addPlacementMatchFlags(
@@ -1374,38 +1373,48 @@ export class MatchService {
     );
   }
 
-  async getMatchById(
+  // Internal lookup; responses go through getMatchResponseById.
+  getMatchById(
     matchId: string,
     relations: FindOptionsRelations<MatchEntity> = {},
-    userId?: string,
-    adminReveal?: boolean,
-  ): Promise<MatchEntity & { isPlacementMatch?: boolean }> {
-    const match = await this.matchRepository.findOneOrFail({
+  ): Promise<MatchEntity> {
+    return this.matchRepository.findOneOrFail({
       where: { id: matchId },
       relations,
     });
-    const matchWithPlacementFlag =
-      await this.addPlacementMatchFlagForMatch(match);
+  }
 
-    if (matchWithPlacementFlag.isRevealed) return matchWithPlacementFlag;
+  async getMatchResponseById(
+    matchId: string,
+    userId: string | undefined,
+    adminReveal: boolean,
+  ): Promise<MatchResponse | (HiddenMatchResponse & { id: string })> {
+    const match = await this.matchRepository.findOne({
+      where: { id: matchId },
+      relations: {
+        winner: true,
+        results: { team: true },
+        teams: { event: true },
+      },
+    });
+    // Unknown and unrevealed tournament matches answer the same way, so the
+    // response never confirms that a hidden match id exists.
+    if (!match) throw new NotFoundException("Match not found");
 
-    if (userId) {
-      const eventId = matchWithPlacementFlag.teams?.[0]?.event?.id;
-      if (
-        eventId &&
-        (await this.eventService.isEventAdmin(eventId, userId)) &&
-        adminReveal
-      ) {
-        return matchWithPlacementFlag;
-      }
-    }
+    const eventId = match.teams?.[0]?.event?.id;
+    const revealAll = eventId
+      ? await this.canRevealAll(eventId, userId, adminReveal)
+      : false;
+    if (match.isRevealed || revealAll)
+      return toVisibleMatchResponse(
+        await this.addPlacementMatchFlagForMatch(match),
+      );
 
-    return {
-      ...matchWithPlacementFlag,
-      state: MatchState.PLANNED,
-      winner: null,
-      results: [],
-    };
+    if (isRevealablePhase(match.phase))
+      throw new NotFoundException("Match not found");
+    // Queue and gambling matches are never revealed. Viewers reach them by id
+    // already, so only the result is withheld, as before.
+    return { id: match.id, ...toHiddenMatchResponse(match) };
   }
 
   private async addPlacementMatchFlagForMatch(
