@@ -133,6 +133,7 @@ export class EventEntity {
   @Column({ default: false })
   isPrivate: boolean;
 
+  @Exclude()
   @JoinTable({ name: "events_users" })
   @ManyToMany(() => UserEntity, (user) => user.events, {
     onUpdate: "CASCADE",
