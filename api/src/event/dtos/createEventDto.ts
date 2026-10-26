@@ -21,6 +21,7 @@ import {
   REPO_RELATIVE_PATH_MESSAGE,
   REPO_RELATIVE_PATH_PATTERN,
 } from "../../common/github-validation";
+import { NormalizeGithubConfig } from "../../common/github-config-normalization";
 
 export class CreateEventDto {
   @ApiProperty()
@@ -36,6 +37,7 @@ export class CreateEventDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
+  @NormalizeGithubConfig("githubOrg")
   @Matches(GITHUB_OWNER_PATTERN, { message: GITHUB_OWNER_MESSAGE })
   githubOrg: string;
 
@@ -113,16 +115,19 @@ export class CreateEventDto {
 
   @ApiProperty()
   @IsString()
+  @NormalizeGithubConfig("monorepoUrl")
   @Matches(GITHUB_REPO_URL_PATTERN, { message: GITHUB_REPO_URL_MESSAGE })
   monorepoUrl: string;
 
   @ApiProperty()
   @IsString()
+  @NormalizeGithubConfig("monorepoVersion")
   @Matches(GIT_REF_PATTERN, { message: GIT_REF_MESSAGE })
   monorepoVersion: string;
 
   @ApiProperty()
   @IsString()
+  @NormalizeGithubConfig("basePath")
   @Matches(REPO_RELATIVE_PATH_PATTERN, { message: REPO_RELATIVE_PATH_MESSAGE })
   basePath: string;
 
