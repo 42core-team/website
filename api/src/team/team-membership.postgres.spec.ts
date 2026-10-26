@@ -15,6 +15,7 @@ import { DataSource, QueryRunner } from "typeorm";
 import { EventEntity } from "../event/entities/event.entity";
 import { UserEntity } from "../user/entities/user.entity";
 import { TeamEntity } from "./entities/team.entity";
+import { LockKeys } from "../constants";
 import { TeamService } from "./team.service";
 
 // A dedicated test database is required; each run owns only its random schema.
@@ -110,6 +111,17 @@ postgres("team membership concurrency (PostgreSQL)", () => {
     );
   }
 
+  // Holds the team name lock that createTeam takes for this event and name.
+  async function holdTeamName(eventId: string, name: string) {
+    blocker = database.createQueryRunner();
+    await blocker.connect();
+    await blocker.startTransaction();
+    await blocker.query("SELECT pg_advisory_xact_lock($1, hashtext($2))", [
+      LockKeys.TEAM_NAME,
+      `${eventId}:${name}`,
+    ]);
+  }
+
   async function waitForLockWaiters(count: number) {
     for (let attempt = 0; attempt < 200; attempt++) {
       const waiting: { count: string }[] = await database.query(
@@ -183,5 +195,29 @@ postgres("team membership concurrency (PostgreSQL)", () => {
     expect((await memberCount(teamA.id)) + (await memberCount(teamB.id))).toBe(
       2,
     );
+  });
+
+  it("lets only one of two users create a team with the same name", async () => {
+    const event = await createEvent(4);
+    const [first, second] = await Promise.all([createUser(), createUser()]);
+    const name = "same-name";
+
+    await holdTeamName(event.id, name);
+    const creates = Promise.allSettled([
+      service.createTeam(name, first.id, event.id),
+      service.createTeam(name, second.id, event.id),
+    ]);
+    await waitForLockWaiters(2);
+    await release();
+    const results = await creates;
+
+    expect(rejectionMessages(results)).toEqual([
+      "A team with this name already exists for this event.",
+    ]);
+    expect(
+      await database
+        .getRepository(TeamEntity)
+        .countBy({ name, event: { id: event.id } }),
+    ).toBe(1);
   });
 });

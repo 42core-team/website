@@ -78,6 +78,10 @@ function setup() {
       if ("users" in options.where) return state.hasTeam;
       return state.nameTaken;
     }),
+    query: jest.fn(async (sql: string) => {
+      if (sql.includes("pg_advisory_xact_lock")) order.push("lock:name");
+      return [];
+    }),
     update: jest.fn(),
     createQueryBuilder: () => ({
       relation: (_entity: unknown, relation: string) => ({
@@ -160,7 +164,11 @@ describe("team membership under lock", () => {
     await expect(service.createTeam("name", "joins", "event")).resolves.toEqual(
       { id: "new" },
     );
-    expect(order).toEqual(["lock:user", "check", "check", "save"]);
+    expect(order).toEqual(["lock:user", "lock:name", "check", "check", "save"]);
+    expect(manager.query).toHaveBeenCalledWith(
+      "SELECT pg_advisory_xact_lock($1, hashtext($2))",
+      [expect.any(Number), "event:name"],
+    );
     expect(manager.findOneOrFail).toHaveBeenNthCalledWith(
       1,
       UserEntity,

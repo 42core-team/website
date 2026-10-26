@@ -473,6 +473,22 @@ export class TeamService {
     });
   }
 
+  /**
+   * Serializes team creation per event and name across users, so the name
+   * check in createTeam holds until the transaction commits. Taken after the
+   * user lock.
+   */
+  private async lockTeamName(
+    manager: EntityManager,
+    eventId: string,
+    name: string,
+  ) {
+    await manager.query("SELECT pg_advisory_xact_lock($1, hashtext($2))", [
+      LockKeys.TEAM_NAME,
+      `${eventId}:${name}`,
+    ]);
+  }
+
   private async assertUserHasNoTeamInEvent(
     manager: EntityManager,
     userId: string,
@@ -628,6 +644,7 @@ export class TeamService {
   ) {
     return await this.dataSource.transaction(async (entityManager) => {
       await this.lockUserForTeamMembership(entityManager, userId);
+      await this.lockTeamName(entityManager, eventId, name);
       const event = await entityManager.findOneOrFail(EventEntity, {
         where: { id: eventId },
       });
@@ -639,7 +656,6 @@ export class TeamService {
         eventId,
         "You already have a team for this event.",
       );
-      // Narrows the window only; names are not serialized across users.
       if (
         await entityManager.exists(TeamEntity, {
           where: { name, event: { id: eventId } },
