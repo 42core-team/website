@@ -38,6 +38,7 @@ import {
 } from "./event-lifecycle";
 import { EventLifecycleDto } from "./dtos/eventLifecycleDto";
 import { TeamEntity } from "../team/entities/team.entity";
+import { toPublicUsers } from "../user/dtos/public-user.dto";
 
 @Injectable()
 export class EventService {
@@ -896,7 +897,7 @@ export class EventService {
         user: true,
       },
     });
-    return permissions.map((p) => p.user);
+    return toPublicUsers(permissions.map((p) => p.user));
   }
 
   async addEventAdmin(eventId: string, userId: string) {
@@ -951,9 +952,18 @@ export class EventService {
   }
 
   async getCurrentLiveEvent() {
+    // Picks the event with the most registered users. The users are only
+    // counted, never selected, so none of them end up in the public response.
     const qb = this.eventRepository
       .createQueryBuilder("event")
-      .leftJoinAndSelect("event.users", "user")
+      .addSelect(
+        (subQuery) =>
+          subQuery
+            .select("COUNT(*)")
+            .from("events_users", "event_user")
+            .where('event_user."eventsId" = event.id'),
+        "user_count",
+      )
       .where("event.isPrivate = false")
       .andWhere("event.startDate <= :now", { now: new Date() })
       .andWhere("event.submissionDeadline > :now", { now: new Date() })
@@ -961,8 +971,6 @@ export class EventService {
         states: [EventState.REGISTRATION, EventState.PLAYING],
       })
       .andWhere("event.canCreateTeam = true")
-      .addSelect("COUNT(user.id)", "user_count")
-      .groupBy("event.id, user.id")
       .orderBy("user_count", "DESC")
       .limit(1);
 
