@@ -111,12 +111,6 @@ export class UserService {
     });
   }
 
-  getUserByEmail(email: string) {
-    return this.userRepository.findOneBy({
-      email,
-    });
-  }
-
   joinEvent(userId: string, eventId: string) {
     return this.userRepository.manager.transaction(async (manager) => {
       // Recheck at the mutation, after identity/whitelist lookups, and serialize

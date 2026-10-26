@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   forwardRef,
   Inject,
   Injectable,
@@ -1295,18 +1296,41 @@ export class MatchService {
       relations: {
         teams: {
           event: true,
+          users: true,
         },
       },
+      withDeleted: true,
     });
-    const event = match.teams[0].event;
-    if (!event) {
+    const event = match.teams.find((team) => team.event)?.event;
+    if (!event)
       this.logger.error(`Event for match with id ${matchId} not found.`);
-      return [];
-    }
 
-    let isEventAdmin = false;
-    if (userId)
-      isEventAdmin = await this.eventService.isEventAdmin(event.id, userId);
+    const isEventAdmin =
+      !!userId &&
+      !!event &&
+      (await this.eventService.isEventAdmin(event.id, userId));
+
+    // The k8s-service names each bot container "bot-<id>", where <id> is the
+    // bot id sent in the new_match message, i.e. the team id.
+    const teamsByContainer = new Map(
+      match.teams.map((team) => [`bot-${team.id}`, team]),
+    );
+    // Members of a deleted team no longer get access to its bot logs.
+    const ownContainers = new Set(
+      [...teamsByContainer]
+        .filter(
+          ([, team]) =>
+            !team.deletedAt &&
+            !!userId &&
+            team.users?.some((user) => user.id === userId),
+        )
+        .map(([container]) => container),
+    );
+
+    if (!isEventAdmin && ownContainers.size === 0)
+      throw new ForbiddenException(
+        "You are not allowed to view the logs of this match.",
+      );
 
     const containers: {
       id: string;
@@ -1328,20 +1352,18 @@ export class MatchService {
       return [];
     }
 
-    let mappedLogs = await Promise.all(
-      containers.containers.map(async (container) => {
-        if (!isEventAdmin && container === "game") {
-          return {
-            container: container,
-            logs: [],
-          };
-        }
+    // Admins see the game server and every bot. Team members only see the
+    // containers that map to their own team; anything unmapped is left out.
+    const visibleContainers = containers.containers.filter(
+      (container) => isEventAdmin || ownContainers.has(container),
+    );
+
+    return Promise.all(
+      visibleContainers.map(async (container) => {
         const logs = await fetch(
-          `${this.k8sServiceUrl}/v1/match/${matchId}/logs?container=${container}`,
+          `${this.k8sServiceUrl}/v1/match/${matchId}/logs?container=${encodeURIComponent(container)}`,
         ).then((res) => res.text());
-        const team = match.teams.find(
-          (team) => team.id === container.replace("bot-", ""),
-        );
+        const team = teamsByContainer.get(container);
 
         return {
           container,
@@ -1350,9 +1372,6 @@ export class MatchService {
         };
       }),
     );
-    if (!isEventAdmin)
-      mappedLogs = mappedLogs.filter((log) => log.container !== "game");
-    return mappedLogs;
   }
 
   async getMatchById(

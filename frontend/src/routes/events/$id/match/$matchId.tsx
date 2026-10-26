@@ -1,6 +1,7 @@
 import { MatchTeamHeader } from '@/components/match/MatchTeamHeader'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
+import { isAxiosError } from 'axios'
 import { ExternalLink } from 'lucide-react'
 import { getEventById } from '@/app/actions/event'
 import {
@@ -58,6 +59,11 @@ function MatchRoute() {
     queryKey: ['match', matchId, 'logs'],
     queryFn: async () => getLogsOfMatch(matchId),
     enabled: Boolean(matchQuery.data),
+    // Logs are only visible to event admins and the match's teams; the
+    // section stays hidden for everyone else.
+    retry: (failureCount, error) =>
+      !(isAxiosError(error) && error.response?.status === 403) &&
+      failureCount < 3,
   })
 
   if (
