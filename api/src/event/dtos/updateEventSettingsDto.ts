@@ -20,6 +20,10 @@ import {
   REPO_RELATIVE_PATH_PATTERN,
 } from "../../common/github-validation";
 import { NormalizeGithubConfig } from "../../common/github-config-normalization";
+import {
+  EVENT_NAME_MAX_LENGTH,
+  EVENT_NAME_MAX_LENGTH_MESSAGE,
+} from "../../common/name-limits";
 
 export class UpdateEventSettingsDto {
   @IsOptional()
@@ -85,9 +89,10 @@ export class UpdateEventSettingsDto {
   @IsBoolean()
   isPrivate?: boolean;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: EVENT_NAME_MAX_LENGTH })
   @IsOptional()
   @IsString()
+  @MaxLength(EVENT_NAME_MAX_LENGTH, { message: EVENT_NAME_MAX_LENGTH_MESSAGE })
   name?: string;
 
   @ApiPropertyOptional()
