@@ -72,11 +72,8 @@ describe('match history team positioning', () => {
             round: 1,
             updatedAt: match.createdAt,
             isRevealed: true,
-            teams: [
-              { ...alpha, score: 2 },
-              { ...beta, score: 5 },
-            ],
-            winner: { ...beta, score: 5 },
+            teams: [alpha, beta],
+            winner: beta,
             results: match.results!,
           },
         ]}

@@ -14,39 +14,29 @@ export enum MatchState {
   FINISHED = 'FINISHED',
 }
 
+export interface MatchTeam {
+  id: string
+  picture?: TeamImage | null
+  background?: TeamBackground | null
+  name: string
+  deletedAt?: string | null
+}
+
+// Unrevealed tournament matches come without id, completion data and results,
+// so their replay cannot be looked up. Teams never carry standings here.
 export interface Match {
   id?: string
   round: number
   state: MatchState
   phase: MatchPhase
   createdAt: string
-  updatedAt: string
+  updatedAt?: string
   isRevealed: boolean
   isPlacementMatch?: boolean
-  teams: {
-    id: string
-    picture?: TeamImage | null
-    background?: TeamBackground | null
-    name: string
-    score: number
-    deletedAt?: string | null
-  }[]
-  winner?: {
-    id: string
-    picture?: TeamImage | null
-    background?: TeamBackground | null
-    name: string
-    score: number
-    deletedAt?: string | null
-  }
-  results: {
-    team: {
-      id: string
-      picture?: TeamImage | null
-      background?: TeamBackground | null
-      name: string
-      deletedAt?: string | null
-    }
+  teams: MatchTeam[]
+  winner?: MatchTeam | null
+  results?: {
+    team: MatchTeam
     score: number
   }[]
 }

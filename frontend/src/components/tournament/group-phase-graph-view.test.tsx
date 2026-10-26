@@ -41,12 +41,12 @@ function createMatch(
     updatedAt: '2026-01-01T00:00:00Z',
     isRevealed: state === MatchState.FINISHED,
     teams: [
-      { id: 'alpha', name: 'Alpha', score: 1 },
-      { id: 'beta', name: 'Beta', score: 0 },
+      { id: 'alpha', name: 'Alpha' },
+      { id: 'beta', name: 'Beta' },
     ],
     winner:
       state === MatchState.FINISHED
-        ? { id: 'alpha', name: 'Alpha', score: 1 }
+        ? { id: 'alpha', name: 'Alpha' }
         : undefined,
     results:
       state === MatchState.FINISHED
@@ -92,12 +92,15 @@ describe('round presentation model', () => {
     })
   })
 
-  it('uses result scores first and keeps unfinished competitors hidden', () => {
+  it('uses only result scores and keeps unfinished competitors hidden', () => {
     const finished = createMatch('finished', 0, MatchState.FINISHED)
     const planned = createMatch('planned', 1, MatchState.PLANNED)
 
-    expect(getTeamScore(finished, 'alpha', 1)).toBe(3)
-    expect(getTeamScore(finished, 'missing', 4)).toBe(4)
+    expect(getTeamScore(finished, 'alpha')).toBe(3)
+    expect(getTeamScore(finished, 'missing')).toBeUndefined()
+    expect(getTeamScore({ ...finished, results: undefined }, 'alpha')).toBe(
+      undefined,
+    )
     expect(hasVisibleCompetitors(finished)).toBe(true)
     expect(hasVisibleCompetitors(planned)).toBe(false)
   })
@@ -116,6 +119,34 @@ describe('round presentation model', () => {
 })
 
 describe('compact round view', () => {
+  it('shows no score without a result and never links hidden matches', () => {
+    render(
+      <GroupPhaseGraphView
+        matches={[
+          createMatch('revealed', 0, MatchState.FINISHED, {
+            results: undefined,
+          }),
+          createMatch(undefined, 0, MatchState.PLANNED, {
+            updatedAt: undefined,
+            results: undefined,
+          }),
+          createMatch(undefined, 0, MatchState.PLANNED, {
+            updatedAt: undefined,
+            results: undefined,
+          }),
+        ]}
+        isEventAdmin
+      />,
+    )
+
+    expect(screen.queryByLabelText(/^Score /)).toBeNull()
+    expect(screen.getByText('—')).toBeTruthy()
+    expect(screen.getAllByText('Planned')).toHaveLength(2)
+    expect(
+      screen.getAllByRole('link').map((row) => row.getAttribute('aria-label')),
+    ).toEqual(['Open match revealed'])
+  })
+
   it('renders the compact columns, user-facing round numbers, and no controls', () => {
     render(
       <GroupPhaseGraphView
