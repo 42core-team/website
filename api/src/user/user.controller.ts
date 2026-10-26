@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Controller,
   Get,
-  Param,
   Query,
   UseGuards,
   Logger,
@@ -38,15 +37,5 @@ export class UserController {
     this.logger.log({ action: "search_users", userId, query: sanitizedQuery });
 
     return this.userService.searchUsers(sanitizedQuery);
-  }
-
-  @Get("github/:githubId")
-  async getUserByGithubId(@Param("githubId") githubId: string) {
-    return this.userService.getUserByGithubId(githubId);
-  }
-
-  @Get("email/:email")
-  async getUserByEmail(@Param("email") email: string) {
-    return this.userService.getUserByEmail(email);
   }
 }
