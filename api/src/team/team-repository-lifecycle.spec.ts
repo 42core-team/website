@@ -314,7 +314,13 @@ describe("repository lifecycle", () => {
     repository.update.mockImplementation(async (_id, data) =>
       Object.assign(team, data),
     );
+    Object.assign(context.event, { maxTeamSize: 3 });
     Object.assign(manager, {
+      findOneOrFail: jest.fn(async () => order.push("lock:user")),
+      exists: jest.fn(
+        async (_entity, options: { where: Record<string, unknown> }) =>
+          "teamInvites" in options.where,
+      ),
       update: jest.fn(async (_entity, _id, data) => {
         order.push("status");
         Object.assign(team, data);
@@ -365,6 +371,7 @@ describe("repository lifecycle", () => {
     const { service, github, order } = setupRoster();
     await service.acceptTeamInvite("joins", "team");
     expect(order).toEqual([
+      "lock:user",
       "lock",
       "status",
       "remove:teamInvites",
