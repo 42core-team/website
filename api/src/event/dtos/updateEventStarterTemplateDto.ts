@@ -1,4 +1,8 @@
-import { IsString, IsOptional } from "class-validator";
+import { IsString, IsOptional, Matches } from "class-validator";
+import {
+  REPO_RELATIVE_PATH_MESSAGE,
+  REPO_RELATIVE_PATH_PATTERN,
+} from "../../common/github-validation";
 
 export class UpdateEventStarterTemplateDto {
   @IsString()
@@ -7,6 +11,7 @@ export class UpdateEventStarterTemplateDto {
 
   @IsString()
   @IsOptional()
+  @Matches(REPO_RELATIVE_PATH_PATTERN, { message: REPO_RELATIVE_PATH_MESSAGE })
   basePath?: string;
 
   @IsString()

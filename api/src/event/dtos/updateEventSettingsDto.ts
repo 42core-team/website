@@ -5,9 +5,20 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   Min,
 } from "class-validator";
+import {
+  GIT_REF_MESSAGE,
+  GIT_REF_PATTERN,
+  GITHUB_OWNER_MESSAGE,
+  GITHUB_OWNER_PATTERN,
+  GITHUB_REPO_URL_MESSAGE,
+  GITHUB_REPO_URL_PATTERN,
+  REPO_RELATIVE_PATH_MESSAGE,
+  REPO_RELATIVE_PATH_PATTERN,
+} from "../../common/github-validation";
 
 export class UpdateEventSettingsDto {
   @IsOptional()
@@ -86,6 +97,7 @@ export class UpdateEventSettingsDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @Matches(GITHUB_OWNER_PATTERN, { message: GITHUB_OWNER_MESSAGE })
   githubOrg?: string;
 
   @ApiPropertyOptional()
@@ -136,16 +148,19 @@ export class UpdateEventSettingsDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @Matches(GITHUB_REPO_URL_PATTERN, { message: GITHUB_REPO_URL_MESSAGE })
   monorepoUrl?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @Matches(GIT_REF_PATTERN, { message: GIT_REF_MESSAGE })
   monorepoVersion?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @Matches(REPO_RELATIVE_PATH_PATTERN, { message: REPO_RELATIVE_PATH_MESSAGE })
   basePath?: string;
 
   @ApiPropertyOptional()
