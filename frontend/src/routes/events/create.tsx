@@ -26,6 +26,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useSession } from '@/lib/auth'
+import { getEventNameError } from '@/lib/event-validation'
 import {
   getGithubConfigError,
   githubConfigSchema,
@@ -39,7 +40,11 @@ export const Route = createFileRoute('/events/create')({
 
 const formSchema = z
   .object({
-    name: z.string().min(1, 'Event name is required'),
+    // Sent trimmed, see onSubmit.
+    name: z.string().superRefine((value, ctx) => {
+      const message = getEventNameError(value.trim())
+      if (message) ctx.addIssue({ code: 'custom', message })
+    }),
     description: z.string().optional(),
     githubOrg: githubConfigSchema('githubOrg'),
     githubOrgSecret: z

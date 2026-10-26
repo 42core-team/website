@@ -81,6 +81,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useTabParam } from '@/hooks/useTabParam'
 import { useEventClock } from '@/hooks/use-event-clock'
 import { useSession } from '@/lib/auth'
+import { getEventNameError } from '@/lib/event-validation'
 import {
   GITHUB_CONFIG_FIELDS,
   GITHUB_CONFIG_LABELS,
@@ -371,8 +372,18 @@ function DashboardRoute() {
   )
 
   const githubConfigErrors = getGithubConfigErrors(pendingSettings, event)
+  // Existing names are left alone, only a changed name is checked.
+  const eventNameError =
+    typeof pendingSettings.name === 'string' &&
+    settingChanged('name', pendingSettings.name, event.name)
+      ? getEventNameError(pendingSettings.name)
+      : undefined
 
   const handleSaveSettings = () => {
+    if (eventNameError) {
+      toast.error(`Fix the event name before saving: ${eventNameError}`)
+      return
+    }
     const invalidGithubFields = Object.entries(githubConfigErrors)
     if (invalidGithubFields.length > 0) {
       toast.error(
@@ -513,6 +524,7 @@ function DashboardRoute() {
             pendingSettings={{ ...event, ...pendingSettings }}
             updatePendingSetting={updatePendingSetting}
             githubConfigErrors={githubConfigErrors}
+            eventNameError={eventNameError}
             isGameConfigExpanded={isGameConfigExpanded}
             setIsGameConfigExpanded={setIsGameConfigExpanded}
             isServerConfigExpanded={isServerConfigExpanded}
@@ -792,6 +804,7 @@ function SettingsTab({
   pendingSettings,
   updatePendingSetting,
   githubConfigErrors,
+  eventNameError,
   isGameConfigExpanded,
   setIsGameConfigExpanded,
   isServerConfigExpanded,
@@ -808,6 +821,8 @@ function SettingsTab({
   ) => void
   /** Validation messages for changed GitHub config fields. */
   githubConfigErrors: GithubConfigErrors
+  /** Validation message for a changed event name. */
+  eventNameError?: string
   isGameConfigExpanded: boolean
   setIsGameConfigExpanded: (value: boolean) => void
   isServerConfigExpanded: boolean
@@ -845,6 +860,7 @@ function SettingsTab({
               label="Event Name"
               value={pendingSettings.name || ''}
               onChange={(value) => updatePendingSetting('name', value)}
+              error={eventNameError}
             />
             <DashboardInput
               label="Location"
