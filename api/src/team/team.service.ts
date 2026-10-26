@@ -33,6 +33,7 @@ import {
 } from "../match/entites/match.entity";
 import { MatchStatsEntity } from "../match/entites/matchStats.entity";
 import { EventEntity } from "../event/entities/event.entity";
+import { UserEntity } from "../user/entities/user.entity";
 import { groupLocationTagsByOwner } from "../user/location-tags";
 import type { OwnedLocationTagSource } from "../user/location-tags";
 import { accrueQueueCredits, spendQueueCredits } from "./team-credits";
@@ -455,9 +456,42 @@ export class TeamService {
   }
 
   /**
+   * Serializes every "user joins a team" operation for one user, so membership
+   * checks made under it cannot be invalidated by a concurrent join or create.
+   * Lock order is always user first, then team; no path takes a team lock and
+   * then a user lock.
+   */
+  private async lockUserForTeamMembership(
+    manager: EntityManager,
+    userId: string,
+  ) {
+    await manager.findOneOrFail(UserEntity, {
+      select: { id: true },
+      where: { id: userId },
+      lock: { mode: "pessimistic_write" },
+      loadEagerRelations: false,
+    });
+  }
+
+  private async assertUserHasNoTeamInEvent(
+    manager: EntityManager,
+    userId: string,
+    eventId: string,
+    message: string,
+  ) {
+    if (
+      await manager.exists(TeamEntity, {
+        where: { event: { id: eventId }, users: { id: userId } },
+      })
+    )
+      throw new BadRequestException(message);
+  }
+
+  /**
    * Locks the team row for a roster change. Every roster mutation and the
    * repository status transition it triggers happen under this lock, so a
    * permission operation never starts from a roster that is being changed.
+   * Joins take the user lock (lockUserForTeamMembership) before this one.
    */
   private async lockTeamForMembershipChange(
     manager: EntityManager,
@@ -593,11 +627,27 @@ export class TeamService {
     starterTemplateId?: string,
   ) {
     return await this.dataSource.transaction(async (entityManager) => {
+      await this.lockUserForTeamMembership(entityManager, userId);
       const event = await entityManager.findOneOrFail(EventEntity, {
         where: { id: eventId },
       });
       if (!isRegistrationOpen(event))
         throw new BadRequestException("Registration is closed.");
+      await this.assertUserHasNoTeamInEvent(
+        entityManager,
+        userId,
+        eventId,
+        "You already have a team for this event.",
+      );
+      // Narrows the window only; names are not serialized across users.
+      if (
+        await entityManager.exists(TeamEntity, {
+          where: { name, event: { id: eventId } },
+        })
+      )
+        throw new BadRequestException(
+          "A team with this name already exists for this event.",
+        );
       if (
         starterTemplateId &&
         !(await this.eventService.isStarterTemplateInEvent(
@@ -768,7 +818,23 @@ export class TeamService {
 
   async acceptTeamInvite(userId: string, teamId: string): Promise<void> {
     const team = await this.dataSource.transaction(async (manager) => {
+      await this.lockUserForTeamMembership(manager, userId);
       const team = await this.lockTeamForMembershipChange(manager, teamId);
+      await this.assertUserHasNoTeamInEvent(
+        manager,
+        userId,
+        team.event.id,
+        "You are already part of a team for this event.",
+      );
+      if (
+        !(await manager.exists(TeamEntity, {
+          where: { id: teamId, teamInvites: { id: userId } },
+        }))
+      )
+        throw new BadRequestException("You are not invited to this team.");
+      const maxUsers = team.event.maxTeamSize;
+      if (!maxUsers || team.users.length >= maxUsers)
+        throw new BadRequestException("This team is full.");
       if (team.repo)
         await manager.update(TeamEntity, teamId, {
           repositoryStatus: RepositoryStatus.UNLOCKING,
