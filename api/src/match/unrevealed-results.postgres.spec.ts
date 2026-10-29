@@ -263,17 +263,17 @@ postgres("unrevealed match results (PostgreSQL)", () => {
     return list.find((match) => match.id === id);
   }
 
-  // Hidden matches have no id; they are the ones matching round and teams.
-  function findHidden(list: Json[], match: MatchEntity, teamIds: string[]) {
-    return list.find(
+  // Hidden matches have neither an id nor teams; in this fixture each is the
+  // only hidden match of its phase and round.
+  function findHidden(list: Json[], match: MatchEntity) {
+    const hidden = list.filter(
       (entry) =>
+        !("id" in entry) &&
         entry.round === match.round &&
-        entry.teams
-          .map((team: Json) => team.id)
-          .sort()
-          .join() === [...teamIds].sort().join() &&
         entry.phase === match.phase,
     );
+    expect(hidden).toHaveLength(1);
+    return hidden[0];
   }
 
   function expectHiddenMatch(entry: Json | undefined) {
@@ -282,8 +282,8 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       expect(entry).not.toHaveProperty(field);
     expect(entry!.state).toBe(MatchState.PLANNED);
     expect(entry!.isRevealed).toBe(false);
-    for (const team of entry!.teams)
-      expect(Object.keys(team).sort()).toEqual(MATCH_TEAM_KEYS);
+    // The pairing of a later round would reveal the earlier results.
+    expect(entry!.teams).toEqual([]);
   }
 
   function expectNoHiddenData(body: unknown) {
@@ -366,7 +366,7 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       expect(body).toHaveLength(3);
       expectNoHiddenData(body);
       expectMatchTeamsIdentityOnly(body);
-      expectHiddenMatch(findHidden(body, matches.m3, [teams.A.id, teams.C.id]));
+      expectHiddenMatch(findHidden(body, matches.m3));
 
       const revealed = findById(body, matches.m1.id)!;
       expect(revealed.winner.id).toBe(teams.A.id);
@@ -380,7 +380,7 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       expect(body).toHaveLength(2);
       expectNoHiddenData(body);
       expectMatchTeamsIdentityOnly(body);
-      expectHiddenMatch(findHidden(body, matches.e2, [teams.B.id, teams.D.id]));
+      expectHiddenMatch(findHidden(body, matches.e2));
       expect(findById(body, matches.e1.id)?.winner.id).toBe(teams.A.id);
     });
 
@@ -411,6 +411,7 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       expect(response.body).not.toHaveProperty("winner");
       expect(response.body).not.toHaveProperty("results");
       expect(response.body).not.toHaveProperty("stats");
+      expect(response.body.teams).toHaveLength(2);
     });
 
     it("applies the public standings to the own team and pending invites", async () => {
@@ -469,6 +470,9 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       expect(hidden).toBeDefined();
       expect(hidden.isRevealed).toBe(false);
       expect(hidden.winner.id).toBe(teams.A.id);
+      expect(hidden.teams.map((team: Json) => team.id).sort()).toEqual(
+        [teams.A.id, teams.C.id].sort(),
+      );
       expect(hidden.stats.actionsExecuted).toBe(HIDDEN_ACTIONS);
       expectMatchTeamsIdentityOnly(body);
 

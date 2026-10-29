@@ -30,7 +30,10 @@ export type MatchStatsResponse = Omit<
 >;
 
 // An unrevealed match: no id (replays are public by id), result or completion
-// data. Only what the bracket and round views need to place it.
+// data. Only what the bracket and round views need to place it. Tournament
+// matches also leave out their teams: later rounds are paired from earlier
+// results (elimination by winners, Swiss by score), so the pairing itself
+// would give unrevealed results away.
 export interface HiddenMatchResponse {
   round: number;
   phase: MatchPhase;
@@ -118,7 +121,9 @@ export function toHiddenMatchResponse(
       state: MatchState.PLANNED as const,
       isRevealed: match.isRevealed,
       createdAt: match.createdAt,
-      teams: (match.teams ?? []).map(toMatchTeamResponse),
+      teams: isRevealablePhase(match.phase)
+        ? []
+        : (match.teams ?? []).map(toMatchTeamResponse),
     },
     match,
   );

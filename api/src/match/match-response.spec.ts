@@ -75,11 +75,29 @@ describe("match responses", () => {
       "teams",
     ]);
     expect(plain.state).toBe(MatchState.PLANNED);
-    for (const entry of plain.teams)
-      expect(Object.keys(entry).sort()).toEqual(TEAM_KEYS);
+    expect(plain.teams).toEqual([]);
     const json = JSON.stringify(plain);
     expect(json).not.toContain("match-id");
     expect(json).not.toContain("918273");
+  });
+
+  it("leaves out the teams of hidden tournament matches", () => {
+    // Elimination pairs the winners of the previous round, and the placement
+    // match its losers, so the teams alone would reveal those results.
+    for (const phase of [MatchPhase.SWISS, MatchPhase.ELIMINATION]) {
+      const hidden = toHiddenMatchResponse(
+        Object.assign(match({ phase }), { isPlacementMatch: true }),
+      );
+      expect(hidden.teams).toEqual([]);
+      expect(JSON.stringify(hidden)).not.toMatch(/home|away/);
+    }
+  });
+
+  it("keeps the teams of matches that are never revealed", () => {
+    const hidden = toHiddenMatchResponse(match({ phase: MatchPhase.QUEUE }));
+    expect(hidden.teams.map((entry) => entry.id)).toEqual(["home", "away"]);
+    for (const entry of hidden.teams)
+      expect(Object.keys(entry).sort()).toEqual(TEAM_KEYS);
   });
 
   it("keeps the placement flag for the bracket", () => {
