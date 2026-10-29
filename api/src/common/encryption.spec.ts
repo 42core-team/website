@@ -36,6 +36,23 @@ describe("secret encryption", () => {
     );
   });
 
+  it("round-trips empty and unicode secrets", () => {
+    for (const secret of ["", "gh_✓_日本語_🔑"]) {
+      expect(decryptSecret(encryptSecret(secret, passphrase), passphrase)).toBe(
+        secret,
+      );
+    }
+  });
+
+  it("rejects a v2 value that is too short", () => {
+    expect(() => decryptSecret("v2:", passphrase)).toThrow(
+      "Invalid encrypted secret",
+    );
+    expect(() => decryptSecret("v2:AAAA", passphrase)).toThrow(
+      "Invalid encrypted secret",
+    );
+  });
+
   it("rejects a wrong passphrase", () => {
     const encrypted = encryptSecret("new secret", passphrase);
 

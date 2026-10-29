@@ -32,6 +32,15 @@ describe("decryptSecret", () => {
     expect(() => decryptSecret(encryptedValue, "wrong-password")).toThrow();
   });
 
+  it("rejects a v2 value that is too short", () => {
+    expect(() => decryptSecret("v2:", "password")).toThrow(
+      "Invalid v2 encrypted secret",
+    );
+    expect(() => decryptSecret("v2:AAAA", "password")).toThrow(
+      "Invalid v2 encrypted secret",
+    );
+  });
+
   it("rejects a modified v2 value", () => {
     const encryptedValue =
       "v2:iSdBJkxhFmSKCyTgU8ioYCWvLuZU79239ohWflJLECgKn68Vv0nJGshlIK5YoOePCFrGCO+YRr0jxV887/ntdw==";
