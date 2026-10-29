@@ -11,6 +11,7 @@ import { config } from "dotenv";
 import { DatabaseConfig } from "../DatabaseConfig";
 import { ConfigService } from "@nestjs/config";
 import { join } from "path";
+import { encryptSecret } from "../common/encryption";
 
 config();
 
@@ -63,12 +64,17 @@ async function bootstrap() {
       `Seeding ${numUsers} users and ${numTeams} teams for event: ${event.name} (${event.id})`,
     );
 
+    // Stored like real tokens so services can decrypt it; scrypt runs once.
+    const dummyToken = encryptSecret(
+      "dummy-token",
+      configService.getOrThrow<string>("API_SECRET_ENCRYPTION_KEY"),
+    );
     const users: UserEntity[] = [];
     const now = Date.now();
     for (let i = 1; i <= numUsers; i++) {
       const user = new UserEntity();
       user.githubId = `seed-user-${i}-${now}`;
-      user.githubAccessToken = "dummy-token";
+      user.githubAccessToken = dummyToken;
       user.email = `user${i}@example.com`;
       user.username = `seeduser${i}_${now.toString().slice(-5)}`;
       user.name = `Seed User ${i}`;
