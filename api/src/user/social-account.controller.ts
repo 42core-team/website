@@ -52,23 +52,4 @@ export class SocialAccountController {
   ): Promise<SocialAccountEntity[]> {
     return await this.socialAccountService.getSocialAccounts(userId);
   }
-
-  @Get(":platform")
-  @ApiOperation({
-    summary: "Get a specific social account for the authenticated user",
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Social account retrieved successfully",
-  })
-  @ApiResponse({ status: 404, description: "Social account not found" })
-  async getSocialAccountByPlatform(
-    @UserId() userId: string,
-    @Param("platform") platform: SocialPlatform,
-  ): Promise<SocialAccountEntity | null> {
-    return await this.socialAccountService.getSocialAccountByPlatform(
-      userId,
-      platform,
-    );
-  }
 }

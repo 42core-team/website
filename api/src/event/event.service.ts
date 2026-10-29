@@ -538,14 +538,6 @@ export class EventService {
     return closure.result;
   }
 
-  async unlockEvent(eventId: string) {
-    const event = await this.getEventById(eventId);
-    return this.transitionLifecycle(eventId, {
-      action: "reopen",
-      submissionDeadline: event.submissionDeadline?.getTime(),
-    });
-  }
-
   async setCurrentRound(eventId: string, round: number): Promise<UpdateResult> {
     return this.eventRepository.update(eventId, {
       currentRound: round,
@@ -698,17 +690,6 @@ export class EventService {
       });
       await repository.update(teamId, { tournamentExcluded: excluded });
       return repository.findOneByOrFail({ id: teamId });
-    });
-  }
-
-  async setTeamsLockedDate(
-    eventId: string,
-    date: Date | null,
-  ): Promise<UpdateResult> {
-    if (!date)
-      throw new BadRequestException("A submission deadline is required");
-    return this.updateEventSettings(eventId, {
-      submissionDeadline: date.getTime(),
     });
   }
 

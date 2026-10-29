@@ -340,35 +340,6 @@ export class MatchController {
       : match;
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get("queue/:eventId/timeseries")
-  async getQueueMatchesTimeSeries(
-    @Param("eventId") eventId: string,
-    @UserId() userId: string,
-    @Query("interval") interval?: "minute" | "hour" | "day",
-    @Query("start") startStr?: string,
-    @Query("end") endStr?: string,
-  ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to view match making stats.",
-      );
-
-    const start = this.parseOptionalDate(startStr, "start");
-    const end = this.parseOptionalDate(endStr, "end");
-
-    if (start && end && start > end) {
-      throw new BadRequestException("Start date must be before end date");
-    }
-
-    return this.matchService.getQueueMatchesTimeSeries({
-      interval,
-      start,
-      end,
-      eventId,
-    });
-  }
-
   private parseOptionalDate(
     value: string | undefined,
     field: "start" | "end",

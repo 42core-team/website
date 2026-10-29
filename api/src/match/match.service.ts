@@ -1673,18 +1673,4 @@ export class MatchService {
       count: parseInt(r.count, 10),
     }));
   }
-
-  async getQueueMatchesTimeSeries(params: {
-    interval?: "minute" | "hour" | "day";
-    start?: Date;
-    end?: Date;
-    eventId?: string;
-  }): Promise<Array<{ bucket: string; count: number }>> {
-    const rows = await this.getMatchesTimeSeries({
-      ...params,
-      phases: [MatchPhase.QUEUE],
-    });
-
-    return rows.map(({ bucket, count }) => ({ bucket, count }));
-  }
 }

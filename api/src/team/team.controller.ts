@@ -199,11 +199,6 @@ export class TeamController {
     });
   }
 
-  @Get(":id/event-started")
-  async hasEventStarted(@Param("id", new ParseUUIDPipe()) teamId: string) {
-    return this.eventService.hasEventStartedForTeam(teamId);
-  }
-
   @UseGuards(JwtAuthGuard, MyTeamGuards, TeamNotLockedGuard)
   @Post(`event/:${EVENT_ID_PARAM}/sendInvite`)
   async sendInviteToTeam(
