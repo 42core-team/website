@@ -80,8 +80,15 @@ export async function createManualMatch(
   ).data
 }
 
-export async function getMatchById(matchId: string): Promise<Match> {
-  return (await axiosInstance.get<Match>(`/match/${matchId}`)).data
+export async function getMatchById(
+  matchId: string,
+  adminReveal = false,
+): Promise<Match> {
+  const params = new URLSearchParams()
+  if (adminReveal) {
+    params.append('adminRevealQuery', 'true')
+  }
+  return (await axiosInstance.get<Match>(`/match/${matchId}`, { params })).data
 }
 
 export async function getMatchesForTeam(teamId: string): Promise<Match[]> {

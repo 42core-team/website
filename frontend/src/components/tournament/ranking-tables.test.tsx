@@ -56,10 +56,10 @@ const finishedMatch: Match = {
   updatedAt: '2026-01-01T00:00:00Z',
   isRevealed: true,
   teams: [
-    { id: 'alpha', name: 'Alpha', score: 3 },
-    { id: 'beta', name: 'Beta', score: 1 },
+    { id: 'alpha', name: 'Alpha' },
+    { id: 'beta', name: 'Beta' },
   ],
-  winner: { id: 'alpha', name: 'Alpha', score: 3 },
+  winner: { id: 'alpha', name: 'Alpha' },
   results: [],
 }
 
