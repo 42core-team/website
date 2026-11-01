@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -209,6 +210,8 @@ export class TeamController {
   ) {
     if (userId === inviteUserDto.userToInviteId)
       throw new BadRequestException("You cannot invite yourself to a team.");
+    if (!(await this.userService.userExists(inviteUserDto.userToInviteId)))
+      throw new NotFoundException("User not found.");
     if (
       !(await this.eventService.isUserEligibleForEvent(
         eventId,

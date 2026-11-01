@@ -296,4 +296,15 @@ postgres("team invite eligibility (PostgreSQL)", () => {
 
     expect(await isMember(teamId, invitee.id)).toBe(true);
   });
+
+  it("answers an invite for an unknown user with not found", async () => {
+    const event = await createEvent(false);
+    const member = await createUser();
+    await createTeamOf(event, member);
+
+    const response = await invite(event, member, randomUUID());
+
+    expect(response.status).toBe(404);
+    expect(response.body.message).toBe("User not found.");
+  });
 });

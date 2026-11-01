@@ -136,6 +136,10 @@ export class UserService {
     });
   }
 
+  userExists(userId: string): Promise<boolean> {
+    return this.userRepository.existsBy({ id: userId });
+  }
+
   getUserById(userId: string) {
     return this.userRepository.findOneOrFail({
       where: { id: userId },
