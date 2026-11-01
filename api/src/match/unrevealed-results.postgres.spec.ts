@@ -10,11 +10,12 @@ import {
   UnauthorizedException,
   ValidationPipe,
 } from "@nestjs/common";
-import { Reflector } from "@nestjs/core";
+import { HttpAdapterHost, Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { DataSource } from "typeorm";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { AllExceptionsFilter } from "../common/AllExceptionsFilter";
 import { TypeormExceptionFilter } from "../common/TypeormExceptionFilter";
 import { EventEntity } from "../event/entities/event.entity";
 import { EventService } from "../event/event.service";
@@ -125,6 +126,9 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       matchRepository: database.getRepository(MatchEntity),
       matchStatsRepository: database.getRepository(MatchStatsEntity),
       dataSource: database,
+      // Nothing listens here, so log lookups find no containers.
+      k8sServiceUrl: "http://127.0.0.1:9",
+      logger: { error: jest.fn(), warn: jest.fn(), log: jest.fn() },
     });
 
     const moduleRef = await Test.createTestingModule({
@@ -153,7 +157,10 @@ postgres("unrevealed match results (PostgreSQL)", () => {
     app.useGlobalInterceptors(
       new ClassSerializerInterceptor(app.get(Reflector)),
     );
-    app.useGlobalFilters(new TypeormExceptionFilter());
+    app.useGlobalFilters(
+      new AllExceptionsFilter(app.get(HttpAdapterHost)),
+      new TypeormExceptionFilter(),
+    );
     await app.init();
 
     await seed();
@@ -279,6 +286,31 @@ postgres("unrevealed match results (PostgreSQL)", () => {
   function get(path: string, userId?: string) {
     const req = request(app.getHttpServer()).get(path);
     return userId ? req.set("x-test-user", userId) : req;
+  }
+
+  function put(path: string, userId: string) {
+    return request(app.getHttpServer()).put(path).set("x-test-user", userId);
+  }
+
+  // Error bodies differ only in their timestamp and the id in their path.
+  function errorBody(response: request.Response, id: string) {
+    const { timestamp, ...body } = response.body as Json;
+    expect(typeof timestamp).toBe("string");
+    return { ...body, path: String(body.path).replace(id, ":id") };
+  }
+
+  async function expectAnsweredLikeUnknown(
+    send: (id: string) => Promise<request.Response>,
+    hiddenIds: string[],
+  ) {
+    const unknownId = randomUUID();
+    const unknown = await send(unknownId);
+    expect(unknown.status).toBe(404);
+    for (const id of hiddenIds) {
+      const response = await send(id);
+      expect(response.status).toBe(unknown.status);
+      expect(errorBody(response, id)).toEqual(errorBody(unknown, unknownId));
+    }
   }
 
   function findById(list: Json[], id: string) {
@@ -409,14 +441,44 @@ postgres("unrevealed match results (PostgreSQL)", () => {
     });
 
     it("answers unknown and unrevealed match ids alike", async () => {
-      const unknown = await get(`/match/${randomUUID()}`, users.outsider.id);
-      expect(unknown.status).toBe(404);
-      for (const match of [matches.m3, matches.e2]) {
-        const response = await get(`/match/${match.id}`, users.outsider.id);
-        expect(response.status).toBe(404);
-        expect(response.body.message).toBe(unknown.body.message);
-        expectNoHiddenData(response.body);
+      await expectAnsweredLikeUnknown(
+        (id) => get(`/match/${id}`, users.outsider.id),
+        [matches.m3.id, matches.e2.id],
+      );
+    });
+
+    it("answers logs of a match the caller is not part of like an unknown match", async () => {
+      await expectAnsweredLikeUnknown(
+        (id) => get(`/match/logs/${id}`, users.outsider.id),
+        [matches.m1.id, matches.m3.id, matches.e2.id, matches.queue.id],
+      );
+      await expectAnsweredLikeUnknown(
+        (id) => get(`/match/logs/${id}`, users.member.id),
+        [matches.m2.id, matches.e2.id],
+      );
+    });
+
+    it("keeps logs available to the match's teams and event admins", async () => {
+      for (const id of [matches.m3.id, matches.queue.id]) {
+        expect((await get(`/match/logs/${id}`, users.member.id)).status).toBe(
+          200,
+        );
+        expect((await get(`/match/logs/${id}`, users.admin.id)).status).toBe(
+          200,
+        );
       }
+    });
+
+    it("answers a reveal by a non-admin like an unknown match", async () => {
+      for (const userId of [users.outsider.id, users.member.id])
+        await expectAnsweredLikeUnknown(
+          (id) => put(`/match/reveal/${id}`, userId),
+          [matches.m3.id, matches.e2.id, matches.m1.id],
+        );
+      const hidden = await database
+        .getRepository(MatchEntity)
+        .findOneByOrFail({ id: matches.m3.id });
+      expect(hidden.isRevealed).toBe(false);
     });
 
     it("shows a revealed match detail without stored standings", async () => {
@@ -580,9 +642,10 @@ postgres("unrevealed match results (PostgreSQL)", () => {
 
   describe("after the hidden match is revealed", () => {
     beforeAll(async () => {
-      const response = await request(app.getHttpServer())
-        .put(`/match/reveal/${matches.m3.id}`)
-        .set("x-test-user", users.admin.id);
+      const response = await put(
+        `/match/reveal/${matches.m3.id}`,
+        users.admin.id,
+      );
       expect(response.status).toBe(200);
     });
 

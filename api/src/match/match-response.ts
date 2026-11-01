@@ -1,3 +1,4 @@
+import { NotFoundException } from "@nestjs/common";
 import type { TeamBackground, TeamImage } from "../team/team-image.service";
 import type { TeamEntity } from "../team/entities/team.entity";
 import type { MatchStatsEntity } from "./entites/matchStats.entity";
@@ -12,6 +13,12 @@ export const REVEALABLE_PHASES: readonly MatchPhase[] = [
 
 export function isRevealablePhase(phase: MatchPhase): boolean {
   return REVEALABLE_PHASES.includes(phase);
+}
+
+// Match routes answer a match the caller may not access exactly like an
+// unknown id.
+export function matchNotFound(): NotFoundException {
+  return new NotFoundException("Match not found");
 }
 
 // Teams inside matches carry identity and artwork only. Stored standings are

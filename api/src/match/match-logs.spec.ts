@@ -1,6 +1,6 @@
 jest.mock("../main", () => ({ getRabbitmqConfig: jest.fn() }));
 
-import { ForbiddenException } from "@nestjs/common";
+import { NotFoundException } from "@nestjs/common";
 import { MatchService } from "./match.service";
 
 const K8S = "http://k8s.test";
@@ -54,7 +54,7 @@ function setup(
   Object.assign(service, {
     k8sServiceUrl: K8S,
     logger: { error: jest.fn(), warn: jest.fn() },
-    matchRepository: { findOneOrFail: jest.fn().mockResolvedValue(match) },
+    matchRepository: { findOne: jest.fn().mockResolvedValue(match) },
     eventService: { isEventAdmin },
   });
   return { service, fetchMock, isEventAdmin };
@@ -112,11 +112,23 @@ describe("match logs access", () => {
     expect(fetchedContainers(fetchMock)).toEqual([`bot-${TEAM_ONE}`]);
   });
 
-  it("rejects users who are neither admins nor in the match", async () => {
+  it("answers users who are neither admins nor in the match like an unknown match", async () => {
     const { service, fetchMock } = setup();
+    const hidden = await service
+      .getMatchLogs("match", "mallory")
+      .catch((error: unknown) => error);
 
-    await expect(service.getMatchLogs("match", "mallory")).rejects.toThrow(
-      ForbiddenException,
+    Reflect.set(service, "matchRepository", {
+      findOne: jest.fn().mockResolvedValue(null),
+    });
+    const unknown = await service
+      .getMatchLogs("missing", "mallory")
+      .catch((error: unknown) => error);
+
+    expect(hidden).toBeInstanceOf(NotFoundException);
+    expect(unknown).toBeInstanceOf(NotFoundException);
+    expect((hidden as NotFoundException).getResponse()).toEqual(
+      (unknown as NotFoundException).getResponse(),
     );
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -166,7 +178,7 @@ describe("match logs access", () => {
     const { service } = setup({ teamTwoDeleted: true });
 
     await expect(service.getMatchLogs("match", "bob")).rejects.toThrow(
-      ForbiddenException,
+      NotFoundException,
     );
   });
 });

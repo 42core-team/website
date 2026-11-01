@@ -19,6 +19,7 @@ import { UserId } from "../guards/UserGuard";
 import { MatchPhase } from "./entites/match.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreateManualMatchDto } from "./dtos/createManualMatchDto";
+import { matchNotFound } from "./match-response";
 
 @Controller("match")
 export class MatchController {
@@ -206,19 +207,9 @@ export class MatchController {
     @Param("matchId", ParseUUIDPipe) matchId: string,
     @UserId() userId: string,
   ) {
-    const match = await this.matchService.getMatchById(matchId, {
-      teams: {
-        event: true,
-      },
-    });
-    if (!match) throw new BadRequestException("Match not found");
-
-    if (
-      !(await this.eventService.isEventAdmin(match.teams[0].event.id, userId))
-    )
-      throw new UnauthorizedException(
-        "You are not authorized to reveal this match.",
-      );
+    const eventId = await this.matchService.getEventIdOfMatch(matchId);
+    if (!eventId || !(await this.eventService.isEventAdmin(eventId, userId)))
+      throw matchNotFound();
 
     this.logger.log({ action: "attempt_reveal_match", userId, matchId });
 
