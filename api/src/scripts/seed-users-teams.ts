@@ -106,8 +106,9 @@ async function bootstrap() {
       // Assign 3 users to each team
       const teamUsers = savedUsers.slice((i - 1) * 3, i * 3);
       team.users = teamUsers;
-      // github-service simulates every operation on sim-* repositories when
-      // NODE_ENV is development, so these teams never touch GitHub.
+      // In development github-service simulates permission, lock, unlock and
+      // delete operations on sim-<teamId> repositories, so these teams never
+      // touch GitHub. READY means no repository is ever created for them.
       team.id = randomUUID();
       team.repo = `sim-${team.id}`;
       team.repositoryStatus = RepositoryStatus.READY;

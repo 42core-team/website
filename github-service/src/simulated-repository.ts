@@ -1,8 +1,10 @@
 /**
- * Repositories whose name starts with this prefix do not exist on GitHub. They
- * let seeded test teams go through the repository lifecycle locally.
+ * Matches the repository names the api seed script gives its test teams:
+ * "sim-" followed by the team's UUID. Such repositories do not exist on GitHub.
+ * Real repository names start with the event name, so they never match.
  */
-export const SIMULATED_REPOSITORY_PREFIX = "sim-";
+const SIMULATED_REPOSITORY_NAME =
+  /^sim-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Whether operations on this repository are simulated instead of sent to
@@ -15,6 +17,6 @@ export function isSimulatedRepository(
   return (
     nodeEnv === "development" &&
     typeof repositoryName === "string" &&
-    repositoryName.startsWith(SIMULATED_REPOSITORY_PREFIX)
+    SIMULATED_REPOSITORY_NAME.test(repositoryName)
   );
 }

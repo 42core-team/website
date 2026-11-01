@@ -4,7 +4,7 @@ import * as fs from "fs/promises";
 import { ClientProxyFactory } from "@nestjs/microservices";
 import { AppService } from "./app.service";
 import { of } from "rxjs";
-import { RepositoryApi } from "./githubApi";
+import { GitHubApiClient, RepositoryApi } from "./githubApi";
 
 jest.mock("./main", () => ({
   getRabbitmqConfig: jest.fn().mockReturnValue({}),
@@ -25,11 +25,14 @@ jest.mock("./githubApi", () => ({
   UserApi: jest.fn(),
 }));
 
+const SIM_REPOSITORY = "sim-0b7e2f4c-3d1a-4e6b-9c8d-2a5f7e1b3c9d";
+
 describe("AppService", () => {
   const originalNodeEnv = process.env.NODE_ENV;
 
   afterEach(() => {
-    process.env.NODE_ENV = originalNodeEnv;
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
     jest.restoreAllMocks();
   });
 
@@ -50,16 +53,92 @@ describe("AppService", () => {
     const service = new AppService({} as never);
     jest.mocked(RepositoryApi).mockClear();
 
-    await service.setRepositoryAccess(accessRequest("sim-team"));
+    await service.setRepositoryAccess(accessRequest(SIM_REPOSITORY));
 
     expect(RepositoryApi).not.toHaveBeenCalled();
     expect(emit).toHaveBeenCalledWith("repository_operation_completed", {
       teamId: "team",
       operationId: "operation",
-      repositoryName: "sim-team",
+      repositoryName: SIM_REPOSITORY,
       action: "LOCK",
     });
   });
+
+  it.each<[string, (service: AppService) => Promise<unknown>]>([
+    [
+      "deleteRepository",
+      (service) => service.deleteRepository(SIM_REPOSITORY, "org", "secret"),
+    ],
+    [
+      "removeUserFromRepository",
+      (service) =>
+        service.removeUserFromRepository(
+          SIM_REPOSITORY,
+          "member",
+          "1",
+          "org",
+          "secret",
+        ),
+    ],
+    [
+      "addUserToRepository",
+      (service) =>
+        service.addUserToRepository(
+          SIM_REPOSITORY,
+          "member",
+          "1",
+          "org",
+          "secret",
+          "token",
+        ),
+    ],
+    [
+      "addWritePermissionsForUser",
+      (service) =>
+        service.addWritePermissionsForUser(
+          "member",
+          "1",
+          "org",
+          SIM_REPOSITORY,
+          "secret",
+        ),
+    ],
+    [
+      "removeWritePermissionsForUser",
+      (service) =>
+        service.removeWritePermissionsForUser(
+          "member",
+          "1",
+          "org",
+          SIM_REPOSITORY,
+          "secret",
+        ),
+    ],
+    [
+      "removeFormerCollaborators",
+      (service) =>
+        service.removeFormerCollaborators("org", SIM_REPOSITORY, "secret", [
+          { username: "member", githubId: "1" },
+        ]),
+    ],
+  ])(
+    "simulates %s on sim-<uuid> repositories in development",
+    async (_operation, run) => {
+      process.env.NODE_ENV = "development";
+      jest
+        .spyOn(ClientProxyFactory, "create")
+        .mockReturnValue({ emit: jest.fn() } as never);
+      const service = new AppService({} as never);
+      jest.spyOn(service, "decryptSecret").mockReturnValue("token");
+      jest.mocked(RepositoryApi).mockClear();
+      jest.mocked(GitHubApiClient).mockClear();
+
+      await run(service).catch(() => undefined);
+
+      expect(GitHubApiClient).not.toHaveBeenCalled();
+      expect(RepositoryApi).not.toHaveBeenCalled();
+    },
+  );
 
   it("does not simulate sim-* repositories outside development", async () => {
     process.env.NODE_ENV = "production";
@@ -73,7 +152,7 @@ describe("AppService", () => {
       .spyOn(service, "removeWritePermissionsForUser")
       .mockResolvedValue(undefined);
 
-    await service.setRepositoryAccess(accessRequest("sim-team"));
+    await service.setRepositoryAccess(accessRequest(SIM_REPOSITORY));
 
     expect(removeFormerCollaborators).toHaveBeenCalled();
   });
