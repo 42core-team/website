@@ -48,7 +48,7 @@ const matches: Match[] = [
     updatedAt: '2026-01-01T00:00:00Z',
     teams: [],
     results: [],
-    winner: { id: 'winner', name: 'Unrevealed winner', score: 1 },
+    winner: { id: 'winner', name: 'Unrevealed winner' },
   },
 ]
 

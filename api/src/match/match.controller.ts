@@ -16,7 +16,7 @@ import {
 import { MatchService } from "./match.service";
 import { EventService } from "../event/event.service";
 import { UserId } from "../guards/UserGuard";
-import { MatchEntity, MatchPhase } from "./entites/match.entity";
+import { MatchPhase } from "./entites/match.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreateManualMatchDto } from "./dtos/createManualMatchDto";
 
@@ -328,21 +328,16 @@ export class MatchController {
     @UserId() userId: string,
     @Query("adminRevealQuery", new ParseBoolPipe({ optional: true }))
     adminRevealQuery: boolean | undefined,
-  ): Promise<MatchEntity> {
-    const match = await this.matchService.getMatchById(
+  ) {
+    const match = await this.matchService.getMatchResponseById(
       matchId,
-      {
-        winner: true,
-        results: { team: true },
-        teams: {
-          event: true,
-        },
-      },
       userId,
       adminRevealQuery ?? false,
     );
     // QUEUE result scores contain private matchmaking ratings, not public scores.
-    return match.phase === MatchPhase.QUEUE ? { ...match, results: [] } : match;
+    return match.phase === MatchPhase.QUEUE && "results" in match
+      ? { ...match, results: [] }
+      : match;
   }
 
   @UseGuards(JwtAuthGuard)

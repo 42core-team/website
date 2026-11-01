@@ -16,10 +16,10 @@ const match: Match = {
   updatedAt: '',
   isRevealed: false,
   teams: [
-    { id: 'a', name: 'Alpha', score: 1 },
-    { id: 'b', name: 'Beta', score: 0 },
+    { id: 'a', name: 'Alpha' },
+    { id: 'b', name: 'Beta' },
   ],
-  winner: { id: 'a', name: 'Alpha', score: 1 },
+  winner: { id: 'a', name: 'Alpha' },
   results: [],
 }
 describe('match team header', () => {

@@ -425,12 +425,11 @@ function ScoreLine({
     return <MatchStateBadge state={match.state} />
   }
 
-  if (!home || !away) {
+  const homeScore = home && getTeamScore(match, home.id)
+  const awayScore = away && getTeamScore(match, away.id)
+  if (homeScore === undefined || awayScore === undefined) {
     return <span className="text-muted-foreground">—</span>
   }
-
-  const homeScore = getTeamScore(match, home.id, home.score)
-  const awayScore = getTeamScore(match, away.id, away.score)
 
   return (
     <span
@@ -458,15 +457,9 @@ export function hasVisibleCompetitors(match: Match): boolean {
   return match.state === MatchState.FINISHED && match.teams.length > 0
 }
 
-export function getTeamScore(
-  match: Match,
-  teamId: string,
-  fallbackScore: number,
-): number {
-  return (
-    match.results.find((result) => result.team.id === teamId)?.score ??
-    fallbackScore
-  )
+// Only revealed results carry scores; there is no fallback to team standings.
+export function getTeamScore(match: Match, teamId: string): number | undefined {
+  return match.results?.find((result) => result.team.id === teamId)?.score
 }
 
 function getRoundValue(round: number): string {

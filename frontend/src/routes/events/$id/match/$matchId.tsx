@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { isAxiosError } from 'axios'
 import { ExternalLink } from 'lucide-react'
-import { getEventById } from '@/app/actions/event'
+import { getEventById, isEventAdmin } from '@/app/actions/event'
 import {
   getLogsOfMatch,
   getMatchById,
@@ -27,9 +27,17 @@ function getTotalRounds(teamCount: number) {
 
 function MatchRoute() {
   const { id, matchId } = Route.useParams()
+  const eventAdminQuery = useQuery({
+    queryKey: ['event', id, 'is-event-admin'],
+    queryFn: () => isEventAdmin(id),
+  })
+  // Unrevealed tournament matches only exist for event admins; the header
+  // still waits for the reveal before it shows the result.
+  const adminReveal = eventAdminQuery.data === true
   const matchQuery = useQuery({
-    queryKey: ['match', matchId],
-    queryFn: async () => getMatchById(matchId),
+    queryKey: ['match', matchId, { adminReveal }],
+    queryFn: async () => getMatchById(matchId, adminReveal),
+    enabled: !eventAdminQuery.isPending,
   })
   const eventQuery = useQuery({
     queryKey: ['event', id],
