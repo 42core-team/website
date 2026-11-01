@@ -67,16 +67,45 @@ describe("MatchService.getMatchResponseById", () => {
     });
   });
 
-  it("keeps the id of an unrevealed queue match but hides its result", async () => {
-    const { service } = setup(MatchPhase.QUEUE, false, false);
-    const response = await service.getMatchResponseById("match", "user", false);
-    expect(response).toMatchObject({
-      id: "match",
-      state: MatchState.PLANNED,
-    });
-    for (const field of ["winner", "results", "stats", "updatedAt"])
-      expect(response).not.toHaveProperty(field);
-  });
+  it.each([
+    [false, false],
+    [true, true],
+  ])(
+    "shows a queue match to anyone with its id (admin %s, reveal mode %s)",
+    async (isAdmin, adminReveal) => {
+      const { service, isEventAdmin } = setup(MatchPhase.QUEUE, false, isAdmin);
+      const response = await service.getMatchResponseById(
+        "match",
+        "user",
+        adminReveal,
+      );
+      expect(response).toMatchObject({
+        id: "match",
+        state: MatchState.FINISHED,
+        winner: { id: "a" },
+        stats: { actionsExecuted: 918273 },
+      });
+      expect(isEventAdmin).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([MatchPhase.GAMBLING, MatchPhase.MANUAL])(
+    "keeps the id of an unrevealed %s match but hides its result",
+    async (phase) => {
+      const { service } = setup(phase, false, false);
+      const response = await service.getMatchResponseById(
+        "match",
+        "user",
+        false,
+      );
+      expect(response).toMatchObject({
+        id: "match",
+        state: MatchState.PLANNED,
+      });
+      for (const field of ["winner", "results", "stats", "updatedAt"])
+        expect(response).not.toHaveProperty(field);
+    },
+  );
 
   it("answers 404 for an unknown match", async () => {
     const { service } = setup(MatchPhase.SWISS, true, false);

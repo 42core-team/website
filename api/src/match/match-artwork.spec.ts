@@ -30,7 +30,12 @@ describe("match response artwork", () => {
     const service = Object.create(MatchService.prototype) as MatchService;
     Object.assign(service, {
       matchRepository: { find },
-      teamService: { getTeamById: jest.fn().mockResolvedValue(team) },
+      teamService: {
+        getTeamById: jest.fn().mockResolvedValue(team),
+        getTeamOfUserForEvent: jest.fn(async (_eventId, userId: string) =>
+          userId === "member" ? team : null,
+        ),
+      },
     });
     return { service, find };
   }
