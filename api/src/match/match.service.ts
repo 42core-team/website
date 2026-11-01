@@ -40,6 +40,7 @@ import { EventState, getEventState } from "../event/event-lifecycle";
 import {
   isRevealablePhase,
   matchNotFound,
+  REVEALABLE_PHASES,
   toHiddenMatchResponse,
   toMatchResponse,
   toVisibleMatchResponse,
@@ -1590,9 +1591,15 @@ export class MatchService {
     return results;
   }
 
+  /** Totals over revealed matches and over phases that are never hidden. */
   getGlobalStats() {
     return this.matchStatsRepository
       .createQueryBuilder("match_stats")
+      .innerJoin("match_stats.match", "match")
+      .where(
+        "(match.isRevealed = true OR match.phase NOT IN (:...revealablePhases))",
+        { revealablePhases: REVEALABLE_PHASES },
+      )
       .select("SUM(match_stats.actionsExecuted)", "actionsExecuted")
       .addSelect("SUM(match_stats.damageDeposits)", "damageDeposits")
       .addSelect("SUM(match_stats.gempilesDestroyed)", "gempilesDestroyed")
