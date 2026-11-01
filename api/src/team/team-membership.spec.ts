@@ -53,7 +53,12 @@ function setup() {
     locked: false,
     repositoryStatus: "PENDING",
   };
-  const state = { hasTeam: false, invited: true, nameTaken: false };
+  const state = {
+    hasTeam: false,
+    invited: true,
+    nameTaken: false,
+    eligible: true,
+  };
   const order: string[] = [];
   const repository = {
     findOneOrFail: jest.fn(async (options: { lock?: unknown }) => {
@@ -92,13 +97,29 @@ function setup() {
       }),
     }),
   };
+  const eventService = {
+    isUserEligibleForEvent: jest.fn(async () => {
+      order.push("check:eligible");
+      return state.eligible;
+    }),
+  };
   const service = Object.create(TeamService.prototype) as TeamService;
   Reflect.set(service, "teamRepository", repository);
+  Reflect.set(service, "eventService", eventService);
   Reflect.set(service, "dataSource", {
     transaction: (action: (value: typeof manager) => unknown) =>
       action(manager),
   });
-  return { service, team, event, state, order, manager, repository };
+  return {
+    service,
+    team,
+    event,
+    state,
+    order,
+    manager,
+    repository,
+    eventService,
+  };
 }
 
 describe("team membership under lock", () => {
@@ -110,9 +131,29 @@ describe("team membership under lock", () => {
       "lock:team",
       "check",
       "check",
+      "check:eligible",
       "remove:teamInvites",
       "add:users",
     ]);
+  });
+
+  it("re-checks event eligibility with the transaction's manager", async () => {
+    const { service, manager, eventService } = setup();
+    await service.acceptTeamInvite("joins", "team");
+    expect(eventService.isUserEligibleForEvent).toHaveBeenCalledWith(
+      "event",
+      "joins",
+      manager,
+    );
+  });
+
+  it("rejects an accept when the user is no longer eligible for the event", async () => {
+    const { service, state, order } = setup();
+    state.eligible = false;
+    await expect(service.acceptTeamInvite("joins", "team")).rejects.toThrow(
+      "You are not registered for this private event.",
+    );
+    expect(order).not.toContain("add:users");
   });
 
   it("rejects an accept when the user joined another team in the meantime", async () => {

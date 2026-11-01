@@ -315,6 +315,9 @@ describe("repository lifecycle", () => {
       Object.assign(team, data),
     );
     Object.assign(context.event, { maxTeamSize: 3 });
+    Reflect.set(context.service, "eventService", {
+      isUserEligibleForEvent: jest.fn(async () => true),
+    });
     Object.assign(manager, {
       findOneOrFail: jest.fn(async () => order.push("lock:user")),
       exists: jest.fn(

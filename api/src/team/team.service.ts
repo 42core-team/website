@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   forwardRef,
   Inject,
   Injectable,
@@ -905,6 +906,16 @@ export class TeamService {
         }))
       )
         throw new BadRequestException("You are not invited to this team.");
+      if (
+        !(await this.eventService.isUserEligibleForEvent(
+          team.event.id,
+          userId,
+          manager,
+        ))
+      )
+        throw new ForbiddenException(
+          "You are not registered for this private event.",
+        );
       const maxUsers = team.event.maxTeamSize;
       if (!maxUsers || team.users.length >= maxUsers)
         throw new BadRequestException("This team is full.");

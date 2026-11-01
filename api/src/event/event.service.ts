@@ -14,6 +14,7 @@ import { EventStarterTemplateEntity } from "./entities/event-starter-template.en
 import { EventWhitelistEntity } from "./entities/event-whitelist.entity";
 import {
   DataSource,
+  EntityManager,
   In,
   LessThanOrEqual,
   Repository,
@@ -22,8 +23,10 @@ import {
 } from "typeorm";
 import {
   PermissionRole,
+  UserEntity,
   UserEventPermissionEntity,
 } from "../user/entities/user.entity";
+import { SocialPlatform } from "../user/entities/social-account.entity";
 import { ConfigService } from "@nestjs/config";
 import { TeamService } from "../team/team.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
@@ -475,6 +478,41 @@ export class EventService {
         id: userId,
       },
     });
+  }
+
+  /**
+   * Whether the user may be part of a team in this event. Public events are
+   * open to everyone. Private events require the user to be registered and,
+   * when the event has a whitelist, to still be on it.
+   */
+  async isUserEligibleForEvent(
+    eventId: string,
+    userId: string,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<boolean> {
+    const event = await manager.findOne(EventEntity, {
+      select: { id: true, isPrivate: true },
+      where: { id: eventId },
+      loadEagerRelations: false,
+    });
+    if (!event) return false;
+    if (!event.isPrivate) return true;
+
+    const user = await manager.findOne(UserEntity, {
+      where: { id: userId, events: { id: eventId } },
+      relations: { socialAccounts: true },
+      loadEagerRelations: false,
+    });
+    if (!user) return false;
+    const fortyTwoAccount = user.socialAccounts.find(
+      (sa) => sa.platform === SocialPlatform.FORTYTWO,
+    );
+    return this.isUserWhitelisted(
+      eventId,
+      user.username,
+      fortyTwoAccount?.username ?? null,
+      manager,
+    );
   }
 
   isEventAdmin(eventId: string, userId: string): Promise<boolean> {
@@ -1070,8 +1108,11 @@ export class EventService {
     });
   }
 
-  async hasWhitelist(eventId: string): Promise<boolean> {
-    return this.whitelistRepository.existsBy({
+  async hasWhitelist(
+    eventId: string,
+    manager?: EntityManager,
+  ): Promise<boolean> {
+    return this.getWhitelistRepository(manager).existsBy({
       event: { id: eventId },
     });
   }
@@ -1080,8 +1121,9 @@ export class EventService {
     eventId: string,
     githubUsername: string,
     fortyTwoUsername: string | null,
+    manager?: EntityManager,
   ): Promise<boolean> {
-    if (!(await this.hasWhitelist(eventId))) {
+    if (!(await this.hasWhitelist(eventId, manager))) {
       return true;
     }
 
@@ -1099,12 +1141,18 @@ export class EventService {
       });
     }
 
-    return this.whitelistRepository.existsBy(
+    return this.getWhitelistRepository(manager).existsBy(
       conditions.map((cond) => ({
         event: { id: eventId },
         username: cond.username,
         platform: cond.platform,
       })),
+    );
+  }
+
+  private getWhitelistRepository(manager?: EntityManager) {
+    return (
+      manager?.getRepository(EventWhitelistEntity) ?? this.whitelistRepository
     );
   }
 }

@@ -42,7 +42,8 @@ postgres("team membership concurrency (PostgreSQL)", () => {
     service = new TeamService(
       database.getRepository(TeamEntity),
       {} as never,
-      {} as never,
+      // The events here are public, so every user is eligible.
+      { isUserEligibleForEvent: async () => true } as never,
       {} as never,
       database,
     );
