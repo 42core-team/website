@@ -369,6 +369,23 @@ describe("AuthController sessions", () => {
         .expect(401);
     });
 
+    it.each([
+      ["cleared", ""],
+      ["in the old format", "U2FsdGVkX1+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="],
+    ])(
+      "is not upgraded when the stored GitHub token is %s",
+      async (_, githubAccessToken) => {
+        users.set(USER.id, createUser({ githubAccessToken }));
+
+        const response = await request(app.getHttpServer())
+          .post("/auth/refresh")
+          .set("Cookie", `token=${signLegacyToken()}`)
+          .expect(401);
+
+        expect(isCleared(parseSetCookies(response).get("token"))).toBe(true);
+      },
+    );
+
     it("is not upgraded when its user no longer exists", async () => {
       users.delete(USER.id);
 

@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { isEncryptedSecret } from "../common/encryption";
 import { UserEntity } from "../user/entities/user.entity";
 import { UserService } from "../user/user.service";
 import { GithubGrantService } from "./github-grant.service";
@@ -89,6 +90,9 @@ export class AuthService {
 
     const user = await this.users.getUserById(payload.sub).catch(() => null);
     if (!user) return null;
+    // Users whose stored GitHub token is not in the current format (cleared
+    // by migration 1792500000000) must log in again to store a new one.
+    if (!isEncryptedSecret(user.githubAccessToken)) return null;
 
     // Start the session first so a revocation found by the check covers it.
     const tokens = await this.startSession(user);

@@ -29,8 +29,13 @@ export function encryptSecret(plaintext: string, passphrase: string): string {
   ]).toString("base64")}`;
 }
 
+/** Whether a stored value is in the only format `decryptSecret` accepts. */
+export function isEncryptedSecret(value: string): boolean {
+  return value.startsWith(FORMAT_PREFIX);
+}
+
 export function decryptSecret(ciphertext: string, passphrase: string): string {
-  if (!ciphertext.startsWith(FORMAT_PREFIX)) {
+  if (!isEncryptedSecret(ciphertext)) {
     throw new Error("Unsupported encrypted secret format");
   }
 
