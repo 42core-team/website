@@ -109,11 +109,6 @@ export async function getQueueMatches(eventId: string) {
     .data as QueueMatch[]
 }
 
-export async function getQueueMatchesAdmin(eventId: string) {
-  return (await axiosInstance.get(`/match/queue/${eventId}/admin`))
-    .data as QueueMatch[]
-}
-
 export async function getQueueSummary(
   eventId: string,
 ): Promise<QueueTeamSummary | null> {
@@ -149,10 +144,6 @@ export async function getTeamById(teamId: string): Promise<Team | null> {
   return team ? mapTeamResponse(team) : null
 }
 
-export async function hasEventStarted(teamId: string): Promise<boolean> {
-  return (await axiosInstance.get(`team/${teamId}/event-started`)).data
-}
-
 export async function getMyEventTeam(eventId: string): Promise<Team | null> {
   const team = (
     await axiosInstance.get<TeamApiResponse | null>(`team/event/${eventId}/my`)
@@ -180,14 +171,6 @@ export async function deleteTeamAsAdmin(
   teamId: string,
 ): Promise<void> {
   await axiosInstance.delete(`team/event/${eventId}/admin/${teamId}`)
-}
-
-export async function lockEvent(eventId: string) {
-  return (await axiosInstance.put(`event/${eventId}/lock`)).data
-}
-
-export async function unlockEvent(eventId: string) {
-  return (await axiosInstance.put(`event/${eventId}/unlock`)).data
 }
 
 /**

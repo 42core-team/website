@@ -41,23 +41,6 @@ export async function getSocialAccounts(): Promise<SocialAccount[]> {
   }
 }
 
-export async function getSocialAccountByPlatform(
-  platform: string,
-): Promise<SocialAccount | null> {
-  try {
-    const response = await axiosInstance.get(`/social-accounts/${platform}`)
-    return response.data
-  } catch (error: any) {
-    if (error.response?.status === 404) {
-      return null
-    }
-    console.error('Error fetching social account:', error)
-    throw new Error(
-      error.response?.data?.message || 'Failed to fetch social account',
-    )
-  }
-}
-
 export async function getFortyTwoAuthUrl(): Promise<string> {
   try {
     const response = await axiosInstance.get('/auth/42/getUrl')

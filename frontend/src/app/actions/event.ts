@@ -150,17 +150,6 @@ export async function canUserCreateEvent(): Promise<boolean> {
   }
 }
 
-export async function setEventTeamsLockDate(
-  eventId: string,
-  lockDate: number | null,
-): Promise<Event> {
-  return (
-    await axiosInstance.put<Event>(`event/${eventId}/lockTeamsDate`, {
-      repoLockDate: lockDate,
-    })
-  ).data
-}
-
 export async function updateEventSettings(
   eventId: string,
   settings: {
@@ -251,14 +240,6 @@ export async function removeEventAdmin(
   userId: string,
 ): Promise<void> {
   await axiosInstance.delete(`event/${eventId}/admins/${userId}`)
-}
-
-export async function getMyEvents(): Promise<Event[]> {
-  try {
-    return (await axiosInstance.get('event/my')).data as Event[]
-  } catch {
-    return []
-  }
 }
 
 export async function getStarterTemplates(

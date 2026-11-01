@@ -16,7 +16,6 @@ import { EventService } from "./event.service";
 import { TeamService } from "../team/team.service";
 import { UserService } from "../user/user.service";
 import { CreateEventDto } from "./dtos/createEventDto";
-import { SetLockTeamsDateDto } from "./dtos/setLockTeamsDateDto";
 import { UpdateEventSettingsDto } from "./dtos/updateEventSettingsDto";
 import { CreateEventStarterTemplateDto } from "./dtos/createEventStarterTemplateDto";
 import { UpdateEventStarterTemplateDto } from "./dtos/updateEventStarterTemplateDto";
@@ -41,12 +40,6 @@ export class EventController {
     private readonly teamService: TeamService,
     private readonly userService: UserService,
   ) {}
-
-  @UseGuards(JwtAuthGuard)
-  @Get("my")
-  async getMyEvents(@UserId() userId: string) {
-    return this.eventService.getEventsForUser(userId);
-  }
 
   @UseGuards(JwtAuthGuard)
   @Get("overview")
@@ -266,49 +259,6 @@ export class EventController {
     this.logger.log({ action: "attempt_lock_event", userId, eventId });
 
     return this.eventService.lockEvent(eventId);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Put(":id/unlock")
-  async unlockEvent(
-    @Param("id", new ParseUUIDPipe()) eventId: string,
-    @UserId() userId: string,
-  ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to unlock teams for this event.",
-      );
-
-    this.logger.log({ action: "attempt_unlock_event", userId, eventId });
-
-    return this.eventService.unlockEvent(eventId);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Put(":id/lockTeamsDate")
-  async lockTeamsDate(
-    @Param("id", new ParseUUIDPipe()) eventId: string,
-    @UserId() userId: string,
-    @Body() body: SetLockTeamsDateDto,
-  ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to lock teams for this event.",
-      );
-
-    this.logger.log({
-      action: "attempt_set_lock_teams_date",
-      userId,
-      eventId,
-      repoLockDate: body.repoLockDate,
-    });
-
-    if (!body.repoLockDate)
-      return this.eventService.setTeamsLockedDate(eventId, null);
-    return this.eventService.setTeamsLockedDate(
-      eventId,
-      new Date(body.repoLockDate),
-    );
   }
 
   @UseGuards(JwtAuthGuard)
