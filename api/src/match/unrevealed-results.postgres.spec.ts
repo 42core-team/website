@@ -48,6 +48,28 @@ const MATCH_FIELDS_HIDDEN_WHEN_UNREVEALED = [
   "updatedAt",
 ];
 const MATCH_TEAM_KEYS = ["background", "deletedAt", "id", "name", "picture"];
+// Team fields that are never part of a team response.
+const TEAM_FIELDS_NEVER_RETURNED = [
+  "updatedAt",
+  "deletedAt",
+  "locked",
+  "eventId",
+  "queueScore",
+  "repositoryOperationId",
+  "lastCreditGrantedAt",
+  "startedRepoCreationAt",
+];
+const PUBLIC_TEAM_LIST_KEYS = [
+  "buchholzPoints",
+  "createdAt",
+  "hadBye",
+  "id",
+  "name",
+  "picture",
+  "score",
+  "tags",
+  "userCount",
+];
 
 // Response bodies are untyped JSON.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -330,6 +352,12 @@ postgres("unrevealed match results (PostgreSQL)", () => {
     return response.body as Json[];
   }
 
+  function expectTeamFields(team: Json, keys: string[]) {
+    expect(Object.keys(team).sort()).toEqual([...keys].sort());
+    for (const field of TEAM_FIELDS_NEVER_RETURNED)
+      expect(team).not.toHaveProperty(field);
+  }
+
   function standings(list: Json[]) {
     return Object.fromEntries(
       list.map((team) => [
@@ -340,25 +368,21 @@ postgres("unrevealed match results (PostgreSQL)", () => {
   }
 
   describe("before the hidden match is revealed", () => {
-    it("never returns unrevealed standings from the anonymous team profile", async () => {
+    it("gives the anonymous team profile identity and artwork only", async () => {
       const response = await get(`/team/${teams.A.id}`);
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
         id: teams.A.id,
         name: "Team A",
-        score: 1,
-        buchholzPoints: 0,
         tags: [],
       });
-      for (const field of [
-        "credits",
-        "repo",
-        "repositoryError",
-        "repositoryOperationId",
-        "queueScore",
-        "lastCreditGrantedAt",
-      ])
-        expect(response.body).not.toHaveProperty(field);
+      expectTeamFields(response.body, [
+        "background",
+        "id",
+        "name",
+        "picture",
+        "tags",
+      ]);
     });
 
     it("hides unrevealed swiss results, ids, stats and stored scores from a normal user", async () => {
@@ -414,15 +438,21 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       expect(response.body.teams).toHaveLength(2);
     });
 
-    it("applies the public standings to the own team and pending invites", async () => {
+    it("gives the own team and pending invites no standings or timestamps", async () => {
       const my = await get(`/team/event/${event.id}/my`, users.member.id);
       expect(my.status).toBe(200);
-      expect(my.body).toMatchObject({
-        id: teams.A.id,
-        score: 1,
-        buchholzPoints: 0,
-        repo: "repo-A",
-      });
+      expect(my.body).toMatchObject({ id: teams.A.id, repo: "repo-A" });
+      expectTeamFields(my.body, [
+        "background",
+        "id",
+        "name",
+        "picture",
+        "repo",
+        "repositoryError",
+        "repositoryStatus",
+        "tags",
+        "tournamentExcluded",
+      ]);
 
       const pending = await get(
         `/team/event/${event.id}/pending`,
@@ -430,13 +460,8 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       );
       expect(pending.status).toBe(200);
       expect(pending.body).toHaveLength(1);
-      expect(pending.body[0]).toMatchObject({
-        id: teams.C.id,
-        score: 1,
-        buchholzPoints: 0,
-      });
-      expect(pending.body[0]).not.toHaveProperty("credits");
-      expect(pending.body[0]).not.toHaveProperty("repo");
+      expect(pending.body[0]).toMatchObject({ id: teams.C.id });
+      expectTeamFields(pending.body[0], ["id", "name", "tags"]);
     });
 
     it("does not let a non-admin switch on reveal mode", async () => {
@@ -489,7 +514,16 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       expect(detail.body.winner.id).toBe(teams.A.id);
       expect(detail.body.results).toHaveLength(2);
 
-      expect(standings(await teamList(users.admin.id, true))).toEqual({
+      const adminList = await teamList(users.admin.id, true);
+      for (const team of adminList)
+        expectTeamFields(team, [
+          ...PUBLIC_TEAM_LIST_KEYS,
+          "credits",
+          "repositoryError",
+          "repositoryStatus",
+          "tournamentExcluded",
+        ]);
+      expect(standings(adminList)).toEqual({
         "Team A": { score: 2, buchholzPoints: STORED_BUCHHOLZ.A },
         "Team B": { score: 0, buchholzPoints: STORED_BUCHHOLZ.B },
         "Team C": { score: 1, buchholzPoints: STORED_BUCHHOLZ.C },
@@ -512,7 +546,7 @@ postgres("unrevealed match results (PostgreSQL)", () => {
           .sort(),
       ).toEqual(["Team A", "Team C"]);
       expect(list[0].userCount + list[1].userCount).toBe(1);
-      expect(list[0]).not.toHaveProperty("credits");
+      for (const team of list) expectTeamFields(team, PUBLIC_TEAM_LIST_KEYS);
 
       const byName = await get(
         `/team/event/${event.id}?sortBy=name&sortDir=asc&searchName=team`,
@@ -530,6 +564,18 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       );
       expect(buchholz.status).toBe(400);
     });
+
+    it("does not sort the public team list by fields it leaves out", async () => {
+      const unsorted = await get(`/team/event/${event.id}`, users.outsider.id);
+      for (const sortBy of ["updatedAt", "locked", "credits"]) {
+        const response = await get(
+          `/team/event/${event.id}?sortBy=${sortBy}&sortDir=desc`,
+          users.outsider.id,
+        );
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual(unsorted.body);
+      }
+    });
   });
 
   describe("after the hidden match is revealed", () => {
@@ -546,10 +592,6 @@ postgres("unrevealed match results (PostgreSQL)", () => {
         "Team B": { score: 0, buchholzPoints: 2 },
         "Team C": { score: 1, buchholzPoints: 2 },
         "Team D": { score: 0, buchholzPoints: 1 },
-      });
-      expect((await get(`/team/${teams.A.id}`)).body).toMatchObject({
-        score: 2,
-        buchholzPoints: 1,
       });
 
       const revealed = findById(await swiss(users.outsider.id), matches.m3.id);

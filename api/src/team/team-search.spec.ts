@@ -149,10 +149,6 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
             id: "u-large",
             objectKey: "large.webp",
           },
-          {
-            id: "u-bg",
-            objectKey: "background.webp",
-          },
         ]),
       },
     });
@@ -180,7 +176,95 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
       small: "small.webp",
       large: "large.webp",
     });
-    expect(result[0].background).toEqual({ large: "background.webp" });
+    expect(result[0]).toMatchObject({ userCount: 2, credits: 0 });
+    expect(result[0]).not.toHaveProperty("updatedAt");
     expect(calculateBuchholzPointsForTeams).not.toHaveBeenCalled();
   });
+
+  function publicListSetup() {
+    const queryBuilder = {
+      innerJoin: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getRawAndEntities: jest.fn().mockResolvedValue({
+        entities: [
+          {
+            id: "team-1",
+            name: "Team One",
+            score: 4,
+            buchholzPoints: 12,
+            hadBye: false,
+            credits: 7,
+            repositoryStatus: "LOCKED",
+            repositoryError: "error",
+            tournamentExcluded: false,
+            createdAt: new Date("2026-01-01T00:00:00.000Z"),
+            updatedAt: new Date("2026-01-02T00:00:00.000Z"),
+          } as TeamEntity,
+        ],
+        raw: [{ user_count: "1" }],
+      }),
+    };
+    const service = Object.create(TeamService.prototype) as TeamService;
+    Reflect.set(service, "teamRepository", {
+      createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+      manager: { find: jest.fn().mockResolvedValue([]) },
+    });
+    Reflect.set(service, "eventService", {
+      isEventAdmin: jest.fn().mockResolvedValue(false),
+    });
+    jest
+      .spyOn(service, "getPublicStandings")
+      .mockResolvedValue(
+        new Map([["team-1", { score: 1, buchholzPoints: 2 }]]),
+      );
+    jest.spyOn(service, "getLocationTagsForTeams").mockResolvedValue(new Map());
+    return { service, queryBuilder };
+  }
+
+  it("returns only the public list fields to a non-admin", async () => {
+    const { service } = publicListSetup();
+    const [team] = await service.getSearchedTeamsForEvent(
+      "event-1",
+      undefined,
+      undefined,
+      undefined,
+      "user-1",
+      true,
+    );
+    expect(Object.keys(team).sort()).toEqual(
+      [
+        "buchholzPoints",
+        "createdAt",
+        "hadBye",
+        "id",
+        "name",
+        "picture",
+        "score",
+        "tags",
+        "userCount",
+      ].sort(),
+    );
+    expect(team).toMatchObject({ score: 1, buchholzPoints: 2 });
+  });
+
+  it.each(["updatedAt", "locked", "credits", "repositoryStatus"])(
+    "ignores sorting by %s",
+    async (sortBy) => {
+      const { service, queryBuilder } = publicListSetup();
+      await service.getSearchedTeamsForEvent(
+        "event-1",
+        undefined,
+        "desc",
+        sortBy,
+        "user-1",
+      );
+      expect(queryBuilder.orderBy).not.toHaveBeenCalled();
+    },
+  );
 });

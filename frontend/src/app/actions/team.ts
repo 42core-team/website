@@ -45,16 +45,12 @@ export interface Team extends TeamAppearance, RepositoryState {
   id: string
   name: string
   repo: string
-  inQueue: boolean
   credits: number
   score: number
   buchholzPoints: number
   hadBye: boolean
   locked?: boolean
-  created?: string
-  updated?: string
   createdAt?: Date
-  updatedAt?: Date
   membersCount?: number
   tags: string[]
 }
@@ -70,17 +66,17 @@ export interface TeamMember {
   tags: string[]
 }
 
+// Each team endpoint returns only the fields its views read, so most of these
+// are optional. Repository state and credits come for the own team and for
+// event admins only.
 export interface TeamApiResponse extends TeamAppearance, RepositoryState {
   id: string
   name: string
   repo?: string | null
-  inQueue?: boolean
   score?: number
   buchholzPoints?: number
   hadBye?: boolean
-  locked?: boolean
   createdAt?: Date
-  updatedAt?: Date
   userCount?: number
   credits?: number
   tags?: string[]
@@ -317,18 +313,14 @@ export function mapTeamResponse(team: TeamApiResponse): Team {
     picture: team.picture,
     background: team.background,
     repo: team.repo ?? '',
-    inQueue: team.inQueue ?? false,
     score: team.score ?? 0,
     buchholzPoints: team.buchholzPoints ?? 0,
     hadBye: team.hadBye ?? false,
-    locked: team.repositoryStatus
-      ? team.repositoryStatus === 'LOCKED'
-      : team.locked,
+    locked: team.repositoryStatus === 'LOCKED',
     repositoryStatus: team.repositoryStatus,
     repositoryError: team.repositoryError,
     tournamentExcluded: team.tournamentExcluded,
     createdAt: team.createdAt,
-    updatedAt: team.updatedAt,
     membersCount: team.userCount,
     credits: team.credits ?? 0,
     tags: team.tags ?? [],
