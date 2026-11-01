@@ -1402,7 +1402,10 @@ export class MatchService {
     // that played them, and whoever has the id sees the match.
     if (match.phase === MatchPhase.QUEUE) return toVisibleMatchResponse(match);
 
-    const eventId = match.teams?.[0]?.event?.id;
+    // Deleted teams are not loaded above; their event still counts.
+    const eventId =
+      match.teams?.find((team) => team.event)?.event.id ??
+      (await this.getEventIdOfMatch(match.id));
     const revealAll = eventId
       ? await this.canRevealAll(eventId, userId, adminReveal)
       : false;

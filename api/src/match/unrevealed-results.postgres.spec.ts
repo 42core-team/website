@@ -524,6 +524,11 @@ postgres("unrevealed match results (PostgreSQL)", () => {
         return list.filter((match) => match.phase === MatchPhase.QUEUE);
       }
 
+      // A team's own history leaves out its unrevealed tournament match.
+      expect(
+        (await teamHistory("A", users.member.id)).map((match) => match.id),
+      ).not.toContain(matches.m3.id);
+
       // Both teams' members see the id, on either team's page.
       for (const userId of [users.member.id, users.opponent.id])
         for (const teamKey of ["A", "B"] as const) {
