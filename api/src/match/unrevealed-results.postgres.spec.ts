@@ -451,6 +451,15 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       expect(revealed.stats).not.toHaveProperty("id");
     });
 
+    it("lists swiss matches by round, then creation", async () => {
+      const body = await swiss(users.admin.id, true);
+      expect(body.map((match) => match.id)).toEqual([
+        matches.m1.id,
+        matches.m2.id,
+        matches.m3.id,
+      ]);
+    });
+
     it("leaves unrevealed swiss and tournament matches out of the global stats", async () => {
       const body = await globalStats();
       expectNoHiddenData(body);

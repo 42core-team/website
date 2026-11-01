@@ -929,6 +929,10 @@ export class MatchService {
         teams: true,
         winner: true,
       },
+      order: {
+        round: "ASC",
+        createdAt: "ASC",
+      },
     });
 
     const revealAll = await this.canRevealAll(eventId, userId, adminReveal);
