@@ -150,7 +150,7 @@ export function MyTeamPage({
     },
     onError: (error: Error | AxiosError<{ message?: string }>) => {
       toast.error(
-        ('response' in error && error.response?.data.message) ||
+        ('response' in error && error.response?.data?.message) ||
           'Failed to accept the invite.',
       )
     },

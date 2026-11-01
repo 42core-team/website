@@ -35,6 +35,7 @@ function setup(status = "PROVISIONING", closed = false) {
     id: "event",
     startDate: new Date(0),
     submissionDeadline: new Date(closed ? 0 : "2099-01-01"),
+    canCreateTeam: true,
   };
   const team = {
     id: "team",

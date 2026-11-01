@@ -208,7 +208,7 @@ postgres("team invite eligibility (PostgreSQL)", () => {
 
     expect(response.status).toBe(400);
     expect(response.body.message).toBe(
-      "This user is not registered for this private event.",
+      "This user is not registered or not whitelisted for this private event.",
     );
     expect(await isInvited(teamId, outsider.id)).toBe(false);
   });
@@ -259,7 +259,7 @@ postgres("team invite eligibility (PostgreSQL)", () => {
 
     expect(response.status).toBe(403);
     expect(response.body.message).toBe(
-      "You are not registered for this private event.",
+      "You are not registered or not whitelisted for this private event.",
     );
     expect(await isMember(teamId, invitee.id)).toBe(false);
     expect(await isInvited(teamId, invitee.id)).toBe(true);
@@ -295,6 +295,25 @@ postgres("team invite eligibility (PostgreSQL)", () => {
     await accept(event, teamId, invitee).expect(200);
 
     expect(await isMember(teamId, invitee.id)).toBe(true);
+  });
+
+  it("freezes invites and accepts when team creation is turned off", async () => {
+    const event = await createEvent(false);
+    const [owner, invitee, late] = await Promise.all([
+      createUser(),
+      createUser(),
+      createUser(),
+    ]);
+    const teamId = await createTeamOf(event, owner);
+    await invite(event, owner, invitee.id).expect(201);
+    await database
+      .getRepository(EventEntity)
+      .update(event.id, { canCreateTeam: false });
+
+    await invite(event, owner, late.id).expect(400);
+    expect(await isInvited(teamId, late.id)).toBe(false);
+    await accept(event, teamId, invitee).expect(400);
+    expect(await isMember(teamId, invitee.id)).toBe(false);
   });
 
   it("answers an invite for an unknown user with not found", async () => {

@@ -44,6 +44,7 @@ function setup() {
     startDate: new Date("2099-01-01"),
     submissionDeadline: new Date("2100-01-01"),
     maxTeamSize: 2,
+    canCreateTeam: true,
   };
   const team = {
     id: "team",
@@ -151,7 +152,16 @@ describe("team membership under lock", () => {
     const { service, state, order } = setup();
     state.eligible = false;
     await expect(service.acceptTeamInvite("joins", "team")).rejects.toThrow(
-      "You are not registered for this private event.",
+      "You are not registered or not whitelisted for this private event.",
+    );
+    expect(order).not.toContain("add:users");
+  });
+
+  it("rejects an accept when team creation was turned off", async () => {
+    const { service, event, order } = setup();
+    event.canCreateTeam = false;
+    await expect(service.acceptTeamInvite("joins", "team")).rejects.toThrow(
+      "Joining teams is closed for this event.",
     );
     expect(order).not.toContain("add:users");
   });

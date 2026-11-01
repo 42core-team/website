@@ -906,6 +906,11 @@ export class TeamService {
         }))
       )
         throw new BadRequestException("You are not invited to this team.");
+      // Turning team creation off also freezes the rosters of existing teams.
+      if (!team.event.canCreateTeam)
+        throw new BadRequestException(
+          "Joining teams is closed for this event.",
+        );
       if (
         !(await this.eventService.isUserEligibleForEvent(
           team.event.id,
@@ -914,7 +919,7 @@ export class TeamService {
         ))
       )
         throw new ForbiddenException(
-          "You are not registered for this private event.",
+          "You are not registered or not whitelisted for this private event.",
         );
       const maxUsers = team.event.maxTeamSize;
       if (!maxUsers || team.users.length >= maxUsers)
