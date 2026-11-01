@@ -8,6 +8,7 @@ import { useEventClock } from '@/hooks/use-event-clock'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import axiosInstance from '@/app/actions/axios'
 import { getEventById, getEventGithubOrg } from '@/app/actions/event'
 import {
@@ -146,6 +147,12 @@ export function MyTeamPage({
           queryKey: ['event', id, 'pending-invites'],
         }),
       ])
+    },
+    onError: (error: Error | AxiosError<{ message?: string }>) => {
+      toast.error(
+        ('response' in error && error.response?.data.message) ||
+          'Failed to accept the invite.',
+      )
     },
   })
 
