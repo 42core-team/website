@@ -82,8 +82,10 @@ postgres("unrevealed match results (PostgreSQL)", () => {
   let app: INestApplication;
   let event: EventEntity;
   const teams: Record<"A" | "B" | "C" | "D", TeamEntity> = {} as never;
-  const users: Record<"member" | "invitee" | "admin" | "outsider", UserEntity> =
-    {} as never;
+  const users: Record<
+    "member" | "opponent" | "invitee" | "admin" | "outsider",
+    UserEntity
+  > = {} as never;
   // m1/m2 are revealed round 0 results, m3 is A beating C in round 1 and
   // finished but not revealed yet.
   const matches: Record<
@@ -186,7 +188,13 @@ postgres("unrevealed match results (PostgreSQL)", () => {
   }
 
   async function seed() {
-    for (const key of ["member", "invitee", "admin", "outsider"] as const)
+    for (const key of [
+      "member",
+      "opponent",
+      "invitee",
+      "admin",
+      "outsider",
+    ] as const)
       users[key] = await createUser();
 
     event = await database.getRepository(EventEntity).save({
@@ -217,7 +225,8 @@ postgres("unrevealed match results (PostgreSQL)", () => {
         credits: 9,
         score: stored[key],
         buchholzPoints: STORED_BUCHHOLZ[key],
-        users: key === "A" ? [users.member] : [],
+        users:
+          key === "A" ? [users.member] : key === "B" ? [users.opponent] : [],
         teamInvites: key === "C" ? [users.invitee] : [],
       });
     }
@@ -489,15 +498,72 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       expect(JSON.stringify(response.body)).not.toContain('"buchholzPoints"');
     });
 
-    it("keeps queue matches reachable by id without their results", async () => {
-      const response = await get(`/match/${matches.queue.id}`, users.member.id);
-      expect(response.status).toBe(200);
-      expect(response.body.id).toBe(matches.queue.id);
-      expect(response.body.state).toBe(MatchState.PLANNED);
-      expect(response.body).not.toHaveProperty("winner");
-      expect(response.body).not.toHaveProperty("results");
-      expect(response.body).not.toHaveProperty("stats");
-      expect(response.body.teams).toHaveLength(2);
+    it("shows a queue match to anyone who has its id, without rating scores", async () => {
+      for (const userId of [users.outsider.id, users.member.id]) {
+        const response = await get(`/match/${matches.queue.id}`, userId);
+        expect(response.status).toBe(200);
+        expect(response.body).toMatchObject({
+          id: matches.queue.id,
+          state: MatchState.FINISHED,
+          winner: { id: teams.B.id },
+          results: [],
+          stats: { actionsExecuted: 0 },
+        });
+        expect(response.body.teams).toHaveLength(2);
+        expectMatchTeamsIdentityOnly([response.body]);
+      }
+    });
+
+    it("gives queue match ids to members of the teams that played only", async () => {
+      async function teamHistory(teamKey: "A" | "B" | "C", userId: string) {
+        const response = await get(`/match/team/${teams[teamKey].id}`, userId);
+        expect(response.status).toBe(200);
+        return response.body as Json[];
+      }
+      function queueEntries(list: Json[]) {
+        return list.filter((match) => match.phase === MatchPhase.QUEUE);
+      }
+
+      // Both teams' members see the id, on either team's page.
+      for (const userId of [users.member.id, users.opponent.id])
+        for (const teamKey of ["A", "B"] as const) {
+          const [queue] = queueEntries(await teamHistory(teamKey, userId));
+          expect(queue.id).toBe(matches.queue.id);
+          expect(queue.winner.id).toBe(teams.B.id);
+        }
+      const own = await get(`/match/queue/${event.id}`, users.member.id);
+      expect(own.body.map((match: Json) => match.id)).toEqual([
+        matches.queue.id,
+      ]);
+      const all = await get(`/match/queue/${event.id}/admin`, users.admin.id);
+      expect(all.body.map((match: Json) => match.id)).toEqual([
+        matches.queue.id,
+      ]);
+
+      // Everyone else sees the finished queue match and its winner only.
+      for (const userId of [
+        users.outsider.id,
+        users.invitee.id,
+        users.admin.id,
+      ]) {
+        for (const teamKey of ["A", "B"] as const) {
+          const [queue] = queueEntries(await teamHistory(teamKey, userId));
+          expect(queue).not.toHaveProperty("id");
+          expect(queue.winner.id).toBe(teams.B.id);
+        }
+      }
+      const outsiderResponses = [
+        await teamHistory("A", users.outsider.id),
+        await teamHistory("B", users.outsider.id),
+        await teamHistory("C", users.invitee.id),
+        (await get(`/match/queue/${event.id}`, users.outsider.id)).body,
+        await swiss(users.outsider.id),
+        await tournament(users.outsider.id),
+        await teamList(users.outsider.id),
+        (await get(`/team/${teams.A.id}`)).body,
+        (await get(`/team/event/${event.id}/pending`, users.invitee.id)).body,
+      ];
+      expect(JSON.stringify(outsiderResponses)).not.toContain(matches.queue.id);
     });
 
     it("gives the own team and pending invites no standings or timestamps", async () => {

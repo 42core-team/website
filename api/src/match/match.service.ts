@@ -1103,10 +1103,10 @@ export class MatchService {
   }
 
   async getMatchesForTeam(teamId: string, userId: string) {
-    const team = await this.teamService.getTeamById(teamId, {
-      users: true,
-    });
-    const isTeamMember = team.users.some((user) => user.id === userId);
+    const team = await this.teamService.getTeamById(teamId);
+    const viewerTeam = userId
+      ? await this.teamService.getTeamOfUserForEvent(team.eventId, userId)
+      : null;
     const matchesToQuery = (
       await this.matchRepository.find({
         select: {
@@ -1175,7 +1175,10 @@ export class MatchService {
         results: [],
       };
 
-      const shouldRevealId = canViewTeamMatchReplay(isTeamMember);
+      const shouldRevealId = canViewTeamMatchReplay(
+        viewerTeam?.id,
+        match.teams.map((matchTeam) => matchTeam.id),
+      );
 
       if (!shouldRevealId) {
         const { id: _matchId, ...rest } = visibleMatch;
@@ -1395,6 +1398,9 @@ export class MatchService {
     // Unknown and unrevealed tournament matches answer the same way, so the
     // response never confirms that a hidden match id exists.
     if (!match) throw matchNotFound();
+    // Queue matches are never revealed. Their ids only go out to the teams
+    // that played them, and whoever has the id sees the match.
+    if (match.phase === MatchPhase.QUEUE) return toVisibleMatchResponse(match);
 
     const eventId = match.teams?.[0]?.event?.id;
     const revealAll = eventId
@@ -1406,8 +1412,8 @@ export class MatchService {
       );
 
     if (isRevealablePhase(match.phase)) throw matchNotFound();
-    // Queue and gambling matches are never revealed. Viewers reach them by id
-    // already, so only the result is withheld, as before.
+    // Gambling and manual matches are reached by id; their result is withheld
+    // until they are revealed.
     return { id: match.id, ...toHiddenMatchResponse(match) };
   }
 
