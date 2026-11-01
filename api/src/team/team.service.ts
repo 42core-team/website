@@ -41,8 +41,14 @@ import { rankQueueOpponents } from "./queue-matchmaking";
 import type { QueueOpponentCandidate } from "./queue-matchmaking";
 import {
   EMPTY_STANDING,
+  toAdminEventTeamResponse,
+  toEventTeamResponse,
+  toInvitingTeamResponse,
   toOwnTeamResponse,
   toTeamResponse,
+  type AdminEventTeamResponse,
+  type EventTeamResponse,
+  type InvitingTeamResponse,
   type OwnTeamResponse,
   type TeamResponse,
   type TeamStanding,
@@ -211,18 +217,10 @@ export class TeamService {
     });
   }
 
-  // Public profile: the route has no login, so standings are always public.
   async getTeamByIdWithTags(id: string): Promise<TeamResponse> {
     const team = await this.getTeamById(id);
-    const [standings, tagsByTeam] = await Promise.all([
-      this.getPublicStandings(team.eventId, [id]),
-      this.getLocationTagsForTeams([id]),
-    ]);
-    return toTeamResponse(
-      team,
-      standings.get(id) ?? EMPTY_STANDING,
-      tagsByTeam.get(id) ?? [],
-    );
+    const tagsByTeam = await this.getLocationTagsForTeams([id]);
+    return toTeamResponse(team, tagsByTeam.get(id) ?? []);
   }
 
   getTeamOfUserForEvent(
@@ -243,8 +241,6 @@ export class TeamService {
     });
   }
 
-  // Members see their own unrevealed results only once they are revealed,
-  // like everyone else.
   async getTeamOfUserForEventWithTags(
     eventId: string,
     userId: string,
@@ -252,15 +248,8 @@ export class TeamService {
     const team = await this.getTeamOfUserForEvent(eventId, userId);
     if (!team) return null;
 
-    const [standings, tagsByTeam] = await Promise.all([
-      this.getPublicStandings(eventId, [team.id]),
-      this.getLocationTagsForTeams([team.id]),
-    ]);
-    return toOwnTeamResponse(
-      team,
-      standings.get(team.id) ?? EMPTY_STANDING,
-      tagsByTeam.get(team.id) ?? [],
-    );
+    const tagsByTeam = await this.getLocationTagsForTeams([team.id]);
+    return toOwnTeamResponse(team, tagsByTeam.get(team.id) ?? []);
   }
 
   /**
@@ -869,7 +858,7 @@ export class TeamService {
   async getTeamsUserIsInvitedTo(
     userId: string,
     eventId: string,
-  ): Promise<TeamResponse[]> {
+  ): Promise<InvitingTeamResponse[]> {
     const teams = await this.teamRepository.find({
       where: {
         event: {
@@ -881,17 +870,11 @@ export class TeamService {
       },
     });
 
-    const teamIds = teams.map((team) => team.id);
-    const [standings, tagsByTeam] = await Promise.all([
-      this.getPublicStandings(eventId, teamIds),
-      this.getLocationTagsForTeams(teamIds),
-    ]);
+    const tagsByTeam = await this.getLocationTagsForTeams(
+      teams.map((team) => team.id),
+    );
     return teams.map((team) =>
-      toTeamResponse(
-        team,
-        standings.get(team.id) ?? EMPTY_STANDING,
-        tagsByTeam.get(team.id) ?? [],
-      ),
+      toInvitingTeamResponse(team, tagsByTeam.get(team.id) ?? []),
     );
   }
 
@@ -959,14 +942,7 @@ export class TeamService {
     sortBy?: string,
     userId?: string,
     adminReveal?: boolean,
-  ): Promise<
-    Array<
-      TeamEntity & {
-        userCount: number;
-        tags: string[];
-      }
-    >
-  > {
+  ): Promise<Array<EventTeamResponse | AdminEventTeamResponse>> {
     const isAdmin = userId
       ? await this.eventService.isEventAdmin(eventId, userId)
       : false;
@@ -977,15 +953,11 @@ export class TeamService {
       .innerJoin("team.event", "event")
       .leftJoin("team.users", "user")
       .where("event.id = :eventId", { eventId })
-      .andWhere("team.deletedAt IS NULL");
-
-    if (revealAll) {
-      query.select([
+      .andWhere("team.deletedAt IS NULL")
+      .select([
         "team.id",
         "team.name",
-        "team.locked",
         "team.repositoryStatus",
-        "team.repositoryOperationId",
         "team.repositoryError",
         "team.tournamentExcluded",
         "team.score",
@@ -993,12 +965,11 @@ export class TeamService {
         "team.hadBye",
         "team.credits",
         "team.createdAt",
-        "team.updatedAt",
         "team.pictureSmallUploadId",
         "team.pictureLargeUploadId",
-        "team.backgroundLargeUploadId",
       ]);
-    } else {
+
+    if (!revealAll) {
       // Calculate revealed score dynamically
       query
         .leftJoin(
@@ -1006,22 +977,6 @@ export class TeamService {
           "match",
           "match.winnerId = team.id AND match.isRevealed = true AND match.phase = 'SWISS'",
         )
-        .select([
-          "team.id",
-          "team.name",
-          "team.locked",
-          "team.repositoryStatus",
-          "team.repositoryOperationId",
-          "team.repositoryError",
-          "team.tournamentExcluded",
-          "team.hadBye",
-          "team.createdAt",
-          "team.updatedAt",
-          "team.score",
-          "team.pictureSmallUploadId",
-          "team.pictureLargeUploadId",
-          "team.backgroundLargeUploadId",
-        ])
         .addSelect("COUNT(DISTINCT match.id)", "revealed_match_wins");
     }
 
@@ -1035,35 +990,22 @@ export class TeamService {
 
     if (sortBy) {
       const direction = searchDir?.toUpperCase() === "DESC" ? "DESC" : "ASC";
-      const sortColumn = sortBy;
 
-      const validSortColumns = [
-        "name",
-        "locked",
-        "score",
-        "createdAt",
-        "updatedAt",
-        "buchholzPoints",
-      ];
-
-      if (validSortColumns.includes(sortColumn)) {
-        if (sortColumn === "score" && !revealAll) {
-          query.orderBy("revealed_match_wins", direction as "ASC" | "DESC");
-        } else if (sortColumn === "buchholzPoints") {
-          if (revealAll) {
-            query.orderBy("team.buchholzPoints", direction as "ASC" | "DESC");
-          } else {
-            throw new BadRequestException(
-              "Buchholz points are hidden for this event.",
-            );
-          }
-        } else {
-          query.orderBy(`team.${sortColumn}`, direction as "ASC" | "DESC");
-        }
-      }
-
-      if (sortBy === "membersCount") {
-        query.orderBy("COUNT(DISTINCT user.id)", direction as "ASC" | "DESC");
+      if (sortBy === "name" || sortBy === "createdAt") {
+        query.orderBy(`team.${sortBy}`, direction);
+      } else if (sortBy === "score") {
+        query.orderBy(
+          revealAll ? "team.score" : "revealed_match_wins",
+          direction,
+        );
+      } else if (sortBy === "buchholzPoints") {
+        if (!revealAll)
+          throw new BadRequestException(
+            "Buchholz points are hidden for this event.",
+          );
+        query.orderBy("team.buchholzPoints", direction);
+      } else if (sortBy === "membersCount") {
+        query.orderBy("COUNT(DISTINCT user.id)", direction);
       }
     }
 
@@ -1073,11 +1015,9 @@ export class TeamService {
     const uploadIds = [
       ...new Set(
         result.entities.flatMap((team) =>
-          [
-            team.pictureSmallUploadId,
-            team.pictureLargeUploadId,
-            team.backgroundLargeUploadId,
-          ].filter((id): id is string => Boolean(id)),
+          [team.pictureSmallUploadId, team.pictureLargeUploadId].filter(
+            (id): id is string => Boolean(id),
+          ),
         ),
       ),
     ];
@@ -1096,51 +1036,27 @@ export class TeamService {
       : await this.getPublicStandings(eventId, teamIds);
     const tagsByTeam = await this.getLocationTagsForTeams(teamIds);
 
-    // Map properties from raw if entity is missing them due to partial select
-    const teamsWithCounts = await Promise.all(
-      result.entities.map(async (team, idx) => {
-        const raw = result.raw[idx];
+    return result.entities.map((team, idx) => {
+      const { picture } = mediaArtwork({
+        pictureSmallUpload: team.pictureSmallUploadId
+          ? uploadsById.get(team.pictureSmallUploadId)
+          : null,
+        pictureLargeUpload: team.pictureLargeUploadId
+          ? uploadsById.get(team.pictureLargeUploadId)
+          : null,
+        backgroundLargeUpload: null,
+      });
+      const standing: TeamStanding = revealAll
+        ? { score: team.score || 0, buchholzPoints: team.buchholzPoints ?? 0 }
+        : (publicStandings?.get(team.id) ?? EMPTY_STANDING);
+      const userCount = parseInt(result.raw[idx].user_count, 10) || 0;
+      const tags = tagsByTeam.get(team.id) ?? [];
+      const teamWithPicture = Object.assign(team, { picture });
 
-        const mappedTeam: TeamEntity & {
-          userCount: number;
-          score: number;
-          buchholzPoints: number;
-          tags: string[];
-        } = Object.assign(new TeamEntity(), team, {
-          ...mediaArtwork({
-            pictureSmallUpload: team.pictureSmallUploadId
-              ? uploadsById.get(team.pictureSmallUploadId)
-              : null,
-            pictureLargeUpload: team.pictureLargeUploadId
-              ? uploadsById.get(team.pictureLargeUploadId)
-              : null,
-            backgroundLargeUpload: team.backgroundLargeUploadId
-              ? uploadsById.get(team.backgroundLargeUploadId)
-              : null,
-          }),
-          hadBye: team.hadBye,
-          userCount: parseInt(raw.user_count, 10) || 0,
-          score: 0,
-          buchholzPoints: 0,
-          tags: tagsByTeam.get(team.id) ?? [],
-        });
-
-        if (revealAll) {
-          // For admins, use DB score which includes byes
-          mappedTeam.score = team.score || 0;
-          mappedTeam.buchholzPoints = team.buchholzPoints ?? 0;
-        } else {
-          // For public, Revealed Match Wins + Bye
-          const standing = publicStandings?.get(team.id) ?? EMPTY_STANDING;
-          mappedTeam.score = standing.score;
-          mappedTeam.buchholzPoints = standing.buchholzPoints;
-        }
-
-        return mappedTeam;
-      }),
-    );
-
-    return teamsWithCounts;
+      return isAdmin
+        ? toAdminEventTeamResponse(teamWithPicture, standing, userCount, tags)
+        : toEventTeamResponse(teamWithPicture, standing, userCount, tags);
+    });
   }
 
   async joinQueue(teamId: string, eventId: string) {
