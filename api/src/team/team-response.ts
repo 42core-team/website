@@ -103,6 +103,7 @@ export function toEventTeamResponse(
     createdAt: team.createdAt,
     score: standing.score,
     buchholzPoints: standing.buchholzPoints,
+    // A bye is public as soon as the round is paired, like the pairing itself.
     hadBye: team.hadBye,
   };
 }
