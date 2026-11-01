@@ -10,6 +10,8 @@ export function MatchTeamHeader({
   match: Match
   eventId: string
 }) {
+  // Queue matches are never revealed; whoever has their id sees the winner.
+  const showWinner = match.isRevealed || match.phase === MatchPhase.QUEUE
   return (
     <section
       aria-label="Match teams"
@@ -44,7 +46,7 @@ export function MatchTeamHeader({
                     }
                   </span>
                 )}
-              {match.isRevealed && match.winner?.id === team.id && (
+              {showWinner && match.winner?.id === team.id && (
                 <span className="ml-auto rounded-full bg-white/20 px-3 py-1 text-xs">
                   Winner
                 </span>

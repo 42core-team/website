@@ -1,11 +1,9 @@
 import {
   BadRequestException,
-  ForbiddenException,
   forwardRef,
   Inject,
   Injectable,
   Logger,
-  NotFoundException,
 } from "@nestjs/common";
 import { TeamService } from "../team/team.service";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -41,6 +39,7 @@ import { canViewTeamMatchReplay } from "./team-match-visibility";
 import { EventState, getEventState } from "../event/event-lifecycle";
 import {
   isRevealablePhase,
+  matchNotFound,
   toHiddenMatchResponse,
   toMatchResponse,
   toVisibleMatchResponse,
@@ -1104,10 +1103,10 @@ export class MatchService {
   }
 
   async getMatchesForTeam(teamId: string, userId: string) {
-    const team = await this.teamService.getTeamById(teamId, {
-      users: true,
-    });
-    const isTeamMember = team.users.some((user) => user.id === userId);
+    const team = await this.teamService.getTeamById(teamId);
+    const viewerTeam = userId
+      ? await this.teamService.getTeamOfUserForEvent(team.eventId, userId)
+      : null;
     const matchesToQuery = (
       await this.matchRepository.find({
         select: {
@@ -1176,7 +1175,10 @@ export class MatchService {
         results: [],
       };
 
-      const shouldRevealId = canViewTeamMatchReplay(isTeamMember);
+      const shouldRevealId = canViewTeamMatchReplay(
+        viewerTeam?.id,
+        match.teams.map((matchTeam) => matchTeam.id),
+      );
 
       if (!shouldRevealId) {
         const { id: _matchId, ...rest } = visibleMatch;
@@ -1288,7 +1290,7 @@ export class MatchService {
       logs: string[];
     }[]
   > {
-    const match = await this.matchRepository.findOneOrFail({
+    const match = await this.matchRepository.findOne({
       where: {
         id: matchId,
       },
@@ -1300,6 +1302,7 @@ export class MatchService {
       },
       withDeleted: true,
     });
+    if (!match) throw matchNotFound();
     const event = match.teams.find((team) => team.event)?.event;
     if (!event)
       this.logger.error(`Event for match with id ${matchId} not found.`);
@@ -1326,10 +1329,7 @@ export class MatchService {
         .map(([container]) => container),
     );
 
-    if (!isEventAdmin && ownContainers.size === 0)
-      throw new ForbiddenException(
-        "You are not allowed to view the logs of this match.",
-      );
+    if (!isEventAdmin && ownContainers.size === 0) throw matchNotFound();
 
     const containers: {
       id: string;
@@ -1373,15 +1373,13 @@ export class MatchService {
     );
   }
 
-  // Internal lookup; responses go through getMatchResponseById.
-  getMatchById(
-    matchId: string,
-    relations: FindOptionsRelations<MatchEntity> = {},
-  ): Promise<MatchEntity> {
-    return this.matchRepository.findOneOrFail({
+  async getEventIdOfMatch(matchId: string): Promise<string | undefined> {
+    const match = await this.matchRepository.findOne({
       where: { id: matchId },
-      relations,
+      relations: { teams: { event: true } },
+      withDeleted: true,
     });
+    return match?.teams.find((team) => team.event)?.event.id;
   }
 
   async getMatchResponseById(
@@ -1399,9 +1397,15 @@ export class MatchService {
     });
     // Unknown and unrevealed tournament matches answer the same way, so the
     // response never confirms that a hidden match id exists.
-    if (!match) throw new NotFoundException("Match not found");
+    if (!match) throw matchNotFound();
+    // Queue matches are never revealed. Their ids only go out to the teams
+    // that played them, and whoever has the id sees the match.
+    if (match.phase === MatchPhase.QUEUE) return toVisibleMatchResponse(match);
 
-    const eventId = match.teams?.[0]?.event?.id;
+    // Deleted teams are not loaded above; their event still counts.
+    const eventId =
+      match.teams?.find((team) => team.event)?.event.id ??
+      (await this.getEventIdOfMatch(match.id));
     const revealAll = eventId
       ? await this.canRevealAll(eventId, userId, adminReveal)
       : false;
@@ -1410,10 +1414,9 @@ export class MatchService {
         await this.addPlacementMatchFlagForMatch(match),
       );
 
-    if (isRevealablePhase(match.phase))
-      throw new NotFoundException("Match not found");
-    // Queue and gambling matches are never revealed. Viewers reach them by id
-    // already, so only the result is withheld, as before.
+    if (isRevealablePhase(match.phase)) throw matchNotFound();
+    // Gambling and manual matches are reached by id; their result is withheld
+    // until they are revealed.
     return { id: match.id, ...toHiddenMatchResponse(match) };
   }
 
