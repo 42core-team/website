@@ -932,6 +932,7 @@ export class MatchService {
       order: {
         round: "ASC",
         createdAt: "ASC",
+        id: "ASC",
       },
     });
 
@@ -1597,6 +1598,8 @@ export class MatchService {
 
   /** Totals over revealed matches and over phases that are never hidden. */
   getGlobalStats() {
+    // Gambling results are shown in the gambling summary, so their stats
+    // count even though gambling matches are never marked revealed.
     return this.matchStatsRepository
       .createQueryBuilder("match_stats")
       .innerJoin("match_stats.match", "match")

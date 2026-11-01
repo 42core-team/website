@@ -452,10 +452,20 @@ postgres("unrevealed match results (PostgreSQL)", () => {
     });
 
     it("lists swiss matches by round, then creation", async () => {
+      // Make creation order differ from insertion order, so the result can
+      // only match when the query sorts.
+      const repository = database.getRepository(MatchEntity);
+      const base = matches.m1.createdAt.getTime();
+      await repository.update(matches.m3.id, {
+        createdAt: new Date(base - 60_000),
+      });
+      await repository.update(matches.m2.id, {
+        createdAt: new Date(base - 30_000),
+      });
       const body = await swiss(users.admin.id, true);
       expect(body.map((match) => match.id)).toEqual([
-        matches.m1.id,
         matches.m2.id,
+        matches.m1.id,
         matches.m3.id,
       ]);
     });
@@ -773,6 +783,16 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       expect(Number(body.actionsExecuted)).toBe(QUEUE_ACTIONS + HIDDEN_ACTIONS);
       // The elimination match is still hidden.
       expect(Number(body.damageTotal)).toBe(HIDDEN_DAMAGE);
+    });
+
+    it("counts gambling matches in the global stats", async () => {
+      // Gambling results are shown in the gambling summary.
+      const gamblingDamage = 2468;
+      await createMatch(MatchPhase.GAMBLING, 0, ["B", "D"], "B", false, {
+        damageTotal: gamblingDamage,
+      });
+      const body = await globalStats();
+      expect(Number(body.damageTotal)).toBe(HIDDEN_DAMAGE + gamblingDamage);
     });
   });
 });
