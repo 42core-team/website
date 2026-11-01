@@ -3,7 +3,7 @@ jest.mock("../event/event.service", () => ({
   EventService: class EventService {},
 }));
 
-import { UnauthorizedException } from "@nestjs/common";
+import { NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { EventService } from "../event/event.service";
 import { MatchEntity, MatchPhase, MatchState } from "./entites/match.entity";
 import { MatchController } from "./match.controller";
@@ -102,5 +102,44 @@ describe("manual matches", () => {
     );
     expect(createManualMatch).not.toHaveBeenCalled();
     expect(getManualMatches).not.toHaveBeenCalled();
+  });
+});
+
+describe("match reveal", () => {
+  function setup(eventId: string | undefined, isAdmin: boolean) {
+    const getEventIdOfMatch = jest.fn().mockResolvedValue(eventId);
+    const revealMatch = jest.fn().mockResolvedValue(undefined);
+    const isEventAdmin = jest.fn().mockResolvedValue(isAdmin);
+    const controller = new MatchController(
+      { getEventIdOfMatch, revealMatch } as unknown as MatchService,
+      { isEventAdmin } as unknown as EventService,
+    );
+    return { controller, revealMatch, isEventAdmin };
+  }
+
+  async function revealError(eventId: string | undefined, isAdmin: boolean) {
+    const { controller, revealMatch } = setup(eventId, isAdmin);
+    const error = await controller
+      .revealMatch("match", "user")
+      .catch((caught: unknown) => caught);
+    expect(revealMatch).not.toHaveBeenCalled();
+    return error;
+  }
+
+  it("answers a non-admin exactly like an unknown match", async () => {
+    const hidden = await revealError("event", false);
+    const unknown = await revealError(undefined, false);
+    expect(hidden).toBeInstanceOf(NotFoundException);
+    expect(unknown).toBeInstanceOf(NotFoundException);
+    expect((hidden as NotFoundException).getResponse()).toEqual(
+      (unknown as NotFoundException).getResponse(),
+    );
+  });
+
+  it("lets an event admin reveal the match", async () => {
+    const { controller, revealMatch, isEventAdmin } = setup("event", true);
+    await controller.revealMatch("match", "admin");
+    expect(isEventAdmin).toHaveBeenCalledWith("event", "admin");
+    expect(revealMatch).toHaveBeenCalledWith("match");
   });
 });
