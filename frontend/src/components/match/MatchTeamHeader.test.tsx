@@ -57,6 +57,16 @@ describe('match team header', () => {
     expect(screen.getByText('Winner')).toBeTruthy()
   })
 
+  it('displays the winner of a QUEUE match, which is never revealed', () => {
+    render(
+      <MatchTeamHeader
+        match={{ ...match, phase: MatchPhase.QUEUE, isRevealed: false }}
+        eventId="event"
+      />,
+    )
+    expect(screen.getByText('Winner')).toBeTruthy()
+  })
+
   it('does not reveal the winner of an unrevealed match', () => {
     const view = render(<MatchTeamHeader match={match} eventId="event" />)
     expect(screen.queryByText('Winner')).toBeNull()
