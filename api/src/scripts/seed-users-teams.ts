@@ -6,7 +6,8 @@ import {
   UserEventPermissionEntity,
   PermissionRole,
 } from "../user/entities/user.entity";
-import { TeamEntity } from "../team/entities/team.entity";
+import { RepositoryStatus, TeamEntity } from "../team/entities/team.entity";
+import { randomUUID } from "crypto";
 import { config } from "dotenv";
 import { DatabaseConfig } from "../DatabaseConfig";
 import { ConfigService } from "@nestjs/config";
@@ -105,8 +106,11 @@ async function bootstrap() {
       // Assign 3 users to each team
       const teamUsers = savedUsers.slice((i - 1) * 3, i * 3);
       team.users = teamUsers;
-      team.repo = "https://github.com/42core-team/monorepo";
-      team.startedRepoCreationAt = new Date();
+      // github-service simulates every operation on sim-* repositories when
+      // NODE_ENV is development, so these teams never touch GitHub.
+      team.id = randomUUID();
+      team.repo = `sim-${team.id}`;
+      team.repositoryStatus = RepositoryStatus.READY;
 
       teams.push(team);
     }

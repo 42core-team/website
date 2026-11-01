@@ -26,8 +26,56 @@ jest.mock("./githubApi", () => ({
 }));
 
 describe("AppService", () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+
   afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
     jest.restoreAllMocks();
+  });
+
+  const accessRequest = (repositoryName: string) => ({
+    teamId: "team",
+    operationId: "operation",
+    repositoryName,
+    githubOrg: "org",
+    encryptedSecret: "secret",
+    locked: true,
+    githubUsers: [{ username: "member", githubId: "1", githubAccessToken: "" }],
+  });
+
+  it("reports a simulated lock without calling GitHub in development", async () => {
+    process.env.NODE_ENV = "development";
+    const emit = jest.fn().mockReturnValue(of(undefined));
+    jest.spyOn(ClientProxyFactory, "create").mockReturnValue({ emit } as never);
+    const service = new AppService({} as never);
+    jest.mocked(RepositoryApi).mockClear();
+
+    await service.setRepositoryAccess(accessRequest("sim-team"));
+
+    expect(RepositoryApi).not.toHaveBeenCalled();
+    expect(emit).toHaveBeenCalledWith("repository_operation_completed", {
+      teamId: "team",
+      operationId: "operation",
+      repositoryName: "sim-team",
+      action: "LOCK",
+    });
+  });
+
+  it("does not simulate sim-* repositories outside development", async () => {
+    process.env.NODE_ENV = "production";
+    const emit = jest.fn().mockReturnValue(of(undefined));
+    jest.spyOn(ClientProxyFactory, "create").mockReturnValue({ emit } as never);
+    const service = new AppService({} as never);
+    const removeFormerCollaborators = jest
+      .spyOn(service, "removeFormerCollaborators")
+      .mockResolvedValue(undefined);
+    jest
+      .spyOn(service, "removeWritePermissionsForUser")
+      .mockResolvedValue(undefined);
+
+    await service.setRepositoryAccess(accessRequest("sim-team"));
+
+    expect(removeFormerCollaborators).toHaveBeenCalled();
   });
 
   it("locks a repository even when a member keeps inherited write access", async () => {
