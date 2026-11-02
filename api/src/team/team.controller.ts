@@ -210,6 +210,16 @@ export class TeamController {
     if (userId === inviteUserDto.userToInviteId)
       throw new BadRequestException("You cannot invite yourself to a team.");
 
+    if (
+      !(await this.eventService.isUserRegisteredForEvent(
+        eventId,
+        inviteUserDto.userToInviteId,
+      ))
+    )
+      throw new BadRequestException(
+        "This user is not registered for this event.",
+      );
+
     if (await this.teamService.isTeamFull(team.id))
       throw new BadRequestException("This team is full.");
     if (

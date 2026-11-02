@@ -32,6 +32,7 @@ jest.mock("../user/user.service", () => ({
 }));
 
 import { UserEntity } from "../user/entities/user.entity";
+import { EventEntity } from "../event/entities/event.entity";
 import { TeamService } from "./team.service";
 
 type Where = Record<string, unknown>;
@@ -53,7 +54,12 @@ function setup() {
     locked: false,
     repositoryStatus: "PENDING",
   };
-  const state = { hasTeam: false, invited: true, nameTaken: false };
+  const state = {
+    hasTeam: false,
+    invited: true,
+    nameTaken: false,
+    registered: true,
+  };
   const order: string[] = [];
   const repository = {
     findOneOrFail: jest.fn(async (options: { lock?: unknown }) => {
@@ -66,7 +72,10 @@ function setup() {
     }),
   };
   const manager = {
-    getRepository: () => repository,
+    getRepository: (entity: unknown) =>
+      entity === EventEntity
+        ? { existsBy: jest.fn(async () => state.registered) }
+        : repository,
     findOneOrFail: jest.fn(async (entity: unknown) => {
       if (entity !== UserEntity) return event;
       order.push("lock:user");
@@ -130,6 +139,18 @@ describe("team membership under lock", () => {
     await expect(service.acceptTeamInvite("joins", "team")).rejects.toThrow(
       "You are not invited to this team.",
     );
+    expect(order).not.toContain("add:users");
+  });
+
+  it("rejects an invite when registration is absent at acceptance", async () => {
+    const { service, state, order, team, manager } = setup();
+    state.registered = false;
+    team.repo = "repo";
+    await expect(service.acceptTeamInvite("joins", "team")).rejects.toThrow(
+      "You are not registered for this event.",
+    );
+    expect(manager.update).not.toHaveBeenCalled();
+    expect(order).not.toContain("remove:teamInvites");
     expect(order).not.toContain("add:users");
   });
 

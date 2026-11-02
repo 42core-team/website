@@ -152,6 +152,40 @@ postgres("team membership concurrency (PostgreSQL)", () => {
     return Number(rows[0].count);
   }
 
+  it("requires registration for a private event at acceptance, but permits public invitees", async () => {
+    const event = await createEvent(4);
+    await database
+      .getRepository(EventEntity)
+      .update(event.id, { isPrivate: true });
+    const [owner, invitee] = await Promise.all([createUser(), createUser()]);
+    const team = await createTeam(event, [owner], [invitee]);
+
+    await expect(service.acceptTeamInvite(invitee.id, team.id)).rejects.toThrow(
+      "You are not registered for this event.",
+    );
+    expect(await memberCount(team.id)).toBe(1);
+    expect(
+      await database.getRepository(TeamEntity).existsBy({
+        id: team.id,
+        teamInvites: { id: invitee.id },
+      }),
+    ).toBe(true);
+
+    await database
+      .createQueryBuilder()
+      .relation(EventEntity, "users")
+      .of(event.id)
+      .add(invitee.id);
+    await service.acceptTeamInvite(invitee.id, team.id);
+    expect(await memberCount(team.id)).toBe(2);
+
+    const publicEvent = await createEvent(4);
+    const publicInvitee = await createUser();
+    const publicTeam = await createTeam(publicEvent, [owner], [publicInvitee]);
+    await service.acceptTeamInvite(publicInvitee.id, publicTeam.id);
+    expect(await memberCount(publicTeam.id)).toBe(2);
+  });
+
   it("lets only one of two invitees take the last free spot", async () => {
     const event = await createEvent(2);
     const [member, first, second] = await Promise.all([
