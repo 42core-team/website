@@ -197,6 +197,60 @@ postgres("team membership concurrency (PostgreSQL)", () => {
     );
   });
 
+  it("rejects a duplicate leave without deleting the remaining member's team", async () => {
+    const event = await createEvent(3);
+    const [departing, remaining] = await Promise.all([
+      createUser(),
+      createUser(),
+    ]);
+    const team = await createTeam(event, [departing, remaining], []);
+
+    await holdTeams([team.id]);
+    const leaves = Promise.allSettled([
+      service.leaveTeam(team.id, departing.id),
+      service.leaveTeam(team.id, departing.id),
+    ]);
+    await waitForLockWaiters(2);
+    await release();
+    const results = await leaves;
+
+    expect(rejectionMessages(results)).toEqual([
+      "You are not part of a team for this event.",
+    ]);
+    const current = await database.getRepository(TeamEntity).findOneOrFail({
+      where: { id: team.id },
+      relations: { users: true },
+    });
+    expect(current.users.map((user) => user.id)).toEqual([remaining.id]);
+  });
+
+  it("keeps a successful invite acceptance from racing last-member deletion", async () => {
+    const event = await createEvent(3);
+    const [departing, invitee] = await Promise.all([
+      createUser(),
+      createUser(),
+    ]);
+    const team = await createTeam(event, [departing], [invitee]);
+
+    await holdTeams([team.id]);
+    const leave = service.leaveTeam(team.id, departing.id);
+    const accept = service.acceptTeamInvite(invitee.id, team.id);
+    const resultsPromise = Promise.allSettled([leave, accept]);
+    await waitForLockWaiters(2);
+    await release();
+    const [leaveResult, acceptResult] = await resultsPromise;
+    expect(leaveResult.status).toBe("fulfilled");
+    const current = await database.getRepository(TeamEntity).findOne({
+      where: { id: team.id },
+      relations: { users: true },
+    });
+    if (acceptResult.status === "fulfilled") {
+      expect(current?.users.map((user) => user.id)).toEqual([invitee.id]);
+    } else {
+      expect(current).toBeNull();
+    }
+  });
+
   it("lets only one of two users create a team with the same name", async () => {
     const event = await createEvent(4);
     const [first, second] = await Promise.all([createUser(), createUser()]);

@@ -774,16 +774,17 @@ export class TeamService {
   }
 
   private async deleteTeamRecord(team: TeamEntity) {
-    const teamId = team.id;
+    await this.deleteTeamRepository(team);
+    return this.teamRepository.softDelete(team.id);
+  }
 
+  private async deleteTeamRepository(team: TeamEntity) {
     if (team.repo)
       await this.githubApiService.deleteRepository(
         team.repo,
         team.event.githubOrg,
         team.event.githubOrgSecret,
       );
-
-    return this.teamRepository.softDelete(teamId);
   }
 
   async setTeamCredits(eventId: string, teamId: string, credits: number) {
@@ -811,27 +812,38 @@ export class TeamService {
   }
 
   async leaveTeam(teamId: string, userId: string) {
-    const { repo, lastMember } = await this.dataSource.transaction(
+    const { team, deletion } = await this.dataSource.transaction(
       async (manager) => {
         const team = await this.lockTeamForMembershipChange(manager, teamId);
-        const lastMember = team.users.length <= 1;
+        if (!team.users.some((user) => user.id === userId))
+          throw new NotFoundException(
+            "You are not part of a team for this event.",
+          );
+        const lastMember = team.users.length === 1;
         await manager
           .createQueryBuilder()
           .relation(TeamEntity, "users")
           .of(teamId)
           .remove(userId);
-        if (!lastMember && team.repo)
+        if (lastMember) {
+          const deletion = await manager.softDelete(TeamEntity, teamId);
+          return { team, deletion };
+        }
+        if (team.repo)
           await manager.update(TeamEntity, teamId, {
             repositoryStatus: RepositoryStatus.UNLOCKING,
           });
-        return { repo: team.repo, lastMember };
+        return { team, deletion: undefined };
       },
     );
 
-    if (lastMember) return this.deleteTeam(teamId);
+    if (deletion) {
+      await this.deleteTeamRepository(team);
+      return deletion;
+    }
     // The permission operation reconciles collaborators against the new
     // roster, which removes the departed member from the repository.
-    if (repo) await this.syncRepositoryAccess(teamId);
+    if (team.repo) await this.syncRepositoryAccess(teamId);
   }
 
   getTeamCountForEvent(eventId: string): Promise<number> {
