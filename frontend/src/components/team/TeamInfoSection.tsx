@@ -33,6 +33,8 @@ import { TeamAppearanceEditor } from './TeamAppearanceEditor'
 
 interface TeamInfoSectionProps {
   canEdit?: boolean
+  /** Sending invites also needs team creation to be on for the event. */
+  canInvite?: boolean
   myTeam: Team
   onLeaveTeam: () => Promise<boolean>
   isLeaving: boolean
@@ -52,6 +54,7 @@ export function TeamInfoSection({
   isRepoCreating,
   githubOrg,
   canEdit = true,
+  canInvite = canEdit,
   showBack = false,
 }: Readonly<TeamInfoSectionProps>) {
   const eventId = useParams().id as string
@@ -187,7 +190,7 @@ export function TeamInfoSection({
         <section aria-label="Team members" className="rounded-xl border p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="text-lg font-semibold">Members</h3>
-            {canEdit && (
+            {canInvite && (
               <Button size="sm" onClick={() => setIsOpen(true)}>
                 <Plus className="size-4" />
                 Invite Others
@@ -268,7 +271,7 @@ export function TeamInfoSection({
 
         {/* Invite Modal */}
         <TeamInviteModal
-          isOpen={isOpen && canEdit}
+          isOpen={isOpen && canInvite}
           onClose={() => setIsOpen(false)}
           teamId={myTeam.id}
           eventId={eventId}

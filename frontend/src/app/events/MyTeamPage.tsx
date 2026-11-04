@@ -150,7 +150,7 @@ export function MyTeamPage({
     },
     onError: (error: Error | AxiosError<{ message?: string }>) => {
       toast.error(
-        ('response' in error && error.response?.data?.message) ||
+        ('response' in error && error.response?.data.message) ||
           'Failed to accept the invite.',
       )
     },
@@ -191,6 +191,10 @@ export function MyTeamPage({
           <TeamInfoSection
             myTeam={myTeamQuery.data}
             canEdit={teamEditsOpen(eventQuery.data, myTeamQuery.data, now)}
+            canInvite={
+              eventQuery.data.canCreateTeam &&
+              teamEditsOpen(eventQuery.data, myTeamQuery.data, now)
+            }
             onLeaveTeam={async () => {
               await leaveTeamMutation.mutateAsync()
               return true
