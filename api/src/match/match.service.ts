@@ -47,7 +47,9 @@ import {
   toVisibleMatchResponse,
   type HiddenMatchResponse,
   type MatchResponse,
+  toMatchTeamResponse,
 } from "./match-response";
+import { QueueMatchesQueryDto } from "./dtos/queueMatchesQueryDto";
 
 const QUEUE_MATCH_SELECT: FindOptionsSelect<MatchEntity> = {
   id: true,
@@ -1244,8 +1246,52 @@ export class MatchService {
     return matches.map(this.serializeQueueMatch);
   }
 
-  async getAllQueueMatches(eventId: string) {
-    return this.getLatestEventMatches(eventId, MatchPhase.QUEUE);
+  async getAllQueueMatches(
+    eventId: string,
+    { page, pageSize, search }: QueueMatchesQueryDto,
+  ) {
+    const pageQuery = this.matchRepository
+      .createQueryBuilder("match")
+      .select(["match.id", "match.createdAt"])
+      .withDeleted()
+      .innerJoin("match.teams", "team")
+      .where("match.phase = :phase", { phase: MatchPhase.QUEUE })
+      .andWhere("team.event = :eventId", { eventId })
+      .orderBy("match.createdAt", "DESC")
+      .addOrderBy("match.id", "DESC")
+      .skip((page - 1) * pageSize)
+      .take(pageSize);
+
+    const searchTerm = search?.trim();
+    if (searchTerm) {
+      pageQuery.andWhere("team.name ILIKE :searchName", {
+        searchName: `%${searchTerm.replace(/[\\%_]/g, "\\$&")}%`,
+      });
+    }
+
+    const [pageMatches, total] = await pageQuery.getManyAndCount();
+
+    // Loaded apart from the search, which would also filter the returned teams.
+    const matches = await this.matchRepository.find({
+      where: { id: In(pageMatches.map((match) => match.id)) },
+      relations: QUEUE_MATCH_RELATIONS,
+      order: { createdAt: "DESC", id: "DESC" },
+      withDeleted: true,
+    });
+
+    return {
+      matches: matches.map((match) => ({
+        id: match.id,
+        state: match.state,
+        phase: match.phase,
+        createdAt: match.createdAt,
+        teams: match.teams.map(toMatchTeamResponse),
+        winner: match.winner ? toMatchTeamResponse(match.winner) : null,
+      })),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   async getManualMatches(eventId: string) {

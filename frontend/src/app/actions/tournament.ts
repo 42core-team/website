@@ -1,6 +1,7 @@
 import type {
   Match,
   MatchLogs,
+  PaginatedQueueMatches,
   QueueMatch,
 } from '@/app/actions/tournament-model'
 import axiosInstance from '@/app/actions/axios'
@@ -60,6 +61,20 @@ export async function cleanupAllMatches(
   phase: string,
 ): Promise<void> {
   await axiosInstance.put<void>(`/match/cleanup-all/${eventId}/${phase}`)
+}
+
+export async function getAllQueueMatches(
+  eventId: string,
+  page: number,
+  pageSize: number,
+  search: string,
+) {
+  return (
+    await axiosInstance.get<PaginatedQueueMatches>(
+      `/match/queue/${eventId}/admin`,
+      { params: { page, pageSize, search: search || undefined } },
+    )
+  ).data
 }
 
 export async function getManualMatches(eventId: string) {

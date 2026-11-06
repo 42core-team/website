@@ -46,6 +46,7 @@ import { searchUsers } from '@/app/actions/user'
 import { StarterTemplatesManagement } from '@/components/dashboard/starter-templates-management'
 import { ManualMatchesManagement } from '@/components/dashboard/manual-matches-management'
 import { MatchesAnalytics } from '@/components/dashboard/matches-analytics'
+import { QueueMatchesManagement } from '@/components/dashboard/queue-matches-management'
 import { WhitelistManagement } from '@/components/dashboard/whitelist-management'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -519,6 +520,7 @@ function DashboardRoute() {
         <TabsContent value="matches" className="space-y-6">
           <MatchesAnalytics eventId={id} />
           <ManualMatchesManagement eventId={id} />
+          <QueueMatchesManagement eventId={id} />
         </TabsContent>
 
         <TabsContent value="operation" className="space-y-6">

@@ -72,6 +72,13 @@ export interface QueueMatch {
   }[]
 }
 
+export interface PaginatedQueueMatches {
+  matches: QueueMatch[]
+  total: number
+  page: number
+  pageSize: number
+}
+
 export type MatchLogs = {
   container: string
   team: string
