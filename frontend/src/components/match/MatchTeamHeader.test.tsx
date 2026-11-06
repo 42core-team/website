@@ -54,29 +54,42 @@ describe('match team header', () => {
       />,
     )
     expect(screen.queryByText('1234')).toBeNull()
-    expect(screen.getByText('Winner')).toBeTruthy()
   })
 
-  it('displays the winner of a QUEUE match, which is never revealed', () => {
-    render(
+  it('shows team pictures and background covers', () => {
+    const { container } = render(
       <MatchTeamHeader
-        match={{ ...match, phase: MatchPhase.QUEUE, isRevealed: false }}
+        match={{
+          ...match,
+          teams: [
+            {
+              id: 'a',
+              name: 'Alpha',
+              picture: { small: 'alpha-small.webp', large: 'alpha-large.webp' },
+              background: { small: 'bg-small.webp', large: 'bg-large.webp' },
+            },
+            match.teams[1],
+          ],
+        }}
         eventId="event"
       />,
     )
-    expect(screen.getByText('Winner')).toBeTruthy()
+    expect(container.querySelector('img[src$="/bg-large.webp"]')).toBeTruthy()
+    // The team without artwork falls back to its initials.
+    expect(screen.getByText('BE')).toBeTruthy()
   })
 
-  it('does not reveal the winner of an unrevealed match', () => {
-    const view = render(<MatchTeamHeader match={match} eventId="event" />)
-    expect(screen.queryByText('Winner')).toBeNull()
-    expect(screen.getByText('Alpha')).toBeTruthy()
-    view.rerender(
-      <MatchTeamHeader
-        match={{ ...match, isRevealed: true }}
-        eventId="event"
-      />,
-    )
-    expect(screen.getByText('Winner')).toBeTruthy()
-  })
+  it.each([MatchPhase.SWISS, MatchPhase.QUEUE])(
+    'never marks the winner of a revealed %s match',
+    (phase) => {
+      render(
+        <MatchTeamHeader
+          match={{ ...match, phase, isRevealed: true }}
+          eventId="event"
+        />,
+      )
+      expect(screen.queryByText('Winner')).toBeNull()
+      expect(screen.getByText('Alpha')).toBeTruthy()
+    },
+  )
 })

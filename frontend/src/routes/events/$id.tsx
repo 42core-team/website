@@ -11,6 +11,7 @@ import {
   isUserRegisteredForEvent,
 } from '@/app/actions/event'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
+import { useNavbar } from '@/contexts/NavbarContext'
 import GithubLoginButton from '@/components/github'
 import EventHeader from '@/components/event-status/event-header'
 import EventMomentCard from '@/components/event-status/event-moment-card'
@@ -53,6 +54,7 @@ function EventFact({
 function EventRoute() {
   const now = useEventClock()
   const { id } = Route.useParams()
+  const { isSiteNavHidden } = useNavbar()
   const isEventOverview = useLocation({
     select: (location) =>
       location.pathname === `/events/${id}` ||
@@ -165,12 +167,14 @@ function EventRoute() {
   })
   const eventShell = (children: ReactNode) => (
     <div className="relative flex min-h-lvh flex-col">
-      <EventHeader
-        eventName={event.name}
-        moment={moment}
-        tabs={tabs}
-        now={now}
-      />
+      {!isSiteNavHidden && (
+        <EventHeader
+          eventName={event.name}
+          moment={moment}
+          tabs={tabs}
+          now={now}
+        />
+      )}
       {children}
     </div>
   )

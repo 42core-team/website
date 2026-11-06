@@ -8,6 +8,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import ClientProviders from '@/components/ClientProviders'
+import { useNavbar } from '@/contexts/NavbarContext'
 import Navbar from '@/layouts/basic-navbar'
 import Footer from '@/layouts/footer'
 
@@ -47,6 +48,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   shellComponent: RootDocument,
 })
 
+function SiteNavbar() {
+  const { isSiteNavHidden } = useNavbar()
+  return isSiteNavHidden ? null : <Navbar />
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext()
 
@@ -54,7 +60,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ClientProviders>
         <div className="flex min-h-dvh flex-col">
-          <Navbar />
+          <SiteNavbar />
           <div className="flex-1">
             <Outlet />
           </div>
