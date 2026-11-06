@@ -2,7 +2,8 @@ import {
   ACTIVITY_WEIGHT,
   ELO_WEIGHT,
   rankQueueOpponents,
-  RECENT_OPPONENT_PENALTY,
+  REPEAT_OPPONENT_DECAY,
+  REPEAT_OPPONENT_WEIGHT,
   scoreQueueOpponent,
 } from "./queue-matchmaking";
 
@@ -17,7 +18,7 @@ describe("queue matchmaking", () => {
           id: "active-team",
           elo: 1200,
           lastQueueMatchAt: now,
-          wasRecentOpponent: false,
+          matchesAgo: [],
         },
         now,
       ),
@@ -32,13 +33,13 @@ describe("queue matchmaking", () => {
           id: "close-elo",
           elo: 1200,
           lastQueueMatchAt: null,
-          wasRecentOpponent: false,
+          matchesAgo: [],
         },
         {
           id: "active-distant-elo",
           elo: 2000,
           lastQueueMatchAt: now,
-          wasRecentOpponent: false,
+          matchesAgo: [],
         },
       ],
       now,
@@ -47,19 +48,58 @@ describe("queue matchmaking", () => {
     expect(ranked[0].id).toBe("close-elo");
   });
 
-  it("penalizes opponents from the team's last three queue matches", () => {
-    const score = scoreQueueOpponent(
-      1200,
-      {
-        id: "recent-opponent",
-        elo: 1200,
-        lastQueueMatchAt: now,
-        wasRecentOpponent: true,
-      },
-      now,
-    );
+  describe("repeat opponent penalty", () => {
+    const scoreWith = (matchesAgo: number[]) =>
+      scoreQueueOpponent(
+        1200,
+        { id: "opponent", elo: 1200, lastQueueMatchAt: now, matchesAgo },
+        now,
+      );
+    const unpenalized = ELO_WEIGHT + ACTIVITY_WEIGHT;
 
-    expect(score).toBe(ELO_WEIGHT + ACTIVITY_WEIGHT - RECENT_OPPONENT_PENALTY);
+    it("applies the full weight to the latest opponent", () => {
+      expect(scoreWith([0])).toBe(unpenalized - REPEAT_OPPONENT_WEIGHT);
+    });
+
+    it("fades with each match played since", () => {
+      expect(scoreWith([2])).toBe(
+        unpenalized - REPEAT_OPPONENT_WEIGHT * REPEAT_OPPONENT_DECAY ** 2,
+      );
+    });
+
+    it("adds up over repeated matches", () => {
+      expect(scoreWith([0, 1])).toBe(
+        unpenalized -
+          REPEAT_OPPONENT_WEIGHT -
+          REPEAT_OPPONENT_WEIGHT * REPEAT_OPPONENT_DECAY,
+      );
+    });
+
+    it("lets a distant opponent beat the closest team right after a match", () => {
+      const ranked = rankQueueOpponents(
+        1200,
+        [
+          { id: "closest", elo: 1200, lastQueueMatchAt: now, matchesAgo: [0] },
+          { id: "distant", elo: 3200, lastQueueMatchAt: null, matchesAgo: [] },
+        ],
+        now,
+      );
+
+      expect(ranked[0].id).toBe("distant");
+    });
+
+    it("lets a close opponent return before a distant one once it has faded", () => {
+      const ranked = rankQueueOpponents(
+        1200,
+        [
+          { id: "close", elo: 1200, lastQueueMatchAt: null, matchesAgo: [4] },
+          { id: "distant", elo: 2000, lastQueueMatchAt: null, matchesAgo: [] },
+        ],
+        now,
+      );
+
+      expect(ranked[0].id).toBe("close");
+    });
   });
 
   it("uses the team id as a deterministic tie breaker", () => {
@@ -68,13 +108,13 @@ describe("queue matchmaking", () => {
         id: "team-b",
         elo: 1200,
         lastQueueMatchAt: null,
-        wasRecentOpponent: false,
+        matchesAgo: [],
       },
       {
         id: "team-a",
         elo: 1200,
         lastQueueMatchAt: null,
-        wasRecentOpponent: false,
+        matchesAgo: [],
       },
     ]);
 
