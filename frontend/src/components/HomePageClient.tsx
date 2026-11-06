@@ -12,11 +12,12 @@ import type { Event } from '@/app/actions/event'
 import Image from '@/components/app-image'
 import Link from '@/components/app-link'
 import GlobalStats from '@/components/GlobalStats'
-import { GithubIcon, WikiIcon } from '@/components/icons'
+import { DiscordIcon, GithubIcon, WikiIcon } from '@/components/icons'
 import { CoreLogoWhite } from '@/components/social'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { siteConfig } from '@/config/site'
 import { getVisualizerUrl } from '@/lib/env'
 import { eventState, lifecycleLabels } from '@/lib/event-lifecycle'
 import WorldChampionshipBanner from '@/components/world-championship-banner'
@@ -905,6 +906,21 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
               >
                 <GithubIcon size={20} />
                 GitHub
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="min-h-11 w-full sm:w-auto"
+            >
+              <Link
+                href={siteConfig.links.discord}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <DiscordIcon size={20} />
+                Discord
               </Link>
             </Button>
           </div>
