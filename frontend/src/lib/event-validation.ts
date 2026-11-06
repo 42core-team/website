@@ -6,7 +6,7 @@
  * which leaves 32 characters for the event name.
  */
 const GITHUB_REPO_NAME_MAX_LENGTH = 100
-const TEAM_NAME_MAX_LENGTH = 30
+export const TEAM_NAME_MAX_LENGTH = 30
 const TEAM_ID_LENGTH = 36
 
 export const EVENT_NAME_MAX_LENGTH =
