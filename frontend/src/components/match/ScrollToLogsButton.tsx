@@ -2,7 +2,7 @@ import type { RefObject } from 'react'
 import { ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-/** Floats over the visualizer, which fills the viewport and hides the logs. */
+/** Points to the logs, which the viewport-filling visualizer pushes out of view. */
 export function ScrollToLogsButton({
   logsRef,
 }: {
@@ -11,12 +11,9 @@ export function ScrollToLogsButton({
   return (
     <Button
       type="button"
-      variant="secondary"
+      variant="ghost"
       size="sm"
-      // Beside the board, this spot is the only free one: the visualizer keeps
-      // its controls along the top, the second team's name at the bottom right,
-      // and a 7rem corner button at the bottom left that grows on hover.
-      className="absolute bottom-4 left-32 rounded-full shadow-lg"
+      className="text-muted-foreground"
       onClick={() => {
         const logs = logsRef.current
         if (!logs) return

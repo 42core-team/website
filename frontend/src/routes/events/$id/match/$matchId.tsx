@@ -6,7 +6,7 @@ import {
   useCanGoBack,
   useRouter,
 } from '@tanstack/react-router'
-import { ChevronLeft, ExternalLink } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import { useRef } from 'react'
 import { getEventById, isEventAdmin } from '@/app/actions/event'
 import {
@@ -16,7 +16,6 @@ import {
 } from '@/app/actions/tournament'
 import { MatchPhase } from '@/app/actions/tournament-model'
 import MatchLogsDisplay from '@/components/match/MatchLogsDisplay'
-import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useHideSiteNav } from '@/contexts/NavbarContext'
 import Navbar from '@/layouts/basic-navbar'
@@ -84,6 +83,7 @@ function MatchRoute() {
     // else gets a 404 and the section stays hidden.
     retry: retryUnlessStatus(403, 404),
   })
+  const hasLogs = logsQuery.data?.some((log) => log.logs.length > 0)
   const isLoading =
     matchQuery.isPending || (isEliminationMatch && teamCountQuery.isPending)
   const isError =
@@ -129,24 +129,7 @@ function MatchRoute() {
         }
         center={<MatchTeamHeader match={matchQuery.data} eventId={id} />}
         actions={
-          visualizerUrl && (
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="hidden text-muted-foreground sm:inline-flex"
-            >
-              <a
-                href={visualizerUrl}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Open visualizer"
-              >
-                <ExternalLink />
-                <span className="hidden xl:inline">Open visualizer</span>
-              </a>
-            </Button>
-          )
+          visualizerUrl && hasLogs && <ScrollToLogsButton logsRef={logsRef} />
         }
       />
       <main>
@@ -156,14 +139,13 @@ function MatchRoute() {
           // viewport below the navbar (4rem and a 1px border), but stay short
           // enough on narrow screens that the board, 79px shorter than the
           // iframe, still fits.
-          <div className="relative h-[min(calc(100dvh-4rem-1px),calc(100vw+4rem))] overflow-hidden bg-black">
+          <div className="h-[min(calc(100dvh-4rem-1px),calc(100vw+4rem))] overflow-hidden bg-black">
             <iframe
               src={visualizerUrl}
               title="Match visualizer"
               className="h-full w-full"
               allowFullScreen
             />
-            {logsQuery.data && <ScrollToLogsButton logsRef={logsRef} />}
           </div>
         )}
         {logsQuery.data && (
