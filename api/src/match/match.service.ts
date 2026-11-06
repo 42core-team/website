@@ -37,6 +37,7 @@ import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
 import { GamblingService } from "../gambling/gambling.service";
 import { canViewTeamMatchReplay } from "./team-match-visibility";
 import { EventState, getEventState } from "../event/event-lifecycle";
+import { lockEvent } from "../event/event-lock";
 import {
   isRevealablePhase,
   matchNotFound,
@@ -236,17 +237,13 @@ export class MatchService {
 
     if (notFinishedMatches > 0) return;
 
-    const [lockPart1, lockPart2] = this.getEventLockKey(event.id);
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
       // Use advisory lock to prevent multiple round finishes for the same event
-      await queryRunner.query("SELECT pg_advisory_xact_lock($1, $2)", [
-        lockPart1,
-        lockPart2,
-      ]);
+      await lockEvent(queryRunner, event.id);
 
       // Re-check if the round is still unfinished inside the transaction
       const stillNotFinished = await queryRunner.manager.count(MatchEntity, {
@@ -283,13 +280,6 @@ export class MatchService {
     } finally {
       await queryRunner.release();
     }
-  }
-
-  private getEventLockKey(eventId: string): [number, number] {
-    const hex = eventId.replace(/-/g, "");
-    const part1 = parseInt(hex.slice(0, 8), 16) | 0;
-    const part2 = parseInt(hex.slice(8, 16), 16) | 0;
-    return [part1, part2];
   }
 
   async processSwissFinishRound(evenId: string) {
@@ -332,15 +322,7 @@ export class MatchService {
    * a round that already has matches is left alone.
    */
   async resumeTournamentProgression(eventId: string) {
-    const [lockPart1, lockPart2] = this.getEventLockKey(eventId);
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    try {
-      await queryRunner.query("SELECT pg_advisory_xact_lock($1, $2)", [
-        lockPart1,
-        lockPart2,
-      ]);
+    await this.withEventLock(eventId, async () => {
       const event = await this.eventService.getEventById(eventId, {
         teams: true,
       });
@@ -354,7 +336,25 @@ export class MatchService {
           await this.createNextSwissMatches(eventId);
         else await this.createNextTournamentMatches(eventId);
       }
+    });
+  }
+
+  /** Admin entry point; the lock keeps the advancement limit stable while seeding. */
+  startTournamentMatches(eventId: string) {
+    return this.withEventLock(eventId, () =>
+      this.createNextTournamentMatches(eventId),
+    );
+  }
+
+  private async withEventLock<T>(eventId: string, work: () => Promise<T>) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      await lockEvent(queryRunner, eventId);
+      const result = await work();
       await queryRunner.commitTransaction();
+      return result;
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -752,10 +752,9 @@ export class MatchService {
   async createFirstTournamentMatches(event: EventEntity) {
     event = await this.eventService.getEventById(event.id, { teams: true });
     const entrants = this.requireTournamentReady(event);
-    const teamsCount = entrants.length;
-    const highestPowerOfTwo = Math.pow(2, Math.floor(Math.log2(teamsCount)));
+    const bracketSize = this.getBracketSize(event, entrants.length);
 
-    if (highestPowerOfTwo < 2) {
+    if (bracketSize < 2) {
       throw new Error(
         "Not enough teams to create matches for the first round of the tournament. Minimum 2 teams required.",
       );
@@ -783,12 +782,12 @@ export class MatchService {
     }
 
     this.logger.log(
-      `start tournament with ${highestPowerOfTwo} teams for event ${event.name}`,
+      `start tournament with ${bracketSize} teams for event ${event.name}`,
     );
 
-    const seedOrder = this.generateSeedOrder(highestPowerOfTwo);
+    const seedOrder = this.generateSeedOrder(bracketSize);
 
-    for (let i = 0; i < highestPowerOfTwo; i += 2) {
+    for (let i = 0; i < bracketSize; i += 2) {
       const team1 = sortedTeams[seedOrder[i]];
       const team2 = sortedTeams[seedOrder[i + 1]];
 
@@ -974,8 +973,15 @@ export class MatchService {
     const event = await this.eventService.getEventById(eventId, {
       teams: true,
     });
-    const teamsCount = this.getTournamentEntrants(event).length;
-    return Math.pow(2, Math.floor(Math.log2(teamsCount)));
+    return this.getBracketSize(event, this.getTournamentEntrants(event).length);
+  }
+
+  private getBracketSize(event: EventEntity, entrantCount: number) {
+    const highestPowerOfTwo = Math.pow(2, Math.floor(Math.log2(entrantCount)));
+    return Math.min(
+      highestPowerOfTwo,
+      event.tournamentAdvancementLimit ?? highestPowerOfTwo,
+    );
   }
 
   private getTournamentEntrants(event: EventEntity) {

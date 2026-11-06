@@ -66,6 +66,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -129,6 +136,7 @@ const SETTINGS_FIELDS = [
   'gamblingEnabled',
   'maxQueueCredits',
   'queueCreditIntervalMinutes',
+  'tournamentAdvancementLimit',
   'isPrivate',
   'minTeamSize',
   'maxTeamSize',
@@ -150,6 +158,10 @@ const SETTINGS_FIELDS = [
   'streamUrl',
   'showtimeStreamUrl',
 ] as const
+
+/** The elimination bracket has no byes, so only powers of two are offered. */
+const TOURNAMENT_ADVANCEMENT_LIMITS = [2, 4, 8, 16, 32, 64, 128, 256]
+const NO_ADVANCEMENT_LIMIT = 'none'
 
 type GithubConfigErrors = Partial<Record<GithubConfigField, string>>
 
@@ -990,6 +1002,41 @@ function SettingsTab({
                 )
               }
             />
+            <div className="space-y-2">
+              <Label htmlFor="tournamentAdvancementLimit">
+                Tournament Advancement Limit
+              </Label>
+              <Select
+                value={
+                  pendingSettings.tournamentAdvancementLimit?.toString() ??
+                  NO_ADVANCEMENT_LIMIT
+                }
+                onValueChange={(value) =>
+                  updatePendingSetting(
+                    'tournamentAdvancementLimit',
+                    value === NO_ADVANCEMENT_LIMIT
+                      ? null
+                      : Number.parseInt(value, 10),
+                  )
+                }
+              >
+                <SelectTrigger id="tournamentAdvancementLimit">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_ADVANCEMENT_LIMIT}>No limit</SelectItem>
+                  {TOURNAMENT_ADVANCEMENT_LIMITS.map((limit) => (
+                    <SelectItem key={limit} value={limit.toString()}>
+                      Top {limit} teams
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                Fewer teams advance if the event has too few for this bracket
+                size. Cannot change once the elimination bracket exists.
+              </p>
+            </div>
           </div>
 
           <div className="space-y-4 border-t pt-4">

@@ -3,6 +3,7 @@ jest.mock("../main", () => ({ getRabbitmqConfig: jest.fn() }));
 import { Logger } from "@nestjs/common";
 import { EventEntity } from "../event/entities/event.entity";
 import { EventState } from "../event/event-lifecycle";
+import { getEventLockKey } from "../event/event-lock";
 import { TeamEntity } from "../team/entities/team.entity";
 import { MatchPhase } from "./entites/match.entity";
 import { MatchService } from "./match.service";
@@ -109,6 +110,99 @@ describe("tournament lifecycle mutation gates", () => {
       ).rejects.toThrow("nonexcluded");
     },
   );
+});
+
+describe("tournament advancement limit", () => {
+  function setupEntrants(count: number, limit: number | null) {
+    const context = setup();
+    const { event, service } = context;
+    event.tournamentAdvancementLimit = limit;
+    event.teams = Array.from({ length: count }, (_, index) =>
+      Object.assign(new TeamEntity(), {
+        id: `team-${index}`,
+        score: 0,
+        hadBye: false,
+        repositoryStatus: "LOCKED",
+        tournamentExcluded: false,
+      }),
+    );
+    Object.assign(service, {
+      teamService: {
+        getTeamById: jest.fn().mockResolvedValue({ event }),
+        getSortedTeamsForTournament: jest.fn().mockResolvedValue(event.teams),
+      },
+    });
+    return context;
+  }
+
+  it.each([
+    [20, null, 16],
+    [20, 8, 8],
+    [20, 2, 2],
+    [6, 16, 4],
+    [8, 8, 8],
+  ])(
+    "with %i entrants and limit %s, %i teams advance",
+    async (entrants, limit, expected) => {
+      const { service, event } = setupEntrants(entrants, limit);
+      expect(await service.getTournamentTeamCount(event.id)).toBe(expected);
+    },
+  );
+
+  it("seeds only the top-ranked teams up to the limit", async () => {
+    const { service, event, save } = setupEntrants(10, 4);
+    await service.createNextTournamentMatches(event.id);
+    expect(save).toHaveBeenCalledTimes(2);
+    const seeded = save.mock.calls.flatMap(([match]) =>
+      match.teams.map((team: TeamEntity) => team.id),
+    );
+    expect(seeded.sort()).toEqual(["team-0", "team-1", "team-2", "team-3"]);
+  });
+});
+
+describe("starting tournament matches", () => {
+  function setupLock(service: MatchService) {
+    const queryRunner = {
+      connect: jest.fn().mockResolvedValue(undefined),
+      startTransaction: jest.fn().mockResolvedValue(undefined),
+      commitTransaction: jest.fn().mockResolvedValue(undefined),
+      rollbackTransaction: jest.fn().mockResolvedValue(undefined),
+      release: jest.fn().mockResolvedValue(undefined),
+      query: jest.fn().mockResolvedValue([]),
+    };
+    Object.assign(service, {
+      dataSource: { createQueryRunner: () => queryRunner },
+    });
+    return queryRunner;
+  }
+
+  it("generates the bracket while holding the event lock", async () => {
+    const { service, event, save } = setup();
+    const queryRunner = setupLock(service);
+    await service.startTournamentMatches(event.id);
+    expect(queryRunner.query).toHaveBeenCalledWith(
+      "SELECT pg_advisory_xact_lock($1, $2)",
+      getEventLockKey(event.id),
+    );
+    expect(queryRunner.query.mock.invocationCallOrder[0]).toBeLessThan(
+      save.mock.invocationCallOrder[0],
+    );
+    expect(save.mock.invocationCallOrder[0]).toBeLessThan(
+      queryRunner.commitTransaction.mock.invocationCallOrder[0],
+    );
+    expect(queryRunner.release).toHaveBeenCalled();
+  });
+
+  it("releases the event lock when generation fails", async () => {
+    const { service, event } = setup(EventState.PLAYING);
+    const queryRunner = setupLock(service);
+    await expect(service.startTournamentMatches(event.id)).rejects.toThrow(
+      "closed submissions",
+    );
+    expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
+    expect(queryRunner.commitTransaction).not.toHaveBeenCalled();
+    expect(queryRunner.release).toHaveBeenCalled();
+  });
 });
 
 describe("Swiss progression across a reopen", () => {

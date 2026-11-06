@@ -35,6 +35,15 @@ The system automatically advances the top teams based on the Swiss rankings. The
 - _Example 2:_ If there are 16 teams, all **16** teams advance.
 - _Example 3:_ If there are 20 teams, the top **16** teams advance.
 
+### Advancement Limit
+
+Administrators can optionally set a **tournament advancement limit** in the event settings. It is not part of event creation, and without it the rule above applies unchanged. The limit must be a power of two (2 to 256) because the bracket has no byes, and it cannot change once elimination matches exist.
+
+The number of advancing teams is the smaller of the limit and $2^{\lfloor \log_2(N) \rfloor}$.
+
+- _Example 1:_ If there are 20 teams and the limit is 8, the top **8** teams advance.
+- _Example 2:_ If there are 6 teams and the limit is 16, the top **4** teams advance.
+
 ---
 
 ## 3. Elimination Phase (Tournament Phase)

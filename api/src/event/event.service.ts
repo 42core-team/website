@@ -42,6 +42,8 @@ import {
 } from "./event-lifecycle";
 import { EventLifecycleDto } from "./dtos/eventLifecycleDto";
 import { TeamEntity } from "../team/entities/team.entity";
+import { MatchEntity, MatchPhase } from "../match/entites/match.entity";
+import { lockEvent } from "./event-lock";
 import { toPublicUsers } from "../user/dtos/public-user.dto";
 
 @Injectable()
@@ -731,6 +733,7 @@ export class EventService {
       gamblingEnabled?: boolean;
       maxQueueCredits?: number;
       queueCreditIntervalMinutes?: number;
+      tournamentAdvancementLimit?: number | null;
       isPrivate?: boolean;
       name?: string;
       description?: string;
@@ -822,6 +825,10 @@ export class EventService {
       }
     }
 
+    if (settings.tournamentAdvancementLimit !== undefined) {
+      update.tournamentAdvancementLimit = settings.tournamentAdvancementLimit;
+    }
+
     if (settings.streamUrl !== undefined) {
       update.streamUrl = normalizeStreamUrl(settings.streamUrl);
     }
@@ -882,16 +889,38 @@ export class EventService {
       };
     }
 
-    if (update.startDate) {
+    const updatesLimit = update.tournamentAdvancementLimit !== undefined;
+    if (update.startDate || updatesLimit) {
       return this.dataSource.transaction(async (manager) => {
+        // Bracket generation holds this lock, so it cannot read a limit that
+        // changes before its matches exist.
+        if (updatesLimit) await lockEvent(manager, eventId);
         const repository = manager.getRepository(EventEntity);
         const current = await repository.findOneOrFail({
           where: { id: eventId },
           lock: { mode: "pessimistic_write" },
         });
-        const now = new Date();
-        this.validateLifecycleDates({ ...current, ...update });
-        update.state = getEventState({ ...current, ...update }, now);
+        if (
+          updatesLimit &&
+          update.tournamentAdvancementLimit !==
+            current.tournamentAdvancementLimit
+        ) {
+          const eliminationMatches = await manager
+            .getRepository(MatchEntity)
+            .countBy({
+              phase: MatchPhase.ELIMINATION,
+              teams: { event: { id: eventId } },
+            });
+          if (eliminationMatches > 0)
+            throw new BadRequestException(
+              "The advancement limit cannot change once the elimination bracket exists",
+            );
+        }
+        if (update.startDate) {
+          const now = new Date();
+          this.validateLifecycleDates({ ...current, ...update });
+          update.state = getEventState({ ...current, ...update }, now);
+        }
         return repository.update(eventId, update);
       });
     }

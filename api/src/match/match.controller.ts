@@ -93,7 +93,7 @@ export class MatchController {
       eventId,
     });
 
-    return this.matchService.createNextTournamentMatches(eventId);
+    return this.matchService.startTournamentMatches(eventId);
   }
 
   @Get("tournament/:eventId/teamCount")

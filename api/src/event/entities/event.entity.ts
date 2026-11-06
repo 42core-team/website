@@ -100,6 +100,10 @@ export class EventEntity {
   @Column({ default: 0 })
   currentRound: number;
 
+  /** Most teams that may enter the elimination bracket; null means no limit. */
+  @Column({ type: "int", nullable: true })
+  tournamentAdvancementLimit: number | null;
+
   @CreateDateColumn()
   createdAt: Date;
 
