@@ -1,5 +1,5 @@
 'use client'
-import type { HTMLAttributes, SVGAttributes } from 'react'
+import type { HTMLAttributes, ReactNode, SVGAttributes } from 'react'
 import { useSession, useSignOut } from '@/lib/auth'
 import Link from '@/components/app-link'
 import { usePathname, useRouter } from '@/lib/router-hooks'
@@ -70,10 +70,16 @@ function HamburgerIcon({ className, ...props }: SVGAttributes<SVGElement>) {
 // Types
 export interface NavbarProps extends HTMLAttributes<HTMLElement> {
   session?: any
+  /** Shown after the logo. */
+  leading?: ReactNode
+  /** Replaces the centered desktop nav links. */
+  center?: ReactNode
+  /** Shown before the theme switch. */
+  actions?: ReactNode
 }
 
 export const Navbar = forwardRef<HTMLElement, NavbarProps>(
-  ({ className, session, ...props }, ref) => {
+  ({ className, session, leading, center, actions, ...props }, ref) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
     const [isProfileOpen, setIsProfileOpen] = useState(false)
     const pathname = usePathname()
@@ -116,9 +122,9 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
         )}
         {...props}
       >
-        <div className="container mx-auto flex h-16 max-w-(--breakpoint-2xl) items-center justify-between gap-4">
+        <div className="container mx-auto flex min-h-16 max-w-(--breakpoint-2xl) flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 sm:py-0">
           {/* Left side */}
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {/* Mobile menu trigger */}
             <div className="md:hidden">
               <Popover
@@ -163,31 +169,35 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
                 CORE
               </span>
             </Link>
+            {leading}
           </div>
 
           {/* Desktop nav (centered) */}
-          <NavigationMenu className="hidden flex-1 justify-center md:flex">
-            <NavigationMenuList className="gap-2">
-              {navLinks.map((link) => (
-                <NavigationMenuItem key={link.href}>
-                  <Link
-                    href={link.href}
-                    className={cn(
-                      'inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
-                      isActive(link.href)
-                        ? 'bg-accent text-accent-foreground'
-                        : 'text-foreground/80 hover:text-foreground',
-                    )}
-                  >
-                    {link.label}
-                  </Link>
-                </NavigationMenuItem>
-              ))}
-            </NavigationMenuList>
-          </NavigationMenu>
+          {center ?? (
+            <NavigationMenu className="hidden flex-1 justify-center md:flex">
+              <NavigationMenuList className="gap-2">
+                {navLinks.map((link) => (
+                  <NavigationMenuItem key={link.href}>
+                    <Link
+                      href={link.href}
+                      className={cn(
+                        'inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
+                        isActive(link.href)
+                          ? 'bg-accent text-accent-foreground'
+                          : 'text-foreground/80 hover:text-foreground',
+                      )}
+                    >
+                      {link.label}
+                    </Link>
+                  </NavigationMenuItem>
+                ))}
+              </NavigationMenuList>
+            </NavigationMenu>
+          )}
 
           {/* Right side */}
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {actions}
             <ThemeSwitch />
             {user?.id ? (
               <Popover open={isProfileOpen} onOpenChange={setIsProfileOpen}>
