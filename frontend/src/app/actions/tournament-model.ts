@@ -34,6 +34,8 @@ export interface Match {
   isRevealed: boolean
   isPlacementMatch?: boolean
   teams: MatchTeam[]
+  leftTeamId?: string | null
+  rightTeamId?: string | null
   winner?: MatchTeam | null
   results?: {
     team: MatchTeam
