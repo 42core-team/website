@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
 import { unified } from 'unified'
+import rehypeLangBlocks from './rehype-lang-blocks'
 
 const FALLBACK_WIKI_VERSION = 'latest'
 
@@ -134,6 +135,7 @@ export async function getWikiPageWithVersion(
         light: 'github-light',
       },
     })
+    .use(rehypeLangBlocks)
     .use(rehypeCodeGroup, {})
     .use(rehypeStringify)
     .process(content)
