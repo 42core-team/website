@@ -38,5 +38,6 @@ export const siteConfig = {
   ],
   links: {
     github: 'https://github.com/42core-team',
+    discord: 'https://discord.gg/ZQk5gug5Gr',
   },
 }

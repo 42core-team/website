@@ -46,6 +46,7 @@ const event: Event = {
   processQueue: true,
   gamblingEnabled: true,
   maxQueueCredits: 5,
+  tournamentAdvancementLimit: null,
   queueCreditIntervalMinutes: 15,
   isPrivate: false,
 }

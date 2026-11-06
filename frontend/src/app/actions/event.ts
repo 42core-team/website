@@ -31,6 +31,7 @@ export interface Event {
   processQueue: boolean
   gamblingEnabled: boolean
   maxQueueCredits: number
+  tournamentAdvancementLimit: number | null
   queueCreditIntervalMinutes: number
   monorepoUrl?: string
   monorepoVersion?: string
@@ -158,6 +159,7 @@ export async function updateEventSettings(
     gamblingEnabled?: boolean
     maxQueueCredits?: number
     queueCreditIntervalMinutes?: number
+    tournamentAdvancementLimit?: number | null
     isPrivate?: boolean
     name?: string
     description?: string

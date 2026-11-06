@@ -4,9 +4,11 @@ import {
   isPlaying,
   isRegistrationOpen,
 } from "./event-lifecycle";
+import { getEventLockKey } from "./event-lock";
 import { EventService } from "./event.service";
 import { EventEntity } from "./entities/event.entity";
 import { TeamEntity } from "../team/entities/team.entity";
+import { MatchEntity } from "../match/entites/match.entity";
 import { EventController } from "./event.controller";
 
 jest.mock("../team/team.service", () => ({ TeamService: class {} }));
@@ -77,9 +79,13 @@ describe("event lifecycle", () => {
       find: jest.fn().mockResolvedValue(teams),
       update: jest.fn().mockResolvedValue({ affected: teams.length }),
     };
+    const matchRepository = { countBy: jest.fn().mockResolvedValue(0) };
     const manager = {
-      getRepository: (entity: unknown) =>
-        entity === EventEntity ? repository : teamRepository,
+      query: jest.fn().mockResolvedValue([]),
+      getRepository: (entity: unknown) => {
+        if (entity === EventEntity) return repository;
+        return entity === MatchEntity ? matchRepository : teamRepository;
+      },
     };
     const teamService = {
       lockTeam: jest.fn().mockResolvedValue(undefined),
@@ -104,7 +110,14 @@ describe("event lifecycle", () => {
       teamService as never,
       dataSource as never,
     );
-    return { stored, repository, teamService, service };
+    return {
+      stored,
+      repository,
+      matchRepository,
+      manager,
+      teamService,
+      service,
+    };
   }
 
   it("disables capabilities before dispatching locks and does not claim confirmation", async () => {
@@ -170,6 +183,59 @@ describe("event lifecycle", () => {
     expect(stored.startDate.getTime()).toBe(now + 60000);
     expect(stored.state).toBe(EventState.REGISTRATION);
     expect(stored.introEnabled).toBe(true);
+  });
+
+  it("sets and clears the advancement limit before the bracket exists", async () => {
+    const { service, stored } = harness(EventState.SUBMISSIONS_CLOSED);
+    await service.updateEventSettings("event", {
+      tournamentAdvancementLimit: 8,
+    });
+    expect(stored.tournamentAdvancementLimit).toBe(8);
+    await service.updateEventSettings("event", {
+      tournamentAdvancementLimit: null,
+    });
+    expect(stored.tournamentAdvancementLimit).toBeNull();
+  });
+
+  it("takes the event lock before checking the bracket for a limit change", async () => {
+    const { service, manager, matchRepository } = harness(
+      EventState.SUBMISSIONS_CLOSED,
+    );
+    await service.updateEventSettings("event", {
+      tournamentAdvancementLimit: 8,
+    });
+    expect(manager.query).toHaveBeenCalledWith(
+      "SELECT pg_advisory_xact_lock($1, $2)",
+      getEventLockKey("event"),
+    );
+    expect(manager.query.mock.invocationCallOrder[0]).toBeLessThan(
+      matchRepository.countBy.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("does not take the event lock for unrelated settings", async () => {
+    const { service, manager } = harness(EventState.PLAYING);
+    await service.updateEventSettings("event", { location: "Berlin" });
+    await service.updateEventSettings("event", {
+      startDate: startDate.getTime() - 1000,
+    });
+    expect(manager.query).not.toHaveBeenCalled();
+  });
+
+  it("rejects changing the advancement limit once the bracket exists", async () => {
+    const { service, stored, repository, matchRepository } = harness(
+      EventState.SHOWCASE,
+    );
+    stored.tournamentAdvancementLimit = 8;
+    matchRepository.countBy.mockResolvedValue(4);
+    await expect(
+      service.updateEventSettings("event", { tournamentAdvancementLimit: 4 }),
+    ).rejects.toThrow("elimination bracket exists");
+    expect(repository.update).not.toHaveBeenCalled();
+    await service.updateEventSettings("event", {
+      tournamentAdvancementLimit: 8,
+    });
+    expect(matchRepository.countBy).toHaveBeenCalledTimes(1);
   });
 
   it("closes an expired event only after a locked fresh read", async () => {

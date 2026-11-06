@@ -45,5 +45,8 @@ Every signed-in user counts as registered for a public event and can create or j
 **Reopening**:
 An administrator's decision to resume coding with a new submission deadline while retaining existing tournament progress and results.
 
+**Tournament advancement limit**:
+An optional administrator-set maximum number of teams that advance from the group phase to the elimination bracket.
+
 **Tournament exclusion**:
 An explicit administrator decision to omit a team from tournament participation.

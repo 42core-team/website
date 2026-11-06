@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -24,6 +25,9 @@ import {
   EVENT_NAME_MAX_LENGTH,
   EVENT_NAME_MAX_LENGTH_MESSAGE,
 } from "../../common/name-limits";
+
+/** The elimination bracket has no byes, so only powers of two are valid. */
+export const TOURNAMENT_ADVANCEMENT_LIMITS = [2, 4, 8, 16, 32, 64, 128, 256];
 
 export class UpdateEventSettingsDto {
   @IsOptional()
@@ -83,6 +87,15 @@ export class UpdateEventSettingsDto {
   @IsInt()
   @Min(1)
   queueCreditIntervalMinutes?: number;
+
+  @ApiPropertyOptional({
+    description: "Most teams entering the bracket; null removes the limit",
+    enum: TOURNAMENT_ADVANCEMENT_LIMITS,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsIn(TOURNAMENT_ADVANCEMENT_LIMITS)
+  tournamentAdvancementLimit?: number | null;
 
   @ApiPropertyOptional()
   @IsOptional()
