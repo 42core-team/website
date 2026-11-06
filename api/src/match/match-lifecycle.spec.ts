@@ -1,12 +1,24 @@
 jest.mock("../main", () => ({ getRabbitmqConfig: jest.fn() }));
 
 import { Logger } from "@nestjs/common";
+import type { FindOptionsWhere } from "typeorm";
 import { EventEntity } from "../event/entities/event.entity";
 import { EventState } from "../event/event-lifecycle";
 import { getEventLockKey } from "../event/event-lock";
 import { TeamEntity } from "../team/entities/team.entity";
-import { MatchPhase } from "./entites/match.entity";
+import { MatchEntity, MatchPhase } from "./entites/match.entity";
 import { MatchService } from "./match.service";
+
+// TypeORM 1.x throws on an undefined value in a where condition.
+function rejectUndefinedRound(
+  count: (where: FindOptionsWhere<MatchEntity>) => number,
+) {
+  return async (where: FindOptionsWhere<MatchEntity>) => {
+    if ("round" in where && where.round === undefined)
+      throw new Error("Undefined value encountered in property 'round'");
+    return count(where);
+  };
+}
 
 function setup(state = EventState.SUBMISSIONS_CLOSED, status = "LOCKED") {
   const teams = ["one", "two", "excluded"].map((id) =>
@@ -38,7 +50,7 @@ function setup(state = EventState.SUBMISSIONS_CLOSED, status = "LOCKED") {
         .mockResolvedValue([teams[2], ...teams.slice(0, 2)]),
     },
     matchRepository: {
-      countBy: jest.fn().mockResolvedValue(0),
+      countBy: jest.fn(rejectUndefinedRound(() => 0)),
       create: jest.fn((value) => value),
       save,
     },
@@ -205,39 +217,39 @@ describe("starting tournament matches", () => {
   });
 });
 
-describe("Swiss progression across a reopen", () => {
-  function setupFourEntrants() {
-    const context = setup(EventState.PLAYING);
-    const { service, event } = context;
-    event.teams = ["a", "b", "c", "d"].map((id) =>
-      Object.assign(new TeamEntity(), {
-        id,
-        score: 0,
-        hadBye: false,
-        repositoryStatus: "LOCKED",
-        tournamentExcluded: false,
-      }),
-    );
-    Object.assign(Reflect.get(service, "eventService"), {
-      increaseEventRound: jest.fn(async () => {
-        event.currentRound += 1;
-      }),
-    });
-    const runner = {
-      connect: jest.fn(),
-      startTransaction: jest.fn(),
-      commitTransaction: jest.fn(),
-      rollbackTransaction: jest.fn(),
-      release: jest.fn(),
-      query: jest.fn(),
-    };
-    Reflect.set(service, "dataSource", {
-      createQueryRunner: () => runner,
-      getRepository: () => ({ find: jest.fn().mockResolvedValue([event]) }),
-    });
-    return context;
-  }
+function setupFourEntrants() {
+  const context = setup(EventState.PLAYING);
+  const { service, event } = context;
+  event.teams = ["a", "b", "c", "d"].map((id) =>
+    Object.assign(new TeamEntity(), {
+      id,
+      score: 0,
+      hadBye: false,
+      repositoryStatus: "LOCKED",
+      tournamentExcluded: false,
+    }),
+  );
+  Object.assign(Reflect.get(service, "eventService"), {
+    increaseEventRound: jest.fn(async () => {
+      event.currentRound += 1;
+    }),
+  });
+  const runner = {
+    connect: jest.fn(),
+    startTransaction: jest.fn(),
+    commitTransaction: jest.fn(),
+    rollbackTransaction: jest.fn(),
+    release: jest.fn(),
+    query: jest.fn(),
+  };
+  Reflect.set(service, "dataSource", {
+    createQueryRunner: () => runner,
+    getRepository: () => ({ find: jest.fn().mockResolvedValue([event]) }),
+  });
+  return context;
+}
 
+describe("Swiss progression across a reopen", () => {
   it("pauses a round finished while reopened and resumes it after reclosing", async () => {
     const { service, event, save } = setupFourEntrants();
     await expect(
@@ -271,5 +283,55 @@ describe("Swiss progression across a reopen", () => {
     });
     await service.resumeTournamentProgression(event.id);
     expect(save).not.toHaveBeenCalled();
+  });
+});
+
+describe("elimination progression", () => {
+  function setupFinishedRoundZero() {
+    const context = setupFourEntrants();
+    const { service, event } = context;
+    event.state = EventState.SUBMISSIONS_CLOSED;
+    const [a, b, c, d] = event.teams;
+    Object.assign(Reflect.get(service, "matchRepository"), {
+      countBy: jest.fn(
+        rejectUndefinedRound(({ phase, round }) =>
+          phase === MatchPhase.ELIMINATION && !round ? 2 : 0,
+        ),
+      ),
+      find: jest.fn().mockResolvedValue([
+        { winner: a, teams: [a, b] },
+        { winner: c, teams: [c, d] },
+      ]),
+    });
+    return context;
+  }
+
+  function expectFinalAndThirdPlace(save: jest.Mock) {
+    const rounds = save.mock.calls.map(([match]) => ({
+      round: match.round,
+      phase: match.phase,
+      teams: match.teams.map((team: TeamEntity) => team.id),
+    }));
+    expect(rounds).toEqual([
+      { round: 1, phase: MatchPhase.ELIMINATION, teams: ["a", "c"] },
+      { round: 1, phase: MatchPhase.ELIMINATION, teams: ["b", "d"] },
+    ]);
+  }
+
+  it("creates the next round as soon as a round finishes", async () => {
+    const { service, event, save } = setupFinishedRoundZero();
+    await service.processTournamentFinishRound(event.id);
+    expect(event.currentRound).toBe(1);
+    expectFinalAndThirdPlace(save);
+  });
+
+  it("resumes a round that was paused", async () => {
+    const { service, event, save } = setupFinishedRoundZero();
+    event.currentRound = 1;
+    expect(await service.getPausedProgressionPhase(event)).toBe(
+      MatchPhase.ELIMINATION,
+    );
+    await service.resumePausedTournaments();
+    expectFinalAndThirdPlace(save);
   });
 });
