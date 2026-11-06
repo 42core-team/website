@@ -12,6 +12,7 @@ import {
   Query,
   UnauthorizedException,
   UseGuards,
+  ValidationPipe,
 } from "@nestjs/common";
 import { MatchService } from "./match.service";
 import { EventService } from "../event/event.service";
@@ -19,6 +20,7 @@ import { UserId } from "../guards/UserGuard";
 import { MatchPhase } from "./entites/match.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreateManualMatchDto } from "./dtos/createManualMatchDto";
+import { QueueMatchesQueryDto } from "./dtos/queueMatchesQueryDto";
 import { matchNotFound } from "./match-response";
 
 @Controller("match")
@@ -130,12 +132,13 @@ export class MatchController {
   async getAllQueueMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
     @UserId() userId: string,
+    @Query(new ValidationPipe({ transform: true })) query: QueueMatchesQueryDto,
   ) {
     if (!(await this.eventService.isEventAdmin(eventId, userId)))
       throw new UnauthorizedException(
         "You are not authorized to view all match making matches.",
       );
-    return await this.matchService.getAllQueueMatches(eventId);
+    return await this.matchService.getAllQueueMatches(eventId, query);
   }
 
   @UseGuards(JwtAuthGuard)

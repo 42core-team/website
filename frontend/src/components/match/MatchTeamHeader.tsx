@@ -19,63 +19,85 @@ export function MatchTeamHeader({
       // match-up takes a row of its own below them.
       className="order-last flex min-w-0 flex-1 basis-full items-stretch self-stretch sm:order-none sm:basis-0"
     >
-      {match.teams.map((team, index) => {
-        const isFirst = index === 0
+      {/* The API leaves deleted teams out, so a side can have no team at all. */}
+      {[0, 1].map((side) => {
+        const team: Match['teams'][number] | undefined = match.teams[side]
+        const isFirst = side === 0
+        const name = team?.name ?? 'Unknown team'
         const score =
-          match.isRevealed && match.phase !== MatchPhase.QUEUE
+          team && match.isRevealed && match.phase !== MatchPhase.QUEUE
             ? match.results?.find((result) => result.team.id === team.id)?.score
             : undefined
+        const sideProps = {
+          title: name,
+          'aria-label': [name, score !== undefined && `score ${score}`]
+            .filter(Boolean)
+            .join(', '),
+          className: cn(
+            'relative flex min-w-0 flex-1 items-center gap-2 lg:gap-3 lg:text-white',
+            // The cover fades out most on the outer side, so the text keeps off it.
+            isFirst ? 'flex-row-reverse lg:pl-[14%]' : 'lg:pr-[14%]',
+          ),
+        }
+        const content = (
+          <>
+            <div
+              className={cn(
+                'absolute inset-0 hidden lg:block',
+                isFirst
+                  ? '[mask-image:linear-gradient(to_left,transparent,black_2.5rem,black_60%,transparent)]'
+                  : '[mask-image:linear-gradient(to_right,transparent,black_2.5rem,black_60%,transparent)]',
+              )}
+            >
+              <TeamCover
+                team={team ?? {}}
+                className="absolute inset-0 aspect-auto h-full rounded-none"
+              />
+              <div className="absolute inset-0 bg-black/55" />
+            </div>
+            <TeamPicture
+              team={team ?? { name: '?' }}
+              className={cn(
+                'relative size-10',
+                isFirst ? 'lg:mr-3' : 'lg:ml-3',
+              )}
+              fallbackClassName="lg:bg-black/40 lg:text-white"
+            />
+            <span
+              className={cn(
+                'relative hidden min-w-0 truncate font-semibold lg:block',
+                team?.deletedAt && 'line-through',
+              )}
+            >
+              {name}
+            </span>
+            {score !== undefined && (
+              <span className="relative hidden shrink-0 text-xl font-bold tabular-nums sm:block">
+                {score}
+              </span>
+            )}
+          </>
+        )
         return (
-          <div key={team.id} className="contents">
+          <div key={side} className="contents">
             {!isFirst && (
               <div className="flex items-center justify-center px-2 text-sm font-bold text-muted-foreground lg:px-4">
                 VS
               </div>
             )}
-            <Link
-              to="/events/$id/teams/$teamId"
-              params={{ id: eventId, teamId: team.id }}
-              title={team.name}
-              aria-label={[team.name, score !== undefined && `score ${score}`]
-                .filter(Boolean)
-                .join(', ')}
-              className={cn(
-                'relative flex min-w-0 flex-1 items-center gap-2 lg:gap-3 lg:text-white',
-                // The cover fades out most on the outer side, so the text keeps off it.
-                isFirst ? 'flex-row-reverse lg:pl-[14%]' : 'lg:pr-[14%]',
-              )}
-            >
-              <div
-                className={cn(
-                  'absolute inset-0 hidden lg:block',
-                  isFirst
-                    ? '[mask-image:linear-gradient(to_left,transparent,black_2.5rem,black_60%,transparent)]'
-                    : '[mask-image:linear-gradient(to_right,transparent,black_2.5rem,black_60%,transparent)]',
-                )}
+            {team && !team.deletedAt ? (
+              <Link
+                to="/events/$id/teams/$teamId"
+                params={{ id: eventId, teamId: team.id }}
+                {...sideProps}
               >
-                <TeamCover
-                  team={team}
-                  className="absolute inset-0 aspect-auto h-full rounded-none"
-                />
-                <div className="absolute inset-0 bg-black/55" />
+                {content}
+              </Link>
+            ) : (
+              <div role="group" {...sideProps}>
+                {content}
               </div>
-              <TeamPicture
-                team={team}
-                className={cn(
-                  'relative size-10',
-                  isFirst ? 'lg:mr-3' : 'lg:ml-3',
-                )}
-                fallbackClassName="lg:bg-black/40 lg:text-white"
-              />
-              <span className="relative hidden min-w-0 truncate font-semibold lg:block">
-                {team.name}
-              </span>
-              {score !== undefined && (
-                <span className="relative hidden shrink-0 text-xl font-bold tabular-nums sm:block">
-                  {score}
-                </span>
-              )}
-            </Link>
+            )}
           </div>
         )
       })}

@@ -552,6 +552,105 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       }
     });
 
+    it("pages and searches all queue matches of an event for its admins", async () => {
+      const otherEvent = await database.getRepository(EventEntity).save({
+        name: randomUUID().slice(0, 30),
+        githubOrg: "org",
+        githubOrgSecret: "secret",
+        minTeamSize: 1,
+        maxTeamSize: 4,
+        startDate: new Date("2020-01-01"),
+        submissionDeadline: new Date("2020-02-01"),
+        scheduledEndDate: new Date("2099-01-01"),
+        endDate: new Date("2099-01-01"),
+      });
+      await database.getRepository(UserEventPermissionEntity).save({
+        user: { id: users.admin.id },
+        event: { id: otherEvent.id },
+        role: PermissionRole.ADMIN,
+      });
+      const saveTeam = (name: string) =>
+        database.getRepository(TeamEntity).save({
+          name,
+          event: { id: otherEvent.id },
+          repo: randomUUID(),
+        });
+      const [red, blue, green] = await Promise.all(
+        ["Red_Team", "Blue", "RedXTeam"].map(saveTeam),
+      );
+      const saveMatch = async (
+        playing: TeamEntity[],
+        createdAt: string,
+        phase = MatchPhase.QUEUE,
+      ) => {
+        const { id } = await database.getRepository(MatchEntity).save({
+          phase,
+          round: 0,
+          state: MatchState.FINISHED,
+          teams: playing.map(({ id: teamId }) => ({ id: teamId })),
+          winner: { id: playing[0].id },
+          stats: new MatchStatsEntity(),
+        });
+        await database
+          .getRepository(MatchEntity)
+          .update(id, { createdAt: new Date(createdAt) });
+        return id;
+      };
+      const oldest = await saveMatch([red, blue], "2026-01-01");
+      const middle = await saveMatch([blue, green], "2026-01-02");
+      const newest = await saveMatch([red, green], "2026-01-03");
+      await saveMatch([red, blue], "2026-01-04", MatchPhase.MANUAL);
+
+      const admin = (query: string) =>
+        get(`/match/queue/${otherEvent.id}/admin?${query}`, users.admin.id);
+      const ids = (response: request.Response) =>
+        response.body.matches.map((match: Json) => match.id);
+
+      // Pages count matches, not the team rows they join to.
+      const firstPage = await admin("pageSize=2");
+      expect(firstPage.body).toMatchObject({
+        total: 3,
+        page: 1,
+        pageSize: 2,
+      });
+      expect(ids(firstPage)).toEqual([newest, middle]);
+      expect(ids(await admin("pageSize=2&page=2"))).toEqual([oldest]);
+
+      // A search keeps both teams and treats wildcards literally.
+      const redMatches = await admin("search=rEd");
+      expect(redMatches.body.total).toBe(3);
+      expect(ids(redMatches)).toEqual([newest, middle, oldest]);
+      expect(redMatches.body.matches[0].teams).toHaveLength(2);
+      expect(ids(await admin("search=red_"))).toEqual([newest, oldest]);
+      expect((await admin("search=nobody")).body).toMatchObject({
+        matches: [],
+        total: 0,
+      });
+
+      // Deleted teams stay listed and searchable.
+      await database.getRepository(TeamEntity).softDelete(blue.id);
+      const deleted = await admin("search=blue");
+      expect(ids(deleted)).toEqual([middle, oldest]);
+      expect(
+        deleted.body.matches[0].teams.find((team: Json) => team.id === blue.id)
+          .deletedAt,
+      ).toBeTruthy();
+
+      for (const query of [
+        "page=0",
+        "pageSize=101",
+        "page=x",
+        "search=a&search=b",
+        `search=${"a".repeat(31)}`,
+      ])
+        expect((await admin(query)).status).toBe(400);
+      const outsider = await get(
+        `/match/queue/${otherEvent.id}/admin`,
+        users.outsider.id,
+      );
+      expect(outsider.status).toBe(401);
+    });
+
     it("gives queue match ids to members of the teams that played only", async () => {
       async function teamHistory(teamKey: "A" | "B" | "C", userId: string) {
         const response = await get(`/match/team/${teams[teamKey].id}`, userId);
@@ -579,7 +678,7 @@ postgres("unrevealed match results (PostgreSQL)", () => {
         matches.queue.id,
       ]);
       const all = await get(`/match/queue/${event.id}/admin`, users.admin.id);
-      expect(all.body.map((match: Json) => match.id)).toEqual([
+      expect(all.body.matches.map((match: Json) => match.id)).toEqual([
         matches.queue.id,
       ]);
 

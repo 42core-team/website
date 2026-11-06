@@ -27,9 +27,24 @@ describe("match response artwork", () => {
 
   function setup() {
     const find = jest.fn().mockResolvedValue([match]);
+    const pageQuery = {
+      select: jest.fn().mockReturnThis(),
+      withDeleted: jest.fn().mockReturnThis(),
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[match], 1]),
+    };
     const service = Object.create(MatchService.prototype) as MatchService;
     Object.assign(service, {
-      matchRepository: { find },
+      matchRepository: {
+        find,
+        createQueryBuilder: jest.fn().mockReturnValue(pageQuery),
+      },
       teamService: {
         getTeamById: jest.fn().mockResolvedValue(team),
         getTeamOfUserForEvent: jest.fn(async (_eventId, userId: string) =>
@@ -47,19 +62,27 @@ describe("match response artwork", () => {
     background: team.background,
   };
 
-  it.each(["getQueueMatches", "getAllQueueMatches"] as const)(
-    "%s preserves artwork without exposing private fields or results",
-    async (method) => {
-      const { service } = setup();
-      const response =
-        method === "getQueueMatches"
-          ? await service.getQueueMatches("event", "member")
-          : await service.getAllQueueMatches("event");
-      expect(response[0].teams).toEqual([artworkTeam]);
-      expect(response[0].winner).toEqual(artworkTeam);
-      expect(response[0]).not.toHaveProperty("results");
-    },
-  );
+  const queueMatchesQuery = { page: 1, pageSize: 20 };
+
+  it("getQueueMatches preserves artwork without exposing private fields or results", async () => {
+    const { service } = setup();
+    const response = await service.getQueueMatches("event", "member");
+    expect(response[0].teams).toEqual([artworkTeam]);
+    expect(response[0].winner).toEqual(artworkTeam);
+    expect(response[0]).not.toHaveProperty("results");
+  });
+
+  it("getAllQueueMatches preserves artwork without exposing private fields or results", async () => {
+    const { service } = setup();
+    const { matches } = await service.getAllQueueMatches(
+      "event",
+      queueMatchesQuery,
+    );
+    const historyTeam = { ...artworkTeam, deletedAt: null };
+    expect(matches[0].teams).toEqual([historyTeam]);
+    expect(matches[0].winner).toEqual(historyTeam);
+    expect(matches[0]).not.toHaveProperty("results");
+  });
 
   it.each(["member", "visitor"])(
     "preserves artwork in team history for %s without exposing private fields",
@@ -83,10 +106,13 @@ describe("match response artwork", () => {
         winner: null,
       },
     ]);
-    const response = await service.getAllQueueMatches("event");
-    expect(response[0].teams).toEqual([
-      { ...artworkTeam, picture: null, background: null },
+    const { matches } = await service.getAllQueueMatches(
+      "event",
+      queueMatchesQuery,
+    );
+    expect(matches[0].teams).toEqual([
+      { ...artworkTeam, deletedAt: null, picture: null, background: null },
     ]);
-    expect(response[0].winner).toBeNull();
+    expect(matches[0].winner).toBeNull();
   });
 });

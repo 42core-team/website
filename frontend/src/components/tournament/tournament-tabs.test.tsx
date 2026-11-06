@@ -12,6 +12,34 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MatchPhase, MatchState } from '@/app/actions/tournament-model'
 import { BracketTabs } from '@/components/tournament/tournament-tabs'
 
+const url = vi.hoisted(() => ({
+  search: '',
+  listeners: new Set<() => void>(),
+}))
+
+vi.mock('@/lib/router-hooks', async () => {
+  const { useSyncExternalStore } = await import('react')
+  return {
+    usePathname: () => '/events/event-1/bracket',
+    useRouter: () => ({
+      replace: (href: string) => {
+        url.search = href.split('?')[1] ?? ''
+        url.listeners.forEach((listener) => listener())
+      },
+    }),
+    useSearchParams: () =>
+      new URLSearchParams(
+        useSyncExternalStore(
+          (listener) => {
+            url.listeners.add(listener)
+            return () => url.listeners.delete(listener)
+          },
+          () => url.search,
+        ),
+      ),
+  }
+})
+
 vi.mock('@/hooks/useTabParam', () => ({
   useTabParam: () => ({ currentTab: 'graph', onTabChange: vi.fn() }),
 }))
@@ -35,7 +63,10 @@ vi.mock(
   },
 )
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  url.search = ''
+})
 
 const matches: Match[] = [
   {
@@ -102,6 +133,32 @@ describe('bracket admin view and reveal panel', () => {
     expect(screen.getByRole('dialog')).toBeTruthy()
     rerender(bracket(false))
     expect(screen.getByRole('dialog')).toBeTruthy()
+  })
+
+  it('reopens reveal mode after visiting a match and coming back', () => {
+    const page = render(bracket(false))
+    fireEvent.click(screen.getByRole('button', { name: 'Open reveal mode' }))
+    page.unmount()
+
+    render(bracket(false))
+    const panel = screen.getByRole('dialog')
+    expect(within(panel).getByText('Reveal controls')).toBeTruthy()
+  })
+
+  it('stays closed after closing reveal mode and coming back', () => {
+    const page = render(bracket(false))
+    fireEvent.click(screen.getByRole('button', { name: 'Open reveal mode' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    page.unmount()
+
+    render(bracket(false))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('never opens reveal mode for visitors with the URL flag', () => {
+    url.search = 'revealMode=true'
+    render(bracket(false, false))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('closes the panel when admin access is removed', () => {

@@ -1,11 +1,13 @@
 import { MatchTeamHeader } from '@/components/match/MatchTeamHeader'
+import { ScrollToLogsButton } from '@/components/match/ScrollToLogsButton'
 import { useQuery } from '@tanstack/react-query'
 import {
   createFileRoute,
   useCanGoBack,
   useRouter,
 } from '@tanstack/react-router'
-import { ChevronLeft, ExternalLink } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
+import { useRef } from 'react'
 import { getEventById, isEventAdmin } from '@/app/actions/event'
 import {
   getLogsOfMatch,
@@ -14,7 +16,6 @@ import {
 } from '@/app/actions/tournament'
 import { MatchPhase } from '@/app/actions/tournament-model'
 import MatchLogsDisplay from '@/components/match/MatchLogsDisplay'
-import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useHideSiteNav } from '@/contexts/NavbarContext'
 import Navbar from '@/layouts/basic-navbar'
@@ -35,6 +36,7 @@ function MatchRoute() {
   const { id, matchId } = Route.useParams()
   const router = useRouter()
   const canGoBack = useCanGoBack()
+  const logsRef = useRef<HTMLDivElement>(null)
   const eventAdminQuery = useQuery({
     queryKey: ['event', id, 'is-event-admin'],
     queryFn: () => isEventAdmin(id),
@@ -81,6 +83,7 @@ function MatchRoute() {
     // else gets a 404 and the section stays hidden.
     retry: retryUnlessStatus(403, 404),
   })
+  const hasLogs = logsQuery.data?.some((log) => log.logs.length > 0)
   const isLoading =
     matchQuery.isPending || (isEliminationMatch && teamCountQuery.isPending)
   const isError =
@@ -126,24 +129,7 @@ function MatchRoute() {
         }
         center={<MatchTeamHeader match={matchQuery.data} eventId={id} />}
         actions={
-          visualizerUrl && (
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="hidden text-muted-foreground sm:inline-flex"
-            >
-              <a
-                href={visualizerUrl}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Open visualizer"
-              >
-                <ExternalLink />
-                <span className="hidden xl:inline">Open visualizer</span>
-              </a>
-            </Button>
-          )
+          visualizerUrl && hasLogs && <ScrollToLogsButton logsRef={logsRef} />
         }
       />
       <main>
@@ -163,7 +149,12 @@ function MatchRoute() {
           </div>
         )}
         {logsQuery.data && (
-          <div className="container mx-auto max-w-7xl px-4 py-8">
+          <div
+            ref={logsRef}
+            tabIndex={-1}
+            // Clears the navbar, which is only sticky from sm up.
+            className="container mx-auto max-w-7xl px-4 py-8 outline-none focus-visible:ring-1 focus-visible:ring-ring sm:scroll-mt-16"
+          >
             <MatchLogsDisplay logs={logsQuery.data} />
           </div>
         )}
