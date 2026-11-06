@@ -31,11 +31,13 @@ describe('scroll to logs button', () => {
   it('scrolls to the logs smoothly and moves focus there', () => {
     stubReducedMotion(false)
     render(<Page />)
+    const logs = screen.getByTestId('logs')
+    const focus = vi.spyOn(logs, 'focus')
 
     fireEvent.click(screen.getByRole('button', { name: 'Logs' }))
 
-    const logs = screen.getByTestId('logs')
     expect(logs.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' })
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true })
     expect(document.activeElement).toBe(logs)
   })
 

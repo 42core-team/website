@@ -153,7 +153,7 @@ function MatchRoute() {
             ref={logsRef}
             tabIndex={-1}
             // Clears the navbar, which is only sticky from sm up.
-            className="container mx-auto max-w-7xl px-4 py-8 outline-none sm:scroll-mt-16"
+            className="container mx-auto max-w-7xl px-4 py-8 outline-none focus-visible:ring-1 focus-visible:ring-ring sm:scroll-mt-16"
           >
             <MatchLogsDisplay logs={logsQuery.data} />
           </div>
