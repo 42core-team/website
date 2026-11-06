@@ -270,7 +270,7 @@ export class MatchService {
         if (match.phase == MatchPhase.SWISS) {
           await this.processSwissFinishRound(event.id);
         } else if (match.phase == MatchPhase.ELIMINATION) {
-          await this.processTournamentFinishRound(currentEvent);
+          await this.processTournamentFinishRound(event.id);
         }
       }
       await queryRunner.commitTransaction();
@@ -370,7 +370,7 @@ export class MatchService {
       this.matchRepository.countBy({
         teams: { event: { id: event.id } },
         phase,
-        round,
+        ...(round === undefined ? {} : { round }),
       });
     const phase =
       (await countMatches(MatchPhase.ELIMINATION)) > 0
@@ -391,15 +391,19 @@ export class MatchService {
       try {
         await this.resumeTournamentProgression(event.id);
       } catch (error) {
+        const reason = error instanceof Error ? error.stack : String(error);
         this.logger.error(
-          `Could not resume tournament progression for event ${event.id}`,
-          error,
+          `Could not resume tournament progression for event ${event.id}: ${reason}`,
         );
       }
     }
   }
 
-  async processTournamentFinishRound(event: EventEntity) {
+  async processTournamentFinishRound(eventId: string) {
+    const event = await this.eventService.getEventById(eventId, {
+      teams: true,
+    });
+
     const finishedMatches = await this.matchRepository.countBy({
       teams: {
         event: {
