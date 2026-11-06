@@ -1,4 +1,5 @@
 import { MatchTeamHeader } from '@/components/match/MatchTeamHeader'
+import { ScrollToLogsButton } from '@/components/match/ScrollToLogsButton'
 import { useQuery } from '@tanstack/react-query'
 import {
   createFileRoute,
@@ -6,6 +7,7 @@ import {
   useRouter,
 } from '@tanstack/react-router'
 import { ChevronLeft, ExternalLink } from 'lucide-react'
+import { useRef } from 'react'
 import { getEventById, isEventAdmin } from '@/app/actions/event'
 import {
   getLogsOfMatch,
@@ -35,6 +37,7 @@ function MatchRoute() {
   const { id, matchId } = Route.useParams()
   const router = useRouter()
   const canGoBack = useCanGoBack()
+  const logsRef = useRef<HTMLDivElement>(null)
   const eventAdminQuery = useQuery({
     queryKey: ['event', id, 'is-event-admin'],
     queryFn: () => isEventAdmin(id),
@@ -153,17 +156,23 @@ function MatchRoute() {
           // viewport below the navbar (4rem and a 1px border), but stay short
           // enough on narrow screens that the board, 79px shorter than the
           // iframe, still fits.
-          <div className="h-[min(calc(100dvh-4rem-1px),calc(100vw+4rem))] overflow-hidden bg-black">
+          <div className="relative h-[min(calc(100dvh-4rem-1px),calc(100vw+4rem))] overflow-hidden bg-black">
             <iframe
               src={visualizerUrl}
               title="Match visualizer"
               className="h-full w-full"
               allowFullScreen
             />
+            {logsQuery.data && <ScrollToLogsButton logsRef={logsRef} />}
           </div>
         )}
         {logsQuery.data && (
-          <div className="container mx-auto max-w-7xl px-4 py-8">
+          <div
+            ref={logsRef}
+            tabIndex={-1}
+            // Clears the navbar, which is only sticky from sm up.
+            className="container mx-auto max-w-7xl px-4 py-8 outline-none sm:scroll-mt-16"
+          >
             <MatchLogsDisplay logs={logsQuery.data} />
           </div>
         )}
