@@ -150,9 +150,10 @@ function MatchRoute() {
         <h1 className="sr-only">Match</h1>
         {visualizerUrl && (
           // The visualizer sizes its board from its height alone. Fill the
-          // viewport below the 65px navbar, but stay short enough on narrow
-          // screens that the board, 79px shorter than the iframe, still fits.
-          <div className="h-[min(calc(100dvh-65px),calc(100vw+4rem))] overflow-hidden bg-black">
+          // viewport below the navbar (4rem and a 1px border), but stay short
+          // enough on narrow screens that the board, 79px shorter than the
+          // iframe, still fits.
+          <div className="h-[min(calc(100dvh-4rem-1px),calc(100vw+4rem))] overflow-hidden bg-black">
             <iframe
               src={visualizerUrl}
               title="Match visualizer"
