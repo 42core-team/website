@@ -16,10 +16,10 @@ const match: Match = {
   updatedAt: '',
   isRevealed: false,
   teams: [
-    { id: 'a', name: 'Alpha', score: 1 },
-    { id: 'b', name: 'Beta', score: 0 },
+    { id: 'a', name: 'Alpha' },
+    { id: 'b', name: 'Beta' },
   ],
-  winner: { id: 'a', name: 'Alpha', score: 1 },
+  winner: { id: 'a', name: 'Alpha' },
   results: [],
 }
 describe('match team header', () => {
@@ -54,6 +54,16 @@ describe('match team header', () => {
       />,
     )
     expect(screen.queryByText('1234')).toBeNull()
+    expect(screen.getByText('Winner')).toBeTruthy()
+  })
+
+  it('displays the winner of a QUEUE match, which is never revealed', () => {
+    render(
+      <MatchTeamHeader
+        match={{ ...match, phase: MatchPhase.QUEUE, isRevealed: false }}
+        eventId="event"
+      />,
+    )
     expect(screen.getByText('Winner')).toBeTruthy()
   })
 

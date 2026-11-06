@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -199,11 +200,6 @@ export class TeamController {
     });
   }
 
-  @Get(":id/event-started")
-  async hasEventStarted(@Param("id", new ParseUUIDPipe()) teamId: string) {
-    return this.eventService.hasEventStartedForTeam(teamId);
-  }
-
   @UseGuards(JwtAuthGuard, MyTeamGuards, TeamNotLockedGuard)
   @Post(`event/:${EVENT_ID_PARAM}/sendInvite`)
   async sendInviteToTeam(
@@ -214,6 +210,20 @@ export class TeamController {
   ) {
     if (userId === inviteUserDto.userToInviteId)
       throw new BadRequestException("You cannot invite yourself to a team.");
+    // Turning team creation off also freezes the rosters of existing teams.
+    if (!(await this.eventService.canCreateTeamInEvent(eventId)))
+      throw new BadRequestException("Team invites are closed for this event.");
+    if (!(await this.userService.userExists(inviteUserDto.userToInviteId)))
+      throw new NotFoundException("User not found.");
+    if (
+      !(await this.eventService.isUserEligibleForEvent(
+        eventId,
+        inviteUserDto.userToInviteId,
+      ))
+    )
+      throw new BadRequestException(
+        "This user is not registered or not whitelisted for this private event.",
+      );
 
     if (await this.teamService.isTeamFull(team.id))
       throw new BadRequestException("This team is full.");

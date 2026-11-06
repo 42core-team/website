@@ -3,60 +3,56 @@ jest.mock("../event/event.service", () => ({
   EventService: class EventService {},
 }));
 
-import { UnauthorizedException } from "@nestjs/common";
+import { NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { EventService } from "../event/event.service";
 import { MatchEntity, MatchPhase, MatchState } from "./entites/match.entity";
 import { MatchController } from "./match.controller";
 import { MatchService } from "./match.service";
+import { toVisibleMatchResponse } from "./match-response";
 
 describe("match detail results", () => {
-  function setup(phase: MatchPhase, isRevealed = true) {
-    const match = {
+  function setup(phase: MatchPhase) {
+    const match = toVisibleMatchResponse({
       id: "match",
       phase,
       state: MatchState.FINISHED,
-      isRevealed,
-      teams: [{ id: "team", event: { id: "event" } }],
-      winner: { id: "team" },
-      results: [{ team: { id: "team" }, score: 1234 }],
-    } as MatchEntity;
-    const getMatchById = jest.fn().mockResolvedValue(match);
+      isRevealed: true,
+      teams: [{ id: "team", name: "Team" }],
+      winner: { id: "team", name: "Team" },
+      results: [{ team: { id: "team", name: "Team" }, score: 1234 }],
+    } as MatchEntity);
+    const getMatchResponseById = jest.fn().mockResolvedValue(match);
     const controller = new MatchController(
-      { getMatchById } as unknown as MatchService,
+      { getMatchResponseById } as unknown as MatchService,
       {} as EventService,
     );
-    return { controller, match, getMatchById };
+    return { controller, match, getMatchResponseById };
   }
 
   it.each([false, true])(
     "strips revealed QUEUE ratings with admin reveal %s",
     async (adminReveal) => {
-      const { controller, match, getMatchById } = setup(MatchPhase.QUEUE);
+      const { controller, match, getMatchResponseById } = setup(
+        MatchPhase.QUEUE,
+      );
       const response = await controller.getMatchById(
         "match",
         "user",
         adminReveal,
       );
 
-      expect(response.results).toEqual([]);
+      expect("results" in response && response.results).toEqual([]);
       expect(JSON.stringify(response)).not.toContain('"score":1234');
-      expect(response.winner).toEqual(match.winner);
+      expect("winner" in response && response.winner).toEqual(match.winner);
       expect(response.state).toBe(MatchState.FINISHED);
       expect(match.results[0].score).toBe(1234);
-      expect(getMatchById).toHaveBeenCalledWith(
+      expect(getMatchResponseById).toHaveBeenCalledWith(
         "match",
-        expect.objectContaining({ results: { team: true } }),
         "user",
         adminReveal,
       );
     },
   );
-
-  it("strips QUEUE ratings when an admin previews an unrevealed match", async () => {
-    const { controller } = setup(MatchPhase.QUEUE, false);
-    const response = await controller.getMatchById("match", "admin", true);
-    expect(response.results).toEqual([]);
-  });
 
   it.each([MatchPhase.SWISS, MatchPhase.ELIMINATION, MatchPhase.GAMBLING])(
     "preserves %s results",
@@ -64,7 +60,7 @@ describe("match detail results", () => {
       const { controller, match } = setup(phase);
       const response = await controller.getMatchById("match", "user", false);
       expect(response).toBe(match);
-      expect(response.results[0].score).toBe(1234);
+      expect("results" in response && response.results[0].score).toBe(1234);
     },
   );
 });
@@ -106,5 +102,44 @@ describe("manual matches", () => {
     );
     expect(createManualMatch).not.toHaveBeenCalled();
     expect(getManualMatches).not.toHaveBeenCalled();
+  });
+});
+
+describe("match reveal", () => {
+  function setup(eventId: string | undefined, isAdmin: boolean) {
+    const getEventIdOfMatch = jest.fn().mockResolvedValue(eventId);
+    const revealMatch = jest.fn().mockResolvedValue(undefined);
+    const isEventAdmin = jest.fn().mockResolvedValue(isAdmin);
+    const controller = new MatchController(
+      { getEventIdOfMatch, revealMatch } as unknown as MatchService,
+      { isEventAdmin } as unknown as EventService,
+    );
+    return { controller, revealMatch, isEventAdmin };
+  }
+
+  async function revealError(eventId: string | undefined, isAdmin: boolean) {
+    const { controller, revealMatch } = setup(eventId, isAdmin);
+    const error = await controller
+      .revealMatch("match", "user")
+      .catch((caught: unknown) => caught);
+    expect(revealMatch).not.toHaveBeenCalled();
+    return error;
+  }
+
+  it("answers a non-admin exactly like an unknown match", async () => {
+    const hidden = await revealError("event", false);
+    const unknown = await revealError(undefined, false);
+    expect(hidden).toBeInstanceOf(NotFoundException);
+    expect(unknown).toBeInstanceOf(NotFoundException);
+    expect((hidden as NotFoundException).getResponse()).toEqual(
+      (unknown as NotFoundException).getResponse(),
+    );
+  });
+
+  it("lets an event admin reveal the match", async () => {
+    const { controller, revealMatch, isEventAdmin } = setup("event", true);
+    await controller.revealMatch("match", "admin");
+    expect(isEventAdmin).toHaveBeenCalledWith("event", "admin");
+    expect(revealMatch).toHaveBeenCalledWith("match");
   });
 });

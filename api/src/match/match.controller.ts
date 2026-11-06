@@ -16,9 +16,10 @@ import {
 import { MatchService } from "./match.service";
 import { EventService } from "../event/event.service";
 import { UserId } from "../guards/UserGuard";
-import { MatchEntity, MatchPhase } from "./entites/match.entity";
+import { MatchPhase } from "./entites/match.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreateManualMatchDto } from "./dtos/createManualMatchDto";
+import { matchNotFound } from "./match-response";
 
 @Controller("match")
 export class MatchController {
@@ -206,19 +207,9 @@ export class MatchController {
     @Param("matchId", ParseUUIDPipe) matchId: string,
     @UserId() userId: string,
   ) {
-    const match = await this.matchService.getMatchById(matchId, {
-      teams: {
-        event: true,
-      },
-    });
-    if (!match) throw new BadRequestException("Match not found");
-
-    if (
-      !(await this.eventService.isEventAdmin(match.teams[0].event.id, userId))
-    )
-      throw new UnauthorizedException(
-        "You are not authorized to reveal this match.",
-      );
+    const eventId = await this.matchService.getEventIdOfMatch(matchId);
+    if (!eventId || !(await this.eventService.isEventAdmin(eventId, userId)))
+      throw matchNotFound();
 
     this.logger.log({ action: "attempt_reveal_match", userId, matchId });
 
@@ -328,50 +319,16 @@ export class MatchController {
     @UserId() userId: string,
     @Query("adminRevealQuery", new ParseBoolPipe({ optional: true }))
     adminRevealQuery: boolean | undefined,
-  ): Promise<MatchEntity> {
-    const match = await this.matchService.getMatchById(
+  ) {
+    const match = await this.matchService.getMatchResponseById(
       matchId,
-      {
-        winner: true,
-        results: { team: true },
-        teams: {
-          event: true,
-        },
-      },
       userId,
       adminRevealQuery ?? false,
     );
     // QUEUE result scores contain private matchmaking ratings, not public scores.
-    return match.phase === MatchPhase.QUEUE ? { ...match, results: [] } : match;
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get("queue/:eventId/timeseries")
-  async getQueueMatchesTimeSeries(
-    @Param("eventId") eventId: string,
-    @UserId() userId: string,
-    @Query("interval") interval?: "minute" | "hour" | "day",
-    @Query("start") startStr?: string,
-    @Query("end") endStr?: string,
-  ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to view match making stats.",
-      );
-
-    const start = this.parseOptionalDate(startStr, "start");
-    const end = this.parseOptionalDate(endStr, "end");
-
-    if (start && end && start > end) {
-      throw new BadRequestException("Start date must be before end date");
-    }
-
-    return this.matchService.getQueueMatchesTimeSeries({
-      interval,
-      start,
-      end,
-      eventId,
-    });
+    return match.phase === MatchPhase.QUEUE && "results" in match
+      ? { ...match, results: [] }
+      : match;
   }
 
   private parseOptionalDate(

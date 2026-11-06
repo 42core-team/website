@@ -90,6 +90,23 @@ describe('closed roster', () => {
     expect(screen.getByRole('button', { name: 'Edit background' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Invite Others/ })).toBeNull()
   })
+
+  it('hides invites but keeps leaving when only invites are closed', () => {
+    render(
+      <TeamInfoSection
+        myTeam={team}
+        canInvite={false}
+        githubOrg="core"
+        teamMembers={[]}
+        onLeaveTeam={vi.fn()}
+        isLeaving={false}
+        isRepoPending={false}
+        isRepoCreating={false}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: /Invite Others/ })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Leave Team' })).toBeTruthy()
+  })
 })
 
 describe('back button', () => {

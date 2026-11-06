@@ -4,44 +4,50 @@ This document describes the message formats used for communication with the game
 
 ## Starting a Game
 
-To start a game, send a message to the `game_queue` channel with the following JSON format:
+To start a game, the API sends a message to the `game_queue` queue with the following JSON format (the k8s-service reads `data` and does not check `pattern`):
 
 ### Message Structure
 
 ```json
 {
-  "pattern": "new_game",
+  "pattern": "new_match",
   "data": {
-    "ID": "550e8400-e29b-41d4-a716-446655440000",
-    "Image": "ghcr.io/42core-team/game-server:dev",
-    "Bots": [
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "image": "ghcr.io/42core-team/game-server:dev",
+    "bots": [
       {
-        "ID": "550e8400-e29b-41d4-a716-446655440001",
-        "Image": "ghcr.io/42core-team/my-core-bot:dev",
-        "RepoURL": "https://github.com/42core-team/my-core-bot.git",
-        "Name": "My Core Bot"
+        "id": "550e8400-e29b-41d4-a716-446655440001",
+        "image": "ghcr.io/42core-team/my-core-bot:dev",
+        "repoURL": "https://github.com/my-event-org/my-team-repo",
+        "repoToken": "<GitHub token with read access to repoURL>",
+        "name": "My Core Bot"
       },
       {
-        "ID": "550e8400-e29b-41d4-a716-446655440002",
-        "Image": "ghcr.io/42core-team/my-core-bot:dev",
-        "RepoURL": "https://github.com/42core-team/my-core-bot.git",
-        "Name": "Gridmaster"
+        "id": "550e8400-e29b-41d4-a716-446655440002",
+        "image": "ghcr.io/42core-team/my-core-bot:dev",
+        "repoURL": "https://github.com/my-event-org/other-team-repo",
+        "repoToken": "<GitHub token with read access to repoURL>",
+        "name": "Gridmaster"
       }
-    ]
+    ],
+    "gameConfig": "{...}",
+    "serverConfig": "{...}"
   }
 }
 ```
 
 ### Field Descriptions
 
-- `pattern`: Always set to `"start"` for game initiation messages
-- `data.ID`: Unique identifier for the game (UUID format)
-- `data.Image`: Docker image for the game server
-- `data.Bots`: Array of bot configurations
-  - `ID`: Unique identifier for each bot (UUID format)
-  - `Image`: Docker image for the bot
-  - `RepoURL`: Git repository URL for the bot's source code
-  - `Name`: Display name for the bot/player
+- `pattern`: `"new_match"` for game initiation messages
+- `data.id`: Unique identifier for the game (UUID format)
+- `data.image`: Docker image for the game server
+- `data.bots`: Array of bot configurations
+  - `id`: Unique identifier for each bot (UUID format)
+  - `image`: Docker image for the bot
+  - `repoURL`: Git repository URL for the bot's source code. It must be a plain `https://github.com/<owner>/<repo>` URL and must **not** contain credentials; other URLs are rejected.
+  - `repoToken`: Optional GitHub token used to clone `repoURL`. The k8s-service stores it in a per-game Kubernetes Secret owned by the game Job and exposes it only to the clone init container. Leave it out for public repositories.
+  - `name`: Display name for the bot/player
+- `data.gameConfig` / `data.serverConfig`: Game and server configuration JSON (as strings)
 
 ## Game Results
 
@@ -93,5 +99,5 @@ https://github.com/42core-team/even_COREnier/blob/31f3628798926ea97b99aa1939182c
 
 - All UUIDs should be in standard UUID format
 - Docker images should be fully qualified with registry, repository, and tag
-- Repository URLs should be accessible Git repositories
+- Repository URLs must be credential-free `https://github.com/<owner>/<repo>` URLs; credentials go in `repoToken`
 - The system expects exactly the structure shown above for proper message processing

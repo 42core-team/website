@@ -58,20 +58,3 @@ export async function getMatchesTimeSeries(
     )
   ).data
 }
-
-export async function getQueueMatchesTimeSeries(
-  eventId: string,
-  interval: 'minute' | 'hour' | 'day' = 'hour',
-  startISO?: string,
-  endISO?: string,
-): Promise<QueueMatchesTimeBucket[]> {
-  const params = new URLSearchParams({ interval })
-  if (startISO) params.set('start', startISO)
-  if (endISO) params.set('end', endISO)
-
-  return (
-    await axiosInstance.get<QueueMatchesTimeBucket[]>(
-      `match/queue/${eventId}/timeseries?${params.toString()}`,
-    )
-  ).data
-}

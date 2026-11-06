@@ -1,0 +1,159 @@
+{
+  "$comment": "Example values for the patterns in github-validation.ts. Used by the API spec and by the frontend tests (frontend/src/lib/github-validation.test.ts), so both sides are checked against the same list.",
+  "patterns": {
+    "GITHUB_OWNER_PATTERN": {
+      "valid": [
+        "core",
+        "42core-team",
+        "a",
+        "A1-b2-C3",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "invalid": [
+        "",
+        "-core",
+        "core-",
+        "co--re",
+        "co re",
+        " core",
+        "core_team",
+        "core.team",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "core/x",
+        "https://github.com/core",
+        "org:x@y"
+      ]
+    },
+    "GITHUB_REPO_NAME_PATTERN": {
+      "valid": ["monorepo", "my-core-bot.git", ".github", "Event-Team_1.x"],
+      "invalid": ["", ".", "..", "a/b", "a b", "a;b"]
+    },
+    "GITHUB_REPO_URL_PATTERN": {
+      "valid": [
+        "https://github.com/42core-team/monorepo",
+        "https://github.com/42core-team/monorepo.git",
+        "https://github.com/a/b",
+        "https://github.com/Core/.github"
+      ],
+      "invalid": [
+        "",
+        "http://github.com/a/b",
+        "https://gitlab.com/a/b",
+        "https://www.github.com/a/b",
+        "https://github.com.example.org/a/b",
+        "https://user@github.com/a/b",
+        "https://github.com/a",
+        "https://github.com/a/",
+        "https://github.com/a/b/",
+        "https://github.com/a/b/c",
+        "https://github.com/a/b/tree/main",
+        "https://github.com/a/..",
+        "https://github.com/-a/b",
+        "https://github.com/a--b/c",
+        "https://github.com/a/b?x=1",
+        "https://github.com/a/b#x",
+        " https://github.com/a/b",
+        "github.com/a/b",
+        "git@github.com:a/b.git",
+        "file:///etc/passwd",
+        "ext::sh -c id",
+        "--upload-pack=id",
+        "/local/path"
+      ]
+    },
+    "GIT_REF_PATTERN": {
+      "valid": [
+        "dev",
+        "main",
+        "v1.2.3",
+        "release/2025-09",
+        "feat_x",
+        "v0.0.0.1"
+      ],
+      "invalid": [
+        "",
+        "-b",
+        "--upload-pack=id",
+        "a..b",
+        "/main",
+        "main/",
+        "a//b",
+        "x.lock",
+        "a b",
+        " dev",
+        "a;b",
+        "@{1}",
+        "a~1",
+        "a^",
+        "a:b"
+      ]
+    },
+    "REPO_RELATIVE_PATH_PATTERN": {
+      "valid": [
+        "bots/c/softcore",
+        "bots/softcore",
+        "my-core-bot",
+        "bots/c/softcore/",
+        ".config/x",
+        "a",
+        "_x/y.z"
+      ],
+      "invalid": [
+        "",
+        "/etc",
+        "..",
+        "../x",
+        "a/../../x",
+        "a/./b",
+        ".",
+        "./x",
+        "a//b",
+        "-x",
+        "a/-x",
+        "a b",
+        " bots",
+        "a\\b",
+        "*",
+        "!x",
+        "a/b//"
+      ]
+    }
+  },
+  "normalization": {
+    "$comment": "Input -> value after normalization. Both the API DTOs and the frontend forms apply these.",
+    "githubOrg": [
+      ["  core-org ", "core-org"],
+      ["core-org", "core-org"]
+    ],
+    "monorepoUrl": [
+      [
+        " https://github.com/42core-team/monorepo ",
+        "https://github.com/42core-team/monorepo"
+      ],
+      [
+        "https://github.com/42core-team/monorepo/",
+        "https://github.com/42core-team/monorepo"
+      ],
+      [
+        "https://github.com/42core-team/monorepo.git/",
+        "https://github.com/42core-team/monorepo.git"
+      ],
+      [
+        "https://github.com/42core-team/monorepo//",
+        "https://github.com/42core-team/monorepo/"
+      ],
+      [
+        "https://github.com/42core-team/monorepo",
+        "https://github.com/42core-team/monorepo"
+      ]
+    ],
+    "monorepoVersion": [
+      ["  dev\n", "dev"],
+      ["v1.2.3", "v1.2.3"]
+    ],
+    "basePath": [
+      ["  bots/c/softcore  ", "bots/c/softcore"],
+      ["bots/c/softcore/", "bots/c/softcore/"]
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   forwardRef,
   Inject,
   Injectable,
@@ -33,15 +34,26 @@ import {
 } from "../match/entites/match.entity";
 import { MatchStatsEntity } from "../match/entites/matchStats.entity";
 import { EventEntity } from "../event/entities/event.entity";
+import { UserEntity } from "../user/entities/user.entity";
 import { groupLocationTagsByOwner } from "../user/location-tags";
 import type { OwnedLocationTagSource } from "../user/location-tags";
 import { accrueQueueCredits, spendQueueCredits } from "./team-credits";
 import { rankQueueOpponents } from "./queue-matchmaking";
 import type { QueueOpponentCandidate } from "./queue-matchmaking";
-
-export type PublicTaggedTeam = TeamEntity & {
-  tags: string[];
-};
+import {
+  EMPTY_STANDING,
+  toAdminEventTeamResponse,
+  toEventTeamResponse,
+  toInvitingTeamResponse,
+  toOwnTeamResponse,
+  toTeamResponse,
+  type AdminEventTeamResponse,
+  type EventTeamResponse,
+  type InvitingTeamResponse,
+  type OwnTeamResponse,
+  type TeamResponse,
+  type TeamStanding,
+} from "./team-response";
 
 const DIRECT_MATCH_COST = 2;
 const DIRECT_MATCH_STAKE = 1;
@@ -206,10 +218,10 @@ export class TeamService {
     });
   }
 
-  async getTeamByIdWithTags(id: string): Promise<PublicTaggedTeam> {
+  async getTeamByIdWithTags(id: string): Promise<TeamResponse> {
     const team = await this.getTeamById(id);
     const tagsByTeam = await this.getLocationTagsForTeams([id]);
-    return Object.assign(team, { tags: tagsByTeam.get(id) ?? [] });
+    return toTeamResponse(team, tagsByTeam.get(id) ?? []);
   }
 
   getTeamOfUserForEvent(
@@ -233,12 +245,59 @@ export class TeamService {
   async getTeamOfUserForEventWithTags(
     eventId: string,
     userId: string,
-  ): Promise<PublicTaggedTeam | null> {
+  ): Promise<OwnTeamResponse | null> {
     const team = await this.getTeamOfUserForEvent(eventId, userId);
     if (!team) return null;
 
     const tagsByTeam = await this.getLocationTagsForTeams([team.id]);
-    return Object.assign(team, { tags: tagsByTeam.get(team.id) ?? [] });
+    return toOwnTeamResponse(team, tagsByTeam.get(team.id) ?? []);
+  }
+
+  /**
+   * Standings from revealed Swiss matches only: revealed wins plus one point
+   * for a bye, and Buchholz points over revealed results. This is what every
+   * viewer except an event admin in reveal mode gets.
+   */
+  async getPublicStandings(
+    eventId: string,
+    teamIds: string[],
+  ): Promise<Map<string, TeamStanding>> {
+    if (teamIds.length === 0) return new Map();
+
+    const [winRows, teams, buchholzPoints] = await Promise.all([
+      this.dataSource
+        .getRepository(MatchEntity)
+        .createQueryBuilder("match")
+        .select("match.winnerId", "teamId")
+        .addSelect("COUNT(DISTINCT match.id)", "wins")
+        .where("match.winnerId IN (:...teamIds)", { teamIds })
+        .andWhere("match.isRevealed = true")
+        .andWhere("match.phase = :phase", { phase: MatchPhase.SWISS })
+        .groupBy("match.winnerId")
+        .getRawMany<{ teamId: string; wins: string }>(),
+      this.teamRepository.find({
+        select: { id: true, hadBye: true },
+        where: { id: In(teamIds) },
+        loadEagerRelations: false,
+        withDeleted: true,
+      }),
+      this.matchService.calculateBuchholzPointsForTeams(teamIds, eventId, true),
+    ]);
+
+    const winsByTeam = new Map(
+      winRows.map((row) => [row.teamId, parseInt(row.wins, 10) || 0]),
+    );
+    const hadByeByTeam = new Map(teams.map((team) => [team.id, team.hadBye]));
+    return new Map(
+      teamIds.map((teamId) => [
+        teamId,
+        {
+          score:
+            (winsByTeam.get(teamId) ?? 0) + (hadByeByTeam.get(teamId) ? 1 : 0),
+          buchholzPoints: buchholzPoints.get(teamId) ?? 0,
+        },
+      ]),
+    );
   }
 
   async getLocationTagsForTeams(
@@ -455,9 +514,58 @@ export class TeamService {
   }
 
   /**
+   * Serializes every "user joins a team" operation for one user, so membership
+   * checks made under it cannot be invalidated by a concurrent join or create.
+   * Lock order is always user first, then team; no path takes a team lock and
+   * then a user lock.
+   */
+  private async lockUserForTeamMembership(
+    manager: EntityManager,
+    userId: string,
+  ) {
+    await manager.findOneOrFail(UserEntity, {
+      select: { id: true },
+      where: { id: userId },
+      lock: { mode: "pessimistic_write" },
+      loadEagerRelations: false,
+    });
+  }
+
+  /**
+   * Serializes team creation per event and name across users, so the name
+   * check in createTeam holds until the transaction commits. Taken after the
+   * user lock.
+   */
+  private async lockTeamName(
+    manager: EntityManager,
+    eventId: string,
+    name: string,
+  ) {
+    await manager.query("SELECT pg_advisory_xact_lock($1, hashtext($2))", [
+      LockKeys.TEAM_NAME,
+      `${eventId}:${name}`,
+    ]);
+  }
+
+  private async assertUserHasNoTeamInEvent(
+    manager: EntityManager,
+    userId: string,
+    eventId: string,
+    message: string,
+  ) {
+    if (
+      await manager.exists(TeamEntity, {
+        where: { event: { id: eventId }, users: { id: userId } },
+      })
+    )
+      throw new BadRequestException(message);
+  }
+
+  /**
    * Locks the team row for a roster change. Every roster mutation and the
    * repository status transition it triggers happen under this lock, so a
    * permission operation never starts from a roster that is being changed.
+   * Joins take the user lock (lockUserForTeamMembership) before this one.
    */
   private async lockTeamForMembershipChange(
     manager: EntityManager,
@@ -593,11 +701,27 @@ export class TeamService {
     starterTemplateId?: string,
   ) {
     return await this.dataSource.transaction(async (entityManager) => {
+      await this.lockUserForTeamMembership(entityManager, userId);
+      await this.lockTeamName(entityManager, eventId, name);
       const event = await entityManager.findOneOrFail(EventEntity, {
         where: { id: eventId },
       });
       if (!isRegistrationOpen(event))
         throw new BadRequestException("Registration is closed.");
+      await this.assertUserHasNoTeamInEvent(
+        entityManager,
+        userId,
+        eventId,
+        "You already have a team for this event.",
+      );
+      if (
+        await entityManager.exists(TeamEntity, {
+          where: { name, event: { id: eventId } },
+        })
+      )
+        throw new BadRequestException(
+          "A team with this name already exists for this event.",
+        );
       if (
         starterTemplateId &&
         !(await this.eventService.isStarterTemplateInEvent(
@@ -651,16 +775,17 @@ export class TeamService {
   }
 
   private async deleteTeamRecord(team: TeamEntity) {
-    const teamId = team.id;
+    await this.deleteTeamRepository(team);
+    return this.teamRepository.softDelete(team.id);
+  }
 
+  private async deleteTeamRepository(team: TeamEntity) {
     if (team.repo)
       await this.githubApiService.deleteRepository(
         team.repo,
         team.event.githubOrg,
         team.event.githubOrgSecret,
       );
-
-    return this.teamRepository.softDelete(teamId);
   }
 
   async setTeamCredits(eventId: string, teamId: string, credits: number) {
@@ -688,27 +813,38 @@ export class TeamService {
   }
 
   async leaveTeam(teamId: string, userId: string) {
-    const { repo, lastMember } = await this.dataSource.transaction(
+    const { team, deletion } = await this.dataSource.transaction(
       async (manager) => {
         const team = await this.lockTeamForMembershipChange(manager, teamId);
-        const lastMember = team.users.length <= 1;
+        if (!team.users.some((user) => user.id === userId))
+          throw new NotFoundException(
+            "You are not part of a team for this event.",
+          );
+        const lastMember = team.users.length === 1;
         await manager
           .createQueryBuilder()
           .relation(TeamEntity, "users")
           .of(teamId)
           .remove(userId);
-        if (!lastMember && team.repo)
+        if (lastMember) {
+          const deletion = await manager.softDelete(TeamEntity, teamId);
+          return { team, deletion };
+        }
+        if (team.repo)
           await manager.update(TeamEntity, teamId, {
             repositoryStatus: RepositoryStatus.UNLOCKING,
           });
-        return { repo: team.repo, lastMember };
+        return { team, deletion: undefined };
       },
     );
 
-    if (lastMember) return this.deleteTeam(teamId);
+    if (deletion) {
+      await this.deleteTeamRepository(team);
+      return deletion;
+    }
     // The permission operation reconciles collaborators against the new
     // roster, which removes the departed member from the repository.
-    if (repo) await this.syncRepositoryAccess(teamId);
+    if (team.repo) await this.syncRepositoryAccess(teamId);
   }
 
   getTeamCountForEvent(eventId: string): Promise<number> {
@@ -735,7 +871,7 @@ export class TeamService {
   async getTeamsUserIsInvitedTo(
     userId: string,
     eventId: string,
-  ): Promise<PublicTaggedTeam[]> {
+  ): Promise<InvitingTeamResponse[]> {
     const teams = await this.teamRepository.find({
       where: {
         event: {
@@ -750,9 +886,9 @@ export class TeamService {
     const tagsByTeam = await this.getLocationTagsForTeams(
       teams.map((team) => team.id),
     );
-    return teams.map((team) => {
-      return Object.assign(team, { tags: tagsByTeam.get(team.id) ?? [] });
-    });
+    return teams.map((team) =>
+      toInvitingTeamResponse(team, tagsByTeam.get(team.id) ?? []),
+    );
   }
 
   isUserInvitedToTeam(userId: string, teamId: string): Promise<boolean> {
@@ -768,7 +904,38 @@ export class TeamService {
 
   async acceptTeamInvite(userId: string, teamId: string): Promise<void> {
     const team = await this.dataSource.transaction(async (manager) => {
+      await this.lockUserForTeamMembership(manager, userId);
       const team = await this.lockTeamForMembershipChange(manager, teamId);
+      await this.assertUserHasNoTeamInEvent(
+        manager,
+        userId,
+        team.event.id,
+        "You are already part of a team for this event.",
+      );
+      if (
+        !(await manager.exists(TeamEntity, {
+          where: { id: teamId, teamInvites: { id: userId } },
+        }))
+      )
+        throw new BadRequestException("You are not invited to this team.");
+      // Turning team creation off also freezes the rosters of existing teams.
+      if (!team.event.canCreateTeam)
+        throw new BadRequestException(
+          "Joining teams is closed for this event.",
+        );
+      if (
+        !(await this.eventService.isUserEligibleForEvent(
+          team.event.id,
+          userId,
+          manager,
+        ))
+      )
+        throw new ForbiddenException(
+          "You are not registered or not whitelisted for this private event.",
+        );
+      const maxUsers = team.event.maxTeamSize;
+      if (!maxUsers || team.users.length >= maxUsers)
+        throw new BadRequestException("This team is full.");
       if (team.repo)
         await manager.update(TeamEntity, teamId, {
           repositoryStatus: RepositoryStatus.UNLOCKING,
@@ -803,14 +970,7 @@ export class TeamService {
     sortBy?: string,
     userId?: string,
     adminReveal?: boolean,
-  ): Promise<
-    Array<
-      TeamEntity & {
-        userCount: number;
-        tags: string[];
-      }
-    >
-  > {
+  ): Promise<Array<EventTeamResponse | AdminEventTeamResponse>> {
     const isAdmin = userId
       ? await this.eventService.isEventAdmin(eventId, userId)
       : false;
@@ -821,15 +981,11 @@ export class TeamService {
       .innerJoin("team.event", "event")
       .leftJoin("team.users", "user")
       .where("event.id = :eventId", { eventId })
-      .andWhere("team.deletedAt IS NULL");
-
-    if (revealAll) {
-      query.select([
+      .andWhere("team.deletedAt IS NULL")
+      .select([
         "team.id",
         "team.name",
-        "team.locked",
         "team.repositoryStatus",
-        "team.repositoryOperationId",
         "team.repositoryError",
         "team.tournamentExcluded",
         "team.score",
@@ -837,12 +993,11 @@ export class TeamService {
         "team.hadBye",
         "team.credits",
         "team.createdAt",
-        "team.updatedAt",
         "team.pictureSmallUploadId",
         "team.pictureLargeUploadId",
-        "team.backgroundLargeUploadId",
       ]);
-    } else {
+
+    if (!revealAll) {
       // Calculate revealed score dynamically
       query
         .leftJoin(
@@ -850,22 +1005,6 @@ export class TeamService {
           "match",
           "match.winnerId = team.id AND match.isRevealed = true AND match.phase = 'SWISS'",
         )
-        .select([
-          "team.id",
-          "team.name",
-          "team.locked",
-          "team.repositoryStatus",
-          "team.repositoryOperationId",
-          "team.repositoryError",
-          "team.tournamentExcluded",
-          "team.hadBye",
-          "team.createdAt",
-          "team.updatedAt",
-          "team.score",
-          "team.pictureSmallUploadId",
-          "team.pictureLargeUploadId",
-          "team.backgroundLargeUploadId",
-        ])
         .addSelect("COUNT(DISTINCT match.id)", "revealed_match_wins");
     }
 
@@ -879,35 +1018,22 @@ export class TeamService {
 
     if (sortBy) {
       const direction = searchDir?.toUpperCase() === "DESC" ? "DESC" : "ASC";
-      const sortColumn = sortBy;
 
-      const validSortColumns = [
-        "name",
-        "locked",
-        "score",
-        "createdAt",
-        "updatedAt",
-        "buchholzPoints",
-      ];
-
-      if (validSortColumns.includes(sortColumn)) {
-        if (sortColumn === "score" && !revealAll) {
-          query.orderBy("revealed_match_wins", direction as "ASC" | "DESC");
-        } else if (sortColumn === "buchholzPoints") {
-          if (revealAll) {
-            query.orderBy("team.buchholzPoints", direction as "ASC" | "DESC");
-          } else {
-            throw new BadRequestException(
-              "Buchholz points are hidden for this event.",
-            );
-          }
-        } else {
-          query.orderBy(`team.${sortColumn}`, direction as "ASC" | "DESC");
-        }
-      }
-
-      if (sortBy === "membersCount") {
-        query.orderBy("COUNT(DISTINCT user.id)", direction as "ASC" | "DESC");
+      if (sortBy === "name" || sortBy === "createdAt") {
+        query.orderBy(`team.${sortBy}`, direction);
+      } else if (sortBy === "score") {
+        query.orderBy(
+          revealAll ? "team.score" : "revealed_match_wins",
+          direction,
+        );
+      } else if (sortBy === "buchholzPoints") {
+        if (!revealAll)
+          throw new BadRequestException(
+            "Buchholz points are hidden for this event.",
+          );
+        query.orderBy("team.buchholzPoints", direction);
+      } else if (sortBy === "membersCount") {
+        query.orderBy("COUNT(DISTINCT user.id)", direction);
       }
     }
 
@@ -917,11 +1043,9 @@ export class TeamService {
     const uploadIds = [
       ...new Set(
         result.entities.flatMap((team) =>
-          [
-            team.pictureSmallUploadId,
-            team.pictureLargeUploadId,
-            team.backgroundLargeUploadId,
-          ].filter((id): id is string => Boolean(id)),
+          [team.pictureSmallUploadId, team.pictureLargeUploadId].filter(
+            (id): id is string => Boolean(id),
+          ),
         ),
       ),
     ];
@@ -933,65 +1057,34 @@ export class TeamService {
       : [];
     const uploadsById = new Map(uploads.map((upload) => [upload.id, upload]));
     // Public standings are calculated from revealed matches. The admin view must
-    // keep the persisted value selected above instead of overwriting it with a
-    // different on-the-fly calculation.
-    const revealedBuchholzMap = revealAll
+    // keep the persisted values selected above instead of overwriting them with
+    // a different on-the-fly calculation.
+    const publicStandings = revealAll
       ? undefined
-      : await this.matchService.calculateBuchholzPointsForTeams(
-          teamIds,
-          eventId,
-          true,
-        );
+      : await this.getPublicStandings(eventId, teamIds);
     const tagsByTeam = await this.getLocationTagsForTeams(teamIds);
 
-    // Map properties from raw if entity is missing them due to partial select
-    const teamsWithCounts = await Promise.all(
-      result.entities.map(async (team, idx) => {
-        const raw = result.raw[idx];
+    return result.entities.map((team, idx) => {
+      const { picture } = mediaArtwork({
+        pictureSmallUpload: team.pictureSmallUploadId
+          ? uploadsById.get(team.pictureSmallUploadId)
+          : null,
+        pictureLargeUpload: team.pictureLargeUploadId
+          ? uploadsById.get(team.pictureLargeUploadId)
+          : null,
+        backgroundLargeUpload: null,
+      });
+      const standing: TeamStanding = revealAll
+        ? { score: team.score || 0, buchholzPoints: team.buchholzPoints ?? 0 }
+        : (publicStandings?.get(team.id) ?? EMPTY_STANDING);
+      const userCount = parseInt(result.raw[idx].user_count, 10) || 0;
+      const tags = tagsByTeam.get(team.id) ?? [];
+      const teamWithPicture = Object.assign(team, { picture });
 
-        const mappedTeam: TeamEntity & {
-          userCount: number;
-          score: number;
-          buchholzPoints: number;
-          tags: string[];
-        } = Object.assign(new TeamEntity(), team, {
-          ...mediaArtwork({
-            pictureSmallUpload: team.pictureSmallUploadId
-              ? uploadsById.get(team.pictureSmallUploadId)
-              : null,
-            pictureLargeUpload: team.pictureLargeUploadId
-              ? uploadsById.get(team.pictureLargeUploadId)
-              : null,
-            backgroundLargeUpload: team.backgroundLargeUploadId
-              ? uploadsById.get(team.backgroundLargeUploadId)
-              : null,
-          }),
-          hadBye: team.hadBye,
-          userCount: parseInt(raw.user_count, 10) || 0,
-          score: 0,
-          buchholzPoints: 0,
-          tags: tagsByTeam.get(team.id) ?? [],
-        });
-
-        if (revealAll) {
-          // For admins, use DB score which includes byes
-          mappedTeam.score = team.score || 0;
-        } else {
-          // For public, Revealed Match Wins + Bye
-          mappedTeam.score =
-            (parseInt(raw.revealed_match_wins, 10) || 0) +
-            (team.hadBye ? 1 : 0);
-        }
-
-        mappedTeam.buchholzPoints = revealAll
-          ? (team.buchholzPoints ?? 0)
-          : (revealedBuchholzMap?.get(team.id) ?? 0);
-
-        return mappedTeam;
-      }),
-    );
-
-    return teamsWithCounts;
+      return isAdmin
+        ? toAdminEventTeamResponse(teamWithPicture, standing, userCount, tags)
+        : toEventTeamResponse(teamWithPicture, standing, userCount, tags);
+    });
   }
 
   async joinQueue(teamId: string, eventId: string) {

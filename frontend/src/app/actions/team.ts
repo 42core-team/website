@@ -45,16 +45,12 @@ export interface Team extends TeamAppearance, RepositoryState {
   id: string
   name: string
   repo: string
-  inQueue: boolean
   credits: number
   score: number
   buchholzPoints: number
   hadBye: boolean
   locked?: boolean
-  created?: string
-  updated?: string
   createdAt?: Date
-  updatedAt?: Date
   membersCount?: number
   tags: string[]
 }
@@ -70,17 +66,17 @@ export interface TeamMember {
   tags: string[]
 }
 
+// Each team endpoint returns only the fields its views read, so most of these
+// are optional. Repository state and credits come for the own team and for
+// event admins only.
 export interface TeamApiResponse extends TeamAppearance, RepositoryState {
   id: string
   name: string
   repo?: string | null
-  inQueue?: boolean
   score?: number
   buchholzPoints?: number
   hadBye?: boolean
-  locked?: boolean
   createdAt?: Date
-  updatedAt?: Date
   userCount?: number
   credits?: number
   tags?: string[]
@@ -106,11 +102,6 @@ export interface UserSearchResult {
 
 export async function getQueueMatches(eventId: string) {
   return (await axiosInstance.get(`/match/queue/${eventId}/`))
-    .data as QueueMatch[]
-}
-
-export async function getQueueMatchesAdmin(eventId: string) {
-  return (await axiosInstance.get(`/match/queue/${eventId}/admin`))
     .data as QueueMatch[]
 }
 
@@ -149,10 +140,6 @@ export async function getTeamById(teamId: string): Promise<Team | null> {
   return team ? mapTeamResponse(team) : null
 }
 
-export async function hasEventStarted(teamId: string): Promise<boolean> {
-  return (await axiosInstance.get(`team/${teamId}/event-started`)).data
-}
-
 export async function getMyEventTeam(eventId: string): Promise<Team | null> {
   const team = (
     await axiosInstance.get<TeamApiResponse | null>(`team/event/${eventId}/my`)
@@ -180,14 +167,6 @@ export async function deleteTeamAsAdmin(
   teamId: string,
 ): Promise<void> {
   await axiosInstance.delete(`team/event/${eventId}/admin/${teamId}`)
-}
-
-export async function lockEvent(eventId: string) {
-  return (await axiosInstance.put(`event/${eventId}/lock`)).data
-}
-
-export async function unlockEvent(eventId: string) {
-  return (await axiosInstance.put(`event/${eventId}/unlock`)).data
 }
 
 /**
@@ -317,18 +296,14 @@ export function mapTeamResponse(team: TeamApiResponse): Team {
     picture: team.picture,
     background: team.background,
     repo: team.repo ?? '',
-    inQueue: team.inQueue ?? false,
     score: team.score ?? 0,
     buchholzPoints: team.buchholzPoints ?? 0,
     hadBye: team.hadBye ?? false,
-    locked: team.repositoryStatus
-      ? team.repositoryStatus === 'LOCKED'
-      : team.locked,
+    locked: team.repositoryStatus === 'LOCKED',
     repositoryStatus: team.repositoryStatus,
     repositoryError: team.repositoryError,
     tournamentExcluded: team.tournamentExcluded,
     createdAt: team.createdAt,
-    updatedAt: team.updatedAt,
     membersCount: team.userCount,
     credits: team.credits ?? 0,
     tags: team.tags ?? [],

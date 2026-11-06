@@ -2,7 +2,7 @@ import { MatchTeamHeader } from '@/components/match/MatchTeamHeader'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ExternalLink } from 'lucide-react'
-import { getEventById } from '@/app/actions/event'
+import { getEventById, isEventAdmin } from '@/app/actions/event'
 import {
   getLogsOfMatch,
   getMatchById,
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { getS3ReplaysBucketUrl, getVisualizerUrl } from '@/lib/env'
 import { buildMatchVisualizerUrl } from '@/lib/visualizer-url'
+import { retryUnlessStatus } from '@/lib/query-retry'
 
 export const Route = createFileRoute('/events/$id/match/$matchId')({
   component: MatchRoute,
@@ -26,9 +27,19 @@ function getTotalRounds(teamCount: number) {
 
 function MatchRoute() {
   const { id, matchId } = Route.useParams()
+  const eventAdminQuery = useQuery({
+    queryKey: ['event', id, 'is-event-admin'],
+    queryFn: () => isEventAdmin(id),
+  })
+  // Unrevealed tournament matches only exist for event admins; the header
+  // still waits for the reveal before it shows the result.
+  const adminReveal = eventAdminQuery.data === true
   const matchQuery = useQuery({
-    queryKey: ['match', matchId],
-    queryFn: async () => getMatchById(matchId),
+    queryKey: ['match', matchId, { adminReveal }],
+    queryFn: async () => getMatchById(matchId, adminReveal),
+    enabled: !eventAdminQuery.isPending,
+    // An unknown or hidden match answers 404, which a retry cannot change.
+    retry: retryUnlessStatus(404),
   })
   const eventQuery = useQuery({
     queryKey: ['event', id],
@@ -58,6 +69,9 @@ function MatchRoute() {
     queryKey: ['match', matchId, 'logs'],
     queryFn: async () => getLogsOfMatch(matchId),
     enabled: Boolean(matchQuery.data),
+    // Logs are only visible to event admins and the match's teams; everyone
+    // else gets a 404 and the section stays hidden.
+    retry: retryUnlessStatus(403, 404),
   })
 
   if (

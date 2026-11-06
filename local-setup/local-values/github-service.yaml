@@ -8,6 +8,10 @@ fullnameOverride: "github-service"
 serviceAccount:
   create: false
 
+env:
+  # Repositories named sim-* are simulated, only in development.
+  NODE_ENV: development
+
 secrets:
   RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
   API_SECRET_ENCRYPTION_KEY: secret-encryption-key

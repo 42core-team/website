@@ -111,12 +111,6 @@ export class UserService {
     });
   }
 
-  getUserByEmail(email: string) {
-    return this.userRepository.findOneBy({
-      email,
-    });
-  }
-
   joinEvent(userId: string, eventId: string) {
     return this.userRepository.manager.transaction(async (manager) => {
       // Recheck at the mutation, after identity/whitelist lookups, and serialize
@@ -140,6 +134,10 @@ export class UserService {
       id: userId,
       canCreateEvent: true,
     });
+  }
+
+  userExists(userId: string): Promise<boolean> {
+    return this.userRepository.existsBy({ id: userId });
   }
 
   getUserById(userId: string) {

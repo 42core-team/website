@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Controller,
   Get,
-  Param,
   Query,
   UseGuards,
   Logger,
@@ -10,6 +9,7 @@ import {
 import { UserService } from "./user.service";
 import { UserId } from "../guards/UserGuard";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { PublicUserDto, toPublicUsers } from "./dtos/public-user.dto";
 
 @Controller("user")
 export class UserController {
@@ -25,7 +25,10 @@ export class UserController {
 
   @UseGuards(JwtAuthGuard)
   @Get("search")
-  async searchUsers(@UserId() userId: string, @Query("q") query: string) {
+  async searchUsers(
+    @UserId() userId: string,
+    @Query("q") query: string,
+  ): Promise<PublicUserDto[]> {
     const sanitizedQuery = (query || "").trim();
     if (!sanitizedQuery) {
       throw new BadRequestException("Search query must not be empty");
@@ -37,16 +40,6 @@ export class UserController {
 
     this.logger.log({ action: "search_users", userId, query: sanitizedQuery });
 
-    return this.userService.searchUsers(sanitizedQuery);
-  }
-
-  @Get("github/:githubId")
-  async getUserByGithubId(@Param("githubId") githubId: string) {
-    return this.userService.getUserByGithubId(githubId);
-  }
-
-  @Get("email/:email")
-  async getUserByEmail(@Param("email") email: string) {
-    return this.userService.getUserByEmail(email);
+    return toPublicUsers(await this.userService.searchUsers(sanitizedQuery));
   }
 }

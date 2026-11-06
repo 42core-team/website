@@ -29,7 +29,8 @@
     "migration:create": "sh -c 'npm run typeorm:ts -- migration:create ./db/migrations/\"$0\"'",
     "migration:revert": "npm run typeorm -- -d ./dist/typeOrm.config.js migration:revert",
     "migration:revert-local": "npm run typeorm:ts -- -d ./typeOrm.config.ts migration:revert",
-    "seed:users": "ts-node -r tsconfig-paths/register src/scripts/seed-users-teams.ts"
+    "seed:users": "ts-node -r tsconfig-paths/register src/scripts/seed-users-teams.ts",
+    "backfill:campus": "ts-node -r tsconfig-paths/register src/scripts/backfill-42-campus.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1150.0",

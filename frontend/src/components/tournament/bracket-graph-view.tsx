@@ -25,16 +25,17 @@ function getTotalRounds(teamCount: number) {
 
 function createPlaceholderMatch(round: number): Match {
   return {
-    id: '',
     isRevealed: false,
     round,
     state: MatchState.PLANNED,
     phase: MatchPhase.ELIMINATION,
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
     teams: [],
-    results: [],
   }
+}
+
+function isHighlighted(match: Match, highlightedMatchId?: string) {
+  return Boolean(match.id) && match.id === highlightedMatchId
 }
 
 interface BracketGraphViewProps {
@@ -122,6 +123,7 @@ export function BracketGraphView({
         const roundNodeIds: string[] = []
 
         bracketMatches.forEach((match, index) => {
+          // Unrevealed matches have no id; their bracket slot is a stable key.
           const id = match.id ?? `match-${roundIndex}-${index}`
           const x = roundIndex * roundSpacing
           const y = index * spacing + spacing / 2
@@ -137,7 +139,7 @@ export function BracketGraphView({
               showTargetHandle: roundIndex > 0,
               showSourceHandle: roundIndex < lastRoundIndex,
               hideScore: true,
-              isHighlighted: match.id === highlightedMatchId,
+              isHighlighted: isHighlighted(match, highlightedMatchId),
               onClick: (clickedMatch: Match) => {
                 if (
                   (match.state === MatchState.FINISHED || isEventAdmin) &&
@@ -171,7 +173,7 @@ export function BracketGraphView({
               showTargetHandle: false,
               showSourceHandle: false,
               hideScore: true,
-              isHighlighted: placementMatch.id === highlightedMatchId,
+              isHighlighted: isHighlighted(placementMatch, highlightedMatchId),
               onClick: (clickedMatch: Match) => {
                 if (
                   (placementMatch.state === MatchState.FINISHED ||

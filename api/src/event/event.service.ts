@@ -12,8 +12,10 @@ import { EventEntity } from "./entities/event.entity";
 import { assertImageExists } from "./image.util";
 import { EventStarterTemplateEntity } from "./entities/event-starter-template.entity";
 import { EventWhitelistEntity } from "./entities/event-whitelist.entity";
+import { isUserRegisteredForEvent } from "./event-registration";
 import {
   DataSource,
+  EntityManager,
   In,
   LessThanOrEqual,
   Repository,
@@ -22,8 +24,10 @@ import {
 } from "typeorm";
 import {
   PermissionRole,
+  UserEntity,
   UserEventPermissionEntity,
 } from "../user/entities/user.entity";
+import { SocialPlatform } from "../user/entities/social-account.entity";
 import { ConfigService } from "@nestjs/config";
 import { TeamService } from "../team/team.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
@@ -38,6 +42,7 @@ import {
 } from "./event-lifecycle";
 import { EventLifecycleDto } from "./dtos/eventLifecycleDto";
 import { TeamEntity } from "../team/entities/team.entity";
+import { toPublicUsers } from "../user/dtos/public-user.dto";
 
 @Injectable()
 export class EventService {
@@ -464,16 +469,42 @@ export class EventService {
   }
 
   async isUserRegisteredForEvent(eventId: string, userId: string) {
-    /**
-     * for public events, all users are considered registered
-     */
-    if (await this.isEventPublic(eventId)) return true;
-    return await this.eventRepository.existsBy({
-      id: eventId,
-      users: {
-        id: userId,
-      },
+    return isUserRegisteredForEvent(this.eventRepository, eventId, userId);
+  }
+
+  /**
+   * Whether the user may be part of a team in this event. Public events are
+   * open to everyone. Private events require the user to be registered and,
+   * when the event has a whitelist, to still be on it.
+   */
+  async isUserEligibleForEvent(
+    eventId: string,
+    userId: string,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<boolean> {
+    const event = await manager.findOne(EventEntity, {
+      select: { id: true, isPrivate: true },
+      where: { id: eventId },
+      loadEagerRelations: false,
     });
+    if (!event) return false;
+    if (!event.isPrivate) return true;
+
+    const user = await manager.findOne(UserEntity, {
+      where: { id: userId, events: { id: eventId } },
+      relations: { socialAccounts: true },
+      loadEagerRelations: false,
+    });
+    if (!user) return false;
+    const fortyTwoAccount = user.socialAccounts.find(
+      (sa) => sa.platform === SocialPlatform.FORTYTWO,
+    );
+    return this.isUserWhitelisted(
+      eventId,
+      user.username,
+      fortyTwoAccount?.username ?? null,
+      manager,
+    );
   }
 
   isEventAdmin(eventId: string, userId: string): Promise<boolean> {
@@ -535,14 +566,6 @@ export class EventService {
     );
 
     return closure.result;
-  }
-
-  async unlockEvent(eventId: string) {
-    const event = await this.getEventById(eventId);
-    return this.transitionLifecycle(eventId, {
-      action: "reopen",
-      submissionDeadline: event.submissionDeadline?.getTime(),
-    });
   }
 
   async setCurrentRound(eventId: string, round: number): Promise<UpdateResult> {
@@ -697,17 +720,6 @@ export class EventService {
       });
       await repository.update(teamId, { tournamentExcluded: excluded });
       return repository.findOneByOrFail({ id: teamId });
-    });
-  }
-
-  async setTeamsLockedDate(
-    eventId: string,
-    date: Date | null,
-  ): Promise<UpdateResult> {
-    if (!date)
-      throw new BadRequestException("A submission deadline is required");
-    return this.updateEventSettings(eventId, {
-      submissionDeadline: date.getTime(),
     });
   }
 
@@ -896,7 +908,7 @@ export class EventService {
         user: true,
       },
     });
-    return permissions.map((p) => p.user);
+    return toPublicUsers(permissions.map((p) => p.user));
   }
 
   async addEventAdmin(eventId: string, userId: string) {
@@ -951,9 +963,18 @@ export class EventService {
   }
 
   async getCurrentLiveEvent() {
+    // Picks the event with the most registered users. The users are only
+    // counted, never selected, so none of them end up in the public response.
     const qb = this.eventRepository
       .createQueryBuilder("event")
-      .leftJoinAndSelect("event.users", "user")
+      .addSelect(
+        (subQuery) =>
+          subQuery
+            .select("COUNT(*)")
+            .from("events_users", "event_user")
+            .where('event_user."eventsId" = event.id'),
+        "user_count",
+      )
       .where("event.isPrivate = false")
       .andWhere("event.startDate <= :now", { now: new Date() })
       .andWhere("event.submissionDeadline > :now", { now: new Date() })
@@ -961,8 +982,6 @@ export class EventService {
         states: [EventState.REGISTRATION, EventState.PLAYING],
       })
       .andWhere("event.canCreateTeam = true")
-      .addSelect("COUNT(user.id)", "user_count")
-      .groupBy("event.id, user.id")
       .orderBy("user_count", "DESC")
       .limit(1);
 
@@ -1081,8 +1100,11 @@ export class EventService {
     });
   }
 
-  async hasWhitelist(eventId: string): Promise<boolean> {
-    return this.whitelistRepository.existsBy({
+  async hasWhitelist(
+    eventId: string,
+    manager?: EntityManager,
+  ): Promise<boolean> {
+    return this.getWhitelistRepository(manager).existsBy({
       event: { id: eventId },
     });
   }
@@ -1091,8 +1113,9 @@ export class EventService {
     eventId: string,
     githubUsername: string,
     fortyTwoUsername: string | null,
+    manager?: EntityManager,
   ): Promise<boolean> {
-    if (!(await this.hasWhitelist(eventId))) {
+    if (!(await this.hasWhitelist(eventId, manager))) {
       return true;
     }
 
@@ -1110,12 +1133,18 @@ export class EventService {
       });
     }
 
-    return this.whitelistRepository.existsBy(
+    return this.getWhitelistRepository(manager).existsBy(
       conditions.map((cond) => ({
         event: { id: eventId },
         username: cond.username,
         platform: cond.platform,
       })),
+    );
+  }
+
+  private getWhitelistRepository(manager?: EntityManager) {
+    return (
+      manager?.getRepository(EventWhitelistEntity) ?? this.whitelistRepository
     );
   }
 }
