@@ -31,7 +31,7 @@ RUN STATIC_BUILD=true \
     VITE_MEDIA_URL="${VITE_MEDIA_URL}" \
     bun run build
 
-FROM nginx:1.29-alpine AS runner
+FROM nginx:1.31-alpine AS runner
 
 EXPOSE 3000
 
