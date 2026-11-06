@@ -196,7 +196,7 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
           )}
 
           {/* Right side */}
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2 sm:ml-0">
             {actions}
             <ThemeSwitch />
             {user?.id ? (
