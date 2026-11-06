@@ -12,6 +12,7 @@ import { EventEntity } from "./entities/event.entity";
 import { assertImageExists } from "./image.util";
 import { EventStarterTemplateEntity } from "./entities/event-starter-template.entity";
 import { EventWhitelistEntity } from "./entities/event-whitelist.entity";
+import { isUserRegisteredForEvent } from "./event-registration";
 import {
   DataSource,
   EntityManager,
@@ -468,16 +469,7 @@ export class EventService {
   }
 
   async isUserRegisteredForEvent(eventId: string, userId: string) {
-    /**
-     * for public events, all users are considered registered
-     */
-    if (await this.isEventPublic(eventId)) return true;
-    return await this.eventRepository.existsBy({
-      id: eventId,
-      users: {
-        id: userId,
-      },
-    });
+    return isUserRegisteredForEvent(this.eventRepository, eventId, userId);
   }
 
   /**

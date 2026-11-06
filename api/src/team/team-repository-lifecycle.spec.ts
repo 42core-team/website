@@ -55,6 +55,7 @@ function setup(status = "PROVISIONING", closed = false) {
     findOneOrFail: jest.fn().mockResolvedValue(team),
     update: jest.fn().mockResolvedValue({}),
     save: jest.fn().mockResolvedValue(team),
+    existsBy: jest.fn().mockResolvedValue(true),
   };
   const manager = {
     getRepository: () => repository,

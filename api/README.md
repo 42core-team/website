@@ -118,6 +118,7 @@ the new session survives. They are skipped when the test database URL is absent.
 
 - **Seed Users and Teams:** `pnpm seed:users <eventId>`
   Generates 90 users and 30 teams (3 members each) and assigns them to the specified event. This is useful for testing group phases and bracket logic.
+  Each seeded team gets a simulated repository named `sim-<teamId>` in READY state, so no repository is ever created for it. When `NODE_ENV` is `development`, github-service reports permission, lock, unlock and delete operations on these repositories as successful without calling GitHub, so closing submissions locks the seeded teams and the tournament can start. `RANDOM_GAME_RESULTS=true` is required, because real matches cannot clone `sim-*` repositories. Tilt sets both.
 
 ## API Documentation
 

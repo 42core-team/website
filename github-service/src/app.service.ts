@@ -7,6 +7,7 @@ import * as fs from "fs/promises";
 import { RepoUtils } from "./repo.utils";
 import { decryptSecret } from "./secret-crypto";
 import { lastValueFrom, timeout } from "rxjs";
+import { isSimulatedRepository } from "./simulated-repository";
 
 @Injectable()
 export class AppService {
@@ -16,6 +17,12 @@ export class AppService {
 
   private readonly TMP_FOLDER = "./tmp";
   private readonly repositoryOperations = new Map<string, Promise<unknown>>();
+
+  private logSimulated(operation: string, repositoryName: string) {
+    this.logger.log(
+      `Simulated ${operation} ${JSON.stringify({ repositoryName })}`,
+    );
+  }
 
   async runRepositoryOperation(
     teamId: string,
@@ -75,6 +82,16 @@ export class AppService {
     }[];
   }) {
     let error: string | undefined;
+    if (isSimulatedRepository(data.repositoryName)) {
+      this.logSimulated("set repository access", data.repositoryName);
+      await this.reportRepositoryOperation({
+        teamId: data.teamId,
+        operationId: data.operationId,
+        repositoryName: data.repositoryName,
+        action: data.locked ? "LOCK" : "UNLOCK",
+      });
+      return;
+    }
     try {
       // Former members may have regained access through an earlier operation
       // that was still queued when they left, so reconcile against the roster.
@@ -239,6 +256,8 @@ export class AppService {
     repoName: string,
     encryptedSecret: string,
   ) {
+    if (isSimulatedRepository(repoName))
+      return this.logSimulated("remove write permissions", repoName);
     return this.executeGitHubAction(
       username,
       githubId,
@@ -276,6 +295,8 @@ export class AppService {
     repoName: string,
     encryptedSecret: string,
   ) {
+    if (isSimulatedRepository(repoName))
+      return this.logSimulated("add write permissions", repoName);
     return this.executeGitHubAction(
       username,
       githubId,
@@ -301,6 +322,8 @@ export class AppService {
     encryptedSecret: string,
     encryptedGithubAccessToken: string,
   ) {
+    if (isSimulatedRepository(repositoryName))
+      return this.logSimulated("add user to repository", repositoryName);
     return this.executeGitHubAction(
       username,
       githubId,
@@ -343,6 +366,8 @@ export class AppService {
     encryptedSecret: string,
     githubUsers: { username: string; githubId: string }[],
   ) {
+    if (isSimulatedRepository(repositoryName))
+      return this.logSimulated("remove former collaborators", repositoryName);
     const githubIds = new Set(githubUsers.map((user) => String(user.githubId)));
     const usernames = new Set(
       githubUsers.map((user) => user.username.toLowerCase()),
@@ -399,6 +424,8 @@ export class AppService {
     githubOrg: string,
     encryptedSecret: string,
   ) {
+    if (isSimulatedRepository(repositoryName))
+      return this.logSimulated("remove user from repository", repositoryName);
     return this.executeGitHubAction(
       username,
       githubId,
@@ -416,6 +443,8 @@ export class AppService {
     githubOrg: string,
     encryptedSecret: string,
   ) {
+    if (isSimulatedRepository(repositoryName))
+      return this.logSimulated("delete repository", repositoryName);
     this.logger.log(
       `Deleting repository ${JSON.stringify({ repositoryName, githubOrg })}`,
     );

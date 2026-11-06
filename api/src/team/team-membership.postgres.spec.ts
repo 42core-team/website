@@ -11,8 +11,9 @@ jest.mock("../match/match.service", () => ({
 
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { DataSource, QueryRunner } from "typeorm";
+import { DataSource, EntityManager, QueryRunner } from "typeorm";
 import { EventEntity } from "../event/entities/event.entity";
+import { isUserRegisteredForEvent } from "../event/event-registration";
 import { UserEntity } from "../user/entities/user.entity";
 import { TeamEntity } from "./entities/team.entity";
 import { LockKeys } from "../constants";
@@ -42,8 +43,19 @@ postgres("team membership concurrency (PostgreSQL)", () => {
     service = new TeamService(
       database.getRepository(TeamEntity),
       {} as never,
-      // The events here are public, so every user is eligible.
-      { isUserEligibleForEvent: async () => true } as never,
+      // No whitelists here, so eligibility is the registration check.
+      {
+        isUserEligibleForEvent: (
+          eventId: string,
+          userId: string,
+          manager: EntityManager,
+        ) =>
+          isUserRegisteredForEvent(
+            manager.getRepository(EventEntity),
+            eventId,
+            userId,
+          ),
+      } as never,
       {} as never,
       database,
     );
@@ -153,6 +165,40 @@ postgres("team membership concurrency (PostgreSQL)", () => {
     return Number(rows[0].count);
   }
 
+  it("requires registration for a private event at acceptance, but permits public invitees", async () => {
+    const event = await createEvent(4);
+    await database
+      .getRepository(EventEntity)
+      .update(event.id, { isPrivate: true });
+    const [owner, invitee] = await Promise.all([createUser(), createUser()]);
+    const team = await createTeam(event, [owner], [invitee]);
+
+    await expect(service.acceptTeamInvite(invitee.id, team.id)).rejects.toThrow(
+      "You are not registered or not whitelisted for this private event.",
+    );
+    expect(await memberCount(team.id)).toBe(1);
+    expect(
+      await database.getRepository(TeamEntity).existsBy({
+        id: team.id,
+        teamInvites: { id: invitee.id },
+      }),
+    ).toBe(true);
+
+    await database
+      .createQueryBuilder()
+      .relation(EventEntity, "users")
+      .of(event.id)
+      .add(invitee.id);
+    await service.acceptTeamInvite(invitee.id, team.id);
+    expect(await memberCount(team.id)).toBe(2);
+
+    const publicEvent = await createEvent(4);
+    const publicInvitee = await createUser();
+    const publicTeam = await createTeam(publicEvent, [owner], [publicInvitee]);
+    await service.acceptTeamInvite(publicInvitee.id, publicTeam.id);
+    expect(await memberCount(publicTeam.id)).toBe(2);
+  });
+
   it("lets only one of two invitees take the last free spot", async () => {
     const event = await createEvent(2);
     const [member, first, second] = await Promise.all([
@@ -196,6 +242,60 @@ postgres("team membership concurrency (PostgreSQL)", () => {
     expect((await memberCount(teamA.id)) + (await memberCount(teamB.id))).toBe(
       2,
     );
+  });
+
+  it("rejects a duplicate leave without deleting the remaining member's team", async () => {
+    const event = await createEvent(3);
+    const [departing, remaining] = await Promise.all([
+      createUser(),
+      createUser(),
+    ]);
+    const team = await createTeam(event, [departing, remaining], []);
+
+    await holdTeams([team.id]);
+    const leaves = Promise.allSettled([
+      service.leaveTeam(team.id, departing.id),
+      service.leaveTeam(team.id, departing.id),
+    ]);
+    await waitForLockWaiters(2);
+    await release();
+    const results = await leaves;
+
+    expect(rejectionMessages(results)).toEqual([
+      "You are not part of a team for this event.",
+    ]);
+    const current = await database.getRepository(TeamEntity).findOneOrFail({
+      where: { id: team.id },
+      relations: { users: true },
+    });
+    expect(current.users.map((user) => user.id)).toEqual([remaining.id]);
+  });
+
+  it("keeps a successful invite acceptance from racing last-member deletion", async () => {
+    const event = await createEvent(3);
+    const [departing, invitee] = await Promise.all([
+      createUser(),
+      createUser(),
+    ]);
+    const team = await createTeam(event, [departing], [invitee]);
+
+    await holdTeams([team.id]);
+    const leave = service.leaveTeam(team.id, departing.id);
+    const accept = service.acceptTeamInvite(invitee.id, team.id);
+    const resultsPromise = Promise.allSettled([leave, accept]);
+    await waitForLockWaiters(2);
+    await release();
+    const [leaveResult, acceptResult] = await resultsPromise;
+    expect(leaveResult.status).toBe("fulfilled");
+    const current = await database.getRepository(TeamEntity).findOne({
+      where: { id: team.id },
+      relations: { users: true },
+    });
+    if (acceptResult.status === "fulfilled") {
+      expect(current?.users.map((user) => user.id)).toEqual([invitee.id]);
+    } else {
+      expect(current).toBeNull();
+    }
   });
 
   it("lets only one of two users create a team with the same name", async () => {

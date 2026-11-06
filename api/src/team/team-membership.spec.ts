@@ -89,6 +89,10 @@ function setup() {
       return [];
     }),
     update: jest.fn(),
+    softDelete: jest.fn(async () => {
+      order.push("delete:team");
+      return { affected: 1 };
+    }),
     createQueryBuilder: () => ({
       relation: (_entity: unknown, relation: string) => ({
         of: () => ({
@@ -124,6 +128,56 @@ function setup() {
 }
 
 describe("team membership under lock", () => {
+  it("rejects a stale leave before changing the remaining roster", async () => {
+    const { service, order, manager } = setup();
+    await expect(service.leaveTeam("team", "former-member")).rejects.toThrow(
+      "You are not part of a team for this event.",
+    );
+    expect(order).toEqual(["lock:team"]);
+    expect(manager.softDelete).not.toHaveBeenCalled();
+  });
+
+  it("deletes the last-member team under the lock and dispatches after commit", async () => {
+    const { service, team, event, order, manager } = setup();
+    team.repo = "repo";
+    Object.assign(event, { githubOrg: "org", githubOrgSecret: "secret" });
+    Reflect.set(service, "dataSource", {
+      transaction: async (
+        action: (value: typeof manager) => Promise<unknown>,
+      ) => {
+        const result = await action(manager);
+        order.push("commit");
+        return result;
+      },
+    });
+    const deleteRepository = jest.fn(async () => order.push("delete:repo"));
+    Reflect.set(service, "githubApiService", { deleteRepository });
+
+    await expect(service.leaveTeam("team", "member")).resolves.toEqual({
+      affected: 1,
+    });
+    expect(order).toEqual([
+      "lock:team",
+      "remove:users",
+      "delete:team",
+      "commit",
+      "delete:repo",
+    ]);
+    expect(deleteRepository).toHaveBeenCalledWith("repo", "org", "secret");
+  });
+
+  it("does not dispatch repository deletion if the team deletion fails", async () => {
+    const { service, team, manager } = setup();
+    team.repo = "repo";
+    manager.softDelete.mockRejectedValueOnce(new Error("database failed"));
+    const deleteRepository = jest.fn();
+    Reflect.set(service, "githubApiService", { deleteRepository });
+    await expect(service.leaveTeam("team", "member")).rejects.toThrow(
+      "database failed",
+    );
+    expect(deleteRepository).not.toHaveBeenCalled();
+  });
+
   it("accepts an invite after locking the user before the team", async () => {
     const { service, order } = setup();
     await service.acceptTeamInvite("joins", "team");
@@ -146,15 +200,6 @@ describe("team membership under lock", () => {
       "joins",
       manager,
     );
-  });
-
-  it("rejects an accept when the user is no longer eligible for the event", async () => {
-    const { service, state, order } = setup();
-    state.eligible = false;
-    await expect(service.acceptTeamInvite("joins", "team")).rejects.toThrow(
-      "You are not registered or not whitelisted for this private event.",
-    );
-    expect(order).not.toContain("add:users");
   });
 
   it("rejects an accept when team creation was turned off", async () => {
@@ -181,6 +226,18 @@ describe("team membership under lock", () => {
     await expect(service.acceptTeamInvite("joins", "team")).rejects.toThrow(
       "You are not invited to this team.",
     );
+    expect(order).not.toContain("add:users");
+  });
+
+  it("rejects an accept when the user is no longer eligible for the event", async () => {
+    const { service, state, order, team, manager } = setup();
+    state.eligible = false;
+    team.repo = "repo";
+    await expect(service.acceptTeamInvite("joins", "team")).rejects.toThrow(
+      "You are not registered or not whitelisted for this private event.",
+    );
+    expect(manager.update).not.toHaveBeenCalled();
+    expect(order).not.toContain("remove:teamInvites");
     expect(order).not.toContain("add:users");
   });
 
