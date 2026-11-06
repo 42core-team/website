@@ -12,12 +12,23 @@ describe("isSimulatedRepository", () => {
     expect(isSimulatedRepository(name, "development")).toBe(true);
   });
 
-  it.each(["production", "test", undefined, "develop"])(
+  it.each(["production", "test", "develop"])(
     "never simulates when NODE_ENV is %s",
     (nodeEnv) => {
       expect(isSimulatedRepository(SIM_REPOSITORY, nodeEnv)).toBe(false);
     },
   );
+
+  it("never simulates when NODE_ENV is unset", () => {
+    const original = process.env.NODE_ENV;
+    delete process.env.NODE_ENV;
+    try {
+      expect(isSimulatedRepository(SIM_REPOSITORY)).toBe(false);
+    } finally {
+      if (original === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = original;
+    }
+  });
 
   it.each([
     "sim-123",
