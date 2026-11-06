@@ -40,6 +40,7 @@ import { EventState, getEventState } from "../event/event-lifecycle";
 import {
   isRevealablePhase,
   matchNotFound,
+  REVEALABLE_PHASES,
   toHiddenMatchResponse,
   toMatchResponse,
   toVisibleMatchResponse,
@@ -928,6 +929,11 @@ export class MatchService {
         teams: true,
         winner: true,
       },
+      order: {
+        round: "ASC",
+        createdAt: "ASC",
+        id: "ASC",
+      },
     });
 
     const revealAll = await this.canRevealAll(eventId, userId, adminReveal);
@@ -1590,9 +1596,17 @@ export class MatchService {
     return results;
   }
 
+  /** Totals over revealed matches and over phases that are never hidden. */
   getGlobalStats() {
+    // Gambling results are shown in the gambling summary, so their stats
+    // count even though gambling matches are never marked revealed.
     return this.matchStatsRepository
       .createQueryBuilder("match_stats")
+      .innerJoin("match_stats.match", "match")
+      .where(
+        "(match.isRevealed = true OR match.phase NOT IN (:...revealablePhases))",
+        { revealablePhases: REVEALABLE_PHASES },
+      )
       .select("SUM(match_stats.actionsExecuted)", "actionsExecuted")
       .addSelect("SUM(match_stats.damageDeposits)", "damageDeposits")
       .addSelect("SUM(match_stats.gempilesDestroyed)", "gempilesDestroyed")

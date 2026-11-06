@@ -32,6 +32,7 @@ import { MatchEntity, MatchPhase, MatchState } from "./entites/match.entity";
 import { MatchStatsEntity } from "./entites/matchStats.entity";
 import { MatchController } from "./match.controller";
 import { MatchService } from "./match.service";
+import { StatsController } from "../stats/stats.controller";
 
 // A dedicated test database is required; each run owns only its random schema.
 const databaseUrl = process.env.SESSION_TEST_DATABASE_URL;
@@ -39,6 +40,7 @@ const postgres = databaseUrl ? describe : describe.skip;
 
 const HIDDEN_ACTIONS = 918273;
 const HIDDEN_DAMAGE = 564738;
+const QUEUE_ACTIONS = 4321;
 // Stored Buchholz values that no revealed-only calculation can produce.
 const STORED_BUCHHOLZ = { A: 31, B: 32, C: 33, D: 34 };
 const MATCH_FIELDS_HIDDEN_WHEN_UNREVEALED = [
@@ -134,7 +136,7 @@ postgres("unrevealed match results (PostgreSQL)", () => {
     });
 
     const moduleRef = await Test.createTestingModule({
-      controllers: [MatchController, TeamController],
+      controllers: [MatchController, TeamController, StatsController],
       providers: [
         { provide: MatchService, useValue: matchService },
         { provide: TeamService, useValue: teamService },
@@ -262,6 +264,7 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       ["A", "B"],
       "B",
       false,
+      { actionsExecuted: QUEUE_ACTIONS },
     );
   }
 
@@ -399,6 +402,14 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       expect(team).not.toHaveProperty(field);
   }
 
+  // The cached totals are refreshed by a cron job, which does not run here.
+  async function globalStats() {
+    await app.get(StatsController).updateGlobalStats();
+    const response = await get("/stats/global");
+    expect(response.status).toBe(200);
+    return response.body as Json;
+  }
+
   function standings(list: Json[]) {
     return Object.fromEntries(
       list.map((team) => [
@@ -438,6 +449,33 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       expect(revealed.state).toBe(MatchState.FINISHED);
       expect(revealed.stats).toMatchObject({ actionsExecuted: 0 });
       expect(revealed.stats).not.toHaveProperty("id");
+    });
+
+    it("lists swiss matches by round, then creation", async () => {
+      // Make creation order differ from insertion order, so the result can
+      // only match when the query sorts.
+      const repository = database.getRepository(MatchEntity);
+      const base = matches.m1.createdAt.getTime();
+      await repository.update(matches.m3.id, {
+        createdAt: new Date(base - 60_000),
+      });
+      await repository.update(matches.m2.id, {
+        createdAt: new Date(base - 30_000),
+      });
+      const body = await swiss(users.admin.id, true);
+      expect(body.map((match) => match.id)).toEqual([
+        matches.m2.id,
+        matches.m1.id,
+        matches.m3.id,
+      ]);
+    });
+
+    it("leaves unrevealed swiss and tournament matches out of the global stats", async () => {
+      const body = await globalStats();
+      expectNoHiddenData(body);
+      // Queue matches are never hidden, so they always count.
+      expect(Number(body.actionsExecuted)).toBe(QUEUE_ACTIONS);
+      expect(Number(body.damageTotal)).toBe(0);
     });
 
     it("hides unrevealed tournament results from a normal user", async () => {
@@ -507,7 +545,7 @@ postgres("unrevealed match results (PostgreSQL)", () => {
           state: MatchState.FINISHED,
           winner: { id: teams.B.id },
           results: [],
-          stats: { actionsExecuted: 0 },
+          stats: { actionsExecuted: QUEUE_ACTIONS },
         });
         expect(response.body.teams).toHaveLength(2);
         expectMatchTeamsIdentityOnly([response.body]);
@@ -738,6 +776,23 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       const detail = await get(`/match/${matches.m3.id}`, users.outsider.id);
       expect(detail.status).toBe(200);
       expect(detail.body.stats.actionsExecuted).toBe(HIDDEN_ACTIONS);
+    });
+
+    it("adds the revealed match to the global stats", async () => {
+      const body = await globalStats();
+      expect(Number(body.actionsExecuted)).toBe(QUEUE_ACTIONS + HIDDEN_ACTIONS);
+      // The elimination match is still hidden.
+      expect(Number(body.damageTotal)).toBe(HIDDEN_DAMAGE);
+    });
+
+    it("counts gambling matches in the global stats", async () => {
+      // Gambling results are shown in the gambling summary.
+      const gamblingDamage = 2468;
+      await createMatch(MatchPhase.GAMBLING, 0, ["B", "D"], "B", false, {
+        damageTotal: gamblingDamage,
+      });
+      const body = await globalStats();
+      expect(Number(body.damageTotal)).toBe(HIDDEN_DAMAGE + gamblingDamage);
     });
   });
 });
