@@ -15,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { TEAM_NAME_MAX_LENGTH } from '@/lib/event-validation'
 
 const MATCHES_PER_PAGE = 20
 const RUNNING_MATCHES_REFETCH_INTERVAL_MS = 5000
@@ -45,6 +46,8 @@ export function QueueMatchesManagement({
   const total = queueMatchesQuery.data?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / MATCHES_PER_PAGE))
   const isPlaceholderData = queueMatchesQuery.isPlaceholderData
+  // An out-of-range response stays as placeholder until the valid page arrives.
+  const isCorrectingPage = (queueMatchesQuery.data?.page ?? 1) > totalPages
 
   useEffect(() => {
     if (!isPlaceholderData) {
@@ -69,6 +72,7 @@ export function QueueMatchesManagement({
               setSearchInput(event.target.value)
               setPage(1)
             }}
+            maxLength={TEAM_NAME_MAX_LENGTH}
             placeholder="Search by team name..."
             className="pl-9"
             aria-label="Search queue matches by team name"
@@ -76,7 +80,7 @@ export function QueueMatchesManagement({
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        {queueMatchesQuery.isPending ? (
+        {queueMatchesQuery.isPending || isCorrectingPage ? (
           <div className="flex items-center justify-center py-8">
             <Spinner />
           </div>

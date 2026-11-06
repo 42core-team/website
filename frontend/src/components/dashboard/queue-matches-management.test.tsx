@@ -123,6 +123,40 @@ describe('QueueMatchesManagement', () => {
     expect(screen.queryByText('No matches found')).toBeNull()
   })
 
+  it('shows loading instead of an empty result while correcting the page', async () => {
+    let finishFirstPage = () => {}
+    vi.mocked(getAllQueueMatches).mockImplementation(
+      async (_eventId, page, pageSize, search) => {
+        if (!search) return { matches: [match], total: 45, page, pageSize }
+        if (page > 1) return { matches: [], total: 1, page, pageSize }
+        await new Promise<void>((resolve) => {
+          finishFirstPage = resolve
+        })
+        return { matches: [match], total: 1, page, pageSize }
+      },
+    )
+    renderManagement()
+
+    const next = await screen.findByRole('button', { name: 'Next' })
+    fireEvent.change(screen.getByLabelText(/search queue matches/i), {
+      target: { value: 'alpha' },
+    })
+    fireEvent.click(next)
+
+    await waitFor(() =>
+      expect(getAllQueueMatches).toHaveBeenLastCalledWith(
+        'event',
+        1,
+        20,
+        'alpha',
+      ),
+    )
+    expect(screen.queryByText('No matches found')).toBeNull()
+
+    finishFirstPage()
+    expect(await screen.findByText('Alpha')).toBeTruthy()
+  })
+
   it('shows an empty search without pagination', async () => {
     vi.mocked(getAllQueueMatches).mockResolvedValue({
       matches: [],

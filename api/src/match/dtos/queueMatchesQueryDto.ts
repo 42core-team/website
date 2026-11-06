@@ -1,6 +1,14 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from "class-validator";
+import { TEAM_NAME_MAX_LENGTH } from "../../common/name-limits";
 
 export class QueueMatchesQueryDto {
   @ApiPropertyOptional({ description: "The 1-based page", default: 1 })
@@ -18,8 +26,12 @@ export class QueueMatchesQueryDto {
   @Max(100)
   pageSize: number = 20;
 
-  @ApiPropertyOptional({ description: "Part of a playing team's name" })
+  @ApiPropertyOptional({
+    description: "Part of a playing team's name",
+    maxLength: TEAM_NAME_MAX_LENGTH,
+  })
   @IsOptional()
   @IsString()
+  @MaxLength(TEAM_NAME_MAX_LENGTH)
   search?: string;
 }

@@ -641,6 +641,7 @@ postgres("unrevealed match results (PostgreSQL)", () => {
         "pageSize=101",
         "page=x",
         "search=a&search=b",
+        `search=${"a".repeat(31)}`,
       ])
         expect((await admin(query)).status).toBe(400);
       const outsider = await get(
