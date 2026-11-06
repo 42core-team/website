@@ -4,10 +4,16 @@ import { motion } from 'framer-motion'
 import Image from '@/components/app-image'
 import Link from '@/components/app-link'
 import { title } from '@/components/primitives'
-import { CoreLogoWhite, GithubIcon, LinkedinIcon } from '@/components/social'
+import {
+  CoreLogoWhite,
+  DiscordIcon,
+  GithubIcon,
+  LinkedinIcon,
+} from '@/components/social'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { siteConfig } from '@/config/site'
 import { cn } from '@/lib/utils'
 
 interface TeamMember {
@@ -189,9 +195,24 @@ export default function AboutPageClient() {
           transition={{ duration: 0.5, delay: 0.4 }}
         >
           <p className="text-xl">Ready to start your journey with CORE?</p>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg" className="rounded-full">
               <Link href="/wiki">Get Started Today</Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="rounded-full"
+            >
+              <Link
+                href={siteConfig.links.discord}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <DiscordIcon size={20} />
+                Join our Discord
+              </Link>
             </Button>
           </div>
         </motion.div>

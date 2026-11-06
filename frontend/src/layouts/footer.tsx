@@ -107,6 +107,14 @@ export default function Footer() {
               >
                 GitHub
               </Link>
+              <Link
+                href={siteConfig.links.discord}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary"
+              >
+                Discord
+              </Link>
               <a
                 href="#"
                 onClick={handleReportIssue}
