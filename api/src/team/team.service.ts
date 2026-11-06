@@ -38,7 +38,10 @@ import { UserEntity } from "../user/entities/user.entity";
 import { groupLocationTagsByOwner } from "../user/location-tags";
 import type { OwnedLocationTagSource } from "../user/location-tags";
 import { accrueQueueCredits, spendQueueCredits } from "./team-credits";
-import { rankQueueOpponents } from "./queue-matchmaking";
+import {
+  rankQueueOpponents,
+  REPEAT_OPPONENT_HISTORY,
+} from "./queue-matchmaking";
 import type { QueueOpponentCandidate } from "./queue-matchmaking";
 import {
   EMPTY_STANDING,
@@ -1332,23 +1335,28 @@ export class TeamService {
     if (candidates.length === 0) return null;
 
     const matchRepository = entityManager.getRepository(MatchEntity);
-    const recentMatches = await matchRepository.find({
-      where: {
-        teams: { id: team.id },
-        phase: MatchPhase.QUEUE,
-        state: MatchState.FINISHED,
-      },
-      relations: { teams: true },
-      order: { createdAt: "DESC" },
-      take: 3,
+    // Separate joins: filtering on the loaded join would drop the opponents.
+    // Unfinished matches count, so rapid repeat joins see each other.
+    const recentMatches = await matchRepository
+      .createQueryBuilder("match")
+      .innerJoin("match.teams", "ownTeam", "ownTeam.id = :teamId", {
+        teamId: team.id,
+      })
+      .leftJoinAndSelect("match.teams", "matchTeam")
+      .where("match.phase = :phase", { phase: MatchPhase.QUEUE })
+      .orderBy("match.createdAt", "DESC")
+      .take(REPEAT_OPPONENT_HISTORY)
+      .getMany();
+    const matchesAgoByTeamId = new Map<string, number[]>();
+    recentMatches.forEach((match, matchesAgo) => {
+      for (const matchTeam of match.teams) {
+        if (matchTeam.id === team.id) continue;
+        matchesAgoByTeamId.set(matchTeam.id, [
+          ...(matchesAgoByTeamId.get(matchTeam.id) ?? []),
+          matchesAgo,
+        ]);
+      }
     });
-    const recentOpponentIds = new Set(
-      recentMatches.flatMap((match) =>
-        match.teams
-          .filter((matchTeam) => matchTeam.id !== team.id)
-          .map((matchTeam) => matchTeam.id),
-      ),
-    );
 
     const candidateIds = candidates.map((candidate) => candidate.id);
     const activityRows: Array<{
@@ -1376,7 +1384,7 @@ export class TeamService {
         id: candidate.id,
         elo: candidate.queueScore,
         lastQueueMatchAt: activityByTeamId.get(candidate.id) ?? null,
-        wasRecentOpponent: recentOpponentIds.has(candidate.id),
+        matchesAgo: matchesAgoByTeamId.get(candidate.id) ?? [],
       })),
     );
     const opponent = candidates.find(
