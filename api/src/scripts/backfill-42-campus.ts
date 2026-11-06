@@ -40,10 +40,16 @@ async function main() {
   } as DataSourceOptions);
   await dataSource.initialize();
 
+  // Raw queries do not get the configured schema, so qualify the table.
+  const schema = process.env.DB_SCHEMA?.trim();
+  const table = schema
+    ? `"${schema.replaceAll('"', '""')}"."social_accounts"`
+    : `"social_accounts"`;
+
   try {
     const accounts: CampusAccount[] = await dataSource.query(
-      `SELECT "id", "platformUserId", "username", "campusName"
-       FROM "social_accounts"
+      `SELECT "id", "platformUserId", "username", "campusId", "campusName"
+       FROM ${table}
        WHERE "platform" = '42' ${all ? "" : `AND "campusName" IS NULL`}
        ORDER BY "createdAt"`,
     );
@@ -58,7 +64,7 @@ async function main() {
       apply,
       save: async (accountId, { campusId, campusName }) => {
         await dataSource.query(
-          `UPDATE "social_accounts"
+          `UPDATE ${table}
            SET "campusId" = $1, "campusName" = $2, "updatedAt" = now()
            WHERE "id" = $3`,
           [campusId, campusName, accountId],

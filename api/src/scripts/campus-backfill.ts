@@ -12,6 +12,7 @@ export interface CampusAccount {
   id: string;
   platformUserId: string;
   username: string;
+  campusId: number | null;
   campusName: string | null;
 }
 
@@ -67,7 +68,7 @@ export async function backfillCampuses({
         log(`${prefix}: no primary campus`);
         continue;
       }
-      if (campusName === account.campusName) {
+      if (campusId === account.campusId && campusName === account.campusName) {
         summary.unchanged++;
         continue;
       }
@@ -89,6 +90,19 @@ export async function backfillCampuses({
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Retry-After as a delay in ms (delta-seconds or HTTP-date), else null. */
+export function parseRetryAfter(
+  value: string | null,
+  now = Date.now(),
+): number | null {
+  if (!value?.trim()) return null;
+  const seconds = Number(value);
+  const delay = Number.isNaN(seconds)
+    ? Date.parse(value) - now
+    : seconds * 1000;
+  return Number.isFinite(delay) && delay > 0 ? delay : null;
+}
 
 /** Looks up 42 users one by one, spaced to stay below the rate limit. */
 export function createIntraLookup(
@@ -113,23 +127,24 @@ export function createIntraLookup(
           status: "found",
           profile: (await response.json()) as FortyTwoProfile,
         };
+      // Release the connection of a response whose body is not read.
+      await response.body?.cancel();
       if (response.status === 404) return { status: "not_found" };
       // A rejected or insufficient token fails the same way for every user.
       if (response.status === 401 || response.status === 403)
         throw new FatalLookupError(
           `The access token was rejected (${response.status}).`,
         );
-      if (
-        (response.status === 429 || response.status >= 500) &&
-        attempt < MAX_ATTEMPTS
-      ) {
-        const retryAfter = Number(response.headers.get("retry-after"));
-        await wait(
-          Number.isFinite(retryAfter) && retryAfter > 0
-            ? retryAfter * 1000
-            : 2 ** attempt * 1000,
-        );
-        continue;
+      if (response.status === 429 || response.status >= 500) {
+        const cooldown =
+          parseRetryAfter(response.headers.get("retry-after")) ??
+          2 ** attempt * 1000;
+        if (attempt < MAX_ATTEMPTS) {
+          await wait(cooldown);
+          continue;
+        }
+        // The next account's lookup still has to wait out the cooldown.
+        nextRequestAt = Date.now() + cooldown;
       }
       throw new Error(`42 API error ${response.status}`);
     }

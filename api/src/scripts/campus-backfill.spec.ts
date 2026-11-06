@@ -3,6 +3,7 @@ import {
   FatalLookupError,
   backfillCampuses,
   createIntraLookup,
+  parseRetryAfter,
 } from "./campus-backfill";
 
 const profile = (campusName: string | null) => ({
@@ -26,10 +27,12 @@ const profile = (campusName: string | null) => ({
 const account = (
   id: string,
   campusName: string | null = null,
+  campusId: number | null = campusName ? 44 : null,
 ): CampusAccount => ({
   id,
   platformUserId: `${id}-42`,
   username: `user-${id}`,
+  campusId,
   campusName,
 });
 
@@ -78,6 +81,22 @@ describe("backfillCampuses", () => {
     });
   });
 
+  it("updates an account whose campus id is missing", async () => {
+    const save = jest.fn(async () => undefined);
+    const summary = await backfillCampuses({
+      accounts: [account("d", "Wolfsburg", null)],
+      lookup,
+      save,
+      apply: true,
+      log: () => undefined,
+    });
+    expect(save).toHaveBeenCalledWith("d", {
+      campusId: 44,
+      campusName: "Wolfsburg",
+    });
+    expect(summary.updated).toBe(1);
+  });
+
   it("writes nothing in a dry run", async () => {
     const save = jest.fn(async () => undefined);
     const summary = await backfillCampuses({
@@ -108,7 +127,25 @@ describe("backfillCampuses", () => {
   });
 });
 
+describe("parseRetryAfter", () => {
+  const now = Date.parse("2026-01-01T00:00:00Z");
+
+  it.each([
+    ["3", 3000],
+    ["Thu, 01 Jan 2026 00:00:05 GMT", 5000],
+    [null, null],
+    ["", null],
+    ["soon", null],
+    ["0", null],
+    ["Wed, 31 Dec 2025 23:59:00 GMT", null],
+  ])("turns %p into %p ms", (value, expected) => {
+    expect(parseRetryAfter(value, now)).toBe(expected);
+  });
+});
+
 describe("createIntraLookup", () => {
+  afterEach(() => jest.restoreAllMocks());
+
   const response = (status: number, body: unknown = {}, retryAfter?: string) =>
     new Response(JSON.stringify(body), {
       status,
@@ -125,7 +162,7 @@ describe("createIntraLookup", () => {
 
     const result = await lookup("123");
 
-    expect(result.status).toBe("found");
+    expect(result).toEqual({ status: "found", profile: profile("Heilbronn") });
     expect(fetchImpl).toHaveBeenCalledWith(
       "https://api.intra.42.fr/v2/users/123",
       { headers: { Authorization: "Bearer token" } },
@@ -143,6 +180,34 @@ describe("createIntraLookup", () => {
     expect((await lookup("123")).status).toBe("found");
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     expect(wait).toHaveBeenCalledWith(3000);
+  });
+
+  it("waits 600 ms between requests", async () => {
+    jest.spyOn(Date, "now").mockReturnValue(1_000_000);
+    const fetchImpl = jest.fn(async () => response(200, profile("Heilbronn")));
+    const wait = jest.fn(async () => 0);
+    const lookup = createIntraLookup("token", fetchImpl as never, wait);
+
+    await lookup("1");
+    await lookup("2");
+
+    expect(wait).toHaveBeenCalledTimes(1);
+    expect(wait).toHaveBeenCalledWith(600);
+  });
+
+  it("gives up after five attempts and keeps the cooldown", async () => {
+    jest.spyOn(Date, "now").mockReturnValue(1_000_000);
+    const fetchImpl = jest.fn(async () => response(503, {}, "7"));
+    const wait = jest.fn(async () => 0);
+    const lookup = createIntraLookup("token", fetchImpl as never, wait);
+
+    await expect(lookup("1")).rejects.toThrow("42 API error 503");
+    expect(fetchImpl).toHaveBeenCalledTimes(5);
+
+    wait.mockClear();
+    await expect(lookup("2")).rejects.toThrow("42 API error 503");
+    // The next lookup first waits out the cooldown of the last failure.
+    expect(wait).toHaveBeenNthCalledWith(1, 7000);
   });
 
   it("reports unknown users and rejected tokens", async () => {
