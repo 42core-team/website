@@ -5,7 +5,9 @@ import type { Match } from '@/app/actions/tournament-model'
 import { MatchPhase, MatchState } from '@/app/actions/tournament-model'
 import { MatchTeamHeader } from './MatchTeamHeader'
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Link: ({ children }: { children: React.ReactNode }) => (
+    <a href="/team">{children}</a>
+  ),
 }))
 afterEach(cleanup)
 const match: Match = {
@@ -54,6 +56,43 @@ describe('match team header', () => {
       />,
     )
     expect(screen.queryByText('1234')).toBeNull()
+  })
+
+  it('keeps both sides when a team is missing', () => {
+    render(
+      <MatchTeamHeader
+        match={{ ...match, teams: [match.teams[0]] }}
+        eventId="event"
+      />,
+    )
+    expect(screen.getByText('Alpha')).toBeTruthy()
+    expect(screen.getByText('VS')).toBeTruthy()
+    expect(screen.getByText('Unknown team')).toBeTruthy()
+    expect(screen.getAllByRole('link')).toHaveLength(1)
+  })
+
+  it('keeps both sides when every team is missing', () => {
+    render(<MatchTeamHeader match={{ ...match, teams: [] }} eventId="event" />)
+    expect(screen.getByText('VS')).toBeTruthy()
+    expect(screen.getAllByText('Unknown team')).toHaveLength(2)
+    expect(screen.queryByRole('link')).toBeNull()
+  })
+
+  it('does not link to a deleted team', () => {
+    render(
+      <MatchTeamHeader
+        match={{
+          ...match,
+          teams: [
+            match.teams[0],
+            { ...match.teams[1], deletedAt: '2026-01-01T00:00:00Z' },
+          ],
+        }}
+        eventId="event"
+      />,
+    )
+    expect(screen.getByText('Beta')).toBeTruthy()
+    expect(screen.getAllByRole('link')).toHaveLength(1)
   })
 
   it('shows team pictures and background covers', () => {

@@ -5,7 +5,7 @@ import type { Match } from '@/app/actions/tournament-model'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { BarChart3, Expand, Network, Rows3 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { MatchState } from '@/app/actions/tournament-model'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import {
@@ -29,6 +29,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useRevealModeParam } from '@/hooks/useRevealModeParam'
 import { useTabParam } from '@/hooks/useTabParam'
 
 interface GroupPhaseTabsProps {
@@ -119,7 +120,7 @@ export function BracketTabs({
   const { currentTab, onTabChange } = useTabParam('graph')
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [selectedMatchId, setSelectedMatchId] = useState<string>()
-  const [isRevealDialogOpen, setRevealDialogOpen] = useState(false)
+  const { isRevealModeOpen, setRevealModeOpen } = useRevealModeParam()
   const isAdminView = isEventAdmin && isAdminReveal
   const streamVisibleMatches = useMemo(
     () => getStreamVisibleMatches(matches),
@@ -144,10 +145,6 @@ export function BracketTabs({
     setSelectedMatchId(matchId)
   }, [])
 
-  useEffect(() => {
-    if (!isEventAdmin) setRevealDialogOpen(false)
-  }, [isEventAdmin])
-
   return (
     <>
       <Tabs value={currentTab} onValueChange={onTabChange} className="w-full">
@@ -171,7 +168,7 @@ export function BracketTabs({
               />
             )}
             {isEventAdmin && (
-              <Button onClick={() => setRevealDialogOpen(true)}>
+              <Button onClick={() => setRevealModeOpen(true)}>
                 <Expand />
                 Open reveal mode
               </Button>
@@ -201,7 +198,7 @@ export function BracketTabs({
       </Tabs>
 
       {isEventAdmin && (
-        <Dialog open={isRevealDialogOpen} onOpenChange={setRevealDialogOpen}>
+        <Dialog open={isRevealModeOpen} onOpenChange={setRevealModeOpen}>
           <DialogContent className="flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[96rem] grid-rows-none flex-col gap-4 overflow-hidden border-primary/20 bg-background/95 p-4 shadow-2xl backdrop-blur-xl duration-500 data-[state=closed]:slide-out-to-bottom-8 data-[state=closed]:zoom-out-90 data-[state=open]:slide-in-from-bottom-8 data-[state=open]:zoom-in-90 sm:p-6">
             <motion.div
               aria-hidden="true"
