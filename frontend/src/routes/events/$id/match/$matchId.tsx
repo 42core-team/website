@@ -1,4 +1,5 @@
 import { MatchTeamHeader } from '@/components/match/MatchTeamHeader'
+import { MatchVisualizerFrame } from '@/components/match/MatchVisualizerFrame'
 import { ScrollToLogsButton } from '@/components/match/ScrollToLogsButton'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -140,12 +141,7 @@ function MatchRoute() {
           // enough on narrow screens that the board, 79px shorter than the
           // iframe, still fits.
           <div className="h-[min(calc(100dvh-4rem-1px),calc(100vw+4rem))] overflow-hidden bg-black">
-            <iframe
-              src={visualizerUrl}
-              title="Match visualizer"
-              className="h-full w-full"
-              allowFullScreen
-            />
+            <MatchVisualizerFrame src={visualizerUrl} />
           </div>
         )}
         {logsQuery.data && (
