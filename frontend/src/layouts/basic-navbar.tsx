@@ -122,7 +122,7 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
         )}
         {...props}
       >
-        <div className="container mx-auto flex h-16 max-w-(--breakpoint-2xl) items-center justify-between gap-4">
+        <div className="container mx-auto flex min-h-16 max-w-(--breakpoint-2xl) flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 sm:py-0">
           {/* Left side */}
           <div className="flex shrink-0 items-center gap-2">
             {/* Mobile menu trigger */}
@@ -196,7 +196,7 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
           )}
 
           {/* Right side */}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {actions}
             <ThemeSwitch />
             {user?.id ? (

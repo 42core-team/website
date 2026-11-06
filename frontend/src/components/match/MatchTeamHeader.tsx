@@ -15,7 +15,9 @@ export function MatchTeamHeader({
   return (
     <section
       aria-label="Match teams"
-      className="flex min-w-0 flex-1 items-stretch self-stretch"
+      // Narrow screens have no room beside the navbar's side groups, so the
+      // match-up takes a row of its own below them.
+      className="order-last flex min-w-0 flex-1 basis-full items-stretch self-stretch sm:order-none sm:basis-0"
     >
       {match.teams.map((team, index) => {
         const isFirst = index === 0

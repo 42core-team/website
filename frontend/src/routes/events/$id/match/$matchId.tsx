@@ -107,6 +107,8 @@ function MatchRoute() {
   return (
     <>
       <Navbar
+        // Its rows wrap on narrow screens, too tall to keep over the visualizer.
+        className="static sm:sticky"
         leading={
           <button
             type="button"
