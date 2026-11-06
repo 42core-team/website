@@ -8,6 +8,7 @@ import { useEventClock } from '@/hooks/use-event-clock'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import axiosInstance from '@/app/actions/axios'
 import { getEventById, getEventGithubOrg } from '@/app/actions/event'
 import {
@@ -147,6 +148,12 @@ export function MyTeamPage({
         }),
       ])
     },
+    onError: (error: Error | AxiosError<{ message?: string }>) => {
+      toast.error(
+        ('response' in error && error.response?.data.message) ||
+          'Failed to accept the invite.',
+      )
+    },
   })
 
   const declineInviteMutation = useMutation({
@@ -184,6 +191,10 @@ export function MyTeamPage({
           <TeamInfoSection
             myTeam={myTeamQuery.data}
             canEdit={teamEditsOpen(eventQuery.data, myTeamQuery.data, now)}
+            canInvite={
+              eventQuery.data.canCreateTeam &&
+              teamEditsOpen(eventQuery.data, myTeamQuery.data, now)
+            }
             onLeaveTeam={async () => {
               await leaveTeamMutation.mutateAsync()
               return true

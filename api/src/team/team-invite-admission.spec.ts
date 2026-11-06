@@ -10,10 +10,12 @@ describe("team invitation admission", () => {
       isUserInvitedToTeam: jest.fn().mockResolvedValue(false),
     };
     const userService = {
+      userExists: jest.fn().mockResolvedValue(true),
       addTeamInvite: jest.fn().mockResolvedValue(undefined),
     };
     const eventService = {
-      isUserRegisteredForEvent: jest.fn().mockResolvedValue(registered),
+      canCreateTeamInEvent: jest.fn().mockResolvedValue(true),
+      isUserEligibleForEvent: jest.fn().mockResolvedValue(registered),
     };
     return {
       controller: new TeamController(
@@ -35,8 +37,10 @@ describe("team invitation admission", () => {
         { id: "team" } as never,
         "inviter",
       ),
-    ).rejects.toThrow("This user is not registered for this event.");
-    expect(eventService.isUserRegisteredForEvent).toHaveBeenCalledWith(
+    ).rejects.toThrow(
+      "This user is not registered or not whitelisted for this private event.",
+    );
+    expect(eventService.isUserEligibleForEvent).toHaveBeenCalledWith(
       "event",
       "invitee",
     );

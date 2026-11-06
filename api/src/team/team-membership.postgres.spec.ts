@@ -11,8 +11,9 @@ jest.mock("../match/match.service", () => ({
 
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { DataSource, QueryRunner } from "typeorm";
+import { DataSource, EntityManager, QueryRunner } from "typeorm";
 import { EventEntity } from "../event/entities/event.entity";
+import { isUserRegisteredForEvent } from "../event/event-registration";
 import { UserEntity } from "../user/entities/user.entity";
 import { TeamEntity } from "./entities/team.entity";
 import { LockKeys } from "../constants";
@@ -42,7 +43,19 @@ postgres("team membership concurrency (PostgreSQL)", () => {
     service = new TeamService(
       database.getRepository(TeamEntity),
       {} as never,
-      {} as never,
+      // No whitelists here, so eligibility is the registration check.
+      {
+        isUserEligibleForEvent: (
+          eventId: string,
+          userId: string,
+          manager: EntityManager,
+        ) =>
+          isUserRegisteredForEvent(
+            manager.getRepository(EventEntity),
+            eventId,
+            userId,
+          ),
+      } as never,
       {} as never,
       database,
     );
@@ -161,7 +174,7 @@ postgres("team membership concurrency (PostgreSQL)", () => {
     const team = await createTeam(event, [owner], [invitee]);
 
     await expect(service.acceptTeamInvite(invitee.id, team.id)).rejects.toThrow(
-      "You are not registered for this event.",
+      "You are not registered or not whitelisted for this private event.",
     );
     expect(await memberCount(team.id)).toBe(1);
     expect(

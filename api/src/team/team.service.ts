@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   forwardRef,
   Inject,
   Injectable,
@@ -33,7 +34,6 @@ import {
 } from "../match/entites/match.entity";
 import { MatchStatsEntity } from "../match/entites/matchStats.entity";
 import { EventEntity } from "../event/entities/event.entity";
-import { isUserRegisteredForEvent } from "../event/event-registration";
 import { UserEntity } from "../user/entities/user.entity";
 import { groupLocationTagsByOwner } from "../user/location-tags";
 import type { OwnedLocationTagSource } from "../user/location-tags";
@@ -906,14 +906,6 @@ export class TeamService {
     const team = await this.dataSource.transaction(async (manager) => {
       await this.lockUserForTeamMembership(manager, userId);
       const team = await this.lockTeamForMembershipChange(manager, teamId);
-      if (
-        !(await isUserRegisteredForEvent(
-          manager.getRepository(EventEntity),
-          team.event.id,
-          userId,
-        ))
-      )
-        throw new BadRequestException("You are not registered for this event.");
       await this.assertUserHasNoTeamInEvent(
         manager,
         userId,
@@ -926,6 +918,21 @@ export class TeamService {
         }))
       )
         throw new BadRequestException("You are not invited to this team.");
+      // Turning team creation off also freezes the rosters of existing teams.
+      if (!team.event.canCreateTeam)
+        throw new BadRequestException(
+          "Joining teams is closed for this event.",
+        );
+      if (
+        !(await this.eventService.isUserEligibleForEvent(
+          team.event.id,
+          userId,
+          manager,
+        ))
+      )
+        throw new ForbiddenException(
+          "You are not registered or not whitelisted for this private event.",
+        );
       const maxUsers = team.event.maxTeamSize;
       if (!maxUsers || team.users.length >= maxUsers)
         throw new BadRequestException("This team is full.");
