@@ -57,7 +57,6 @@ const TEAM_FIELDS_NEVER_RETURNED = [
   "deletedAt",
   "locked",
   "eventId",
-  "queueScore",
   "repositoryOperationId",
   "lastCreditGrantedAt",
   "startedRepoCreationAt",
@@ -789,6 +788,7 @@ postgres("unrevealed match results (PostgreSQL)", () => {
         expectTeamFields(team, [
           ...PUBLIC_TEAM_LIST_KEYS,
           "credits",
+          "queueScore",
           "repositoryError",
           "repositoryStatus",
           "tournamentExcluded",
@@ -799,6 +799,23 @@ postgres("unrevealed match results (PostgreSQL)", () => {
         "Team C": { score: 1, buchholzPoints: STORED_BUCHHOLZ.C },
         "Team D": { score: 0, buchholzPoints: STORED_BUCHHOLZ.D },
       });
+    });
+
+    it("lets an event admin sort the team list by queue score", async () => {
+      const response = await get(
+        `/team/event/${event.id}?sortBy=queueScore&sortDir=desc`,
+        users.admin.id,
+      );
+      expect(response.status).toBe(200);
+      // Every team has the default score here, so the names decide the order.
+      expect(
+        response.body.map((team: Json) => [team.name, team.queueScore]),
+      ).toEqual([
+        ["Team A", 1000],
+        ["Team B", 1000],
+        ["Team C", 1000],
+        ["Team D", 1000],
+      ]);
     });
 
     it("keeps the public team list standings and order", async () => {
@@ -833,6 +850,12 @@ postgres("unrevealed match results (PostgreSQL)", () => {
         users.outsider.id,
       );
       expect(buchholz.status).toBe(400);
+      // The order alone would reveal the hidden queue scores.
+      const queueScore = await get(
+        `/team/event/${event.id}?sortBy=queueScore&adminRevealQuery=true`,
+        users.outsider.id,
+      );
+      expect(queueScore.status).toBe(400);
     });
 
     it("does not sort the public team list by fields it leaves out", async () => {
