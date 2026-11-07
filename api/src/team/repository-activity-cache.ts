@@ -19,7 +19,7 @@ export class RepositoryActivityCache {
 
   async get(
     eventId: string,
-    githubOrg: string,
+    scope: string,
     repositoryNames: string[],
     fetchActivity: (
       repositoryNames: string[],
@@ -28,8 +28,8 @@ export class RepositoryActivityCache {
     while (this.running.has(eventId))
       await this.running.get(eventId)?.catch(() => undefined);
 
-    // Checks run per event, but a result only describes its organization.
-    const cacheKey = `${eventId}:${githubOrg}`;
+    // Checks run per event, but a result is only reusable within its scope.
+    const cacheKey = `${eventId}:${scope}`;
     const entries = this.freshEntries(cacheKey);
     const statuses = new Map(
       [...entries].map(([name, entry]) => [name, entry.status]),

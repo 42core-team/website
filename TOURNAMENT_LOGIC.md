@@ -19,6 +19,8 @@ The Swiss Phase is the initial part of the event where teams play a fixed number
 
 During code freeze, before any Swiss or elimination match exists, administrators can check repository activity from the lifecycle controls. A repository is **inactive** when its default branch, the branch that matches clone, has no commits besides the initial commit. Commits on other branches do not count.
 
+During coding, the same check is a read-only preview, because teams can still push until the submission deadline. Results from coding are never reused for an exclusion.
+
 Administrators review the inactive teams and confirm which ones to exclude. Excluded teams take no part in the Swiss phase or the elimination bracket. Repositories that cannot be checked, for example while GitHub is rate limiting, are reported separately and are never excluded by this action. Confirmed results are reused for 30 seconds. The action does not re-include anyone, and it is rejected if fewer than 2 teams would remain.
 
 ### Round Generation

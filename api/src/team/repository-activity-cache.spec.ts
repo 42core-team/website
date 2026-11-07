@@ -57,6 +57,18 @@ describe("RepositoryActivityCache", () => {
     expect(fetchActivity).toHaveBeenCalledTimes(1);
   });
 
+  it("does not reuse results from another scope", async () => {
+    const cache = new RepositoryActivityCache();
+    const fetchActivity = jest
+      .fn()
+      .mockResolvedValue([{ repositoryName: "idle", status: "inactive" }]);
+
+    await cache.get("event", "org:coding", ["idle"], fetchActivity);
+    await cache.get("event", "org:closed", ["idle"], fetchActivity);
+
+    expect(fetchActivity).toHaveBeenCalledTimes(2);
+  });
+
   it("does not reuse results after the organization changes", async () => {
     const cache = new RepositoryActivityCache();
     const fetchActivity = jest
