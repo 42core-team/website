@@ -7,6 +7,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Event } from '@/app/actions/event'
 import {
@@ -23,7 +24,7 @@ vi.mock('@/app/actions/event', () => ({
   retryRepository: vi.fn(),
   setTeamExclusion: vi.fn(),
   getRepositoryActivity: vi.fn(),
-  excludeInactiveTeams: vi.fn().mockResolvedValue(undefined),
+  excludeInactiveTeams: vi.fn(),
 }))
 vi.mock('@/app/actions/team', async (importOriginal) => ({
   ...(await importOriginal<typeof TeamActions>()),
@@ -84,6 +85,9 @@ describe('lifecycle controls', () => {
       { teamId: 'idle', teamName: 'Idle team', status: 'inactive' },
       { teamId: 'unknown', teamName: 'Unknown team', status: 'unknown' },
     ])
+    vi.mocked(excludeInactiveTeams).mockResolvedValue({
+      excludedTeamIds: ['idle'],
+    })
     setup()
     fireEvent.click(
       screen.getByRole('button', { name: 'Check repository activity' }),
@@ -103,6 +107,33 @@ describe('lifecycle controls', () => {
     await waitFor(() =>
       expect(screen.queryByText('Repository activity')).toBeNull(),
     )
+  })
+
+  it('names selected teams the server did not exclude', async () => {
+    const warning = vi.spyOn(toast, 'warning')
+    vi.mocked(getTeamsForEventTable).mockResolvedValue([])
+    vi.mocked(getRepositoryActivity).mockResolvedValue([
+      { teamId: 'active', teamName: 'Active team', status: 'active' },
+      { teamId: 'other', teamName: 'Other team', status: 'active' },
+      { teamId: 'idle', teamName: 'Idle team', status: 'inactive' },
+      { teamId: 'pushed', teamName: 'Pushed team', status: 'inactive' },
+    ])
+    vi.mocked(excludeInactiveTeams).mockResolvedValue({
+      excludedTeamIds: ['idle'],
+    })
+    setup()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Check repository activity' }),
+    )
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Exclude selected teams' }),
+    )
+    await waitFor(() =>
+      expect(warning).toHaveBeenCalledWith(
+        expect.stringContaining('Pushed team'),
+      ),
+    )
+    expect(warning.mock.calls[0][0]).not.toContain('Idle team')
   })
 
   it('blocks an exclusion that would leave fewer than two teams', async () => {

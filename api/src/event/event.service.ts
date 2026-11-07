@@ -738,7 +738,8 @@ export class EventService {
    */
   async excludeInactiveTeams(eventId: string, teamIds: string[]) {
     const activity = await this.getRepositoryActivity(eventId);
-    const selected = new Set(teamIds);
+    // Validation accepts uppercase UUIDs; stored ids are lowercase.
+    const selected = new Set(teamIds.map((id) => id.toLowerCase()));
     const inactive = new Set(
       activity
         .filter(({ status }) => status === "inactive")

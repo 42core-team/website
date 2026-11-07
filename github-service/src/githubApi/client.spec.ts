@@ -21,13 +21,13 @@ describe("activity check over the GitHub client", () => {
 
   afterEach(() => jest.restoreAllMocks());
 
-  const repositoryApi = () =>
+  const repositoryApi = (requestTimeoutMs = 10000) =>
     new RepositoryApi(
       new GitHubApiClient({
         token: "token",
         maxRetries: 0,
         logErrors: false,
-        requestTimeoutMs: 10000,
+        requestTimeoutMs,
       }),
     );
 
@@ -81,9 +81,16 @@ describe("activity check over the GitHub client", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("gives each request a deadline", async () => {
-    fetchMock.mockResolvedValue(jsonResponse([]));
-    await repositoryApi().hasCommitsBeyondInitial("org", "repo");
-    expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+  it("aborts a request that outlives its deadline", async () => {
+    fetchMock.mockImplementation(
+      (_url: string, { signal }: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(signal.reason));
+        }),
+    );
+    await expect(
+      repositoryApi(20).hasCommitsBeyondInitial("org", "repo"),
+    ).rejects.toMatchObject({ name: "TimeoutError" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

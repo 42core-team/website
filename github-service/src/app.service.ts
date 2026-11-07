@@ -460,14 +460,22 @@ export class AppService {
   ): Promise<RepositoryActivityResult[]> {
     // An admin is waiting, so a rate limit or an unreachable GitHub must report
     // "unknown" instead of retrying or sleeping until the limit resets.
-    const repositoryApi = new RepositoryApi(
-      new GitHubApiClient({
-        token: this.decryptSecret(encryptedSecret),
-        maxRetries: 0,
-        logErrors: false,
-        requestTimeoutMs: REPOSITORY_ACTIVITY_REQUEST_TIMEOUT_MS,
-      }),
-    );
+    let repositoryApi: RepositoryApi | null = null;
+    try {
+      repositoryApi = new RepositoryApi(
+        new GitHubApiClient({
+          token: this.decryptSecret(encryptedSecret),
+          maxRetries: 0,
+          logErrors: false,
+          requestTimeoutMs: REPOSITORY_ACTIVITY_REQUEST_TIMEOUT_MS,
+        }),
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to prepare repository activity check ${JSON.stringify({ githubOrg })}`,
+        error as Error,
+      );
+    }
     const results: RepositoryActivityResult[] = [];
     const pending = [...repositoryNames];
     const worker = async () => {
@@ -493,11 +501,12 @@ export class AppService {
   }
 
   private async getSingleRepositoryActivity(
-    repositoryApi: RepositoryApi,
+    repositoryApi: RepositoryApi | null,
     githubOrg: string,
     repositoryName: string,
   ): Promise<RepositoryActivityStatus> {
     if (isSimulatedRepository(repositoryName)) return "active";
+    if (!repositoryApi) return "unknown";
     try {
       return (await repositoryApi.hasCommitsBeyondInitial(
         githubOrg,

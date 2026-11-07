@@ -237,10 +237,13 @@ export async function getRepositoryActivity(
 export async function excludeInactiveTeams(
   eventId: string,
   teamIds: string[],
-): Promise<void> {
-  await axiosInstance.post(`event/${eventId}/exclude-inactive-teams`, {
-    teamIds,
-  })
+): Promise<{ excludedTeamIds: string[] }> {
+  return (
+    await axiosInstance.post<{ excludedTeamIds: string[] }>(
+      `event/${eventId}/exclude-inactive-teams`,
+      { teamIds },
+    )
+  ).data
 }
 
 export async function getEventAdmins(

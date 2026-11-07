@@ -13,9 +13,10 @@ describe("RepositoryActivityCache", () => {
       ])
       .mockResolvedValueOnce([{ repositoryName: "broken", status: "active" }]);
 
-    await cache.get("event", ["idle", "broken"], fetchActivity);
+    await cache.get("event", "org", ["idle", "broken"], fetchActivity);
     const statuses = await cache.get(
       "event",
+      "org",
       ["idle", "broken"],
       fetchActivity,
     );
@@ -32,13 +33,39 @@ describe("RepositoryActivityCache", () => {
       .fn()
       .mockResolvedValue([{ repositoryName: "idle", status: "inactive" }]);
 
-    await cache.get("event", ["idle"], fetchActivity);
+    await cache.get("event", "org", ["idle"], fetchActivity);
     now.mockReturnValue(29999);
-    await cache.get("event", ["idle"], fetchActivity);
+    await cache.get("event", "org", ["idle"], fetchActivity);
     expect(fetchActivity).toHaveBeenCalledTimes(1);
 
     now.mockReturnValue(30000);
-    await cache.get("event", ["idle"], fetchActivity);
+    await cache.get("event", "org", ["idle"], fetchActivity);
+    expect(fetchActivity).toHaveBeenCalledTimes(2);
+  });
+
+  it("starts the reuse window when a slow check finishes", async () => {
+    const cache = new RepositoryActivityCache();
+    const now = jest.spyOn(Date, "now").mockReturnValue(0);
+    const fetchActivity = jest.fn().mockImplementation(async () => {
+      now.mockReturnValue(60000);
+      return [{ repositoryName: "idle", status: "inactive" }];
+    });
+
+    await cache.get("event", "org", ["idle"], fetchActivity);
+    await cache.get("event", "org", ["idle"], fetchActivity);
+
+    expect(fetchActivity).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not reuse results after the organization changes", async () => {
+    const cache = new RepositoryActivityCache();
+    const fetchActivity = jest
+      .fn()
+      .mockResolvedValue([{ repositoryName: "idle", status: "inactive" }]);
+
+    await cache.get("event", "old-org", ["idle"], fetchActivity);
+    await cache.get("event", "new-org", ["idle"], fetchActivity);
+
     expect(fetchActivity).toHaveBeenCalledTimes(2);
   });
 
@@ -49,9 +76,9 @@ describe("RepositoryActivityCache", () => {
       .mockResolvedValue([{ repositoryName: "idle", status: "inactive" }]);
 
     const results = await Promise.all([
-      cache.get("event", ["idle"], fetchActivity),
-      cache.get("event", ["idle"], fetchActivity),
-      cache.get("event", ["idle"], fetchActivity),
+      cache.get("event", "org", ["idle"], fetchActivity),
+      cache.get("event", "org", ["idle"], fetchActivity),
+      cache.get("event", "org", ["idle"], fetchActivity),
     ]);
 
     expect(fetchActivity).toHaveBeenCalledTimes(1);
@@ -66,11 +93,11 @@ describe("RepositoryActivityCache", () => {
       .mockRejectedValueOnce(new Error("timeout"))
       .mockResolvedValue([{ repositoryName: "idle", status: "inactive" }]);
 
-    await expect(cache.get("a", ["idle"], fetchActivity)).rejects.toThrow(
-      "timeout",
-    );
-    await cache.get("a", ["idle"], fetchActivity);
-    await cache.get("b", ["idle"], fetchActivity);
+    await expect(
+      cache.get("a", "org", ["idle"], fetchActivity),
+    ).rejects.toThrow("timeout");
+    await cache.get("a", "org", ["idle"], fetchActivity);
+    await cache.get("b", "org", ["idle"], fetchActivity);
 
     expect(fetchActivity).toHaveBeenCalledTimes(3);
   });

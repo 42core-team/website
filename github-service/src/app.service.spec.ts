@@ -91,6 +91,30 @@ describe("AppService", () => {
       });
     });
 
+    it("reports unknown when the secret cannot be decrypted", async () => {
+      process.env.NODE_ENV = "development";
+      jest
+        .spyOn(ClientProxyFactory, "create")
+        .mockReturnValue({ emit: jest.fn() } as never);
+      jest.mocked(RepositoryApi).mockClear();
+      const service = new AppService({} as never);
+      jest.spyOn(service, "decryptSecret").mockImplementation(() => {
+        throw new Error("bad secret");
+      });
+      const results = await service.getRepositoryActivity(
+        ["real-repo", SIM_REPOSITORY],
+        "org",
+        "secret",
+      );
+      expect(results).toEqual(
+        expect.arrayContaining([
+          { repositoryName: "real-repo", status: "unknown" },
+          { repositoryName: SIM_REPOSITORY, status: "active" },
+        ]),
+      );
+      expect(RepositoryApi).not.toHaveBeenCalled();
+    });
+
     it("limits concurrent GitHub requests", async () => {
       let running = 0;
       let peak = 0;

@@ -19,6 +19,7 @@ export class RepositoryActivityCache {
 
   async get(
     eventId: string,
+    githubOrg: string,
     repositoryNames: string[],
     fetchActivity: (
       repositoryNames: string[],
@@ -27,7 +28,9 @@ export class RepositoryActivityCache {
     while (this.running.has(eventId))
       await this.running.get(eventId)?.catch(() => undefined);
 
-    const entries = this.freshEntries(eventId);
+    // Checks run per event, but a result only describes its organization.
+    const cacheKey = `${eventId}:${githubOrg}`;
+    const entries = this.freshEntries(cacheKey);
     const statuses = new Map(
       [...entries].map(([name, entry]) => [name, entry.status]),
     );
@@ -37,23 +40,24 @@ export class RepositoryActivityCache {
     const run = fetchActivity(missing);
     this.running.set(eventId, run);
     try {
+      const results = await run;
       const expiresAt = Date.now() + CONFIRMED_STATUS_TTL_MS;
-      for (const { repositoryName, status } of await run) {
+      for (const { repositoryName, status } of results) {
         statuses.set(repositoryName, status);
         if (status !== "unknown")
           entries.set(repositoryName, { status, expiresAt });
       }
-      this.confirmed.set(eventId, entries);
+      this.confirmed.set(cacheKey, entries);
       return statuses;
     } finally {
       this.running.delete(eventId);
     }
   }
 
-  private freshEntries(eventId: string) {
+  private freshEntries(cacheKey: string) {
     const now = Date.now();
     return new Map(
-      [...(this.confirmed.get(eventId) ?? [])].filter(
+      [...(this.confirmed.get(cacheKey) ?? [])].filter(
         ([, entry]) => entry.expiresAt > now,
       ),
     );

@@ -154,6 +154,26 @@ export function LifecycleControls({
     onSuccess: setActivity,
     onError: showError,
   })
+  const exclusion = useMutation({
+    mutationFn: (teamIds: string[]) => excludeInactiveTeams(event.id, teamIds),
+    onSuccess: async ({ excludedTeamIds }, teamIds) => {
+      // The server rechecks activity, so a team may no longer count as inactive.
+      const skipped = (activity ?? [])
+        .filter(
+          ({ teamId }) =>
+            teamIds.includes(teamId) && !excludedTeamIds.includes(teamId),
+        )
+        .map(({ teamName }) => teamName)
+      setActivity(null)
+      await client.invalidateQueries()
+      if (skipped.length > 0)
+        toast.warning(
+          `Excluded ${excludedTeamIds.length} teams. Not excluded because they are no longer confirmed inactive: ${skipped.join(', ')}`,
+        )
+      else toast.success(`Excluded ${excludedTeamIds.length} teams.`)
+    },
+    onError: showError,
+  })
   const state = eventState(event, now)
   const closed = ['SUBMISSIONS_CLOSED', 'SHOWCASE', 'COMPLETED'].includes(state)
   const confirmed =
@@ -308,13 +328,9 @@ export function LifecycleControls({
       {activity && (
         <RepositoryActivityDialog
           activity={activity}
-          isPending={mutation.isPending}
+          isPending={exclusion.isPending}
           onClose={() => setActivity(null)}
-          onConfirm={(teamIds) =>
-            mutation.mutate(() => excludeInactiveTeams(event.id, teamIds), {
-              onSuccess: () => setActivity(null),
-            })
-          }
+          onConfirm={(teamIds) => exclusion.mutate(teamIds)}
         />
       )}
     </Card>

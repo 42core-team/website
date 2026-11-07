@@ -1179,6 +1179,7 @@ export class TeamService {
       try {
         statuses = await this.repositoryActivityCache.get(
           eventId,
+          event.githubOrg,
           repositoryNames,
           (missing) =>
             this.githubApiService.getRepositoryActivity(

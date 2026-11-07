@@ -307,6 +307,18 @@ describe("event lifecycle", () => {
       expect(update).toEqual({ tournamentExcluded: true });
     });
 
+    it("matches selected ids regardless of case", async () => {
+      const { service, teamRepository, teamService } = harness(
+        EventState.SUBMISSIONS_CLOSED,
+        participants,
+      );
+      teamService.getRepositoryActivityForEvent.mockResolvedValue(activity);
+      await expect(
+        service.excludeInactiveTeams("event", ["IDLE"]),
+      ).resolves.toEqual({ excludedTeamIds: ["idle"] });
+      expect(teamRepository.update).toHaveBeenCalledTimes(1);
+    });
+
     it("ignores team ids outside the participating teams of the event", async () => {
       const { service, teamRepository, teamService } = harness(
         EventState.SUBMISSIONS_CLOSED,
