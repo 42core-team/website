@@ -1,6 +1,12 @@
 package main
 
 import (
+	"context"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/42core-team/website_relaunch/k8s-service/internal/api"
 	"github.com/42core-team/website_relaunch/k8s-service/internal/api/server"
 	"github.com/42core-team/website_relaunch/k8s-service/internal/config"
@@ -10,6 +16,9 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 	"go.uber.org/zap"
 )
+
+// Must fit in terminationGracePeriodSeconds, together with the preStop sleep.
+const shutdownTimeout = 15 * time.Second
 
 func main() {
 	logger := setupLogger()
@@ -61,7 +70,21 @@ func main() {
 		}
 	}()
 
-	logger.Fatal(e.Start(cfg.Addr))
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if err := serve(ctx, e, cfg.Addr); err != nil {
+		logger.Fatalln("Server stopped with error:", err)
+	}
+}
+
+// serve blocks until ctx is cancelled, then finishes in-flight requests.
+func serve(ctx context.Context, e *echo.Echo, addr string) error {
+	startConfig := echo.StartConfig{
+		Address:         addr,
+		GracefulTimeout: shutdownTimeout,
+	}
+	return startConfig.Start(ctx, e)
 }
 
 func setupLogger() *zap.SugaredLogger {

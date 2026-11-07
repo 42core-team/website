@@ -30,16 +30,16 @@ on:
         type: boolean
         default: false
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}-frontend
 
 jobs:
   lint:
+    # Job level, so a new push never cancels a deploy that is already running.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-lint
+      cancel-in-progress: true
     if: |
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'push' ||
@@ -76,6 +76,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
   build:
+    # Job level, so a new push never cancels a deploy that is already running.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-build
+      cancel-in-progress: true
     # Only run on pull requests that are cross-branch or on direct pushes
     if: |
       github.event_name == 'workflow_dispatch' ||
@@ -134,6 +138,21 @@ jobs:
             type=ref,event=pr,prefix=pr-
             type=raw,value=${{ steps.image-tag.outputs.image_tag }}
 
+      - name: Find previous image
+        id: previous-image
+        if: github.event_name != 'pull_request'
+        run: |
+          PREVIOUS_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.sanitize-branch.outputs.name }}"
+          if INSPECT_OUTPUT=$(docker buildx imagetools inspect "$PREVIOUS_IMAGE" --format '{{.Manifest.Digest}}' 2>&1); then
+            echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@$INSPECT_OUTPUT" >> $GITHUB_OUTPUT
+          elif grep -qE ': not found$' <<< "$INSPECT_OUTPUT"; then
+            echo "No previous image for this branch, building without carried-over assets"
+          else
+            # Building anyway would drop the assets that open tabs still need.
+            echo "$INSPECT_OUTPUT"
+            exit 1
+          fi
+
       - name: Build image (PR - no push)
         if: github.event_name == 'pull_request'
         uses: useblacksmith/build-push-action@v2
@@ -174,6 +193,7 @@ jobs:
             VITE_MEDIA_URL=${{ vars.VITE_MEDIA_URL }}
             VITE_FORTY_TWO_CLIENT_ID=${{ vars.VITE_FORTY_TWO_CLIENT_ID || vars.NEXT_PUBLIC_FORTY_TWO_CLIENT_ID }}
             CURRENT_BRANCH=${{ github.ref_name }}
+            PREVIOUS_IMAGE=${{ steps.previous-image.outputs.image }}
       - name: Output image details
         run: |
           if [ "${{ github.event_name }}" != "pull_request" ]; then

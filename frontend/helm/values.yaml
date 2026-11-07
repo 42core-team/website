@@ -11,12 +11,23 @@ strategy:
 minReadySeconds: 5
 terminationGracePeriodSeconds: 30
 
-# Keep serving for a few seconds after termination starts so the endpoint is
-# removed from Services/ingress before the process receives SIGTERM.
+# Keep serving after termination starts so the endpoint is removed from
+# Services/ingress before the process receives SIGTERM.
 lifecycle:
   preStop:
     sleep:
-      seconds: 5
+      seconds: 10
+
+# Voluntary disruptions (node drains and upgrades) take down one pod at a time.
+# maxUnavailable never blocks a drain, even with a single replica.
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
+# Best effort, so scheduling still succeeds when the cluster cannot satisfy it.
+topologySpreadKeys:
+  - topology.kubernetes.io/zone
+  - kubernetes.io/hostname
 
 image:
   repository: ghcr.io/42core-team/website_relaunch-frontend
@@ -115,10 +126,11 @@ livenessProbe:
   timeoutSeconds: 2
   failureThreshold: 3
 
+# Fails if the pod could not serve the app shell, unlike the liveness check.
 readinessProbe:
   enabled: true
   httpGet:
-    path: /healthz
+    path: /readyz
     port: http
   periodSeconds: 5
   timeoutSeconds: 2

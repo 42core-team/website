@@ -37,6 +37,14 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # During a rollout, keep a visitor on the pod that served their app shell. If
+    # that pod lacks an asset anyway, retry on another pod. See docs/adr/0004.
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "core_route"
+    nginx.ingress.kubernetes.io/session-cookie-secure: "true"
+    nginx.ingress.kubernetes.io/session-cookie-samesite: "Lax"
+    nginx.ingress.kubernetes.io/session-cookie-change-on-failure: "true"
+    nginx.ingress.kubernetes.io/proxy-next-upstream: "error timeout http_404 http_502 http_503 http_504"
   #    nginx.ingress.kubernetes.io/limit-rps: "10"
   #    nginx.ingress.kubernetes.io/limit-burst: "20"
   #    nginx.ingress.kubernetes.io/limit-connections: "50"

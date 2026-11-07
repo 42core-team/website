@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AppController } from "./app.controller";
+import { RmqDrainInterceptor } from "./common/rmq-drain.interceptor";
 import { AppService } from "./app.service";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { AuthModule } from "./auth/auth.module";
@@ -79,6 +80,6 @@ import { GamblingModule } from "./gambling/gambling.module";
     GamblingModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, RmqDrainInterceptor],
 })
 export class AppModule {}

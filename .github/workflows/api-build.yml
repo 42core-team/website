@@ -25,16 +25,16 @@ on:
           - dev
           - prod
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}-api
 
 jobs:
   lint:
+    # Job level, so a new push never cancels a deploy that is already running.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-lint
+      cancel-in-progress: true
     if: |
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'push' ||
@@ -77,6 +77,9 @@ jobs:
         working-directory: ./api
         run: pnpm install --frozen-lockfile
 
+      - name: Check migrations are backward compatible
+        run: node api/scripts/check-migrations.mjs
+
       - name: Lint code
         working-directory: ./api
         run: |
@@ -96,6 +99,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
   build:
+    # Job level, so a new push never cancels a deploy that is already running.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-build
+      cancel-in-progress: true
     # Only run on pull requests that are cross-branch or on direct pushes
     if: |
       github.event_name == 'workflow_dispatch' ||
