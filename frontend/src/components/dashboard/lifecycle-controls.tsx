@@ -38,6 +38,7 @@ import {
   repositoryConfirmedForTournament,
 } from '@/lib/event-lifecycle'
 import { useEventClock } from '@/hooks/use-event-clock'
+import { repositoryRefetchInterval } from '@/lib/query-intervals'
 
 function RepositoryActivityDialog({
   activity,
@@ -150,7 +151,7 @@ export function LifecycleControls({
     queryKey: ['event', event.id, 'repository-progress'],
     queryFn: () =>
       getTeamsForEventTable(event.id, undefined, 'name', 'asc', true),
-    refetchInterval: 3000,
+    refetchInterval: (query) => repositoryRefetchInterval(query.state.data),
   })
   const showError = (error: Error) =>
     toast.error(

@@ -32,8 +32,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { validateTeamName } from '@/lib/utils/validation'
 
-const REPO_CREATION_POLL_INTERVAL_MS = 2000
-
 /**
  * The viewer's own team: details, repository, members and match history, or
  * team creation and invites when they have no team yet. Shown under My Team
@@ -58,12 +56,10 @@ export function MyTeamPage({
   const eventQuery = useQuery({
     queryKey: ['event', id],
     queryFn: async () => getEventById(id),
-    refetchInterval: 1000,
   })
   const myTeamQuery = useQuery<Team | null>({
     queryKey: myTeamQueryKey(id),
     queryFn: () => myTeamQueryFn(id),
-    refetchInterval: REPO_CREATION_POLL_INTERVAL_MS,
   })
   const teamMembersQuery = useQuery<TeamMember[]>({
     queryKey: ['team', myTeamQuery.data?.id, 'members'],
@@ -79,10 +75,6 @@ export function MyTeamPage({
     queryKey: ['event', id, 'github-org'],
     queryFn: async () => getEventGithubOrg(id),
     enabled: Boolean(myTeamQuery.data),
-    refetchInterval: ({ state }) =>
-      myTeamQuery.data && !myTeamQuery.data.repo && !state.data
-        ? REPO_CREATION_POLL_INTERVAL_MS
-        : false,
   })
   const matchesQuery = useQuery({
     queryKey: ['team', myTeamQuery.data?.id, 'matches'],

@@ -25,7 +25,7 @@ export class StatsController {
     damageOpponent?: string;
   };
 
-  @Cron("*/2 * * * * *")
+  @Cron("*/30 * * * * *")
   async updateGlobalStats() {
     this.globalStats = await this.matchService.getGlobalStats();
   }
