@@ -140,6 +140,8 @@ jobs:
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
           platforms: ${{ matrix.platform }}
           push: false
           tags: ${{ steps.meta.outputs.tags }}
@@ -158,6 +160,8 @@ jobs:
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
           platforms: ${{ matrix.platform }}
           no-cache: ${{ inputs.force_rebuild == true }}
           push: true

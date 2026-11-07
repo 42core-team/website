@@ -139,6 +139,8 @@ jobs:
         with:
           context: ./github-service
           file: ./github-service/Dockerfile
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
           platforms: ${{ matrix.platform }}
           push: false
           tags: ${{ steps.meta.outputs.tags }}
@@ -150,6 +152,8 @@ jobs:
         with:
           context: ./github-service
           file: ./github-service/Dockerfile
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
           platforms: ${{ matrix.platform }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
