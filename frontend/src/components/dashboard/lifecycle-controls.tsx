@@ -41,11 +41,13 @@ import { useEventClock } from '@/hooks/use-event-clock'
 
 function RepositoryActivityDialog({
   activity,
+  canExclude,
   isPending,
   onClose,
   onConfirm,
 }: {
   activity: TeamRepositoryActivity[]
+  canExclude: boolean
   isPending: boolean
   onClose: () => void
   onConfirm: (teamIds: string[]) => void
@@ -56,6 +58,12 @@ function RepositoryActivityDialog({
     () => new Set(inactive.map((team) => team.teamId)),
   )
   const remaining = activity.length - selected.size
+  const blockedReason =
+    selected.size === 0
+      ? 'Select at least one inactive team to exclude.'
+      : remaining < 2
+        ? `At least 2 teams must stay in the tournament. Deselect ${2 - remaining} more to continue.`
+        : null
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
@@ -63,14 +71,17 @@ function RepositoryActivityDialog({
           <DialogTitle>Repository activity</DialogTitle>
           <DialogDescription>
             Inactive teams have no commits on their default branch besides the
-            initial commit. {remaining} of {activity.length} teams remain in the
-            tournament if you exclude the selected ones.
+            initial commit.{' '}
+            {canExclude
+              ? `${remaining} of ${activity.length} teams remain in the tournament if you exclude the selected ones.`
+              : 'Teams can still push until the submission deadline, so this is only a preview. You can exclude teams during code freeze.'}
           </DialogDescription>
         </DialogHeader>
         {inactive.length === 0 && <p>No inactive repositories found.</p>}
         <ul className="max-h-64 space-y-2 overflow-y-auto">
           {inactive.map((team) => {
             const id = `inactive-team-${team.teamId}`
+            if (!canExclude) return <li key={team.teamId}>{team.teamName}</li>
             return (
               <li key={team.teamId} className="flex items-center gap-2">
                 <Checkbox
@@ -95,21 +106,27 @@ function RepositoryActivityDialog({
             <CircleAlert className="size-4" aria-hidden="true" />
             <AlertTitle>Couldn't check these repositories</AlertTitle>
             <AlertDescription>
-              {unknown.map((team) => team.teamName).join(', ')}. They stay in
-              the tournament unless you exclude them individually.
+              {unknown.map((team) => team.teamName).join(', ')}.
+              {canExclude &&
+                ' They stay in the tournament unless you exclude them individually.'}
             </AlertDescription>
           </Alert>
         )}
+        {canExclude && inactive.length > 0 && blockedReason && (
+          <p className="text-sm text-muted-foreground">{blockedReason}</p>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {canExclude ? 'Cancel' : 'Close'}
           </Button>
-          <Button
-            disabled={isPending || selected.size === 0 || remaining < 2}
-            onClick={() => onConfirm([...selected])}
-          >
-            Exclude selected teams
-          </Button>
+          {canExclude && (
+            <Button
+              disabled={isPending || blockedReason !== null}
+              onClick={() => onConfirm([...selected])}
+            >
+              Exclude selected teams
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -227,7 +244,8 @@ export function LifecycleControls({
             <Button
               variant="outline"
               disabled={
-                state !== 'SUBMISSIONS_CLOSED' || activityCheck.isPending
+                !['PLAYING', 'SUBMISSIONS_CLOSED'].includes(state) ||
+                activityCheck.isPending
               }
               onClick={() => activityCheck.mutate()}
             >
@@ -328,6 +346,7 @@ export function LifecycleControls({
       {activity && (
         <RepositoryActivityDialog
           activity={activity}
+          canExclude={state === 'SUBMISSIONS_CLOSED'}
           isPending={exclusion.isPending}
           onClose={() => setActivity(null)}
           onConfirm={(teamIds) => exclusion.mutate(teamIds)}

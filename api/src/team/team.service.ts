@@ -1179,7 +1179,8 @@ export class TeamService {
       try {
         statuses = await this.repositoryActivityCache.get(
           eventId,
-          event.githubOrg,
+          // A push just before the deadline must not hide behind a coding result.
+          `${event.githubOrg}:${isPlaying(event) ? "coding" : "closed"}`,
           repositoryNames,
           (missing) =>
             this.githubApiService.getRepositoryActivity(

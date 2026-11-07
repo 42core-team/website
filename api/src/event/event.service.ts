@@ -725,10 +725,20 @@ export class EventService {
     });
   }
 
+  /** Read-only, so coding allows it too; only code freeze can act on it. */
   async getRepositoryActivity(eventId: string) {
-    await this.dataSource.transaction((manager) =>
-      this.assertRepositoryActivityFilterOpen(manager, eventId),
-    );
+    const event = await this.eventRepository.findOneOrFail({
+      where: { id: eventId },
+    });
+    const state = getEventState(event);
+    if (state === EventState.SUBMISSIONS_CLOSED)
+      await this.dataSource.transaction((manager) =>
+        this.assertRepositoryActivityFilterOpen(manager, eventId),
+      );
+    else if (state !== EventState.PLAYING)
+      throw new BadRequestException(
+        "Repository activity can only be checked during coding or code freeze",
+      );
     return this.teamService.getRepositoryActivityForEvent(eventId);
   }
 
@@ -737,7 +747,11 @@ export class EventService {
    * re-includes a team, so earlier manual decisions survive a repeated run.
    */
   async excludeInactiveTeams(eventId: string, teamIds: string[]) {
-    const activity = await this.getRepositoryActivity(eventId);
+    await this.dataSource.transaction((manager) =>
+      this.assertRepositoryActivityFilterOpen(manager, eventId),
+    );
+    const activity =
+      await this.teamService.getRepositoryActivityForEvent(eventId);
     // Validation accepts uppercase UUIDs; stored ids are lowercase.
     const selected = new Set(teamIds.map((id) => id.toLowerCase()));
     const inactive = new Set(
@@ -781,7 +795,7 @@ export class EventService {
     });
     if (getEventState(event) !== EventState.SUBMISSIONS_CLOSED)
       throw new BadRequestException(
-        "Repository activity can only be checked while submissions are closed",
+        "Inactive teams can only be excluded while submissions are closed",
       );
     const tournamentMatches = await manager.getRepository(MatchEntity).countBy({
       phase: In([MatchPhase.SWISS, MatchPhase.ELIMINATION]),

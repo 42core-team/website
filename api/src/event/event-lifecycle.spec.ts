@@ -343,9 +343,42 @@ describe("event lifecycle", () => {
       expect(teamRepository.update).not.toHaveBeenCalled();
     });
 
+    function duringCoding() {
+      const context = harness(EventState.PLAYING, [{ id: "idle" }]);
+      context.stored.startDate = new Date(Date.now() - 60000);
+      context.stored.submissionDeadline = new Date(Date.now() + 120000);
+      context.teamService.getRepositoryActivityForEvent.mockResolvedValue(
+        activity,
+      );
+      return context;
+    }
+
+    it("allows a read-only check during coding", async () => {
+      const { service } = duringCoding();
+      await expect(service.getRepositoryActivity("event")).resolves.toEqual(
+        activity,
+      );
+    });
+
+    it("allows the check during coding after a reopen with matches", async () => {
+      const { service, matchRepository } = duringCoding();
+      matchRepository.countBy.mockResolvedValue(1);
+      await expect(service.getRepositoryActivity("event")).resolves.toEqual(
+        activity,
+      );
+    });
+
+    it("does not exclude teams during coding", async () => {
+      const { service, teamRepository, teamService } = duringCoding();
+      await expect(
+        service.excludeInactiveTeams("event", ["idle"]),
+      ).rejects.toThrow("while submissions are closed");
+      expect(teamService.getRepositoryActivityForEvent).not.toHaveBeenCalled();
+      expect(teamRepository.update).not.toHaveBeenCalled();
+    });
+
     it.each([
       [EventState.REGISTRATION, 60000],
-      [EventState.PLAYING, -60000],
       [EventState.SHOWCASE, -60000],
       [EventState.COMPLETED, -60000],
     ])("rejects checks in %s", async (state, startOffset) => {
@@ -356,7 +389,7 @@ describe("event lifecycle", () => {
       stored.startDate = new Date(Date.now() + startOffset);
       stored.submissionDeadline = new Date(Date.now() + 120000);
       await expect(service.getRepositoryActivity("event")).rejects.toThrow(
-        "while submissions are closed",
+        "during coding or code freeze",
       );
       await expect(
         service.excludeInactiveTeams("event", ["idle"]),
