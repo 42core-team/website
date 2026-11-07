@@ -3,36 +3,36 @@ version: 2
 multi-ecosystem-groups:
   github-actions:
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 2
+      interval: "monthly"
+    open-pull-requests-limit: 1
     commit-message:
       prefix: "chore"
       include: "scope"
   api:
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 2
+      interval: "monthly"
+    open-pull-requests-limit: 1
     commit-message:
       prefix: "chore"
       include: "scope"
   frontend:
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 2
+      interval: "monthly"
+    open-pull-requests-limit: 1
     commit-message:
       prefix: "chore"
       include: "scope"
   github-service:
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 2
+      interval: "monthly"
+    open-pull-requests-limit: 1
     commit-message:
       prefix: "chore"
       include: "scope"
   k8s-service:
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 2
+      interval: "monthly"
+    open-pull-requests-limit: 1
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -47,6 +47,10 @@ updates:
       - "dependencies"
       - "github-actions"
     groups:
+      github-actions-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
       github-actions-dependencies:
         patterns:
           - "*"
@@ -68,6 +72,10 @@ updates:
       - "dependencies"
       - "api"
     groups:
+      api-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
       api-dependencies:
         patterns:
           - "*"
@@ -90,6 +98,10 @@ updates:
       - "docker"
       - "api"
     groups:
+      api-docker-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
       api-docker-dependencies:
         patterns:
           - "*"
@@ -111,6 +123,10 @@ updates:
       - "dependencies"
       - "frontend"
     groups:
+      frontend-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
       frontend-dependencies:
         patterns:
           - "*"
@@ -133,6 +149,10 @@ updates:
       - "docker"
       - "frontend"
     groups:
+      frontend-docker-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
       frontend-docker-dependencies:
         patterns:
           - "*"
@@ -154,6 +174,10 @@ updates:
       - "dependencies"
       - "github-service"
     groups:
+      github-service-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
       github-service-dependencies:
         patterns:
           - "*"
@@ -176,6 +200,10 @@ updates:
       - "docker"
       - "github-service"
     groups:
+      github-service-docker-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
       github-service-docker-dependencies:
         patterns:
           - "*"
@@ -197,6 +225,10 @@ updates:
       - "dependencies"
       - "k8s-service"
     groups:
+      k8s-service-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
       k8s-service-dependencies:
         patterns:
           - "*"
@@ -219,6 +251,10 @@ updates:
       - "docker"
       - "k8s-service"
     groups:
+      k8s-service-docker-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
       k8s-service-docker-dependencies:
         patterns:
           - "*"
