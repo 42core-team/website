@@ -1324,10 +1324,14 @@ export class TeamService {
         creditWager: creditWagerTeam ? DIRECT_MATCH_STAKE : 0,
         creditWagerTeam: creditWagerTeam ?? null,
         stats: new MatchStatsEntity(),
+        // The default now() is the transaction start. The team row locks held
+        // here serialize a team's matches, so this keeps them in creation order.
+        createdAt: (() => "clock_timestamp()") as unknown as Date,
       }),
     );
   }
 
+  /** Creates a queue match against the highest-scoring eligible opponent, or returns null if there is none. */
   private async createBestQueueMatch(
     team: TeamEntity,
     entityManager: EntityManager,
