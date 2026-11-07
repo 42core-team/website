@@ -1,4 +1,13 @@
-import { IsBoolean, IsIn, IsNumber, IsOptional, IsUUID } from "class-validator";
+import {
+  ArrayMaxSize,
+  ArrayNotEmpty,
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsUUID,
+} from "class-validator";
 
 export class EventLifecycleDto {
   @IsIn(["showcase", "complete", "reopen"])
@@ -17,4 +26,12 @@ export class RetryEventRepositoryDto {
 export class EventTeamExclusionDto {
   @IsBoolean()
   excluded: boolean;
+}
+
+export class ExcludeInactiveTeamsDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMaxSize(1000)
+  @IsUUID(undefined, { each: true })
+  teamIds: string[];
 }

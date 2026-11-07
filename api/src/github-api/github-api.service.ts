@@ -3,7 +3,16 @@ import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
 import { getRabbitmqConfig } from "../main";
 import { decryptSecret } from "../common/encryption";
-import { lastValueFrom } from "rxjs";
+import { lastValueFrom, timeout } from "rxjs";
+
+export type RepositoryActivityStatus = "active" | "inactive" | "unknown";
+
+export interface RepositoryActivityResult {
+  repositoryName: string;
+  status: RepositoryActivityStatus;
+}
+
+const REPOSITORY_ACTIVITY_TIMEOUT_MS = 60000;
 
 @Injectable()
 export class GithubApiService {
@@ -128,6 +137,22 @@ export class GithubApiService {
         starterTemplateId,
         apiBaseUrl: this.configService.getOrThrow<string>("API_BASE_URL"),
       }),
+    );
+  }
+
+  getRepositoryActivity(
+    repositoryNames: string[],
+    githubOrg: string,
+    encryptedSecret: string,
+  ) {
+    return lastValueFrom(
+      this.githubClient
+        .send<RepositoryActivityResult[]>("get_repository_activity", {
+          repositoryNames,
+          githubOrg,
+          encryptedSecret,
+        })
+        .pipe(timeout(REPOSITORY_ACTIVITY_TIMEOUT_MS)),
     );
   }
 

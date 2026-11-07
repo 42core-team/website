@@ -75,7 +75,7 @@ export class MatchController {
 
     this.logger.log({ action: "attempt_start_swiss_matches", userId, eventId });
 
-    return await this.matchService.createNextSwissMatches(eventId);
+    return await this.matchService.startSwissMatches(eventId);
   }
 
   @UseGuards(JwtAuthGuard)

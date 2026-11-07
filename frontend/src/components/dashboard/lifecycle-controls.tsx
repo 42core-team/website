@@ -1,5 +1,7 @@
-import type { Event } from '@/app/actions/event'
+import type { Event, TeamRepositoryActivity } from '@/app/actions/event'
 import {
+  excludeInactiveTeams,
+  getRepositoryActivity,
   retryRepository,
   setTeamExclusion,
   transitionEvent,
@@ -20,6 +22,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import {
   eventState,
@@ -27,6 +38,83 @@ import {
   repositoryConfirmedForTournament,
 } from '@/lib/event-lifecycle'
 import { useEventClock } from '@/hooks/use-event-clock'
+
+function RepositoryActivityDialog({
+  activity,
+  isPending,
+  onClose,
+  onConfirm,
+}: {
+  activity: TeamRepositoryActivity[]
+  isPending: boolean
+  onClose: () => void
+  onConfirm: (teamIds: string[]) => void
+}) {
+  const inactive = activity.filter((team) => team.status === 'inactive')
+  const unknown = activity.filter((team) => team.status === 'unknown')
+  const [selected, setSelected] = useState(
+    () => new Set(inactive.map((team) => team.teamId)),
+  )
+  const remaining = activity.length - selected.size
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Repository activity</DialogTitle>
+          <DialogDescription>
+            Inactive teams have no commits on their default branch besides the
+            initial commit. {remaining} of {activity.length} teams remain in the
+            tournament if you exclude the selected ones.
+          </DialogDescription>
+        </DialogHeader>
+        {inactive.length === 0 && <p>No inactive repositories found.</p>}
+        <ul className="max-h-64 space-y-2 overflow-y-auto">
+          {inactive.map((team) => {
+            const id = `inactive-team-${team.teamId}`
+            return (
+              <li key={team.teamId} className="flex items-center gap-2">
+                <Checkbox
+                  id={id}
+                  checked={selected.has(team.teamId)}
+                  onCheckedChange={(checked) =>
+                    setSelected((current) => {
+                      const next = new Set(current)
+                      if (checked === true) next.add(team.teamId)
+                      else next.delete(team.teamId)
+                      return next
+                    })
+                  }
+                />
+                <label htmlFor={id}>{team.teamName}</label>
+              </li>
+            )
+          })}
+        </ul>
+        {unknown.length > 0 && (
+          <Alert variant="destructive">
+            <CircleAlert className="size-4" aria-hidden="true" />
+            <AlertTitle>Couldn't check these repositories</AlertTitle>
+            <AlertDescription>
+              {unknown.map((team) => team.teamName).join(', ')}. They stay in
+              the tournament unless you exclude them individually.
+            </AlertDescription>
+          </Alert>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            disabled={isPending || selected.size === 0 || remaining < 2}
+            onClick={() => onConfirm([...selected])}
+          >
+            Exclude selected teams
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 export function LifecycleControls({
   event,
@@ -38,24 +126,33 @@ export function LifecycleControls({
   const now = useEventClock()
   const client = useQueryClient()
   const [deadline, setDeadline] = useState('')
+  const [activity, setActivity] = useState<TeamRepositoryActivity[] | null>(
+    null,
+  )
   const teams = useQuery({
     queryKey: ['event', event.id, 'repository-progress'],
     queryFn: () =>
       getTeamsForEventTable(event.id, undefined, 'name', 'asc', true),
     refetchInterval: 3000,
   })
+  const showError = (error: Error) =>
+    toast.error(
+      isAxiosError<{ message?: string }>(error)
+        ? (error.response?.data.message ?? error.message)
+        : error.message,
+    )
   const mutation = useMutation({
     mutationFn: async (operation: () => Promise<unknown>) => operation(),
     onSuccess: async () => {
       await client.invalidateQueries()
       toast.success('Lifecycle updated.')
     },
-    onError: (error: Error) =>
-      toast.error(
-        isAxiosError<{ message?: string }>(error)
-          ? (error.response?.data.message ?? error.message)
-          : error.message,
-      ),
+    onError: showError,
+  })
+  const activityCheck = useMutation({
+    mutationFn: () => getRepositoryActivity(event.id),
+    onSuccess: setActivity,
+    onError: showError,
   })
   const state = eventState(event, now)
   const closed = ['SUBMISSIONS_CLOSED', 'SHOWCASE', 'COMPLETED'].includes(state)
@@ -106,6 +203,15 @@ export function LifecycleControls({
               }}
             >
               Complete event
+            </Button>
+            <Button
+              variant="outline"
+              disabled={
+                state !== 'SUBMISSIONS_CLOSED' || activityCheck.isPending
+              }
+              onClick={() => activityCheck.mutate()}
+            >
+              Check repository activity
             </Button>
           </div>
           {closed && (
@@ -199,6 +305,18 @@ export function LifecycleControls({
           ))}
         </ul>
       </CardContent>
+      {activity && (
+        <RepositoryActivityDialog
+          activity={activity}
+          isPending={mutation.isPending}
+          onClose={() => setActivity(null)}
+          onConfirm={(teamIds) =>
+            mutation.mutate(() => excludeInactiveTeams(event.id, teamIds), {
+              onSuccess: () => setActivity(null),
+            })
+          }
+        />
+      )}
     </Card>
   )
 }

@@ -218,6 +218,31 @@ export async function setTeamExclusion(
   })
 }
 
+export interface TeamRepositoryActivity {
+  teamId: string
+  teamName: string
+  status: 'active' | 'inactive' | 'unknown'
+}
+
+export async function getRepositoryActivity(
+  eventId: string,
+): Promise<TeamRepositoryActivity[]> {
+  return (
+    await axiosInstance.get<TeamRepositoryActivity[]>(
+      `event/${eventId}/repository-activity`,
+    )
+  ).data
+}
+
+export async function excludeInactiveTeams(
+  eventId: string,
+  teamIds: string[],
+): Promise<void> {
+  await axiosInstance.post(`event/${eventId}/exclude-inactive-teams`, {
+    teamIds,
+  })
+}
+
 export async function getEventAdmins(
   eventId: string,
 ): Promise<

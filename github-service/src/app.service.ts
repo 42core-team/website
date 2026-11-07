@@ -9,6 +9,16 @@ import { decryptSecret } from "./secret-crypto";
 import { lastValueFrom, timeout } from "rxjs";
 import { isSimulatedRepository } from "./simulated-repository";
 
+export type RepositoryActivityStatus = "active" | "inactive" | "unknown";
+
+export interface RepositoryActivityResult {
+  repositoryName: string;
+  status: RepositoryActivityStatus;
+}
+
+const REPOSITORY_ACTIVITY_CONCURRENCY = 5;
+const REPOSITORY_ACTIVITY_REQUEST_TIMEOUT_MS = 10000;
+
 @Injectable()
 export class AppService {
   private githubServiceResultsClient: ClientProxy;
@@ -436,6 +446,75 @@ export class AppService {
         await repositoryApi.removeCollaborator(githubOrg, repositoryName, user);
       },
     );
+  }
+
+  /**
+   * Classifies repositories by whether their default branch, the code matches
+   * clone, moved past the initial commit. A repository that cannot be checked is
+   * "unknown" rather than failing the batch, so it is never treated as inactive.
+   */
+  async getRepositoryActivity(
+    repositoryNames: string[],
+    githubOrg: string,
+    encryptedSecret: string,
+  ): Promise<RepositoryActivityResult[]> {
+    // An admin is waiting, so a rate limit or an unreachable GitHub must report
+    // "unknown" instead of retrying or sleeping until the limit resets.
+    const repositoryApi = new RepositoryApi(
+      new GitHubApiClient({
+        token: this.decryptSecret(encryptedSecret),
+        maxRetries: 0,
+        logErrors: false,
+        requestTimeoutMs: REPOSITORY_ACTIVITY_REQUEST_TIMEOUT_MS,
+      }),
+    );
+    const results: RepositoryActivityResult[] = [];
+    const pending = [...repositoryNames];
+    const worker = async () => {
+      for (
+        let repositoryName = pending.shift();
+        repositoryName !== undefined;
+        repositoryName = pending.shift()
+      ) {
+        results.push({
+          repositoryName,
+          status: await this.getSingleRepositoryActivity(
+            repositoryApi,
+            githubOrg,
+            repositoryName,
+          ),
+        });
+      }
+    };
+    await Promise.all(
+      Array.from({ length: REPOSITORY_ACTIVITY_CONCURRENCY }, worker),
+    );
+    return results;
+  }
+
+  private async getSingleRepositoryActivity(
+    repositoryApi: RepositoryApi,
+    githubOrg: string,
+    repositoryName: string,
+  ): Promise<RepositoryActivityStatus> {
+    if (isSimulatedRepository(repositoryName)) return "active";
+    try {
+      return (await repositoryApi.hasCommitsBeyondInitial(
+        githubOrg,
+        repositoryName,
+      ))
+        ? "active"
+        : "inactive";
+    } catch (error) {
+      this.logger.error(
+        `Failed to check repository activity ${JSON.stringify({
+          repositoryName,
+          githubOrg,
+        })}`,
+        error as Error,
+      );
+      return "unknown";
+    }
   }
 
   async deleteRepository(
