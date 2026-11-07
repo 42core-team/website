@@ -725,6 +725,88 @@ export class EventService {
     });
   }
 
+  /** Read-only, so coding allows it too; only code freeze can act on it. */
+  async getRepositoryActivity(eventId: string) {
+    const event = await this.eventRepository.findOneOrFail({
+      where: { id: eventId },
+    });
+    const state = getEventState(event);
+    if (state === EventState.SUBMISSIONS_CLOSED)
+      await this.dataSource.transaction((manager) =>
+        this.assertRepositoryActivityFilterOpen(manager, eventId),
+      );
+    else if (state !== EventState.PLAYING)
+      throw new BadRequestException(
+        "Repository activity can only be checked during coding or code freeze",
+      );
+    return this.teamService.getRepositoryActivityForEvent(eventId);
+  }
+
+  /**
+   * Excludes the selected teams whose repositories are still inactive. It never
+   * re-includes a team, so earlier manual decisions survive a repeated run.
+   */
+  async excludeInactiveTeams(eventId: string, teamIds: string[]) {
+    await this.dataSource.transaction((manager) =>
+      this.assertRepositoryActivityFilterOpen(manager, eventId),
+    );
+    const activity =
+      await this.teamService.getRepositoryActivityForEvent(eventId);
+    // Validation accepts uppercase UUIDs; stored ids are lowercase.
+    const selected = new Set(teamIds.map((id) => id.toLowerCase()));
+    const inactive = new Set(
+      activity
+        .filter(({ status }) => status === "inactive")
+        .map(({ teamId }) => teamId),
+    );
+    return this.dataSource.transaction(async (manager) => {
+      await this.assertRepositoryActivityFilterOpen(manager, eventId);
+      const repository = manager.getRepository(TeamEntity);
+      const participants = await repository.find({
+        select: { id: true },
+        where: { event: { id: eventId }, tournamentExcluded: false },
+        loadEagerRelations: false,
+      });
+      const excludedTeamIds = participants
+        .map((team) => team.id)
+        .filter((id) => selected.has(id) && inactive.has(id));
+      if (excludedTeamIds.length === 0) return { excludedTeamIds };
+      if (participants.length - excludedTeamIds.length < 2)
+        throw new BadRequestException(
+          "Excluding these teams would leave fewer than 2 teams in the tournament",
+        );
+      await repository.update(
+        { id: In(excludedTeamIds) },
+        { tournamentExcluded: true },
+      );
+      return { excludedTeamIds };
+    });
+  }
+
+  /** Entrants must stay fixed once the group phase has generated matches. */
+  private async assertRepositoryActivityFilterOpen(
+    manager: EntityManager,
+    eventId: string,
+  ) {
+    await lockEvent(manager, eventId);
+    const event = await manager.getRepository(EventEntity).findOneOrFail({
+      where: { id: eventId },
+      lock: { mode: "pessimistic_write" },
+    });
+    if (getEventState(event) !== EventState.SUBMISSIONS_CLOSED)
+      throw new BadRequestException(
+        "Inactive teams can only be excluded while submissions are closed",
+      );
+    const tournamentMatches = await manager.getRepository(MatchEntity).countBy({
+      phase: In([MatchPhase.SWISS, MatchPhase.ELIMINATION]),
+      teams: { event: { id: eventId } },
+    });
+    if (tournamentMatches > 0)
+      throw new BadRequestException(
+        "Repository activity cannot be applied after tournament matches exist",
+      );
+  }
+
   async updateEventSettings(
     eventId: string,
     settings: {

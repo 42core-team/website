@@ -46,6 +46,105 @@ describe("AppService", () => {
     githubUsers: [{ username: "member", githubId: "1", githubAccessToken: "" }],
   });
 
+  describe("getRepositoryActivity", () => {
+    function activityService(
+      hasCommitsBeyondInitial: (
+        owner: string,
+        repo: string,
+      ) => Promise<boolean>,
+    ) {
+      jest
+        .spyOn(ClientProxyFactory, "create")
+        .mockReturnValue({ emit: jest.fn() } as never);
+      jest
+        .mocked(RepositoryApi)
+        .mockImplementationOnce(() => ({ hasCommitsBeyondInitial }) as never);
+      const service = new AppService({} as never);
+      jest.spyOn(service, "decryptSecret").mockReturnValue("token");
+      return service;
+    }
+
+    it("reports a failed check as unknown without failing the batch", async () => {
+      const service = activityService(async (_owner, repo) => {
+        if (repo === "broken")
+          throw Object.assign(new Error(), { status: 404 });
+        return repo === "pushed";
+      });
+      const results = await service.getRepositoryActivity(
+        ["pushed", "idle", "broken"],
+        "org",
+        "secret",
+      );
+      expect(results).toEqual(
+        expect.arrayContaining([
+          { repositoryName: "pushed", status: "active" },
+          { repositoryName: "idle", status: "inactive" },
+          { repositoryName: "broken", status: "unknown" },
+        ]),
+      );
+      expect(results).toHaveLength(3);
+      expect(GitHubApiClient).toHaveBeenLastCalledWith({
+        token: "token",
+        maxRetries: 0,
+        logErrors: false,
+        requestTimeoutMs: 10000,
+      });
+    });
+
+    it("reports unknown when the secret cannot be decrypted", async () => {
+      process.env.NODE_ENV = "development";
+      jest
+        .spyOn(ClientProxyFactory, "create")
+        .mockReturnValue({ emit: jest.fn() } as never);
+      jest.mocked(RepositoryApi).mockClear();
+      const service = new AppService({} as never);
+      jest.spyOn(service, "decryptSecret").mockImplementation(() => {
+        throw new Error("bad secret");
+      });
+      const results = await service.getRepositoryActivity(
+        ["real-repo", SIM_REPOSITORY],
+        "org",
+        "secret",
+      );
+      expect(results).toEqual(
+        expect.arrayContaining([
+          { repositoryName: "real-repo", status: "unknown" },
+          { repositoryName: SIM_REPOSITORY, status: "active" },
+        ]),
+      );
+      expect(RepositoryApi).not.toHaveBeenCalled();
+    });
+
+    it("limits concurrent GitHub requests", async () => {
+      let running = 0;
+      let peak = 0;
+      const service = activityService(async () => {
+        peak = Math.max(peak, ++running);
+        await new Promise((resolve) => setImmediate(resolve));
+        running--;
+        return true;
+      });
+      await service.getRepositoryActivity(
+        Array.from({ length: 12 }, (_, index) => `repo-${index}`),
+        "org",
+        "secret",
+      );
+      expect(peak).toBe(5);
+    });
+
+    it("treats simulated repositories as active without calling GitHub", async () => {
+      process.env.NODE_ENV = "development";
+      const check = jest.fn();
+      const service = activityService(check);
+      await expect(
+        service.getRepositoryActivity([SIM_REPOSITORY], "org", "secret"),
+      ).resolves.toEqual([
+        { repositoryName: SIM_REPOSITORY, status: "active" },
+      ]);
+      expect(check).not.toHaveBeenCalled();
+    });
+  });
+
   it("reports a simulated lock without calling GitHub in development", async () => {
     process.env.NODE_ENV = "development";
     const emit = jest.fn().mockReturnValue(of(undefined));

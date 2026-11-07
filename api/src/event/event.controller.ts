@@ -28,6 +28,7 @@ import { NormalizeGithubConfigPipe } from "../common/github-config-normalization
 import {
   EventLifecycleDto,
   EventTeamExclusionDto,
+  ExcludeInactiveTeamsDto,
   RetryEventRepositoryDto,
 } from "./dtos/eventLifecycleDto";
 
@@ -243,6 +244,39 @@ export class EventController {
     if (!(await this.eventService.isEventAdmin(eventId, userId)))
       throw new UnauthorizedException("You are not an admin of this event");
     return this.eventService.setTeamExclusion(eventId, teamId, body.excluded);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(":id/repository-activity")
+  async getRepositoryActivity(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException("You are not an admin of this event");
+    return this.eventService.getRepositoryActivity(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/exclude-inactive-teams")
+  async excludeInactiveTeams(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+    @Body() body: ExcludeInactiveTeamsDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException("You are not an admin of this event");
+    const result = await this.eventService.excludeInactiveTeams(
+      eventId,
+      body.teamIds,
+    );
+    this.logger.log({
+      action: "exclude_inactive_teams",
+      userId,
+      eventId,
+      excludedTeamIds: result.excludedTeamIds,
+    });
+    return result;
   }
 
   @UseGuards(JwtAuthGuard)

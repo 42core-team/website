@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   ForbiddenException,
   forwardRef,
@@ -22,7 +23,10 @@ import {
   Repository,
   type FindOptionsRelations,
 } from "typeorm";
-import { GithubApiService } from "../github-api/github-api.service";
+import {
+  GithubApiService,
+  type RepositoryActivityStatus,
+} from "../github-api/github-api.service";
 import { EventService } from "../event/event.service";
 import { MatchService } from "../match/match.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
@@ -57,9 +61,16 @@ import {
   type TeamResponse,
   type TeamStanding,
 } from "./team-response";
+import { RepositoryActivityCache } from "./repository-activity-cache";
 
 const DIRECT_MATCH_COST = 2;
 const DIRECT_MATCH_STAKE = 1;
+
+export interface TeamRepositoryActivity {
+  teamId: string;
+  teamName: string;
+  status: RepositoryActivityStatus;
+}
 
 @Injectable()
 export class TeamService {
@@ -76,6 +87,7 @@ export class TeamService {
   ) {}
 
   logger = new Logger("TeamService");
+  private readonly repositoryActivityCache = new RepositoryActivityCache();
 
   @Cron(CronExpression.EVERY_MINUTE)
   async grantTeamCredits() {
@@ -1146,6 +1158,54 @@ export class TeamService {
     return { matchId: result.id };
   }
 
+  /** Repository activity of every team still participating in the tournament. */
+  async getRepositoryActivityForEvent(
+    eventId: string,
+  ): Promise<TeamRepositoryActivity[]> {
+    const event = await this.dataSource
+      .getRepository(EventEntity)
+      .findOneByOrFail({ id: eventId });
+    const teams = await this.teamRepository.find({
+      select: { id: true, name: true, repo: true },
+      where: { event: { id: eventId }, tournamentExcluded: false },
+      order: { name: "ASC" },
+      loadEagerRelations: false,
+    });
+    const repositoryNames = teams.flatMap((team) =>
+      team.repo ? [team.repo] : [],
+    );
+    let statuses = new Map<string, RepositoryActivityStatus>();
+    if (repositoryNames.length > 0) {
+      try {
+        statuses = await this.repositoryActivityCache.get(
+          eventId,
+          // A push just before the deadline must not hide behind a coding result.
+          `${event.githubOrg}:${isPlaying(event) ? "coding" : "closed"}`,
+          repositoryNames,
+          (missing) =>
+            this.githubApiService.getRepositoryActivity(
+              missing,
+              event.githubOrg,
+              event.githubOrgSecret,
+            ),
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to check repository activity for event ${eventId}`,
+          error,
+        );
+        throw new BadGatewayException(
+          "Could not check repository activity. Try again.",
+        );
+      }
+    }
+    return teams.map((team) => ({
+      teamId: team.id,
+      teamName: team.name,
+      status: statuses.get(team.repo) ?? "unknown",
+    }));
+  }
+
   async getTeamsForEvent(
     eventId: string,
     relations: FindOptionsRelations<TeamEntity> = {},
@@ -1324,10 +1384,14 @@ export class TeamService {
         creditWager: creditWagerTeam ? DIRECT_MATCH_STAKE : 0,
         creditWagerTeam: creditWagerTeam ?? null,
         stats: new MatchStatsEntity(),
+        // The default now() is the transaction start. The team row locks held
+        // here serialize a team's matches, so this keeps them in creation order.
+        createdAt: (() => "clock_timestamp()") as unknown as Date,
       }),
     );
   }
 
+  /** Creates a queue match against the highest-scoring eligible opponent, or returns null if there is none. */
   private async createBestQueueMatch(
     team: TeamEntity,
     entityManager: EntityManager,

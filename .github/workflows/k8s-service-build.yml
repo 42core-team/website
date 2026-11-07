@@ -86,6 +86,8 @@ jobs:
         with:
           context: ./k8s-service
           file: ./k8s-service/Dockerfile
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
           platforms: ${{ matrix.platform }}
           push: false
           tags: |
@@ -98,6 +100,8 @@ jobs:
         with:
           context: ./k8s-service
           file: ./k8s-service/Dockerfile
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
           platforms: ${{ matrix.platform }}
           push: true
           tags: |

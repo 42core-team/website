@@ -50,3 +50,6 @@ An optional administrator-set maximum number of teams that advance from the grou
 
 **Tournament exclusion**:
 An explicit administrator decision to omit a team from tournament participation.
+
+**Inactive repository**:
+A team repository whose default branch has no commits besides the initial commit. Administrators can preview such teams during coding and exclude them from the tournament during code freeze.

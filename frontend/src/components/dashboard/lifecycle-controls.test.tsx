@@ -7,9 +7,14 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Event } from '@/app/actions/event'
-import { transitionEvent } from '@/app/actions/event'
+import {
+  excludeInactiveTeams,
+  getRepositoryActivity,
+  transitionEvent,
+} from '@/app/actions/event'
 import { getTeamsForEventTable, mapTeamResponse } from '@/app/actions/team'
 import type * as TeamActions from '@/app/actions/team'
 import { LifecycleControls } from './lifecycle-controls'
@@ -18,6 +23,8 @@ vi.mock('@/app/actions/event', () => ({
   transitionEvent: vi.fn().mockResolvedValue({}),
   retryRepository: vi.fn(),
   setTeamExclusion: vi.fn(),
+  getRepositoryActivity: vi.fn(),
+  excludeInactiveTeams: vi.fn(),
 }))
 vi.mock('@/app/actions/team', async (importOriginal) => ({
   ...(await importOriginal<typeof TeamActions>()),
@@ -70,6 +77,156 @@ function setup(data = event) {
 }
 
 describe('lifecycle controls', () => {
+  it('excludes only the inactive teams the admin keeps selected', async () => {
+    vi.mocked(getTeamsForEventTable).mockResolvedValue([])
+    vi.mocked(getRepositoryActivity).mockResolvedValue([
+      { teamId: 'active', teamName: 'Active team', status: 'active' },
+      { teamId: 'kept', teamName: 'Kept team', status: 'inactive' },
+      { teamId: 'idle', teamName: 'Idle team', status: 'inactive' },
+      { teamId: 'unknown', teamName: 'Unknown team', status: 'unknown' },
+    ])
+    vi.mocked(excludeInactiveTeams).mockResolvedValue({
+      excludedTeamIds: ['idle'],
+    })
+    setup()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Check repository activity' }),
+    )
+    await screen.findByRole('checkbox', { name: 'Idle team' })
+    expect(screen.queryByRole('checkbox', { name: 'Active team' })).toBeNull()
+    expect(screen.queryByRole('checkbox', { name: 'Unknown team' })).toBeNull()
+    screen.getByText(/Unknown team\. They stay in the tournament/)
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Kept team' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Exclude selected teams' }),
+    )
+    await waitFor(() =>
+      expect(excludeInactiveTeams).toHaveBeenCalledWith('event', ['idle']),
+    )
+    await waitFor(() =>
+      expect(screen.queryByText('Repository activity')).toBeNull(),
+    )
+  })
+
+  it('names selected teams the server did not exclude', async () => {
+    const warning = vi.spyOn(toast, 'warning')
+    vi.mocked(getTeamsForEventTable).mockResolvedValue([])
+    vi.mocked(getRepositoryActivity).mockResolvedValue([
+      { teamId: 'active', teamName: 'Active team', status: 'active' },
+      { teamId: 'other', teamName: 'Other team', status: 'active' },
+      { teamId: 'idle', teamName: 'Idle team', status: 'inactive' },
+      { teamId: 'pushed', teamName: 'Pushed team', status: 'inactive' },
+    ])
+    vi.mocked(excludeInactiveTeams).mockResolvedValue({
+      excludedTeamIds: ['idle'],
+    })
+    setup()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Check repository activity' }),
+    )
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Exclude selected teams' }),
+    )
+    await waitFor(() =>
+      expect(warning).toHaveBeenCalledWith(
+        expect.stringContaining('Pushed team'),
+      ),
+    )
+    expect(warning.mock.calls[0][0]).not.toContain('Idle team')
+  })
+
+  it('blocks an exclusion that would leave fewer than two teams', async () => {
+    vi.mocked(getTeamsForEventTable).mockResolvedValue([])
+    vi.mocked(getRepositoryActivity).mockResolvedValue([
+      { teamId: 'active', teamName: 'Active team', status: 'active' },
+      { teamId: 'idle', teamName: 'Idle team', status: 'inactive' },
+    ])
+    setup()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Check repository activity' }),
+    )
+    await screen.findByRole('checkbox', { name: 'Idle team' })
+    expect(
+      screen
+        .getByRole('button', { name: 'Exclude selected teams' })
+        .hasAttribute('disabled'),
+    ).toBe(true)
+  })
+
+  it('shows a read-only preview during coding', async () => {
+    vi.mocked(getTeamsForEventTable).mockResolvedValue([])
+    vi.mocked(getRepositoryActivity).mockResolvedValue([
+      { teamId: 'active', teamName: 'Active team', status: 'active' },
+      { teamId: 'idle', teamName: 'Idle team', status: 'inactive' },
+      { teamId: 'unknown', teamName: 'Unknown team', status: 'unknown' },
+    ])
+    setup({
+      ...event,
+      state: 'PLAYING',
+      startDate: '2020-01-01T10:00:00Z',
+      submissionDeadline: '2999-01-01T12:00:00Z',
+      scheduledEndDate: '2999-01-01T14:00:00Z',
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Check repository activity' }),
+    )
+    await screen.findByText('Idle team')
+    screen.getByText(/only a preview/)
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'Exclude selected teams' }),
+    ).toBeNull()
+    expect(screen.queryByText(/stay in the tournament/)).toBeNull()
+    // The footer button, next to the dialog's own X button.
+    expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(2)
+  })
+
+  it.each([
+    ['REGISTRATION', '2999-01-01T10:00:00Z', '2999-01-01T12:00:00Z'],
+    ['SHOWCASE', '2020-01-01T10:00:00Z', '2020-01-01T12:00:00Z'],
+  ] as const)(
+    'disables the activity check during %s',
+    async (state, startDate, submissionDeadline) => {
+      vi.mocked(getTeamsForEventTable).mockResolvedValue([])
+      setup({ ...event, state, startDate, submissionDeadline })
+      expect(
+        screen
+          .getByRole('button', { name: 'Check repository activity' })
+          .hasAttribute('disabled'),
+      ).toBe(true)
+    },
+  )
+
+  it('explains the block and unblocks once enough teams stay', async () => {
+    vi.mocked(getTeamsForEventTable).mockResolvedValue([])
+    vi.mocked(getRepositoryActivity).mockResolvedValue([
+      { teamId: 'one', teamName: 'Idle one', status: 'inactive' },
+      { teamId: 'two', teamName: 'Idle two', status: 'inactive' },
+      { teamId: 'three', teamName: 'Idle three', status: 'inactive' },
+      { teamId: 'four', teamName: 'Idle four', status: 'inactive' },
+    ])
+    setup()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Check repository activity' }),
+    )
+    await screen.findByText(/At least 2 teams must stay.*Deselect 2 more/)
+    const exclude = screen.getByRole('button', {
+      name: 'Exclude selected teams',
+    })
+    expect(exclude.hasAttribute('disabled')).toBe(true)
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Idle one' }))
+    await screen.findByText(/Deselect 1 more/)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Idle two' }))
+    await waitFor(() => expect(exclude.hasAttribute('disabled')).toBe(false))
+    expect(screen.queryByText(/At least 2 teams must stay/)).toBeNull()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Idle three' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Idle four' }))
+    await screen.findByText('Select at least one inactive team to exclude.')
+  })
+
   it('blocks showcase until every team is locked or excluded', async () => {
     vi.mocked(getTeamsForEventTable).mockResolvedValue([
       mapTeamResponse({

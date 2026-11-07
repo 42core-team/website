@@ -18,6 +18,7 @@ export interface ScoredQueueOpponent extends QueueOpponentCandidate {
   score: number;
 }
 
+/** Scores ELO closeness and recent activity, minus a fading penalty per recent match against the candidate. */
 export function scoreQueueOpponent(
   teamElo: number,
   candidate: QueueOpponentCandidate,
@@ -44,6 +45,7 @@ export function scoreQueueOpponent(
   return score;
 }
 
+/** Sorts candidates best first, using the team id to break ties. */
 export function rankQueueOpponents(
   teamElo: number,
   candidates: QueueOpponentCandidate[],

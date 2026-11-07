@@ -75,20 +75,21 @@ postgres("queue repeat opponents (PostgreSQL)", () => {
     return { eventId: event.id, teamId: team.id };
   }
 
+  async function joinOnce(eventId: string, teamId: string) {
+    const { matchId } = await teamService.joinQueue(teamId, eventId);
+    const match = await database.getRepository(MatchEntity).findOneOrFail({
+      where: { id: matchId },
+      relations: { teams: true },
+      loadEagerRelations: false,
+    });
+    expect(match.state).toBe(MatchState.PLANNED);
+    return match.teams.find((matchTeam) => matchTeam.id !== teamId)!.id;
+  }
+
   async function joinRepeatedly(eventId: string, teamId: string) {
     const opponentIds: string[] = [];
-    for (let join = 0; join < JOINS; join++) {
-      const { matchId } = await teamService.joinQueue(teamId, eventId);
-      const match = await database.getRepository(MatchEntity).findOneOrFail({
-        where: { id: matchId },
-        relations: { teams: true },
-        loadEagerRelations: false,
-      });
-      expect(match.state).toBe(MatchState.PLANNED);
-      opponentIds.push(
-        match.teams.find((matchTeam) => matchTeam.id !== teamId)!.id,
-      );
-    }
+    for (let join = 0; join < JOINS; join++)
+      opponentIds.push(await joinOnce(eventId, teamId));
     return opponentIds;
   }
 
@@ -119,6 +120,38 @@ postgres("queue repeat opponents (PostgreSQL)", () => {
       });
     },
   );
+
+  it("treats the match created last as the latest when joins overlap", async () => {
+    const { eventId, teamId } = await createEventWithTeams([1000, 1000]);
+    const service = teamService as unknown as {
+      lockQueueEvent: (...args: unknown[]) => Promise<void>;
+    };
+    const lockQueueEvent = service.lockQueueEvent.bind(teamService);
+    let slowJoinBegan!: () => void;
+    const slowJoinHasBegun = new Promise<void>((resolve) => {
+      slowJoinBegan = resolve;
+    });
+    let releaseSlowJoin!: () => void;
+    const slowJoinReleased = new Promise<void>((resolve) => {
+      releaseSlowJoin = resolve;
+    });
+    jest
+      .spyOn(service, "lockQueueEvent")
+      .mockImplementationOnce(async (...args) => {
+        slowJoinBegan();
+        await slowJoinReleased;
+        return lockQueueEvent(...args);
+      });
+
+    // The slow join's transaction begins first but creates its match second.
+    const slowJoin = joinOnce(eventId, teamId);
+    await slowJoinHasBegun;
+    await joinOnce(eventId, teamId);
+    releaseSlowJoin();
+    const latestOpponentId = await slowJoin;
+
+    expect(await joinOnce(eventId, teamId)).not.toBe(latestOpponentId);
+  });
 
   it("still matches the only available opponent", async () => {
     const { eventId, teamId } = await createEventWithTeams([1000]);

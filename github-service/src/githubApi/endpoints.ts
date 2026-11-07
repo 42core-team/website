@@ -218,6 +218,26 @@ export class RepositoryApi {
     return result.permission;
   }
 
+  /** Whether the default branch holds more than the single initial commit. */
+  async hasCommitsBeyondInitial(owner: string, repo: string): Promise<boolean> {
+    try {
+      const commits = await this.client.get<unknown[]>(
+        `repos/${owner}/${repo}/commits`,
+        { params: { per_page: 2 } },
+      );
+      return commits.length > 1;
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "status" in error &&
+        error.status === 409
+      )
+        return false;
+      throw error;
+    }
+  }
+
   async hasCommits(owner: string, repo: string): Promise<boolean> {
     try {
       const commits = await this.client.get<unknown[]>(
