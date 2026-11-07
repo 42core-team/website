@@ -61,6 +61,8 @@ export interface VisibleMatchResponse {
   createdAt: Date;
   updatedAt: Date;
   teams: MatchTeamResponse[];
+  leftTeamId: string | null;
+  rightTeamId: string | null;
   winner: MatchTeamResponse | null;
   results: { team: MatchTeamResponse; score: number }[];
   stats: MatchStatsResponse | null;
@@ -149,6 +151,8 @@ export function toVisibleMatchResponse(
       createdAt: match.createdAt,
       updatedAt: match.updatedAt,
       teams: (match.teams ?? []).map(toMatchTeamResponse),
+      leftTeamId: match.leftTeamId ?? null,
+      rightTeamId: match.rightTeamId ?? null,
       winner: match.winner ? toMatchTeamResponse(match.winner) : null,
       results: (match.results ?? [])
         .filter((result) => result.team)

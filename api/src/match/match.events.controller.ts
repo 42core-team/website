@@ -1,5 +1,6 @@
 import { Controller, Logger } from "@nestjs/common";
 import { EventPattern, Payload } from "@nestjs/microservices";
+import { getMatchSides } from "./match-sides";
 import { MatchService } from "./match.service";
 
 @Controller("match-events")
@@ -13,9 +14,10 @@ export class MatchEventsController {
     @Payload()
     data: {
       team_results: {
-        id: string;
+        id: number | string;
         name: string;
         place: number;
+        death_reason?: number;
       }[];
       game_id: string;
       stats: {
@@ -54,6 +56,7 @@ export class MatchEventsController {
         data.game_id,
         winnerId,
         data.stats,
+        getMatchSides(data),
       );
     } catch (e) {
       this.logger.error("Error processing match result", e);

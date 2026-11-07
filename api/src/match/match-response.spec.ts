@@ -110,6 +110,21 @@ describe("match responses", () => {
     );
   });
 
+  it("only returns the sides for a visible match", () => {
+    const sided = match({ leftTeamId: "away", rightTeamId: "home" });
+
+    expect(toVisibleMatchResponse(sided)).toMatchObject({
+      leftTeamId: "away",
+      rightTeamId: "home",
+    });
+    expect(toVisibleMatchResponse(match())).toMatchObject({
+      leftTeamId: null,
+      rightTeamId: null,
+    });
+    expect(toHiddenMatchResponse(sided)).not.toHaveProperty("leftTeamId");
+    expect(toHiddenMatchResponse(sided)).not.toHaveProperty("rightTeamId");
+  });
+
   it("projects nested teams of a visible match without standings", () => {
     const plain = instanceToPlain(
       toVisibleMatchResponse(match({ isRevealed: true })),
