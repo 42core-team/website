@@ -48,12 +48,14 @@ export interface EventTeamResponse {
   hadBye: boolean;
 }
 
-// Event admins also manage repositories and credits from the team list.
+// Event admins also manage repositories and credits from the team list, and
+// see the queue score that matchmaking pairs teams by.
 export interface AdminEventTeamResponse extends EventTeamResponse {
   repositoryStatus: RepositoryStatus;
   repositoryError: string | null;
   tournamentExcluded: boolean;
   credits: number;
+  queueScore: number;
 }
 
 export const EMPTY_STANDING: TeamStanding = { score: 0, buchholzPoints: 0 };
@@ -120,5 +122,6 @@ export function toAdminEventTeamResponse(
     repositoryError: team.repositoryError ?? null,
     tournamentExcluded: team.tournamentExcluded,
     credits: team.credits,
+    queueScore: team.queueScore,
   };
 }

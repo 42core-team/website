@@ -7,11 +7,12 @@ import {
   useLocation,
   useNavigate,
 } from '@tanstack/react-router'
-import { ArrowDown, ArrowUp, ArrowUpDown, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { useState } from 'react'
 import { getTeamsForEventTable } from '@/app/actions/team'
+import type { SortDirection } from '@/components/sortable-table-head'
+import { SortableTableHead } from '@/components/sortable-table-head'
 import { LocationTags } from '@/components/team'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -20,7 +21,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
@@ -30,50 +30,6 @@ export const Route = createFileRoute('/events/$id/teams')({
 })
 
 type SortColumn = 'name' | 'membersCount' | 'createdAt'
-type SortDirection = 'asc' | 'desc'
-
-interface SortableTableHeadProps {
-  children: string
-  column: SortColumn
-  sortColumn: SortColumn
-  sortDirection: SortDirection
-  onSort: (column: SortColumn) => void
-}
-
-function SortableTableHead({
-  children,
-  column,
-  sortColumn,
-  sortDirection,
-  onSort,
-}: SortableTableHeadProps) {
-  const isSorted = sortColumn === column
-  const SortIcon = isSorted
-    ? sortDirection === 'asc'
-      ? ArrowUp
-      : ArrowDown
-    : ArrowUpDown
-
-  const ariaSort = isSorted
-    ? sortDirection === 'asc'
-      ? 'ascending'
-      : 'descending'
-    : 'none'
-
-  return (
-    <TableHead aria-sort={ariaSort}>
-      <Button
-        aria-label={`Sort by ${children}`}
-        className="-ml-3 h-8 px-3"
-        onClick={() => onSort(column)}
-        variant="ghost"
-      >
-        {children}
-        <SortIcon className="text-muted-foreground" />
-      </Button>
-    </TableHead>
-  )
-}
 
 function TeamsRoute() {
   const { id } = Route.useParams()

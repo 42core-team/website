@@ -995,6 +995,7 @@ export class TeamService {
         "team.buchholzPoints",
         "team.hadBye",
         "team.credits",
+        "team.queueScore",
         "team.createdAt",
         "team.pictureSmallUploadId",
         "team.pictureLargeUploadId",
@@ -1037,6 +1038,16 @@ export class TeamService {
         query.orderBy("team.buchholzPoints", direction);
       } else if (sortBy === "membersCount") {
         query.orderBy("COUNT(DISTINCT user.id)", direction);
+      } else if (sortBy === "queueScore") {
+        // The order alone would reveal the hidden score to other teams.
+        if (!isAdmin)
+          throw new BadRequestException(
+            "Queue scores are hidden for this event.",
+          );
+        // Every team starts on the same score, so ties need a stable order.
+        query
+          .orderBy("team.queueScore", direction)
+          .addOrderBy("team.name", "ASC");
       }
     }
 
