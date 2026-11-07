@@ -90,6 +90,7 @@ describe("event lifecycle", () => {
     const teamService = {
       lockTeam: jest.fn().mockResolvedValue(undefined),
       unlockTeamsForEvent: jest.fn().mockResolvedValue(undefined),
+      getRepositoryActivityForEvent: jest.fn().mockResolvedValue([]),
     };
     const dataSource = {
       query: jest.fn().mockResolvedValue([]),
@@ -115,6 +116,7 @@ describe("event lifecycle", () => {
       repository,
       matchRepository,
       manager,
+      teamRepository,
       teamService,
       service,
     };
@@ -273,6 +275,124 @@ describe("event lifecycle", () => {
       expect(teamService.lockTeam).not.toHaveBeenCalled();
     },
   );
+
+  describe("inactive team exclusion", () => {
+    const participants = [
+      { id: "active" },
+      { id: "other" },
+      { id: "idle" },
+      { id: "skipped" },
+      { id: "unknown" },
+    ];
+    const activity = [
+      { teamId: "active", teamName: "A", status: "active" },
+      { teamId: "other", teamName: "O", status: "active" },
+      { teamId: "idle", teamName: "I", status: "inactive" },
+      { teamId: "skipped", teamName: "S", status: "inactive" },
+      { teamId: "unknown", teamName: "U", status: "unknown" },
+    ];
+
+    it("excludes only selected teams the server confirms as inactive", async () => {
+      const { service, teamRepository, teamService } = harness(
+        EventState.SUBMISSIONS_CLOSED,
+        participants,
+      );
+      teamService.getRepositoryActivityForEvent.mockResolvedValue(activity);
+      await expect(
+        service.excludeInactiveTeams("event", ["idle", "active", "unknown"]),
+      ).resolves.toEqual({ excludedTeamIds: ["idle"] });
+      expect(teamRepository.update).toHaveBeenCalledTimes(1);
+      const [criteria, update] = teamRepository.update.mock.calls[0];
+      expect(criteria.id.value).toEqual(["idle"]);
+      expect(update).toEqual({ tournamentExcluded: true });
+    });
+
+    it("matches selected ids regardless of case", async () => {
+      const { service, teamRepository, teamService } = harness(
+        EventState.SUBMISSIONS_CLOSED,
+        participants,
+      );
+      teamService.getRepositoryActivityForEvent.mockResolvedValue(activity);
+      await expect(
+        service.excludeInactiveTeams("event", ["IDLE"]),
+      ).resolves.toEqual({ excludedTeamIds: ["idle"] });
+      expect(teamRepository.update).toHaveBeenCalledTimes(1);
+    });
+
+    it("ignores team ids outside the participating teams of the event", async () => {
+      const { service, teamRepository, teamService } = harness(
+        EventState.SUBMISSIONS_CLOSED,
+        participants.filter(({ id }) => id !== "idle"),
+      );
+      teamService.getRepositoryActivityForEvent.mockResolvedValue(activity);
+      await expect(
+        service.excludeInactiveTeams("event", ["idle"]),
+      ).resolves.toEqual({ excludedTeamIds: [] });
+      expect(teamRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("refuses to leave fewer than two teams", async () => {
+      const { service, teamRepository, teamService } = harness(
+        EventState.SUBMISSIONS_CLOSED,
+        [{ id: "active" }, { id: "idle" }],
+      );
+      teamService.getRepositoryActivityForEvent.mockResolvedValue(activity);
+      await expect(
+        service.excludeInactiveTeams("event", ["idle"]),
+      ).rejects.toThrow("fewer than 2 teams");
+      expect(teamRepository.update).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [EventState.REGISTRATION, 60000],
+      [EventState.PLAYING, -60000],
+      [EventState.SHOWCASE, -60000],
+      [EventState.COMPLETED, -60000],
+    ])("rejects checks in %s", async (state, startOffset) => {
+      const { service, stored, teamRepository, teamService } = harness(state, [
+        { id: "idle" },
+      ]);
+      // Explicit states stay as stored; the others derive from the schedule.
+      stored.startDate = new Date(Date.now() + startOffset);
+      stored.submissionDeadline = new Date(Date.now() + 120000);
+      await expect(service.getRepositoryActivity("event")).rejects.toThrow(
+        "while submissions are closed",
+      );
+      await expect(
+        service.excludeInactiveTeams("event", ["idle"]),
+      ).rejects.toThrow("while submissions are closed");
+      expect(teamService.getRepositoryActivityForEvent).not.toHaveBeenCalled();
+      expect(teamRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects once tournament matches exist", async () => {
+      const { service, matchRepository, teamRepository, teamService } = harness(
+        EventState.SUBMISSIONS_CLOSED,
+        [{ id: "idle" }],
+      );
+      matchRepository.countBy.mockResolvedValue(1);
+      await expect(
+        service.excludeInactiveTeams("event", ["idle"]),
+      ).rejects.toThrow("after tournament matches exist");
+      expect(teamService.getRepositoryActivityForEvent).not.toHaveBeenCalled();
+      expect(teamRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("rechecks the gate after the GitHub check", async () => {
+      const { service, matchRepository, teamRepository, teamService } = harness(
+        EventState.SUBMISSIONS_CLOSED,
+        participants,
+      );
+      teamService.getRepositoryActivityForEvent.mockImplementation(async () => {
+        matchRepository.countBy.mockResolvedValue(1);
+        return activity;
+      });
+      await expect(
+        service.excludeInactiveTeams("event", ["idle"]),
+      ).rejects.toThrow("after tournament matches exist");
+      expect(teamRepository.update).not.toHaveBeenCalled();
+    });
+  });
 
   it("allows an explicit exclusion to unblock showcase and records completion only on complete", async () => {
     const { service, stored } = harness(EventState.SUBMISSIONS_CLOSED, [

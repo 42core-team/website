@@ -341,6 +341,13 @@ export class MatchService {
     });
   }
 
+  /** Admin entry point; the lock keeps the entrants stable while pairing. */
+  startSwissMatches(eventId: string) {
+    return this.withEventLock(eventId, () =>
+      this.createNextSwissMatches(eventId),
+    );
+  }
+
   /** Admin entry point; the lock keeps the advancement limit stable while seeding. */
   startTournamentMatches(eventId: string) {
     return this.withEventLock(eventId, () =>

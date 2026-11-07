@@ -121,6 +121,25 @@ export class AppController {
     return { success: true };
   }
 
+  @MessagePattern("get_repository_activity")
+  handleGetRepositoryActivity(data: {
+    repositoryNames: string[];
+    githubOrg: string;
+    encryptedSecret: string;
+  }) {
+    this.logger.log(
+      `get_repository_activity event received ${JSON.stringify({
+        repositoryCount: data.repositoryNames.length,
+        githubOrg: data.githubOrg,
+      })}`,
+    );
+    return this.appService.getRepositoryActivity(
+      data.repositoryNames,
+      data.githubOrg,
+      data.encryptedSecret,
+    );
+  }
+
   @EventPattern("delete_repository")
   async handleDeleteRepository(data: {
     repositoryName: string;

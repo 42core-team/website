@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   ForbiddenException,
   forwardRef,
@@ -22,7 +23,10 @@ import {
   Repository,
   type FindOptionsRelations,
 } from "typeorm";
-import { GithubApiService } from "../github-api/github-api.service";
+import {
+  GithubApiService,
+  type RepositoryActivityStatus,
+} from "../github-api/github-api.service";
 import { EventService } from "../event/event.service";
 import { MatchService } from "../match/match.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
@@ -57,9 +61,16 @@ import {
   type TeamResponse,
   type TeamStanding,
 } from "./team-response";
+import { RepositoryActivityCache } from "./repository-activity-cache";
 
 const DIRECT_MATCH_COST = 2;
 const DIRECT_MATCH_STAKE = 1;
+
+export interface TeamRepositoryActivity {
+  teamId: string;
+  teamName: string;
+  status: RepositoryActivityStatus;
+}
 
 @Injectable()
 export class TeamService {
@@ -76,6 +87,7 @@ export class TeamService {
   ) {}
 
   logger = new Logger("TeamService");
+  private readonly repositoryActivityCache = new RepositoryActivityCache();
 
   @Cron(CronExpression.EVERY_MINUTE)
   async grantTeamCredits() {
@@ -1144,6 +1156,53 @@ export class TeamService {
 
     await this.matchService.startMatch(result.id);
     return { matchId: result.id };
+  }
+
+  /** Repository activity of every team still participating in the tournament. */
+  async getRepositoryActivityForEvent(
+    eventId: string,
+  ): Promise<TeamRepositoryActivity[]> {
+    const event = await this.dataSource
+      .getRepository(EventEntity)
+      .findOneByOrFail({ id: eventId });
+    const teams = await this.teamRepository.find({
+      select: { id: true, name: true, repo: true },
+      where: { event: { id: eventId }, tournamentExcluded: false },
+      order: { name: "ASC" },
+      loadEagerRelations: false,
+    });
+    const repositoryNames = teams.flatMap((team) =>
+      team.repo ? [team.repo] : [],
+    );
+    let statuses = new Map<string, RepositoryActivityStatus>();
+    if (repositoryNames.length > 0) {
+      try {
+        statuses = await this.repositoryActivityCache.get(
+          eventId,
+          event.githubOrg,
+          repositoryNames,
+          (missing) =>
+            this.githubApiService.getRepositoryActivity(
+              missing,
+              event.githubOrg,
+              event.githubOrgSecret,
+            ),
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to check repository activity for event ${eventId}`,
+          error,
+        );
+        throw new BadGatewayException(
+          "Could not check repository activity. Try again.",
+        );
+      }
+    }
+    return teams.map((team) => ({
+      teamId: team.id,
+      teamName: team.name,
+      status: statuses.get(team.repo) ?? "unknown",
+    }));
   }
 
   async getTeamsForEvent(

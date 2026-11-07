@@ -1,13 +1,26 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
 import { getRabbitmqConfig } from "../main";
 import { decryptSecret } from "../common/encryption";
-import { lastValueFrom } from "rxjs";
+import { lastValueFrom, timeout } from "rxjs";
+
+export type RepositoryActivityStatus = "active" | "inactive" | "unknown";
+
+export interface RepositoryActivityResult {
+  repositoryName: string;
+  status: RepositoryActivityStatus;
+}
+
+const REPOSITORY_ACTIVITY_TIMEOUT_MS = 60000;
+// github-service checks 5 at a time with a 10 second limit each, so even a batch
+// of unresponsive requests finishes within the timeout.
+const REPOSITORY_ACTIVITY_BATCH_SIZE = 25;
 
 @Injectable()
 export class GithubApiService {
   private githubClient: ClientProxy;
+  private readonly logger = new Logger(GithubApiService.name);
 
   constructor(private configService: ConfigService) {
     this.githubClient = ClientProxyFactory.create(
@@ -129,6 +142,47 @@ export class GithubApiService {
         apiBaseUrl: this.configService.getOrThrow<string>("API_BASE_URL"),
       }),
     );
+  }
+
+  /**
+   * Checks repositories in batches so a late failure keeps earlier results. It
+   * stops once a batch times out or none of it could be checked; repositories
+   * left out of the result were not checked.
+   */
+  async getRepositoryActivity(
+    repositoryNames: string[],
+    githubOrg: string,
+    encryptedSecret: string,
+  ) {
+    const results: RepositoryActivityResult[] = [];
+    for (
+      let start = 0;
+      start < repositoryNames.length;
+      start += REPOSITORY_ACTIVITY_BATCH_SIZE
+    ) {
+      let batch: RepositoryActivityResult[];
+      try {
+        batch = await lastValueFrom(
+          this.githubClient
+            .send<RepositoryActivityResult[]>("get_repository_activity", {
+              repositoryNames: repositoryNames.slice(
+                start,
+                start + REPOSITORY_ACTIVITY_BATCH_SIZE,
+              ),
+              githubOrg,
+              encryptedSecret,
+            })
+            .pipe(timeout(REPOSITORY_ACTIVITY_TIMEOUT_MS)),
+        );
+      } catch (error) {
+        if (results.length === 0) throw error;
+        this.logger.error("Repository activity batch failed", error);
+        break;
+      }
+      results.push(...batch);
+      if (batch.every(({ status }) => status === "unknown")) break;
+    }
+    return results;
   }
 
   async setRepositoryAccess(data: {
