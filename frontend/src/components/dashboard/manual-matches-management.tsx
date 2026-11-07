@@ -24,8 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
-
-const RUNNING_MATCHES_REFETCH_INTERVAL_MS = 5000
+import { ADMIN_MATCHES_RUNNING_REFETCH_INTERVAL_MS } from '@/lib/query-intervals'
 
 interface ManualMatchesManagementProps {
   eventId: string
@@ -49,7 +48,7 @@ export function ManualMatchesManagement({
     queryFn: () => getManualMatches(eventId),
     refetchInterval: (query) =>
       query.state.data?.some((match) => match.state !== MatchState.FINISHED)
-        ? RUNNING_MATCHES_REFETCH_INTERVAL_MS
+        ? ADMIN_MATCHES_RUNNING_REFETCH_INTERVAL_MS
         : false,
   })
 

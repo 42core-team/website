@@ -16,9 +16,9 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { TEAM_NAME_MAX_LENGTH } from '@/lib/event-validation'
+import { ADMIN_MATCHES_RUNNING_REFETCH_INTERVAL_MS } from '@/lib/query-intervals'
 
 const MATCHES_PER_PAGE = 20
-const RUNNING_MATCHES_REFETCH_INTERVAL_MS = 5000
 
 interface QueueMatchesManagementProps {
   eventId: string
@@ -39,7 +39,7 @@ export function QueueMatchesManagement({
       query.state.data?.matches.some(
         (match) => match.state !== MatchState.FINISHED,
       )
-        ? RUNNING_MATCHES_REFETCH_INTERVAL_MS
+        ? ADMIN_MATCHES_RUNNING_REFETCH_INTERVAL_MS
         : false,
   })
 
