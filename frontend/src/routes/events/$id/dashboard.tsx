@@ -105,6 +105,10 @@ import {
   registrationOpen,
   repositoryConfirmedForTournament,
 } from '@/lib/event-lifecycle'
+import {
+  repositoryRefetchInterval,
+  TEAMS_REFETCH_INTERVAL_MS,
+} from '@/lib/query-intervals'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/events/$id/dashboard')({
@@ -218,7 +222,6 @@ function DashboardRoute() {
   const eventQuery = useQuery<Event>({
     queryKey: ['event', id],
     queryFn: () => getEventById(id),
-    refetchInterval: 3000,
   })
 
   const teamsCountQuery = useQuery({
@@ -723,7 +726,7 @@ function OperationTab({
     queryKey: ['event', event.id, 'repository-progress'],
     queryFn: () =>
       getTeamsForEventTable(event.id, undefined, 'name', 'asc', true),
-    refetchInterval: 3000,
+    refetchInterval: (query) => repositoryRefetchInterval(query.state.data),
   })
   const tournamentReady =
     ['SUBMISSIONS_CLOSED', 'SHOWCASE'].includes(eventState(event, now)) &&
@@ -1354,7 +1357,7 @@ function TeamsTab({ eventId }: { eventId: string }) {
       ),
     placeholderData: (previousData) => previousData,
     // Finished queue matches change the scores on the server.
-    refetchInterval: 5000,
+    refetchInterval: TEAMS_REFETCH_INTERVAL_MS,
   })
 
   const handleSort = (column: TeamSortColumn) => {

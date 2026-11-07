@@ -3,7 +3,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { getEventById } from '@/app/actions/event'
 import { bettingOpen } from '@/lib/event-lifecycle'
-import { getMyEventTeam } from '@/app/actions/team'
+import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
+import { GAMBLING_REFETCH_INTERVAL_MS } from '@/lib/query-intervals'
 import { useEventClock } from '@/hooks/use-event-clock'
 import {
   getGamblingSnapshot,
@@ -26,8 +27,6 @@ export const Route = createFileRoute('/events/$id/gambling')({
   component: GamblingRoute,
 })
 
-const GAMBLING_QUERY_INTERVAL_MS = 3000
-
 function GamblingRoute() {
   const now = useEventClock()
   const { id } = Route.useParams()
@@ -35,12 +34,10 @@ function GamblingRoute() {
   const eventQuery = useQuery({
     queryKey: ['event', id],
     queryFn: () => getEventById(id),
-    refetchInterval: 1000,
   })
   const teamQuery = useQuery({
-    queryKey: ['event', id, 'gambling-team'],
-    queryFn: () => getMyEventTeam(id),
-    refetchInterval: 3000,
+    queryKey: myTeamQueryKey(id),
+    queryFn: () => myTeamQueryFn(id),
   })
   const canBet = Boolean(
     eventQuery.data &&
@@ -52,7 +49,7 @@ function GamblingRoute() {
   const gamblingQuery = useQuery({
     queryKey,
     queryFn: () => getGamblingSnapshot(id),
-    refetchInterval: GAMBLING_QUERY_INTERVAL_MS,
+    refetchInterval: GAMBLING_REFETCH_INTERVAL_MS,
   })
   const refresh = () => queryClient.invalidateQueries({ queryKey })
 

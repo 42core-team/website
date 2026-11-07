@@ -10,6 +10,7 @@ import Link from '@/components/app-link'
 import { title } from '@/components/primitives'
 import { Spinner } from '@/components/ui/spinner'
 import { useSession } from '@/lib/auth'
+import { EVENTS_LIST_REFETCH_INTERVAL_MS } from '@/lib/query-intervals'
 
 export const Route = createFileRoute('/events')({
   component: EventsRoute,
@@ -32,7 +33,7 @@ function EventsRoute() {
       return { allEvents: await getEvents(), myEvents: [] }
     },
     enabled: status !== 'loading',
-    refetchInterval: isEventsIndex ? 10000 : false,
+    refetchInterval: isEventsIndex ? EVENTS_LIST_REFETCH_INTERVAL_MS : false,
   })
   const canCreateQuery = useQuery({
     queryKey: ['events', 'can-create'],

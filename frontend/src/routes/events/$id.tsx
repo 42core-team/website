@@ -20,6 +20,10 @@ import { formatEventTime } from '@/components/event-status/shared'
 import { MarkdownContent } from '@/components/MarkdownContent'
 import { eventMoment } from '@/lib/event-moment'
 import { eventTabs } from '@/lib/event-tabs'
+import {
+  EVENT_REFETCH_INTERVAL_MS,
+  repositoryRefetchInterval,
+} from '@/lib/query-intervals'
 import { useEventClock } from '@/hooks/use-event-clock'
 import {
   Card,
@@ -66,7 +70,7 @@ function EventRoute() {
   const eventQuery = useQuery({
     queryKey: ['event', id],
     queryFn: async () => getEventById(id),
-    refetchInterval: 1000,
+    refetchInterval: EVENT_REFETCH_INTERVAL_MS,
     enabled: Boolean(userId),
   })
 
@@ -98,13 +102,8 @@ function EventRoute() {
     queryKey: myTeamQueryKey(id),
     queryFn: () => myTeamQueryFn(id),
     enabled: Boolean(userId) && Boolean(isUserRegisteredQuery.data),
-    // Poll quickly only while GitHub is still applying a repository change.
     refetchInterval: (query) =>
-      ['PROVISIONING', 'LOCKING', 'UNLOCKING'].includes(
-        query.state.data?.repositoryStatus ?? '',
-      )
-        ? 3000
-        : 30_000,
+      repositoryRefetchInterval(query.state.data ? [query.state.data] : []),
   })
 
   if (status === 'loading' || (userId && eventQuery.isPending)) {

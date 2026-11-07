@@ -5,6 +5,7 @@ import { getGlobalStats } from '@/app/actions/stats'
 import AnimatedNumber from '@/components/animatedNumber'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { GLOBAL_STATS_REFETCH_INTERVAL_MS } from '@/lib/query-intervals'
 import { cn } from '@/lib/utils'
 
 const statStyles = [
@@ -46,7 +47,7 @@ export default function GlobalStats() {
   const statsQuery = useQuery({
     queryKey: ['stats', 'global'],
     queryFn: getGlobalStats,
-    refetchInterval: 2000,
+    refetchInterval: GLOBAL_STATS_REFETCH_INTERVAL_MS,
   })
 
   const values = [

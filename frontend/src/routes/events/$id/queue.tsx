@@ -13,7 +13,6 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
   getQueueMatches,
-  getMyEventTeam,
   getQueueOpponents,
   getQueueSummary,
   joinQueue,
@@ -32,14 +31,18 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
+import {
+  QUEUE_MATCHES_IDLE_REFETCH_INTERVAL_MS,
+  QUEUE_MATCHES_RUNNING_REFETCH_INTERVAL_MS,
+  QUEUE_SUMMARY_REFETCH_INTERVAL_MS,
+} from '@/lib/query-intervals'
 import { cn } from '@/lib/utils'
 import MatchesList from '#/components/MatchesList.tsx'
 
 export const Route = createFileRoute('/events/$id/queue')({
   component: QueueRoute,
 })
-
-const QUEUE_REFETCH_INTERVAL_MS = 5000
 
 function getErrorMessage(error: Error) {
   const axiosError = error as AxiosError<{ message?: string }>
@@ -53,12 +56,10 @@ function QueueRoute() {
   const eventQuery = useQuery({
     queryKey: ['event', id],
     queryFn: () => getEventById(id),
-    refetchInterval: 1000,
   })
   const teamQuery = useQuery({
-    queryKey: ['event', id, 'queue-team'],
-    queryFn: () => getMyEventTeam(id),
-    refetchInterval: 3000,
+    queryKey: myTeamQueryKey(id),
+    queryFn: () => myTeamQueryFn(id),
   })
   const playable = Boolean(
     eventQuery.data &&
@@ -70,12 +71,15 @@ function QueueRoute() {
   const queueSummaryQuery = useQuery({
     queryKey: ['event', id, 'queue-summary'],
     queryFn: () => getQueueSummary(id),
-    refetchInterval: QUEUE_REFETCH_INTERVAL_MS,
+    refetchInterval: QUEUE_SUMMARY_REFETCH_INTERVAL_MS,
   })
   const queueMatchesQuery = useQuery({
     queryKey: ['event', id, 'queue-matches'],
     queryFn: () => getQueueMatches(id),
-    refetchInterval: QUEUE_REFETCH_INTERVAL_MS,
+    refetchInterval: (query) =>
+      query.state.data?.some((match) => match.state !== MatchState.FINISHED)
+        ? QUEUE_MATCHES_RUNNING_REFETCH_INTERVAL_MS
+        : QUEUE_MATCHES_IDLE_REFETCH_INTERVAL_MS,
     enabled: Boolean(queueSummaryQuery.data),
   })
   const opponentsQuery = useQuery({
