@@ -6,8 +6,8 @@ import (
 	"github.com/42core-team/website_relaunch/k8s-service/internal/config"
 	"github.com/42core-team/website_relaunch/k8s-service/internal/kube"
 	"github.com/42core-team/website_relaunch/k8s-service/internal/queue"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 	"go.uber.org/zap"
 )
 
@@ -49,7 +49,7 @@ func main() {
 	apiServer := server.NewServer(kubeClient, q, logger)
 
 	e := echo.New()
-	e.Use(middleware.Logger())
+	e.Use(middleware.RequestLogger())
 	e.Use(middleware.Recover())
 
 	api.RegisterHandlers(e, api.NewStrictHandler(apiServer, nil))

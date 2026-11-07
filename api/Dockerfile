@@ -1,6 +1,6 @@
 # Stage 0: Base with pnpm
-FROM node:26-alpine AS base
-RUN npm install -g pnpm
+FROM node:26.13.0-alpine AS base
+RUN npm install -g pnpm@12.18.0
 
 # Stage 1: Build
 FROM base AS builder

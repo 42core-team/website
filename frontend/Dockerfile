@@ -1,13 +1,13 @@
 # syntax=docker/dockerfile:1
 
-FROM oven/bun:1-alpine AS deps
+FROM oven/bun:1.4.4-alpine AS deps
 WORKDIR /app
 
 COPY package.json bun.lock ./
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile
 
-FROM oven/bun:1-alpine AS builder
+FROM oven/bun:1.4.4-alpine AS builder
 WORKDIR /app
 
 RUN apk add --no-cache git nodejs openssh
@@ -31,7 +31,7 @@ RUN STATIC_BUILD=true \
     VITE_MEDIA_URL="${VITE_MEDIA_URL}" \
     bun run build
 
-FROM nginx:1.29-alpine AS runner
+FROM nginx:1.31.8-alpine AS runner
 
 EXPOSE 3000
 
