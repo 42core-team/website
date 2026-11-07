@@ -46,6 +46,7 @@ export interface Team extends TeamAppearance, RepositoryState {
   name: string
   repo: string
   credits: number
+  queueScore?: number
   score: number
   buchholzPoints: number
   hadBye: boolean
@@ -68,7 +69,7 @@ export interface TeamMember {
 
 // Each team endpoint returns only the fields its views read, so most of these
 // are optional. Repository state and credits come for the own team and for
-// event admins only.
+// event admins only, the queue score for event admins only.
 export interface TeamApiResponse extends TeamAppearance, RepositoryState {
   id: string
   name: string
@@ -79,6 +80,7 @@ export interface TeamApiResponse extends TeamAppearance, RepositoryState {
   createdAt?: Date
   userCount?: number
   credits?: number
+  queueScore?: number
   tags?: string[]
 }
 
@@ -271,6 +273,7 @@ export async function getTeamsForEventTable(
     | 'membersCount'
     | 'score'
     | 'buchholzPoints'
+    | 'queueScore'
     | undefined = 'name',
   sortDirection: 'asc' | 'desc' = 'asc',
   adminReveal: boolean = false,
@@ -306,6 +309,7 @@ export function mapTeamResponse(team: TeamApiResponse): Team {
     createdAt: team.createdAt,
     membersCount: team.userCount,
     credits: team.credits ?? 0,
+    queueScore: team.queueScore,
     tags: team.tags ?? [],
   }
 }

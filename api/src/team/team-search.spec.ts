@@ -191,6 +191,7 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
       addSelect: jest.fn().mockReturnThis(),
       groupBy: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
       getRawAndEntities: jest.fn().mockResolvedValue({
         entities: [
           {
@@ -267,4 +268,38 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
       expect(queryBuilder.orderBy).not.toHaveBeenCalled();
     },
   );
+
+  it("refuses to sort by queue score for a non-admin", async () => {
+    const { service, queryBuilder } = publicListSetup();
+    await expect(
+      service.getSearchedTeamsForEvent(
+        "event-1",
+        undefined,
+        "desc",
+        "queueScore",
+        "user-1",
+        true,
+      ),
+    ).rejects.toThrow("Queue scores are hidden");
+    expect(queryBuilder.orderBy).not.toHaveBeenCalled();
+  });
+
+  it("sorts by queue score with the name as tie-break for an admin", async () => {
+    const { service, queryBuilder } = publicListSetup();
+    Reflect.set(service, "eventService", {
+      isEventAdmin: jest.fn().mockResolvedValue(true),
+    });
+    await service.getSearchedTeamsForEvent(
+      "event-1",
+      undefined,
+      "desc",
+      "queueScore",
+      "admin-1",
+    );
+    expect(queryBuilder.orderBy).toHaveBeenCalledWith(
+      "team.queueScore",
+      "DESC",
+    );
+    expect(queryBuilder.addOrderBy).toHaveBeenCalledWith("team.name", "ASC");
+  });
 });

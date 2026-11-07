@@ -107,7 +107,7 @@ describe("team responses", () => {
     });
   });
 
-  it("adds repository state and credits to the admin team list", () => {
+  it("adds repository state, credits and queue score to the admin team list", () => {
     const response = toAdminEventTeamResponse(
       team(),
       { score: 5, buchholzPoints: 17 },
@@ -119,7 +119,20 @@ describe("team responses", () => {
       repositoryError: "error",
       tournamentExcluded: false,
       credits: 3,
+      queueScore: 1500,
     });
+  });
+
+  it.each([
+    ["profile", () => toTeamResponse(team(), [])],
+    ["own team", () => toOwnTeamResponse(team(), [])],
+    ["invite", () => toInvitingTeamResponse(team(), [])],
+    [
+      "event list",
+      () => toEventTeamResponse(team(), { score: 0, buchholzPoints: 0 }, 0, []),
+    ],
+  ])("leaves the queue score out of the %s", (_, build) => {
+    expect(instanceToPlain(build())).not.toHaveProperty("queueScore");
   });
 
   it.each([
@@ -147,7 +160,6 @@ describe("team responses", () => {
       "deletedAt",
       "lastCreditGrantedAt",
       "startedRepoCreationAt",
-      "queueScore",
       "repositoryOperationId",
       "locked",
       "eventId",

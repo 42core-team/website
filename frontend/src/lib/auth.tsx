@@ -28,8 +28,25 @@ async function fetchCurrentUser(): Promise<ClientSession | null> {
   }
 }
 
-async function clearSession(queryClient: QueryClient) {
+/**
+ * Marks the user as logged out and drops everything cached for them, such as
+ * admin-only team data, so the next user of this tab cannot read it. Resetting
+ * also discards responses still in flight. Active queries refetch; if those
+ * hit a 401 and end here again, the session is already gone and nothing resets,
+ * so this cannot loop.
+ */
+function endSession(queryClient: QueryClient) {
+  const hadSession = Boolean(queryClient.getQueryData(SESSION_QUERY_KEY))
   queryClient.setQueryData(SESSION_QUERY_KEY, null)
+  if (hadSession) {
+    void queryClient.resetQueries({
+      predicate: (query) => query.queryKey[0] !== 'auth',
+    })
+  }
+}
+
+async function clearSession(queryClient: QueryClient) {
+  endSession(queryClient)
   await queryClient.invalidateQueries({ queryKey: ['auth'] })
 }
 
@@ -57,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(
     () =>
       onSessionExpired(() => {
-        queryClient.setQueryData(SESSION_QUERY_KEY, null)
+        endSession(queryClient)
       }),
     [queryClient],
   )

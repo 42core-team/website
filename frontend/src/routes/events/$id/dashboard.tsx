@@ -46,6 +46,8 @@ import { searchUsers } from '@/app/actions/user'
 import { StarterTemplatesManagement } from '@/components/dashboard/starter-templates-management'
 import { ManualMatchesManagement } from '@/components/dashboard/manual-matches-management'
 import { MatchesAnalytics } from '@/components/dashboard/matches-analytics'
+import type { SortDirection } from '@/components/sortable-table-head'
+import { SortableTableHead } from '@/components/sortable-table-head'
 import { QueueMatchesManagement } from '@/components/dashboard/queue-matches-management'
 import { WhitelistManagement } from '@/components/dashboard/whitelist-management'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -1332,15 +1334,38 @@ function AdminsTab({
   )
 }
 
+type TeamSortColumn = 'name' | 'membersCount' | 'queueScore'
+
 function TeamsTab({ eventId }: { eventId: string }) {
   const queryClient = useQueryClient()
   const [teamToDelete, setTeamToDelete] = useState<Team | null>(null)
+  const [sortColumn, setSortColumn] = useState<TeamSortColumn>('name')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
   const teamsQuery = useQuery({
-    queryKey: ['event', eventId, 'teams', 'admin'],
+    queryKey: ['event', eventId, 'teams', 'admin', sortColumn, sortDirection],
     queryFn: () =>
-      getTeamsForEventTable(eventId, undefined, 'name', 'asc', true),
+      getTeamsForEventTable(
+        eventId,
+        undefined,
+        sortColumn,
+        sortDirection,
+        true,
+      ),
+    placeholderData: (previousData) => previousData,
+    // Finished queue matches change the scores on the server.
+    refetchInterval: 5000,
   })
+
+  const handleSort = (column: TeamSortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+
+    setSortColumn(column)
+    setSortDirection('asc')
+  }
 
   const updateCreditsMutation = useMutation({
     mutationFn: ({ teamId, credits }: { teamId: string; credits: number }) =>
@@ -1393,7 +1418,7 @@ function TeamsTab({ eventId }: { eventId: string }) {
             <div className="flex items-center justify-center py-8">
               <Spinner />
             </div>
-          ) : teamsQuery.isError ? (
+          ) : !teamsQuery.data ? (
             <p className="py-8 text-center text-destructive">
               Failed to load teams.
             </p>
@@ -1401,8 +1426,30 @@ function TeamsTab({ eventId }: { eventId: string }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Members</TableHead>
+                  <SortableTableHead
+                    column="name"
+                    onSort={handleSort}
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                  >
+                    Team
+                  </SortableTableHead>
+                  <SortableTableHead
+                    column="membersCount"
+                    onSort={handleSort}
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                  >
+                    Members
+                  </SortableTableHead>
+                  <SortableTableHead
+                    column="queueScore"
+                    onSort={handleSort}
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                  >
+                    Queue Score
+                  </SortableTableHead>
                   <TableHead>Credits</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -1411,7 +1458,7 @@ function TeamsTab({ eventId }: { eventId: string }) {
                 {teamsQuery.data.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={4}
+                      colSpan={5}
                       className="py-8 text-center text-muted-foreground"
                     >
                       No teams found.
@@ -1517,6 +1564,7 @@ function TeamManagementRow({
     <TableRow>
       <TableCell className="font-medium">{team.name}</TableCell>
       <TableCell>{team.membersCount ?? '-'}</TableCell>
+      <TableCell>{team.queueScore ?? '-'}</TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           <Input
