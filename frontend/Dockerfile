@@ -23,7 +23,10 @@ ARG VITE_S3_REPLAYS_BUCKET_URL
 ARG CURRENT_BRANCH
 ENV CURRENT_BRANCH=$CURRENT_BRANCH
 
-RUN STATIC_BUILD=true \
+# A secret mount keeps the token out of the public image and its history.
+RUN --mount=type=secret,id=github_token \
+    GITHUB_TOKEN="$(cat /run/secrets/github_token 2>/dev/null || true)" \
+    STATIC_BUILD=true \
     VITE_BACKEND_PUBLIC_URL="${VITE_BACKEND_PUBLIC_URL}" \
     VITE_VISUALIZER_URL="${VITE_VISUALIZER_URL}" \
     VITE_FORTY_TWO_CLIENT_ID="${VITE_FORTY_TWO_CLIENT_ID}" \
