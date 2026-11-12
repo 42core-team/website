@@ -46,6 +46,7 @@ autoscaling:
 
 # Optional non-sensitive environment variables
 env:
+  RABBITMQ_QUEUE_PREFIX: ""
   # CORE GitHub App; leave empty to keep using per-event organization tokens.
   GITHUB_APP_ID: ""
 

@@ -7,6 +7,7 @@ import {
 } from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
 import { Logger } from "@nestjs/common";
+import { rabbitmqQueueName } from "./rabbitmq-queue-name";
 import { HealthService } from "./health/health.service";
 
 export const getRabbitmqConfig = (
@@ -17,7 +18,7 @@ export const getRabbitmqConfig = (
     transport: Transport.RMQ,
     options: {
       urls: [configService.getOrThrow<string>("RABBITMQ_URL")],
-      queue: queue,
+      queue: rabbitmqQueueName(configService, queue),
       queueOptions: {
         arguments: {
           "x-queue-type": "quorum",

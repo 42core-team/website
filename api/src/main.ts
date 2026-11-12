@@ -13,6 +13,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import cookieParser from "cookie-parser";
 import { createCsrfProtection } from "./common/csrf-protection";
+import { rabbitmqQueueName } from "./rabbitmq-queue-name";
 import {
   getAuthCookieName,
   REFRESH_COOKIE_NAME,
@@ -26,7 +27,7 @@ export const getRabbitmqConfig = (
     transport: Transport.RMQ,
     options: {
       urls: [configService.getOrThrow<string>("RABBITMQ_URL")],
-      queue: queue,
+      queue: rabbitmqQueueName(configService, queue),
       queueOptions: {
         arguments: {
           "x-queue-type": "quorum",
