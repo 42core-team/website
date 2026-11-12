@@ -228,6 +228,16 @@ describe("GithubAppService", () => {
       ).rejects.toThrow("does not know this installation");
     });
 
+    it("reports GitHub failures while checking the owner as a bad gateway", async () => {
+      const { service, state } = setup();
+      service.fetch = jest.fn(
+        async () => new Response("{}", { status: 500 }),
+      ) as never;
+      await expect(
+        service.completeInstallation("user", 77, state),
+      ).rejects.toThrow("Could not check your role");
+    });
+
     it("rejects installations missing required permissions", async () => {
       const { service, state } = setup({
         permissions: { contents: "write", metadata: "read" },
@@ -235,6 +245,8 @@ describe("GithubAppService", () => {
       await expect(
         service.completeInstallation("user", 77, state),
       ).rejects.toThrow("administration, members");
+      // Without Members access the ownership check could not run.
+      expect(service.fetch).not.toHaveBeenCalled();
     });
 
     it("keeps teams' repositories in their organization", async () => {

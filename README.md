@@ -108,7 +108,7 @@ To try it locally, [register your own GitHub App](https://github.com/settings/ap
 - Repository permissions: Administration (read & write), Contents (read & write), Metadata (read)
 - Organization permissions: Members (read), used to check that the person connecting an organization owns it
 - Setup URL: `http://localhost:3000/github/setup`, with "Redirect on update" enabled
-- Webhook URL: `https://<your-api>/github/webhook`, with a secret, subscribed to "Installation target" (installation events are always sent). GitHub cannot reach `localhost`, so forward deliveries with [smee.io](https://smee.io) or leave the webhook inactive; without it, uninstalls and suspensions only show up once a GitHub call fails.
+- Webhook URL: `https://<your-api>/github/webhook`, with a secret, subscribed to "Installation target" (installation events are always sent). GitHub cannot reach `localhost`, so forward deliveries with [smee.io](https://smee.io) or leave the webhook inactive. Without webhook deliveries the dashboard keeps showing an uninstalled or suspended App as connected; repository operations then fail with GitHub's error until it is reconnected.
 - "Where can this GitHub App be installed?": Any account, so it can be installed on a test organization
 
 Then generate a private key and add the App to `.env.tilt`. The key must be on a single line, so encode it with base64:

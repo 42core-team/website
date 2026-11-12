@@ -109,7 +109,8 @@ type FormValues = z.infer<typeof formSchema>
 const defaultValues: FormValues = {
   name: '',
   description: '',
-  useGithubApp: true,
+  // Turned on once the server confirms it has the GitHub App configured.
+  useGithubApp: false,
   githubOrg: '',
   githubOrgSecret: '',
   location: '',
@@ -286,7 +287,7 @@ function CreateEventRoute() {
       if (!visualizerDockerImage)
         throw new Error('Visualizer image is required')
 
-      const useGithubApp = values.useGithubApp && githubAppAvailable
+      const useGithubApp = values.useGithubApp
       let githubConfig: Pick<
         EventCreateParams,
         'githubOrg' | 'githubOrgSecret'
@@ -341,7 +342,7 @@ function CreateEventRoute() {
       toast.success('Event created.')
       await queryClient.invalidateQueries({ queryKey: ['events'] })
       // The App is connected from the dashboard once the event exists.
-      if (values.useGithubApp && githubAppAvailable)
+      if (values.useGithubApp)
         await navigate({
           to: '/events/$id/dashboard',
           params: { id: event.id },
@@ -365,6 +366,10 @@ function CreateEventRoute() {
   })
 
   const formValues = useStore(form.store, (state) => state.values)
+
+  useEffect(() => {
+    if (githubAppAvailable) form.setFieldValue('useGithubApp', true)
+  }, [form, githubAppAvailable])
   const parsedRepo = useMemo(
     () => parseGitHubRepo(formValues.monorepoUrl),
     [formValues.monorepoUrl],
@@ -795,7 +800,7 @@ function CreateEventRoute() {
                 )}
               />
             )}
-            {(!githubAppAvailable || !formValues.useGithubApp) && (
+            {!formValues.useGithubApp && (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <form.Field
                   name="githubOrg"

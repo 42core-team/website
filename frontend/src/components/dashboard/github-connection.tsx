@@ -1,12 +1,13 @@
 import type { EventGithubStatus } from '@/app/actions/event'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
-import { GitBranch, Loader2 } from 'lucide-react'
+import { AlertCircle, GitBranch, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getEventGithubStatus,
   getGithubAppInstallUrl,
 } from '@/app/actions/event'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -51,6 +52,23 @@ export function GithubConnection({ eventId }: { eventId: string }) {
     onError: (error) => toast.error(getErrorMessage(error)),
   })
 
+  if (statusQuery.isError)
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Failed to load the GitHub connection</AlertTitle>
+        <AlertDescription className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          Repositories may not be created until GitHub is connected.
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void statusQuery.refetch()}
+          >
+            Try again
+          </Button>
+        </AlertDescription>
+      </Alert>
+    )
   const status = statusQuery.data
   if (!status) return null
   const installation = status.installation

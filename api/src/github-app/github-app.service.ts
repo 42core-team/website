@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -137,15 +138,16 @@ export class GithubAppService {
     const account = installation.account;
     if (!account)
       throw new BadRequestException("The installation has no GitHub account.");
-    const user = await this.dataSource
-      .getRepository(UserEntity)
-      .findOneByOrFail({ id: userId });
-    await this.assertCanManageAccount(installation, user.githubId);
+    // Checked first: the ownership check below needs Members access.
     const missing = missingPermissions(installation.permissions);
     if (missing.length)
       throw new BadRequestException(
         `The installation on ${account.login} lacks these permissions: ${missing.join(", ")}. An owner must accept the App's requested permissions on GitHub.`,
       );
+    const user = await this.dataSource
+      .getRepository(UserEntity)
+      .findOneByOrFail({ id: userId });
+    await this.assertCanManageAccount(installation, user.githubId);
 
     await this.dataSource.transaction(async (manager) => {
       const event = await manager.getRepository(EventEntity).findOneOrFail({
@@ -309,8 +311,14 @@ export class GithubAppService {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (response.status === 404) return null;
-    if (!response.ok)
-      throw new Error(`GitHub request ${path} failed with ${response.status}`);
+    if (!response.ok) {
+      this.logger.error(
+        `GitHub request ${path} failed with ${response.status}`,
+      );
+      throw new BadGatewayException(
+        "Could not check your role in the organization on GitHub. Try again.",
+      );
+    }
     return (await response.json()) as T;
   }
 }
