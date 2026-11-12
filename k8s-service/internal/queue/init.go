@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/42core-team/website_relaunch/k8s-service/internal/kube"
@@ -104,15 +105,22 @@ func (q *Queue) ConsumeGameQueue(logger *zap.SugaredLogger, kubeClient *kube.Cli
 
 	go func() {
 		for d := range msgs {
-			logger.Info(string(d.Body))
-
+			// The message body carries repository tokens, so it must not be logged.
 			game, err := parseGameMessage(d.Body)
 			if err != nil {
-				logger.Errorln("Failed to parse game message", zap.Error(err))
+				logger.Errorln("Failed to parse game message, dropping it", zap.Error(err))
+				rejectMessage(logger, d)
 				continue
 			}
+			logger.Infoln("Received game message", "gameID", game.ID.String())
 
 			err = kubeClient.CreateGameJob(context.Background(), &game)
+			if errors.Is(err, kube.ErrInvalidGame) {
+				// Retrying can never succeed and would block the queue (prefetch 1).
+				logger.Errorln("Invalid game message, dropping it", "gameID", game.ID.String(), zap.Error(err))
+				rejectMessage(logger, d)
+				continue
+			}
 			if err != nil {
 				logger.Errorln("Failed to create game job", zap.Error(err))
 				continue
@@ -120,11 +128,18 @@ func (q *Queue) ConsumeGameQueue(logger *zap.SugaredLogger, kubeClient *kube.Cli
 
 			err = d.Ack(false)
 			if err != nil {
-				logger.Errorln("There was an error during Acknowledgement", zap.Error(err), zap.Any("delivery", d))
+				logger.Errorln("There was an error during Acknowledgement", zap.Error(err), zap.Uint64("deliveryTag", d.DeliveryTag))
 			}
 		}
 	}()
 	return nil
+}
+
+// rejectMessage nacks a delivery without requeueing it.
+func rejectMessage(logger *zap.SugaredLogger, d amqp.Delivery) {
+	if err := d.Nack(false, false); err != nil {
+		logger.Errorln("There was an error during Nack", zap.Error(err), zap.Uint64("deliveryTag", d.DeliveryTag))
+	}
 }
 
 // CloseConnection cleanly closes the RabbitMQ connection

@@ -1,21 +1,27 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   Logger,
   Param,
   ParseBoolPipe,
   ParseUUIDPipe,
+  Post,
   Put,
   Query,
   UnauthorizedException,
   UseGuards,
+  ValidationPipe,
 } from "@nestjs/common";
 import { MatchService } from "./match.service";
 import { EventService } from "../event/event.service";
 import { UserId } from "../guards/UserGuard";
-import { MatchEntity, MatchPhase } from "./entites/match.entity";
+import { MatchPhase } from "./entites/match.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { CreateManualMatchDto } from "./dtos/createManualMatchDto";
+import { QueueMatchesQueryDto } from "./dtos/queueMatchesQueryDto";
+import { matchNotFound } from "./match-response";
 
 @Controller("match")
 export class MatchController {
@@ -53,12 +59,23 @@ export class MatchController {
       );
     const event = await this.eventService.getEventById(eventId);
     if (event.currentRound != 0) {
-      throw new BadRequestException("swiss matches have already started");
+      // A round that finished while submissions were reopened is resumed here.
+      if (
+        (await this.matchService.getPausedProgressionPhase(event)) !==
+        MatchPhase.SWISS
+      )
+        throw new BadRequestException("swiss matches have already started");
+      this.logger.log({
+        action: "attempt_resume_swiss_matches",
+        userId,
+        eventId,
+      });
+      return this.matchService.resumeTournamentProgression(eventId);
     }
 
     this.logger.log({ action: "attempt_start_swiss_matches", userId, eventId });
 
-    return await this.matchService.createNextSwissMatches(eventId);
+    return await this.matchService.startSwissMatches(eventId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -78,7 +95,7 @@ export class MatchController {
       eventId,
     });
 
-    return this.matchService.createNextTournamentMatches(eventId);
+    return this.matchService.startTournamentMatches(eventId);
   }
 
   @Get("tournament/:eventId/teamCount")
@@ -115,12 +132,53 @@ export class MatchController {
   async getAllQueueMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
     @UserId() userId: string,
+    @Query(new ValidationPipe({ transform: true })) query: QueueMatchesQueryDto,
   ) {
     if (!(await this.eventService.isEventAdmin(eventId, userId)))
       throw new UnauthorizedException(
         "You are not authorized to view all match making matches.",
       );
-    return await this.matchService.getAllQueueMatches(eventId);
+    return await this.matchService.getAllQueueMatches(eventId, query);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get("manual/:eventId")
+  async getManualMatches(
+    @Param("eventId", ParseUUIDPipe) eventId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to view manual matches.",
+      );
+    return await this.matchService.getManualMatches(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("manual/:eventId")
+  async createManualMatch(
+    @Param("eventId", ParseUUIDPipe) eventId: string,
+    @UserId() userId: string,
+    @Body() body: CreateManualMatchDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException(
+        "You are not authorized to start manual matches.",
+      );
+
+    this.logger.log({
+      action: "attempt_create_manual_match",
+      userId,
+      eventId,
+      teamOneId: body.teamOneId,
+      teamTwoId: body.teamTwoId,
+    });
+
+    return this.matchService.createManualMatch(
+      eventId,
+      body.teamOneId,
+      body.teamTwoId,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -152,19 +210,9 @@ export class MatchController {
     @Param("matchId", ParseUUIDPipe) matchId: string,
     @UserId() userId: string,
   ) {
-    const match = await this.matchService.getMatchById(matchId, {
-      teams: {
-        event: true,
-      },
-    });
-    if (!match) throw new BadRequestException("Match not found");
-
-    if (
-      !(await this.eventService.isEventAdmin(match.teams[0].event.id, userId))
-    )
-      throw new UnauthorizedException(
-        "You are not authorized to reveal this match.",
-      );
+    const eventId = await this.matchService.getEventIdOfMatch(matchId);
+    if (!eventId || !(await this.eventService.isEventAdmin(eventId, userId)))
+      throw matchNotFound();
 
     this.logger.log({ action: "attempt_reveal_match", userId, matchId });
 
@@ -274,46 +322,16 @@ export class MatchController {
     @UserId() userId: string,
     @Query("adminRevealQuery", new ParseBoolPipe({ optional: true }))
     adminRevealQuery: boolean | undefined,
-  ): Promise<MatchEntity> {
-    return await this.matchService.getMatchById(
+  ) {
+    const match = await this.matchService.getMatchResponseById(
       matchId,
-      {
-        teams: {
-          event: true,
-        },
-      },
       userId,
       adminRevealQuery ?? false,
     );
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get("queue/:eventId/timeseries")
-  async getQueueMatchesTimeSeries(
-    @Param("eventId") eventId: string,
-    @UserId() userId: string,
-    @Query("interval") interval?: "minute" | "hour" | "day",
-    @Query("start") startStr?: string,
-    @Query("end") endStr?: string,
-  ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to view match making stats.",
-      );
-
-    const start = this.parseOptionalDate(startStr, "start");
-    const end = this.parseOptionalDate(endStr, "end");
-
-    if (start && end && start > end) {
-      throw new BadRequestException("Start date must be before end date");
-    }
-
-    return this.matchService.getQueueMatchesTimeSeries({
-      interval,
-      start,
-      end,
-      eventId,
-    });
+    // QUEUE result scores contain private matchmaking ratings, not public scores.
+    return match.phase === MatchPhase.QUEUE && "results" in match
+      ? { ...match, results: [] }
+      : match;
   }
 
   private parseOptionalDate(

@@ -3,12 +3,14 @@ image:
   tag: local
   pullPolicy: IfNotPresent
 
-imagePullSecrets: []
-
 fullnameOverride: "github-service"
 
 serviceAccount:
   create: false
+
+env:
+  # Repositories named sim-* are simulated, only in development.
+  NODE_ENV: development
 
 secrets:
   RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
@@ -21,3 +23,12 @@ resources:
   requests:
     cpu: 1
     memory: 1Gi
+
+startupProbe:
+  enabled: false
+
+livenessProbe:
+  enabled: false
+
+readinessProbe:
+  enabled: false

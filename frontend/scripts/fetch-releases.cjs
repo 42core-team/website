@@ -11,13 +11,16 @@ async function fetchAllReleases() {
   let page = 1
   const all = []
 
-  // 60 unauthenticated requests/hour. After 6000 releases, this code will start failing. Should be fine for the next few decades...
+  // Without a token GitHub allows 60 requests/hour per IP, shared with other jobs on the runner.
   while (true) {
     const url = `${base}?per_page=${PER_PAGE}&page=${page}`
     const { data } = await axios.get(url, {
       headers: {
         'User-Agent': 'coregame-build',
         Accept: 'application/vnd.github+json',
+        ...(process.env.GITHUB_TOKEN
+          ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` }
+          : {}),
       },
       validateStatus: (s) => s >= 200 && s < 500,
     })

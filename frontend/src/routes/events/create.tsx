@@ -26,6 +26,12 @@ import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useSession } from '@/lib/auth'
+import { getEventNameError } from '@/lib/event-validation'
+import {
+  getGithubConfigError,
+  githubConfigSchema,
+  normalizeGithubConfigValue,
+} from '@/lib/github-validation'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/events/create')({
@@ -34,26 +40,41 @@ export const Route = createFileRoute('/events/create')({
 
 const formSchema = z
   .object({
-    name: z.string().min(1, 'Event name is required'),
+    // Sent trimmed, see onSubmit.
+    name: z.string().superRefine((value, ctx) => {
+      const message = getEventNameError(value.trim())
+      if (message) ctx.addIssue({ code: 'custom', message })
+    }),
     description: z.string().optional(),
-    githubOrg: z.string().min(1, 'GitHub organization is required'),
+    githubOrg: githubConfigSchema('githubOrg'),
     githubOrgSecret: z
       .string()
       .min(1, 'GitHub organization secret is required'),
     location: z.string().optional(),
     startDate: z.date({ message: 'Start date is required' }),
-    endDate: z.date({ message: 'End date is required' }),
+    submissionDeadline: z.date({ message: 'Submission deadline is required' }),
+    scheduledEndDate: z.date({ message: 'Scheduled end is required' }),
+    introEnabled: z.boolean(),
+    introLeadMinutes: z.number().int().min(0),
+    streamUrl: z.union([
+      z.literal(''),
+      z.url('Stream URL must be a valid URL'),
+    ]),
+    showtimeStreamUrl: z.union([
+      z.literal(''),
+      z.url('Showtime stream URL must be a valid URL'),
+    ]),
     minTeamSize: z.number().min(1).max(10),
     maxTeamSize: z.number().min(1).max(10),
-    monorepoUrl: z.string().min(1, 'Monorepo URL is required'),
-    monorepoVersion: z.string().min(1, 'Monorepo version is required'),
+    monorepoUrl: githubConfigSchema('monorepoUrl'),
+    monorepoVersion: githubConfigSchema('monorepoVersion'),
     gameServerDockerImage: z.string().min(1, 'Game server image is required'),
     myCoreBotDockerImage: z.string().min(1, 'My Core Bot image is required'),
     visualizerDockerImage: z.string().min(1, 'Visualizer image is required'),
     gameServerImageTag: z.string().optional(),
     myCoreBotImageTag: z.string().optional(),
     visualizerImageTag: z.string().optional(),
-    basePath: z.string().min(1, 'Base path is required'),
+    basePath: githubConfigSchema('basePath'),
     gameConfig: z.string().min(1, 'Game config is required'),
     serverConfig: z.string().min(1, 'Server config is required'),
     isPrivate: z.boolean(),
@@ -61,6 +82,10 @@ const formSchema = z
   .refine((value) => value.maxTeamSize >= value.minTeamSize, {
     message: 'Max team size must be at least the min team size',
     path: ['maxTeamSize'],
+  })
+  .refine((value) => value.submissionDeadline > value.startDate, {
+    message: 'Submission deadline must be after play starts',
+    path: ['submissionDeadline'],
   })
 
 type FormValues = z.infer<typeof formSchema>
@@ -72,7 +97,12 @@ const defaultValues: FormValues = {
   githubOrgSecret: '',
   location: '',
   startDate: new Date(),
-  endDate: new Date(),
+  submissionDeadline: new Date(Date.now() + 3600000),
+  scheduledEndDate: new Date(Date.now() + 7200000),
+  introEnabled: false,
+  introLeadMinutes: 15,
+  streamUrl: '',
+  showtimeStreamUrl: '',
   minTeamSize: 1,
   maxTeamSize: 4,
   monorepoUrl: 'https://github.com/42core-team/monorepo',
@@ -234,8 +264,12 @@ function CreateEventRoute() {
       if (!visualizerDockerImage)
         throw new Error('Visualizer image is required')
 
-      const validationError = await validateGithubToken(
+      const githubOrg = normalizeGithubConfigValue(
+        'githubOrg',
         values.githubOrg,
+      )
+      const validationError = await validateGithubToken(
+        githubOrg,
         values.githubOrgSecret,
       )
       if (validationError) throw new Error(validationError)
@@ -243,19 +277,30 @@ function CreateEventRoute() {
       const payload: EventCreateParams = {
         name: values.name.trim(),
         description: values.description?.trim() || '',
-        githubOrg: values.githubOrg,
+        githubOrg,
         githubOrgSecret: values.githubOrgSecret,
         location: values.location?.trim() || '',
         startDate: values.startDate.getTime(),
-        endDate: values.endDate.getTime(),
+        submissionDeadline: values.submissionDeadline.getTime(),
+        scheduledEndDate: values.scheduledEndDate.getTime(),
+        introEnabled: values.introEnabled,
+        introLeadMinutes: values.introLeadMinutes,
+        streamUrl: values.streamUrl.trim() || undefined,
+        showtimeStreamUrl: values.showtimeStreamUrl.trim() || undefined,
         minTeamSize: values.minTeamSize,
         maxTeamSize: values.maxTeamSize,
-        monorepoUrl: values.monorepoUrl.trim(),
-        monorepoVersion: values.monorepoVersion.trim(),
+        monorepoUrl: normalizeGithubConfigValue(
+          'monorepoUrl',
+          values.monorepoUrl,
+        ),
+        monorepoVersion: normalizeGithubConfigValue(
+          'monorepoVersion',
+          values.monorepoVersion,
+        ),
         gameServerDockerImage,
         myCoreBotDockerImage,
         visualizerDockerImage,
-        basePath: values.basePath.trim(),
+        basePath: normalizeGithubConfigValue('basePath', values.basePath),
         gameConfig: values.gameConfig,
         serverConfig: values.serverConfig,
         isPrivate: values.isPrivate,
@@ -316,26 +361,40 @@ function CreateEventRoute() {
     enabled: Boolean(parsedRepo),
   })
 
+  // Only look up default configs once version and base path are valid.
+  const configVersion = getGithubConfigError(
+    'monorepoVersion',
+    formValues.monorepoVersion,
+  )
+    ? ''
+    : normalizeGithubConfigValue('monorepoVersion', formValues.monorepoVersion)
+  const configBasePath = getGithubConfigError('basePath', formValues.basePath)
+    ? ''
+    : normalizeGithubConfigValue('basePath', formValues.basePath).replace(
+        /\/$/,
+        '',
+      )
+
   const { isLoading: isFetchingConfig } = useQuery({
     queryKey: [
       'github',
       'config',
       parsedRepo?.owner,
       parsedRepo?.repo,
-      formValues.monorepoVersion,
-      formValues.basePath,
+      configVersion,
+      configBasePath,
     ],
     queryFn: async () => {
-      if (!parsedRepo || !formValues.monorepoVersion || !formValues.basePath) {
+      if (!parsedRepo || !configVersion || !configBasePath) {
         return null
       }
 
       const [gameResponse, serverResponse] = await Promise.all([
         fetch(
-          `https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${formValues.monorepoVersion}/${formValues.basePath}/configs/game.config.json`,
+          `https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${configVersion}/${configBasePath}/configs/game.config.json`,
         ),
         fetch(
-          `https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${formValues.monorepoVersion}/${formValues.basePath}/configs/server.config.json`,
+          `https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${configVersion}/${configBasePath}/configs/server.config.json`,
         ),
       ])
 
@@ -349,9 +408,7 @@ function CreateEventRoute() {
       return true
     },
     enabled:
-      Boolean(parsedRepo) &&
-      Boolean(formValues.monorepoVersion) &&
-      Boolean(formValues.basePath),
+      Boolean(parsedRepo) && Boolean(configVersion) && Boolean(configBasePath),
   })
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -526,11 +583,11 @@ function CreateEventRoute() {
                 />
 
                 <form.Field
-                  name="endDate"
+                  name="submissionDeadline"
                   children={(field) => (
                     <DateTimeField
                       errors={field.state.meta.errors}
-                      label="End Date *"
+                      label="Submission Deadline *"
                       value={field.state.value}
                       onChange={field.handleChange}
                     />
@@ -538,6 +595,74 @@ function CreateEventRoute() {
                 />
               </div>
 
+              <form.Field
+                name="scheduledEndDate"
+                children={(field) => (
+                  <DateTimeField
+                    errors={field.state.meta.errors}
+                    label="Scheduled End (informational) *"
+                    value={field.state.value}
+                    onChange={field.handleChange}
+                  />
+                )}
+              />
+              <form.Field
+                name="introEnabled"
+                children={(field) => (
+                  <label className="flex items-center gap-3">
+                    Optional introduction
+                    <Switch
+                      checked={field.state.value}
+                      onCheckedChange={field.handleChange}
+                    />
+                  </label>
+                )}
+              />
+              <form.Field
+                name="introLeadMinutes"
+                children={(field) => (
+                  <label>
+                    Introduction lead (minutes)
+                    <Input
+                      type="number"
+                      min={0}
+                      value={field.state.value}
+                      onChange={(e) =>
+                        field.handleChange(Number(e.target.value))
+                      }
+                    />
+                  </label>
+                )}
+              />
+              <form.Field
+                name="streamUrl"
+                children={(field) => (
+                  <label>
+                    Stream URL (intro and Showtime)
+                    <Input
+                      type="url"
+                      placeholder="https://youtube.com/..."
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                    />
+                  </label>
+                )}
+              />
+              <form.Field
+                name="showtimeStreamUrl"
+                children={(field) => (
+                  <label>
+                    Showtime stream URL (optional, replaces the stream URL
+                    during Showtime)
+                    <Input
+                      type="url"
+                      placeholder="https://youtube.com/..."
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                    />
+                  </label>
+                )}
+              />
               <form.Field
                 name="isPrivate"
                 children={(field) => (
@@ -670,7 +795,7 @@ function CreateEventRoute() {
                   children={(field) => (
                     <TextField
                       className="md:col-span-2"
-                      description="GitHub repository URL to fetch available tags"
+                      description="https://github.com/<owner>/<repo>, used to fetch available tags"
                       errors={field.state.meta.errors}
                       label="Monorepo URL *"
                     >
@@ -715,7 +840,7 @@ function CreateEventRoute() {
                 name="basePath"
                 children={(field) => (
                   <TextField
-                    description="Path in the monorepo where the game logic is located (e.g., bots/softcore)"
+                    description="Relative path in the monorepo where the game logic is located (e.g., bots/softcore)"
                     errors={field.state.meta.errors}
                     label="Base Path *"
                   >

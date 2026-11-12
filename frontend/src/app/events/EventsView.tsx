@@ -1,8 +1,11 @@
 'use client'
 
 import { ArrowRight, CalendarDays, MapPin } from 'lucide-react'
+import { useEventClock } from '@/hooks/use-event-clock'
+import { eventState, lifecycleLabels } from '@/lib/event-lifecycle'
 import type { Event } from '@/app/actions/event'
 import EventsTable from '@/app/events/EventTable'
+import { eventDescriptionPreview } from '@/app/events/event-description-preview'
 import {
   buildEventsViewModel,
   buildPublicEventsViewModel,
@@ -25,7 +28,7 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
 })
 
 function formatDateRange(event: Event) {
-  return `${dateFormatter.format(new Date(event.startDate))} – ${dateFormatter.format(new Date(event.endDate))}`
+  return `${dateFormatter.format(new Date(event.startDate))} – ${dateFormatter.format(new Date(event.scheduledEndDate))} (scheduled)`
 }
 
 function FeaturedEvent({
@@ -38,6 +41,7 @@ function FeaturedEvent({
   showJoined: boolean
 }) {
   const status = getEventStatus(event, now)
+  const description = eventDescriptionPreview(event.description ?? '')
   const presentation = {
     upcoming: {
       eyebrow: 'Coming up',
@@ -71,7 +75,7 @@ function FeaturedEvent({
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={presentation.variant}>
-                  {presentation.label}
+                  {lifecycleLabels[eventState(event, now)]}
                 </Badge>
                 {showJoined && <Badge variant="secondary">Joined</Badge>}
               </div>
@@ -82,9 +86,9 @@ function FeaturedEvent({
                 >
                   {event.name}
                 </CardTitle>
-                {event.description && (
+                {description && (
                   <CardDescription className="mt-2 line-clamp-2 max-w-3xl text-base">
-                    {event.description}
+                    {description}
                   </CardDescription>
                 )}
               </div>
@@ -122,7 +126,7 @@ export default function EventsView({
   allEvents: Event[]
   isLoggedIn: boolean
 }>) {
-  const now = Date.now()
+  const now = useEventClock()
 
   const { featuredEvent, events, joinedEventIds } = isLoggedIn
     ? buildEventsViewModel(allEvents, myEvents, now)

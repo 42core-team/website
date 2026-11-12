@@ -1,6 +1,8 @@
 export const ELO_WEIGHT = 70;
 export const ACTIVITY_WEIGHT = 30;
-export const RECENT_OPPONENT_PENALTY = 100;
+export const REPEAT_OPPONENT_WEIGHT = 150;
+export const REPEAT_OPPONENT_DECAY = 0.5;
+export const REPEAT_OPPONENT_HISTORY = 10;
 export const ELO_DISTANCE_SCALE = 400;
 export const ACTIVITY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -8,13 +10,15 @@ export interface QueueOpponentCandidate {
   id: string;
   elo: number;
   lastQueueMatchAt: Date | null;
-  wasRecentOpponent: boolean;
+  /** For each recent match against this team: 0 = the latest match, 1 = the one before, ... */
+  matchesAgo: number[];
 }
 
 export interface ScoredQueueOpponent extends QueueOpponentCandidate {
   score: number;
 }
 
+/** Scores ELO closeness and recent activity, minus a fading penalty per recent match against the candidate. */
 export function scoreQueueOpponent(
   teamElo: number,
   candidate: QueueOpponentCandidate,
@@ -35,11 +39,13 @@ export function scoreQueueOpponent(
     score += activity * ACTIVITY_WEIGHT;
   }
 
-  if (candidate.wasRecentOpponent) score -= RECENT_OPPONENT_PENALTY;
+  for (const age of candidate.matchesAgo)
+    score -= REPEAT_OPPONENT_WEIGHT * REPEAT_OPPONENT_DECAY ** age;
 
   return score;
 }
 
+/** Sorts candidates best first, using the team id to break ties. */
 export function rankQueueOpponents(
   teamElo: number,
   candidates: QueueOpponentCandidate[],

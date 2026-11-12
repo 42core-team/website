@@ -7,12 +7,44 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useNavbar } from '@/contexts/NavbarContext'
 import { cn } from '@/lib/utils'
+import {
+  parseWikiLanguage,
+  setWikiLanguage,
+  useWikiLanguage,
+} from '@/lib/wiki-language'
 import { scrollToWikiHeading } from '@/lib/wiki-scroll'
 import { VersionSelector } from './VersionSelector'
 import { WikiNavigation } from './WikiNavigation'
 import { WikiSearch } from './WikiSearch'
 
 const SIDEBAR_SCROLL_KEY = 'wiki-sidebar-scroll'
+
+// Shows the panel of tab in its rehype-code-group.
+function activateTab(tab: HTMLElement) {
+  const group = tab.closest('.rehype-code-group')
+  if (!group) return
+
+  const tabs = group.querySelectorAll<HTMLElement>('.rcg-tab')
+  const blocks = group.querySelectorAll<HTMLElement>('.rcg-block')
+  const idx = Array.from(tabs).indexOf(tab)
+  if (idx === -1) return
+
+  // Deactivate all tabs & panels
+  tabs.forEach((t) => {
+    t.classList.remove('active')
+    t.setAttribute('aria-selected', 'false')
+  })
+  blocks.forEach((b) => {
+    b.classList.remove('active')
+    b.setAttribute('hidden', 'true')
+  })
+
+  // Activate the selected tab & panel
+  tab.classList.add('active')
+  tab.setAttribute('aria-selected', 'true')
+  blocks[idx].classList.add('active')
+  blocks[idx].removeAttribute('hidden')
+}
 
 interface WikiLayoutProps {
   children: React.ReactNode
@@ -35,6 +67,7 @@ export function WikiLayout({
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const { isBasicNavbarMenuOpen } = useNavbar()
   const sidebarRef = useRef<HTMLElement>(null)
+  const language = useWikiLanguage()
 
   // Save sidebar scroll position on scroll (debounced)
   useEffect(() => {
@@ -113,37 +146,20 @@ export function WikiLayout({
     const container = document.querySelector('.main-wiki-content')
     if (!container) return
 
-    const activateTab = (tab: HTMLElement) => {
-      const group = tab.closest('.rehype-code-group')
-      if (!group) return
-
-      const tabs = group.querySelectorAll<HTMLElement>('.rcg-tab')
-      const blocks = group.querySelectorAll<HTMLElement>('.rcg-block')
-      const idx = Array.from(tabs).indexOf(tab)
-      if (idx === -1) return
-
-      // Deactivate all tabs & panels
-      tabs.forEach((t) => {
-        t.classList.remove('active')
-        t.setAttribute('aria-selected', 'false')
-      })
-      blocks.forEach((b) => {
-        b.classList.remove('active')
-        b.setAttribute('hidden', 'true')
-      })
-
-      // Activate the selected tab & panel
-      tab.classList.add('active')
-      tab.setAttribute('aria-selected', 'true')
-      blocks[idx].classList.add('active')
-      blocks[idx].removeAttribute('hidden')
+    // Choosing a language tab switches the language of the whole wiki.
+    const selectTab = (tab: HTMLElement) => {
+      activateTab(tab)
+      const tabLanguage = parseWikiLanguage(
+        tab.dataset.rcgValue ?? tab.textContent,
+      )
+      if (tabLanguage) setWikiLanguage(tabLanguage)
     }
 
     const handleTabClick = (e: MouseEvent) => {
       const tab = (e.target as HTMLElement).closest(
         '.rcg-tab',
       ) as HTMLElement | null
-      if (tab) activateTab(tab)
+      if (tab) selectTab(tab)
     }
 
     const handleTabKeyDown = (e: KeyboardEvent) => {
@@ -178,7 +194,7 @@ export function WikiLayout({
 
       e.preventDefault()
       tabs[next].focus()
-      activateTab(tabs[next])
+      selectTab(tabs[next])
     }
 
     container.addEventListener('click', handleTabClick as EventListener)
@@ -191,6 +207,25 @@ export function WikiLayout({
       )
     }
   }, [])
+
+  // Show the selected language in every code group with a matching tab.
+  useEffect(() => {
+    const container = document.querySelector('.main-wiki-content')
+    if (!container) return
+
+    container
+      .querySelectorAll<HTMLElement>('.rehype-code-group')
+      .forEach((group) => {
+        const tabs = Array.from(group.querySelectorAll<HTMLElement>('.rcg-tab'))
+        const tab = tabs.find(
+          (candidate) =>
+            parseWikiLanguage(
+              candidate.dataset.rcgValue ?? candidate.textContent,
+            ) === language,
+        )
+        if (tab && !tab.classList.contains('active')) activateTab(tab)
+      })
+  }, [language, pageContent])
 
   useEffect(() => {
     const container = document.querySelector('.main-wiki-content')
@@ -285,7 +320,10 @@ export function WikiLayout({
           </div>
         </header>
 
-        <main className="main-wiki-content min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 sm:p-6">
+        <main
+          data-wiki-lang={language}
+          className="main-wiki-content min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 sm:p-6"
+        >
           <div
             className="mx-auto max-w-4xl"
             style={{ viewTransitionName: 'wiki-content' }}

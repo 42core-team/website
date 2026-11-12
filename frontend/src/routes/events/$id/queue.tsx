@@ -1,9 +1,14 @@
+import { TeamPicture } from '@/components/team/TeamAppearance'
+import { getEventById } from '@/app/actions/event'
+import { matchmakingOpen } from '@/lib/event-lifecycle'
+import { useEventClock } from '@/hooks/use-event-clock'
 import type { QueueOpponent } from '@/app/actions/team'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import type { AxiosError } from 'axios'
 import { motion } from 'framer-motion'
-import { CircleDollarSign, LogIn, Search, Swords } from 'lucide-react'
+import { CircleDollarSign, Lock, LogIn, Search, Swords } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -26,14 +31,18 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
+import {
+  QUEUE_MATCHES_IDLE_REFETCH_INTERVAL_MS,
+  QUEUE_MATCHES_RUNNING_REFETCH_INTERVAL_MS,
+  QUEUE_SUMMARY_REFETCH_INTERVAL_MS,
+} from '@/lib/query-intervals'
 import { cn } from '@/lib/utils'
-import MatchesList from "#/components/MatchesList.tsx";
+import MatchesList from '#/components/MatchesList.tsx'
 
 export const Route = createFileRoute('/events/$id/queue')({
   component: QueueRoute,
 })
-
-const QUEUE_REFETCH_INTERVAL_MS = 5000
 
 function getErrorMessage(error: Error) {
   const axiosError = error as AxiosError<{ message?: string }>
@@ -41,19 +50,36 @@ function getErrorMessage(error: Error) {
 }
 
 function QueueRoute() {
+  const now = useEventClock()
   const { id } = Route.useParams()
   const queryClient = useQueryClient()
+  const eventQuery = useQuery({
+    queryKey: ['event', id],
+    queryFn: () => getEventById(id),
+  })
+  const teamQuery = useQuery({
+    queryKey: myTeamQueryKey(id),
+    queryFn: () => myTeamQueryFn(id),
+  })
+  const playable = Boolean(
+    eventQuery.data &&
+    teamQuery.data &&
+    matchmakingOpen(eventQuery.data, teamQuery.data, now),
+  )
   const [isOpponentDialogOpen, setIsOpponentDialogOpen] = useState(false)
   const [opponentSearch, setOpponentSearch] = useState('')
   const queueSummaryQuery = useQuery({
     queryKey: ['event', id, 'queue-summary'],
     queryFn: () => getQueueSummary(id),
-    refetchInterval: QUEUE_REFETCH_INTERVAL_MS,
+    refetchInterval: QUEUE_SUMMARY_REFETCH_INTERVAL_MS,
   })
   const queueMatchesQuery = useQuery({
     queryKey: ['event', id, 'queue-matches'],
     queryFn: () => getQueueMatches(id),
-    refetchInterval: QUEUE_REFETCH_INTERVAL_MS,
+    refetchInterval: (query) =>
+      query.state.data?.some((match) => match.state !== MatchState.FINISHED)
+        ? QUEUE_MATCHES_RUNNING_REFETCH_INTERVAL_MS
+        : QUEUE_MATCHES_IDLE_REFETCH_INTERVAL_MS,
     enabled: Boolean(queueSummaryQuery.data),
   })
   const opponentsQuery = useQuery({
@@ -119,8 +145,8 @@ function QueueRoute() {
 
   const credits = queueSummaryQuery.data.credits
   const maxCredits = queueSummaryQuery.data.maxCredits
-  const canJoinQueue = credits >= 1
-  const canStartDirectMatch = credits >= 2
+  const canJoinQueue = playable && credits >= 1
+  const canStartDirectMatch = playable && credits >= 2
   const queueMatches = queueMatchesQuery.data ?? []
   const activeQueueMatches = queueMatches.filter(
     (match) => match.state === MatchState.IN_PROGRESS,
@@ -135,6 +161,16 @@ function QueueRoute() {
 
   return (
     <main className="container mx-auto max-w-4xl space-y-6 px-4 py-8">
+      {!playable && (
+        <Alert role="status">
+          <Lock className="size-4" aria-hidden="true" />
+          <AlertTitle>Match making closed</AlertTitle>
+          <AlertDescription>
+            Match making is available during Coding. Match history remains
+            available.
+          </AlertDescription>
+        </Alert>
+      )}
       <Card>
         <CardContent className="flex flex-col gap-5 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -182,6 +218,7 @@ function QueueRoute() {
               <DialogTrigger asChild>
                 <Button
                   variant="outline"
+                  disabled={!canStartDirectMatch}
                   className="h-14 w-full whitespace-normal"
                 >
                   <Swords className="size-4" />
@@ -225,7 +262,10 @@ function QueueRoute() {
                         className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div>
-                          <p className="font-medium">{opponent.name}</p>
+                          <p className="flex items-center gap-2 font-medium">
+                            <TeamPicture team={opponent} />
+                            {opponent.name}
+                          </p>
                         </div>
                         <Button
                           size="sm"
@@ -253,13 +293,21 @@ function QueueRoute() {
       {activeQueueMatches.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">Currently playing</h2>
-          <MatchesList eventId={id} matches={activeQueueMatches} />
+          <MatchesList
+            eventId={id}
+            teamId={queueSummaryQuery.data.id}
+            matches={activeQueueMatches}
+          />
         </section>
       )}
 
       <section className="space-y-3">
         <h2 className="text-xl font-semibold">Your match history</h2>
-        <MatchesList eventId={id} matches={finishedQueueMatches} />
+        <MatchesList
+          eventId={id}
+          teamId={queueSummaryQuery.data.id}
+          matches={finishedQueueMatches}
+        />
       </section>
     </main>
   )

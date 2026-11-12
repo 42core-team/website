@@ -61,7 +61,7 @@ describe('admin bracket reveal order', () => {
     const hiddenMatch = createMatch({
       id: 'hidden',
       round: 0,
-      winner: { id: 'winner', name: 'Winner', score: 3 },
+      winner: { id: 'winner', name: 'Winner' },
       results: [
         { team: { id: 'winner', name: 'Winner' }, score: 3 },
         { team: { id: 'loser', name: 'Loser' }, score: 1 },
@@ -71,7 +71,7 @@ describe('admin bracket reveal order', () => {
       id: 'revealed',
       round: 0,
       isRevealed: true,
-      winner: { id: 'winner', name: 'Winner', score: 3 },
+      winner: { id: 'winner', name: 'Winner' },
     })
 
     const [streamedHiddenMatch, streamedRevealedMatch] =

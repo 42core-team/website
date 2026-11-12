@@ -2,6 +2,7 @@
 
 import { ClientProxyFactory } from "@nestjs/microservices";
 import { GithubApiService } from "./github-api.service";
+import { of } from "rxjs";
 
 jest.mock("../main", () => ({
   getRabbitmqConfig: jest.fn().mockReturnValue({}),
@@ -13,7 +14,7 @@ describe("GitHub organization secret transport", () => {
   });
 
   it("sends the encrypted event token unchanged to the GitHub service", async () => {
-    const emit = jest.fn();
+    const emit = jest.fn().mockReturnValue(of(undefined));
     jest.spyOn(ClientProxyFactory, "create").mockReturnValue({ emit } as never);
     const service = new GithubApiService({
       getOrThrow: jest.fn().mockReturnValue("https://api.example.com"),

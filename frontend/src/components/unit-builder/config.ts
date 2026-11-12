@@ -96,7 +96,8 @@ export function readComponentsConfig(gameConfig: string | undefined) {
       if (
         typeof component.id !== 'string' ||
         typeof component.cost !== 'number' ||
-        typeof component.visualizer_asset_prioritized !== 'boolean' ||
+        typeof component.visualizer_asset_priority !== 'number' ||
+        !Number.isInteger(component.visualizer_asset_priority) ||
         typeof component.visualizer_asset_path !== 'string' ||
         properties.length !== component.properties.length
       ) {
@@ -108,7 +109,7 @@ export function readComponentsConfig(gameConfig: string | undefined) {
           id: component.id,
           properties,
           cost: component.cost,
-          visualizer_asset_prioritized: component.visualizer_asset_prioritized,
+          visualizer_asset_priority: component.visualizer_asset_priority,
           visualizer_asset_path: component.visualizer_asset_path,
         },
       ]

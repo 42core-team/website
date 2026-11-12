@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { formatGamblingCredits } from './gambling-utils'
 
 interface GamblingSidebarProps {
+  membershipEnabled?: boolean
   entries: GamblingSnapshot['entries']
   myTeam: GamblingSnapshot['myTeam']
   isMembershipPending: boolean
@@ -24,6 +25,7 @@ export default function GamblingSidebar({
   myTeam,
   isMembershipPending,
   onToggleMembership,
+  membershipEnabled = true,
 }: GamblingSidebarProps) {
   return (
     <div className="space-y-6">
@@ -51,7 +53,7 @@ export default function GamblingSidebar({
               <Button
                 className="w-full"
                 variant={myTeam.isEntered ? 'outline' : 'default'}
-                disabled={isMembershipPending}
+                disabled={!membershipEnabled || isMembershipPending}
                 onClick={() => onToggleMembership(myTeam.isEntered)}
               >
                 {isMembershipPending ? (

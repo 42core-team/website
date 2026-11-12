@@ -12,6 +12,7 @@ export class GitHubApiClient {
   private userAgent: string;
   private maxRetries: number;
   private logErrors: boolean;
+  private requestTimeoutMs?: number;
   private readonly logger = new Logger(GitHubApiClient.name);
 
   /**
@@ -25,13 +26,15 @@ export class GitHubApiClient {
       userAgent?: string;
       maxRetries?: number;
       logErrors?: boolean;
+      requestTimeoutMs?: number;
     } = {},
   ) {
     this.baseUrl = options.baseUrl || "https://api.github.com";
     this.token = options.token || null;
     this.userAgent = options.userAgent || "GitHub-API-Client";
-    this.maxRetries = options.maxRetries || 3;
+    this.maxRetries = options.maxRetries ?? 3;
     this.logErrors = options.logErrors ?? true;
+    this.requestTimeoutMs = options.requestTimeoutMs;
   }
 
   /**
@@ -53,6 +56,9 @@ export class GitHubApiClient {
           method,
           headers,
           body,
+          signal: this.requestTimeoutMs
+            ? AbortSignal.timeout(this.requestTimeoutMs)
+            : undefined,
         });
 
         // Handle rate limiting
@@ -77,8 +83,11 @@ export class GitHubApiClient {
 
         // Handle other errors
         if (!response.ok) {
-          throw new Error(
-            `GitHub API error on ${url}: ${response.status} ${response.statusText}`,
+          throw Object.assign(
+            new Error(
+              `GitHub API error on ${url}: ${response.status} ${response.statusText}`,
+            ),
+            { status: response.status },
           );
         }
 

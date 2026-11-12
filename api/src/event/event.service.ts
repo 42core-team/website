@@ -12,10 +12,11 @@ import { EventEntity } from "./entities/event.entity";
 import { assertImageExists } from "./image.util";
 import { EventStarterTemplateEntity } from "./entities/event-starter-template.entity";
 import { EventWhitelistEntity } from "./entities/event-whitelist.entity";
+import { isUserRegisteredForEvent } from "./event-registration";
 import {
   DataSource,
+  EntityManager,
   In,
-  IsNull,
   LessThanOrEqual,
   Repository,
   type FindOptionsRelations,
@@ -23,8 +24,10 @@ import {
 } from "typeorm";
 import {
   PermissionRole,
+  UserEntity,
   UserEventPermissionEntity,
 } from "../user/entities/user.entity";
+import { SocialPlatform } from "../user/entities/social-account.entity";
 import { ConfigService } from "@nestjs/config";
 import { TeamService } from "../team/team.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
@@ -32,6 +35,16 @@ import { EventVersionDto } from "./dtos/eventVersionDto";
 import { LockKeys } from "../constants";
 import { WhitelistPlatform } from "./entities/event-whitelist.entity";
 import { encryptSecret } from "../common/encryption";
+import {
+  EventState,
+  getEventState,
+  isRegistrationOpen,
+} from "./event-lifecycle";
+import { EventLifecycleDto } from "./dtos/eventLifecycleDto";
+import { TeamEntity } from "../team/entities/team.entity";
+import { MatchEntity, MatchPhase } from "../match/entites/match.entity";
+import { lockEvent } from "./event-lock";
+import { toPublicUsers } from "../user/dtos/public-user.dto";
 
 @Injectable()
 export class EventService {
@@ -67,15 +80,23 @@ export class EventService {
       if (gotLock[0].pg_try_advisory_lock) {
         try {
           const events = await this.eventRepository.findBy({
-            lockedAt: IsNull(),
-            repoLockDate: LessThanOrEqual(new Date()),
+            state: In([EventState.REGISTRATION, EventState.PLAYING]),
           });
           for (const event of events) {
-            this.logger.log(
-              `Locking event ${event.name} as it past its repoLockDate date.`,
-            );
-            await this.lockEvent(event.id);
+            try {
+              const state = getEventState(event);
+              if (state === EventState.SUBMISSIONS_CLOSED)
+                await this.lockEvent(event.id, true);
+              else if (state !== event.state)
+                await this.eventRepository.update(
+                  { id: event.id, state: event.state },
+                  { state },
+                );
+            } catch (error) {
+              this.logger.error(`Failed to advance event ${event.id}`, error);
+            }
           }
+          await this.refreshRepositoryLockConfirmations();
         } finally {
           await queryRunner.query("SELECT pg_advisory_unlock($1)", [lockKey]);
         }
@@ -83,6 +104,22 @@ export class EventService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  private async refreshRepositoryLockConfirmations() {
+    // The schedule closes submissions immediately; lockedAt describes confirmed
+    // external access, not message dispatch. Recompute it as callbacks arrive.
+    await this.dataSource.query(`
+      UPDATE "events" AS event
+      SET "lockedAt" = CASE WHEN NOT EXISTS (
+        SELECT 1 FROM "teams" AS team
+        WHERE team."eventId" = event.id
+          AND team."deletedAt" IS NULL
+          AND NOT team."tournamentExcluded"
+          AND team."repositoryStatus" <> 'LOCKED'
+      ) THEN COALESCE(event."lockedAt", CURRENT_TIMESTAMP) ELSE NULL END
+      WHERE event.state IN ('SUBMISSIONS_CLOSED', 'SHOWCASE', 'COMPLETED')
+    `);
   }
 
   async getAllEvents(): Promise<EventEntity[]> {
@@ -152,6 +189,7 @@ export class EventService {
   }
 
   private async sanitizeEventConfigs(event: EventEntity) {
+    event.state = getEventState(event);
     if (event.startDate > new Date()) {
       event.gameConfig = "";
       event.serverConfig = "";
@@ -263,7 +301,7 @@ export class EventService {
     githubOrgSecret: string,
     location: string,
     startDate: number,
-    endDate: number,
+    endDate: number | undefined,
     minTeamSize: number,
     maxTeamSize: number,
     gameServerDockerImage: string,
@@ -275,13 +313,34 @@ export class EventService {
     gameConfig: string,
     serverConfig: string,
     isPrivate: boolean = false,
+    lifecycle: {
+      submissionDeadline?: number;
+      scheduledEndDate?: number;
+      introEnabled?: boolean;
+      introLeadMinutes?: number;
+      streamUrl?: string;
+      showtimeStreamUrl?: string;
+    } = {},
   ) {
+    const dates = {
+      startDate: new Date(startDate),
+      submissionDeadline: new Date(
+        lifecycle.submissionDeadline ?? endDate ?? NaN,
+      ),
+      scheduledEndDate: new Date(lifecycle.scheduledEndDate ?? endDate ?? NaN),
+      introEnabled: lifecycle.introEnabled ?? false,
+      introLeadMinutes: lifecycle.introLeadMinutes ?? 15,
+    };
+    this.validateLifecycleDates(dates);
+    const streamUrl = normalizeStreamUrl(lifecycle.streamUrl);
+    const showtimeStreamUrl = normalizeStreamUrl(
+      lifecycle.showtimeStreamUrl,
+      "showtimeStreamUrl",
+    );
     await Promise.all(
-      [
-        gameServerDockerImage,
-        myCoreBotDockerImage,
-        visualizerDockerImage,
-      ].map(assertImageExists),
+      [gameServerDockerImage, myCoreBotDockerImage, visualizerDockerImage].map(
+        assertImageExists,
+      ),
     );
 
     githubOrgSecret = encryptSecret(
@@ -297,8 +356,15 @@ export class EventService {
       location,
       minTeamSize,
       maxTeamSize,
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
+      ...dates,
+      streamUrl,
+      showtimeStreamUrl,
+      state: getEventState(dates),
+      canCreateTeam: isRegistrationOpen(dates),
+      processQueue: isRegistrationOpen(dates),
+      gamblingEnabled: isRegistrationOpen(dates),
+      endDate: dates.scheduledEndDate,
+      repoLockDate: dates.submissionDeadline,
       permissions: [
         {
           user: {
@@ -405,16 +471,42 @@ export class EventService {
   }
 
   async isUserRegisteredForEvent(eventId: string, userId: string) {
-    /**
-     * for public events, all users are considered registered
-     */
-    if (await this.isEventPublic(eventId)) return true;
-    return await this.eventRepository.existsBy({
-      id: eventId,
-      users: {
-        id: userId,
-      },
+    return isUserRegisteredForEvent(this.eventRepository, eventId, userId);
+  }
+
+  /**
+   * Whether the user may be part of a team in this event. Public events are
+   * open to everyone. Private events require the user to be registered and,
+   * when the event has a whitelist, to still be on it.
+   */
+  async isUserEligibleForEvent(
+    eventId: string,
+    userId: string,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<boolean> {
+    const event = await manager.findOne(EventEntity, {
+      select: { id: true, isPrivate: true },
+      where: { id: eventId },
+      loadEagerRelations: false,
     });
+    if (!event) return false;
+    if (!event.isPrivate) return true;
+
+    const user = await manager.findOne(UserEntity, {
+      where: { id: userId, events: { id: eventId } },
+      relations: { socialAccounts: true },
+      loadEagerRelations: false,
+    });
+    if (!user) return false;
+    const fortyTwoAccount = user.socialAccounts.find(
+      (sa) => sa.platform === SocialPlatform.FORTYTWO,
+    );
+    return this.isUserWhitelisted(
+      eventId,
+      user.username,
+      fortyTwoAccount?.username ?? null,
+      manager,
+    );
   }
 
   isEventAdmin(eventId: string, userId: string): Promise<boolean> {
@@ -429,18 +521,41 @@ export class EventService {
     });
   }
 
-  async lockEvent(eventId: string) {
-    const event = await this.eventRepository.findOneOrFail({
-      where: {
-        id: eventId,
-      },
-      relations: {
-        teams: true,
-      },
+  async lockEvent(eventId: string, scheduled = false): Promise<UpdateResult> {
+    const closure = await this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(EventEntity);
+      // Use the same row lock as manual lifecycle transitions. The cron snapshot
+      // may predate a reopen or deadline extension, so it cannot authorize closure.
+      const event = await repository.findOneOrFail({
+        where: { id: eventId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (
+        scheduled &&
+        (![EventState.REGISTRATION, EventState.PLAYING].includes(event.state) ||
+          !(event.submissionDeadline <= new Date()))
+      )
+        return null;
+      if ([EventState.SHOWCASE, EventState.COMPLETED].includes(event.state)) {
+        throw new BadRequestException(
+          "Reopen the event before closing submissions again",
+        );
+      }
+      const result = await repository.update(eventId, {
+        state: EventState.SUBMISSIONS_CLOSED,
+        canCreateTeam: false,
+        processQueue: false,
+        lockedAt: null,
+      });
+      const teams = await manager.getRepository(TeamEntity).find({
+        where: { event: { id: eventId } },
+      });
+      return { result, teams };
     });
-
+    if (!closure) return { affected: 0, generatedMaps: [], raw: [] };
+    // Commit disabled capabilities before dispatching asynchronous repository work.
     await Promise.all(
-      event.teams.map(async (team) => {
+      closure.teams.map(async (team) => {
         try {
           await this.teamService.lockTeam(team.id);
         } catch (e) {
@@ -452,21 +567,7 @@ export class EventService {
       }),
     );
 
-    return this.eventRepository.update(eventId, {
-      canCreateTeam: false,
-      lockedAt: new Date(),
-      processQueue: false,
-    });
-  }
-
-  async unlockEvent(eventId: string) {
-    await this.getEventById(eventId);
-    await this.teamService.unlockTeamsForEvent(eventId);
-    return this.eventRepository.update(eventId, {
-      canCreateTeam: true,
-      lockedAt: null,
-      processQueue: true,
-    });
+    return closure.result;
   }
 
   async setCurrentRound(eventId: string, round: number): Promise<UpdateResult> {
@@ -475,13 +576,235 @@ export class EventService {
     });
   }
 
-  async setTeamsLockedDate(
-    eventId: string,
-    date: Date | null,
-  ): Promise<UpdateResult> {
-    return this.eventRepository.update(eventId, {
-      repoLockDate: date,
+  private validateLifecycleDates(
+    event: Pick<
+      EventEntity,
+      | "startDate"
+      | "submissionDeadline"
+      | "scheduledEndDate"
+      | "introEnabled"
+      | "introLeadMinutes"
+    >,
+  ) {
+    if (
+      ![
+        event.startDate,
+        event.submissionDeadline,
+        event.scheduledEndDate,
+      ].every((date) => date instanceof Date && Number.isFinite(date.getTime()))
+    ) {
+      throw new BadRequestException(
+        "Valid startDate, submissionDeadline and scheduledEndDate are required",
+      );
+    }
+    if (
+      event.submissionDeadline <= event.startDate ||
+      event.scheduledEndDate < event.startDate
+    ) {
+      throw new BadRequestException(
+        "Submission deadline must follow start; scheduled end cannot precede start",
+      );
+    }
+    if (
+      !Number.isInteger(event.introLeadMinutes) ||
+      event.introLeadMinutes < 0
+    ) {
+      throw new BadRequestException(
+        "introLeadMinutes must be a nonnegative integer",
+      );
+    }
+  }
+
+  async transitionLifecycle(eventId: string, request: EventLifecycleDto) {
+    const now = new Date();
+    const result = await this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(EventEntity);
+      const event = await repository.findOneOrFail({
+        where: { id: eventId },
+        lock: { mode: "pessimistic_write" },
+      });
+      const state = getEventState(event, now);
+      if (request.action === "reopen") {
+        if (state === EventState.REGISTRATION || state === EventState.PLAYING) {
+          throw new BadRequestException(
+            "Only post-playing events can be reopened",
+          );
+        }
+        const deadline = new Date(request.submissionDeadline ?? NaN);
+        if (
+          !Number.isFinite(deadline.getTime()) ||
+          deadline <= now ||
+          deadline <= event.startDate
+        ) {
+          throw new BadRequestException(
+            "Reopening requires a future submissionDeadline after the start date",
+          );
+        }
+        await repository.update(eventId, {
+          state: EventState.PLAYING,
+          submissionDeadline: deadline,
+          repoLockDate: deadline,
+          completedAt: null,
+          lockedAt: null,
+          canCreateTeam: true,
+          processQueue: true,
+          gamblingEnabled: true,
+        });
+        // Persist desired access with the transition so reconciliation can resume
+        // unlocking even if the process stops before dispatching GitHub work.
+        await manager
+          .getRepository(TeamEntity)
+          .update({ event: { id: eventId } }, { locked: false });
+      } else if (request.action === "showcase") {
+        if (state !== EventState.SUBMISSIONS_CLOSED)
+          throw new BadRequestException("Showcase requires closed submissions");
+        const teams = await manager
+          .getRepository(TeamEntity)
+          .find({ where: { event: { id: eventId } } });
+        if (
+          teams.some(
+            (team) =>
+              !team.tournamentExcluded && team.repositoryStatus !== "LOCKED",
+          )
+        ) {
+          throw new ConflictException(
+            "All nonexcluded team repositories must be confirmed LOCKED",
+          );
+        }
+        await repository.update(eventId, {
+          state: EventState.SHOWCASE,
+          lockedAt: now,
+          canCreateTeam: false,
+          processQueue: false,
+        });
+      } else if (request.action === "complete") {
+        if (state !== EventState.SHOWCASE)
+          throw new BadRequestException(
+            "Only showcase events can be completed",
+          );
+        await repository.update(eventId, {
+          state: EventState.COMPLETED,
+          completedAt: now,
+          canCreateTeam: false,
+          processQueue: false,
+        });
+      } else {
+        throw new BadRequestException("Unknown lifecycle action");
+      }
+      return repository.findOneByOrFail({ id: eventId });
     });
+    if (request.action === "reopen")
+      await this.teamService.unlockTeamsForEvent(eventId);
+    await this.sanitizeEventConfigs(result);
+    return result;
+  }
+
+  async retryRepositoryOperation(eventId: string, teamId: string) {
+    await this.dataSource
+      .getRepository(TeamEntity)
+      .findOneOrFail({ where: { id: teamId, event: { id: eventId } } });
+    return this.teamService.retryRepositoryOperation(teamId);
+  }
+
+  async setTeamExclusion(eventId: string, teamId: string, excluded: boolean) {
+    return this.dataSource.transaction(async (manager) => {
+      const event = await manager.getRepository(EventEntity).findOneOrFail({
+        where: { id: eventId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (getEventState(event) !== EventState.SUBMISSIONS_CLOSED)
+        throw new BadRequestException(
+          "Tournament exclusions can only change while submissions are closed",
+        );
+      const repository = manager.getRepository(TeamEntity);
+      await repository.findOneOrFail({
+        where: { id: teamId, event: { id: eventId } },
+      });
+      await repository.update(teamId, { tournamentExcluded: excluded });
+      return repository.findOneByOrFail({ id: teamId });
+    });
+  }
+
+  /** Read-only, so coding allows it too; only code freeze can act on it. */
+  async getRepositoryActivity(eventId: string) {
+    const event = await this.eventRepository.findOneOrFail({
+      where: { id: eventId },
+    });
+    const state = getEventState(event);
+    if (state === EventState.SUBMISSIONS_CLOSED)
+      await this.dataSource.transaction((manager) =>
+        this.assertRepositoryActivityFilterOpen(manager, eventId),
+      );
+    else if (state !== EventState.PLAYING)
+      throw new BadRequestException(
+        "Repository activity can only be checked during coding or code freeze",
+      );
+    return this.teamService.getRepositoryActivityForEvent(eventId);
+  }
+
+  /**
+   * Excludes the selected teams whose repositories are still inactive. It never
+   * re-includes a team, so earlier manual decisions survive a repeated run.
+   */
+  async excludeInactiveTeams(eventId: string, teamIds: string[]) {
+    await this.dataSource.transaction((manager) =>
+      this.assertRepositoryActivityFilterOpen(manager, eventId),
+    );
+    const activity =
+      await this.teamService.getRepositoryActivityForEvent(eventId);
+    // Validation accepts uppercase UUIDs; stored ids are lowercase.
+    const selected = new Set(teamIds.map((id) => id.toLowerCase()));
+    const inactive = new Set(
+      activity
+        .filter(({ status }) => status === "inactive")
+        .map(({ teamId }) => teamId),
+    );
+    return this.dataSource.transaction(async (manager) => {
+      await this.assertRepositoryActivityFilterOpen(manager, eventId);
+      const repository = manager.getRepository(TeamEntity);
+      const participants = await repository.find({
+        select: { id: true },
+        where: { event: { id: eventId }, tournamentExcluded: false },
+        loadEagerRelations: false,
+      });
+      const excludedTeamIds = participants
+        .map((team) => team.id)
+        .filter((id) => selected.has(id) && inactive.has(id));
+      if (excludedTeamIds.length === 0) return { excludedTeamIds };
+      if (participants.length - excludedTeamIds.length < 2)
+        throw new BadRequestException(
+          "Excluding these teams would leave fewer than 2 teams in the tournament",
+        );
+      await repository.update(
+        { id: In(excludedTeamIds) },
+        { tournamentExcluded: true },
+      );
+      return { excludedTeamIds };
+    });
+  }
+
+  /** Entrants must stay fixed once the group phase has generated matches. */
+  private async assertRepositoryActivityFilterOpen(
+    manager: EntityManager,
+    eventId: string,
+  ) {
+    await lockEvent(manager, eventId);
+    const event = await manager.getRepository(EventEntity).findOneOrFail({
+      where: { id: eventId },
+      lock: { mode: "pessimistic_write" },
+    });
+    if (getEventState(event) !== EventState.SUBMISSIONS_CLOSED)
+      throw new BadRequestException(
+        "Inactive teams can only be excluded while submissions are closed",
+      );
+    const tournamentMatches = await manager.getRepository(MatchEntity).countBy({
+      phase: In([MatchPhase.SWISS, MatchPhase.ELIMINATION]),
+      teams: { event: { id: eventId } },
+    });
+    if (tournamentMatches > 0)
+      throw new BadRequestException(
+        "Repository activity cannot be applied after tournament matches exist",
+      );
   }
 
   async updateEventSettings(
@@ -492,6 +815,7 @@ export class EventService {
       gamblingEnabled?: boolean;
       maxQueueCredits?: number;
       queueCreditIntervalMinutes?: number;
+      tournamentAdvancementLimit?: number | null;
       isPrivate?: boolean;
       name?: string;
       description?: string;
@@ -500,6 +824,12 @@ export class EventService {
       location?: string;
       startDate?: number;
       endDate?: number;
+      submissionDeadline?: number;
+      scheduledEndDate?: number;
+      introEnabled?: boolean;
+      introLeadMinutes?: number;
+      streamUrl?: string;
+      showtimeStreamUrl?: string;
       minTeamSize?: number;
       maxTeamSize?: number;
       gameServerDockerImage?: string;
@@ -512,7 +842,7 @@ export class EventService {
       serverConfig?: string;
     },
   ): Promise<UpdateResult> {
-    await this.getEventById(eventId);
+    const event = await this.getEventById(eventId);
 
     const update: Partial<EventEntity> = {};
 
@@ -521,6 +851,7 @@ export class EventService {
       "processQueue",
       "gamblingEnabled",
       "isPrivate",
+      "introEnabled",
     ] as const;
     for (const field of booleanFields) {
       if (typeof settings[field] === "boolean") {
@@ -568,6 +899,7 @@ export class EventService {
       "maxTeamSize",
       "maxQueueCredits",
       "queueCreditIntervalMinutes",
+      "introLeadMinutes",
     ] as const;
     for (const field of numberFields) {
       if (typeof settings[field] === "number") {
@@ -575,11 +907,60 @@ export class EventService {
       }
     }
 
-    if (settings.startDate) {
+    if (settings.tournamentAdvancementLimit !== undefined) {
+      update.tournamentAdvancementLimit = settings.tournamentAdvancementLimit;
+    }
+
+    if (settings.streamUrl !== undefined) {
+      update.streamUrl = normalizeStreamUrl(settings.streamUrl);
+    }
+
+    if (settings.showtimeStreamUrl !== undefined) {
+      update.showtimeStreamUrl = normalizeStreamUrl(
+        settings.showtimeStreamUrl,
+        "showtimeStreamUrl",
+      );
+    }
+
+    if (settings.startDate !== undefined) {
       update.startDate = new Date(settings.startDate);
     }
-    if (settings.endDate) {
-      update.endDate = new Date(settings.endDate);
+    if (
+      settings.scheduledEndDate !== undefined ||
+      settings.endDate !== undefined
+    ) {
+      update.scheduledEndDate = new Date(
+        settings.scheduledEndDate ?? settings.endDate!,
+      );
+      update.endDate = update.scheduledEndDate;
+    }
+    if (settings.submissionDeadline !== undefined) {
+      if (!isRegistrationOpen(event))
+        throw new BadRequestException(
+          "Use reopen to change a closed event's deadline",
+        );
+      update.submissionDeadline = new Date(settings.submissionDeadline);
+      update.repoLockDate = update.submissionDeadline;
+    }
+    if (
+      settings.startDate !== undefined ||
+      settings.submissionDeadline !== undefined ||
+      settings.scheduledEndDate !== undefined ||
+      settings.endDate !== undefined ||
+      settings.introEnabled !== undefined ||
+      settings.introLeadMinutes !== undefined
+    ) {
+      this.validateLifecycleDates({ ...event, ...update });
+    }
+    if (
+      !isRegistrationOpen(event) &&
+      (settings.canCreateTeam === true ||
+        settings.processQueue === true ||
+        settings.gamblingEnabled === true)
+    ) {
+      throw new BadRequestException(
+        "Reopen the event to enable playing capabilities",
+      );
     }
 
     if (Object.keys(update).length === 0) {
@@ -590,6 +971,41 @@ export class EventService {
       };
     }
 
+    const updatesLimit = update.tournamentAdvancementLimit !== undefined;
+    if (update.startDate || updatesLimit) {
+      return this.dataSource.transaction(async (manager) => {
+        // Bracket generation holds this lock, so it cannot read a limit that
+        // changes before its matches exist.
+        if (updatesLimit) await lockEvent(manager, eventId);
+        const repository = manager.getRepository(EventEntity);
+        const current = await repository.findOneOrFail({
+          where: { id: eventId },
+          lock: { mode: "pessimistic_write" },
+        });
+        if (
+          updatesLimit &&
+          update.tournamentAdvancementLimit !==
+            current.tournamentAdvancementLimit
+        ) {
+          const eliminationMatches = await manager
+            .getRepository(MatchEntity)
+            .countBy({
+              phase: MatchPhase.ELIMINATION,
+              teams: { event: { id: eventId } },
+            });
+          if (eliminationMatches > 0)
+            throw new BadRequestException(
+              "The advancement limit cannot change once the elimination bracket exists",
+            );
+        }
+        if (update.startDate) {
+          const now = new Date();
+          this.validateLifecycleDates({ ...current, ...update });
+          update.state = getEventState({ ...current, ...update }, now);
+        }
+        return repository.update(eventId, update);
+      });
+    }
     return this.eventRepository.update(eventId, update);
   }
 
@@ -603,7 +1019,7 @@ export class EventService {
         user: true,
       },
     });
-    return permissions.map((p) => p.user);
+    return toPublicUsers(permissions.map((p) => p.user));
   }
 
   async addEventAdmin(eventId: string, userId: string) {
@@ -658,15 +1074,25 @@ export class EventService {
   }
 
   async getCurrentLiveEvent() {
+    // Picks the event with the most registered users. The users are only
+    // counted, never selected, so none of them end up in the public response.
     const qb = this.eventRepository
       .createQueryBuilder("event")
-      .leftJoinAndSelect("event.users", "user")
+      .addSelect(
+        (subQuery) =>
+          subQuery
+            .select("COUNT(*)")
+            .from("events_users", "event_user")
+            .where('event_user."eventsId" = event.id'),
+        "user_count",
+      )
       .where("event.isPrivate = false")
       .andWhere("event.startDate <= :now", { now: new Date() })
-      .andWhere("event.endDate >= :now", { now: new Date() })
+      .andWhere("event.submissionDeadline > :now", { now: new Date() })
+      .andWhere("event.state IN (:...states)", {
+        states: [EventState.REGISTRATION, EventState.PLAYING],
+      })
       .andWhere("event.canCreateTeam = true")
-      .addSelect("COUNT(user.id)", "user_count")
-      .groupBy("event.id, user.id")
       .orderBy("user_count", "DESC")
       .limit(1);
 
@@ -697,11 +1123,9 @@ export class EventService {
     });
   }
 
-  canCreateTeamInEvent(eventId: string): Promise<boolean> {
-    return this.eventRepository.existsBy({
-      id: eventId,
-      canCreateTeam: true,
-    });
+  async canCreateTeamInEvent(eventId: string): Promise<boolean> {
+    const event = await this.eventRepository.findOneBy({ id: eventId });
+    return !!event && event.canCreateTeam && isRegistrationOpen(event);
   }
 
   async getWhitelist(eventId: string): Promise<EventWhitelistEntity[]> {
@@ -787,8 +1211,11 @@ export class EventService {
     });
   }
 
-  async hasWhitelist(eventId: string): Promise<boolean> {
-    return this.whitelistRepository.existsBy({
+  async hasWhitelist(
+    eventId: string,
+    manager?: EntityManager,
+  ): Promise<boolean> {
+    return this.getWhitelistRepository(manager).existsBy({
       event: { id: eventId },
     });
   }
@@ -797,8 +1224,9 @@ export class EventService {
     eventId: string,
     githubUsername: string,
     fortyTwoUsername: string | null,
+    manager?: EntityManager,
   ): Promise<boolean> {
-    if (!(await this.hasWhitelist(eventId))) {
+    if (!(await this.hasWhitelist(eventId, manager))) {
       return true;
     }
 
@@ -816,7 +1244,7 @@ export class EventService {
       });
     }
 
-    return this.whitelistRepository.existsBy(
+    return this.getWhitelistRepository(manager).existsBy(
       conditions.map((cond) => ({
         event: { id: eventId },
         username: cond.username,
@@ -824,4 +1252,28 @@ export class EventService {
       })),
     );
   }
+
+  private getWhitelistRepository(manager?: EntityManager) {
+    return (
+      manager?.getRepository(EventWhitelistEntity) ?? this.whitelistRepository
+    );
+  }
+}
+
+/** Empty clears the stream link; anything else must be an http(s) URL, stored as entered. */
+export function normalizeStreamUrl(
+  value: string | undefined,
+  field = "streamUrl",
+): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    throw new BadRequestException(`${field} must be a valid URL`);
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:")
+    throw new BadRequestException(`${field} must use http or https`);
+  return trimmed;
 }

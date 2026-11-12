@@ -43,15 +43,6 @@ export class SocialAccountService {
     });
   }
 
-  async getSocialAccountByPlatform(
-    userId: string,
-    platform: SocialPlatform,
-  ): Promise<SocialAccountEntity | null> {
-    return await this.socialAccountRepository.findOne({
-      where: { userId, platform },
-    });
-  }
-
   async upsertSocialAccountForUser(params: {
     userId: string;
     platform: SocialPlatform;

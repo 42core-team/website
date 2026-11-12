@@ -7,6 +7,7 @@ import { useMemo } from 'react'
 import { MatchState } from '@/app/actions/tournament-model'
 import { MatchHistoryBadges } from '@/components/match/MatchHistoryBadges'
 import { LocationTags } from '@/components/team'
+import { TeamPicture } from '@/components/team/TeamAppearance'
 import {
   Table,
   TableBody,
@@ -202,6 +203,7 @@ export function BracketRankingTable({
                   </TableCell>
                   <TableCell className="pl-8">
                     <div className="flex flex-wrap items-center gap-2">
+                      <TeamPicture team={team} />
                       <span>{team.name}</span>
                       <LocationTags tags={team.tags} />
                     </div>

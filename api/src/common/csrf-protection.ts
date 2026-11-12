@@ -11,13 +11,14 @@ function normalizeOrigin(origin: string): string | null {
 }
 
 /**
- * Reject browser cross-site mutations that carry the authentication cookie.
- * Requests without cookie authentication remain available to non-browser
- * clients and are still subject to the normal authentication guards.
+ * Reject browser cross-site mutations that carry any session cookie (the
+ * access `token` or the `refresh_token`). Requests without cookie
+ * authentication remain available to non-browser clients and are still
+ * subject to the normal authentication guards.
  */
 export function createCsrfProtection(
   allowedOrigin: string,
-  authCookieName: string,
+  sessionCookieNames: readonly string[],
 ): RequestHandler {
   const normalizedAllowedOrigin = normalizeOrigin(allowedOrigin);
   if (!normalizedAllowedOrigin) {
@@ -32,7 +33,7 @@ export function createCsrfProtection(
         cookies?: Record<string, string>;
       }
     ).cookies;
-    if (!cookies?.[authCookieName]) return next();
+    if (!sessionCookieNames.some((name) => cookies?.[name])) return next();
 
     const origin = req.get("origin");
     const fetchSite = req.get("sec-fetch-site")?.toLowerCase();

@@ -4,6 +4,7 @@ import * as React from 'react'
 
 import type { Event } from '@/app/actions/event'
 import { getEventStatus } from '@/app/events/events-view'
+import { eventState, lifecycleLabels } from '@/lib/event-lifecycle'
 import { useRouter } from '@/lib/router-hooks'
 
 import { Badge } from '@/components/ui/badge'
@@ -34,7 +35,11 @@ function EventStatusBadge({ event, now }: { event: Event; now: number }) {
     completed: { text: 'Completed', variant: 'outline' as const },
   }[status]
 
-  return <Badge variant={presentation.variant}>{presentation.text}</Badge>
+  return (
+    <Badge variant={presentation.variant}>
+      {lifecycleLabels[eventState(event, now)]}
+    </Badge>
+  )
 }
 
 function JoinedBadge({ isJoined }: { isJoined: boolean }) {

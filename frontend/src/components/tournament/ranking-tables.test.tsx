@@ -27,7 +27,6 @@ const teams: Team[] = [
     id: 'alpha',
     name: 'Alpha',
     repo: '',
-    inQueue: false,
     credits: 0,
     score: 10,
     buchholzPoints: 5,
@@ -38,7 +37,6 @@ const teams: Team[] = [
     id: 'beta',
     name: 'Beta',
     repo: '',
-    inQueue: false,
     credits: 0,
     score: 8,
     buchholzPoints: 4,
@@ -56,10 +54,10 @@ const finishedMatch: Match = {
   updatedAt: '2026-01-01T00:00:00Z',
   isRevealed: true,
   teams: [
-    { id: 'alpha', name: 'Alpha', score: 3 },
-    { id: 'beta', name: 'Beta', score: 1 },
+    { id: 'alpha', name: 'Alpha' },
+    { id: 'beta', name: 'Beta' },
   ],
-  winner: { id: 'alpha', name: 'Alpha', score: 3 },
+  winner: { id: 'alpha', name: 'Alpha' },
   results: [],
 }
 

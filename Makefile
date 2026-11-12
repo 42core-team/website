@@ -1,12 +1,8 @@
 .DEFAULT_GOAL := dev
 
-.PHONY: setup-hooks dev stop cluster clean
+.PHONY: dev stop cluster clean
 
-setup-hooks: ## Configure git to use the repo's .githooks directory
-	@git config core.hooksPath .githooks
-	@echo "Git hooks configured (.githooks/)."
-
-dev: setup-hooks ## Set up the cluster and .env.tilt if needed, then start Tilt
+dev: ## Set up the cluster and .env.tilt if needed, then start Tilt
 	@bash local-setup/dev-setup.sh
 
 stop:

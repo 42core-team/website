@@ -24,9 +24,38 @@ describe("secret encryption", () => {
     expect(() => decryptSecret(modified, passphrase)).toThrow();
   });
 
-  it("decrypts existing CryptoJS passphrase ciphertext", () => {
-    const legacyCiphertext = "U2FsdGVkX18AAQIDBAUGB5swTx/Yx+o+F0LJpOTx9FY=";
+  it("rejects values that are not in the v2 format", () => {
+    // An old CryptoJS (OpenSSL "Salted__") value; that format is no longer read.
+    const cryptoJsCiphertext = "U2FsdGVkX18AAQIDBAUGB5swTx/Yx+o+F0LJpOTx9FY=";
 
-    expect(decryptSecret(legacyCiphertext, passphrase)).toBe("legacy secret");
+    expect(() => decryptSecret(cryptoJsCiphertext, passphrase)).toThrow(
+      "Unsupported encrypted secret format",
+    );
+    expect(() => decryptSecret("plain value", passphrase)).toThrow(
+      "Unsupported encrypted secret format",
+    );
+  });
+
+  it("round-trips empty and unicode secrets", () => {
+    for (const secret of ["", "gh_✓_日本語_🔑"]) {
+      expect(decryptSecret(encryptSecret(secret, passphrase), passphrase)).toBe(
+        secret,
+      );
+    }
+  });
+
+  it("rejects a v2 value that is too short", () => {
+    expect(() => decryptSecret("v2:", passphrase)).toThrow(
+      "Invalid encrypted secret",
+    );
+    expect(() => decryptSecret("v2:AAAA", passphrase)).toThrow(
+      "Invalid encrypted secret",
+    );
+  });
+
+  it("rejects a wrong passphrase", () => {
+    const encrypted = encryptSecret("new secret", passphrase);
+
+    expect(() => decryptSecret(encrypted, "wrong passphrase")).toThrow();
   });
 });

@@ -5,12 +5,13 @@ import { getGlobalStats } from '@/app/actions/stats'
 import AnimatedNumber from '@/components/animatedNumber'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { GLOBAL_STATS_REFETCH_INTERVAL_MS } from '@/lib/query-intervals'
 import { cn } from '@/lib/utils'
 
 const statStyles = [
   {
     title: 'Total Damage',
-    description: 'Damage dealt across every match',
+    description: 'Dealt by units to enemy troops, walls, and opposing Cores',
     icon: Flame,
     accent: 'text-orange-600 dark:text-orange-400',
     iconBackground: 'bg-orange-500/10',
@@ -20,7 +21,8 @@ const statStyles = [
   },
   {
     title: 'Gems Gained',
-    description: 'Resources collected by all players',
+    description:
+      'Mined from deposits and collected from gem piles to fund new units',
     icon: Gem,
     accent: 'text-sky-600 dark:text-sky-400',
     iconBackground: 'bg-sky-500/10',
@@ -30,7 +32,7 @@ const statStyles = [
   },
   {
     title: 'Units Spawned',
-    description: 'Units deployed into the arena',
+    description: 'Custom-built units assembled and deployed from player Cores',
     icon: Users,
     accent: 'text-emerald-600 dark:text-emerald-400',
     iconBackground: 'bg-emerald-500/10',
@@ -45,7 +47,7 @@ export default function GlobalStats() {
   const statsQuery = useQuery({
     queryKey: ['stats', 'global'],
     queryFn: getGlobalStats,
-    refetchInterval: 2000,
+    refetchInterval: GLOBAL_STATS_REFETCH_INTERVAL_MS,
   })
 
   const values = [
@@ -68,10 +70,11 @@ export default function GlobalStats() {
       <div className="mx-auto max-w-6xl">
         <div className="mx-auto mb-10 max-w-2xl text-center sm:mb-12">
           <h2 className="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-            The arena never stands still
+            Live from the Arena
           </h2>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
-            A live look at everything players have achieved across CORE Game.
+            Every match runs tick by tick on a 2D grid—here is what player-coded
+            bots have done across all games so far.
           </p>
         </div>
 

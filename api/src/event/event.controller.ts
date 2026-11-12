@@ -16,7 +16,6 @@ import { EventService } from "./event.service";
 import { TeamService } from "../team/team.service";
 import { UserService } from "../user/user.service";
 import { CreateEventDto } from "./dtos/createEventDto";
-import { SetLockTeamsDateDto } from "./dtos/setLockTeamsDateDto";
 import { UpdateEventSettingsDto } from "./dtos/updateEventSettingsDto";
 import { CreateEventStarterTemplateDto } from "./dtos/createEventStarterTemplateDto";
 import { UpdateEventStarterTemplateDto } from "./dtos/updateEventStarterTemplateDto";
@@ -24,6 +23,14 @@ import { AddToWhitelistDto, BulkDeleteWhitelistDto } from "./dtos/whitelistDto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { UserId } from "../guards/UserGuard";
 import { SocialPlatform } from "src/user/entities/social-account.entity";
+import { isRegistrationOpen } from "./event-lifecycle";
+import { NormalizeGithubConfigPipe } from "../common/github-config-normalization";
+import {
+  EventLifecycleDto,
+  EventTeamExclusionDto,
+  ExcludeInactiveTeamsDto,
+  RetryEventRepositoryDto,
+} from "./dtos/eventLifecycleDto";
 
 @Controller("event")
 export class EventController {
@@ -34,12 +41,6 @@ export class EventController {
     private readonly teamService: TeamService,
     private readonly userService: UserService,
   ) {}
-
-  @UseGuards(JwtAuthGuard)
-  @Get("my")
-  async getMyEvents(@UserId() userId: string) {
-    return this.eventService.getEventsForUser(userId);
-  }
 
   @UseGuards(JwtAuthGuard)
   @Get("overview")
@@ -95,7 +96,7 @@ export class EventController {
   @Post()
   async createEvent(
     @UserId() userId: string,
-    @Body() createEventDto: CreateEventDto,
+    @Body(NormalizeGithubConfigPipe) createEventDto: CreateEventDto,
   ) {
     if (!(await this.userService.canCreateEvent(userId)))
       throw new UnauthorizedException(
@@ -128,6 +129,7 @@ export class EventController {
       createEventDto.gameConfig,
       createEventDto.serverConfig,
       createEventDto.isPrivate,
+      createEventDto,
     );
   }
 
@@ -179,6 +181,9 @@ export class EventController {
 
     const event = await this.eventService.getEventById(eventId);
 
+    if (!isRegistrationOpen(event))
+      throw new BadRequestException("Registration is closed for this event");
+
     if (event.isPrivate) {
       const user = await this.userService.getUserWithSocialAccounts(userId);
       const socialAccounts = user.socialAccounts || [];
@@ -205,6 +210,76 @@ export class EventController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post(":id/lifecycle")
+  async transitionLifecycle(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+    @Body() body: EventLifecycleDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException("You are not an admin of this event");
+    return this.eventService.transitionLifecycle(eventId, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/repositories/retry")
+  async retryRepository(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+    @Body() body: RetryEventRepositoryDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException("You are not an admin of this event");
+    return this.eventService.retryRepositoryOperation(eventId, body.teamId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/teams/:teamId/exclusion")
+  async setTeamExclusion(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @Param("teamId", new ParseUUIDPipe()) teamId: string,
+    @UserId() userId: string,
+    @Body() body: EventTeamExclusionDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException("You are not an admin of this event");
+    return this.eventService.setTeamExclusion(eventId, teamId, body.excluded);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(":id/repository-activity")
+  async getRepositoryActivity(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException("You are not an admin of this event");
+    return this.eventService.getRepositoryActivity(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/exclude-inactive-teams")
+  async excludeInactiveTeams(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+    @Body() body: ExcludeInactiveTeamsDto,
+  ) {
+    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+      throw new UnauthorizedException("You are not an admin of this event");
+    const result = await this.eventService.excludeInactiveTeams(
+      eventId,
+      body.teamIds,
+    );
+    this.logger.log({
+      action: "exclude_inactive_teams",
+      userId,
+      eventId,
+      excludedTeamIds: result.excludedTeamIds,
+    });
+    return result;
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Put(":id/lock")
   async lockEvent(
     @Param("id", new ParseUUIDPipe()) eventId: string,
@@ -221,54 +296,11 @@ export class EventController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Put(":id/unlock")
-  async unlockEvent(
-    @Param("id", new ParseUUIDPipe()) eventId: string,
-    @UserId() userId: string,
-  ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to unlock teams for this event.",
-      );
-
-    this.logger.log({ action: "attempt_unlock_event", userId, eventId });
-
-    return this.eventService.unlockEvent(eventId);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Put(":id/lockTeamsDate")
-  async lockTeamsDate(
-    @Param("id", new ParseUUIDPipe()) eventId: string,
-    @UserId() userId: string,
-    @Body() body: SetLockTeamsDateDto,
-  ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to lock teams for this event.",
-      );
-
-    this.logger.log({
-      action: "attempt_set_lock_teams_date",
-      userId,
-      eventId,
-      repoLockDate: body.repoLockDate,
-    });
-
-    if (!body.repoLockDate)
-      return this.eventService.setTeamsLockedDate(eventId, null);
-    return this.eventService.setTeamsLockedDate(
-      eventId,
-      new Date(body.repoLockDate),
-    );
-  }
-
-  @UseGuards(JwtAuthGuard)
   @Put(":id/settings")
   async updateEventSettings(
     @Param("id", new ParseUUIDPipe()) eventId: string,
     @UserId() userId: string,
-    @Body() body: UpdateEventSettingsDto,
+    @Body(NormalizeGithubConfigPipe) body: UpdateEventSettingsDto,
   ) {
     if (!(await this.eventService.isEventAdmin(eventId, userId)))
       throw new UnauthorizedException(
@@ -347,7 +379,7 @@ export class EventController {
   async createStarterTemplate(
     @Param("id", new ParseUUIDPipe()) eventId: string,
     @UserId() userId: string,
-    @Body() body: CreateEventStarterTemplateDto,
+    @Body(NormalizeGithubConfigPipe) body: CreateEventStarterTemplateDto,
   ) {
     if (!(await this.eventService.isEventAdmin(eventId, userId))) {
       throw new UnauthorizedException("You are not an admin of this event");
@@ -373,7 +405,7 @@ export class EventController {
     @Param("id", new ParseUUIDPipe()) eventId: string,
     @Param("templateId", new ParseUUIDPipe()) templateId: string,
     @UserId() userId: string,
-    @Body() body: UpdateEventStarterTemplateDto,
+    @Body(NormalizeGithubConfigPipe) body: UpdateEventStarterTemplateDto,
   ) {
     if (!(await this.eventService.isEventAdmin(eventId, userId))) {
       throw new UnauthorizedException("You are not an admin of this event");

@@ -1,4 +1,5 @@
 import type { Event } from '@/app/actions/event'
+import { LifecycleControls } from '@/components/dashboard/lifecycle-controls'
 import type { Team } from '@/app/actions/team'
 import type { UserSearchResult } from '@/app/actions/user'
 import type { UseMutationResult } from '@tanstack/react-query'
@@ -6,8 +7,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { format } from 'date-fns'
 import {
-  CalendarIcon,
   Loader2,
+  Lock,
   Maximize2,
   Minimize2,
   Save,
@@ -16,7 +17,8 @@ import {
   UserPlus,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { isAxiosError } from 'axios'
+import { useEffect, useId, useState } from 'react'
 import { toast } from 'sonner'
 import {
   addEventAdmin,
@@ -27,14 +29,11 @@ import {
   getTeamsCountForEvent,
   isEventAdmin,
   removeEventAdmin,
-  setEventTeamsLockDate,
   updateEventSettings,
 } from '@/app/actions/event'
 import {
   deleteTeamAsAdmin,
   getTeamsForEventTable,
-  lockEvent,
-  unlockEvent,
   updateTeamCredits,
 } from '@/app/actions/team'
 import {
@@ -45,10 +44,14 @@ import {
 } from '@/app/actions/tournament'
 import { searchUsers } from '@/app/actions/user'
 import { StarterTemplatesManagement } from '@/components/dashboard/starter-templates-management'
+import { ManualMatchesManagement } from '@/components/dashboard/manual-matches-management'
 import { MatchesAnalytics } from '@/components/dashboard/matches-analytics'
+import type { SortDirection } from '@/components/sortable-table-head'
+import { SortableTableHead } from '@/components/sortable-table-head'
+import { QueueMatchesManagement } from '@/components/dashboard/queue-matches-management'
 import { WhitelistManagement } from '@/components/dashboard/whitelist-management'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
 import {
   Card,
   CardContent,
@@ -67,10 +70,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -84,7 +89,26 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useTabParam } from '@/hooks/useTabParam'
+import { useEventClock } from '@/hooks/use-event-clock'
 import { useSession } from '@/lib/auth'
+import { getEventNameError } from '@/lib/event-validation'
+import {
+  GITHUB_CONFIG_FIELDS,
+  GITHUB_CONFIG_LABELS,
+  getGithubConfigError,
+  isGithubConfigField,
+  normalizeGithubConfigValue,
+} from '@/lib/github-validation'
+import type { GithubConfigField } from '@/lib/github-validation'
+import {
+  eventState,
+  registrationOpen,
+  repositoryConfirmedForTournament,
+} from '@/lib/event-lifecycle'
+import {
+  repositoryRefetchInterval,
+  TEAMS_REFETCH_INTERVAL_MS,
+} from '@/lib/query-intervals'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/events/$id/dashboard')({
@@ -92,21 +116,16 @@ export const Route = createFileRoute('/events/$id/dashboard')({
 })
 
 type PendingEventSettings = Partial<
-  Omit<Event, 'startDate' | 'endDate'> & {
+  Omit<Event, 'startDate' | 'submissionDeadline' | 'scheduledEndDate'> & {
     startDate: string | number
-    endDate: string | number
+    submissionDeadline: string | number
+    scheduledEndDate: string | number
   }
 >
 type EventSettingsUpdate = Parameters<typeof updateEventSettings>[1]
 type VoidMutation = UseMutationResult<unknown, Error, void, unknown>
 type PhaseMutation = UseMutationResult<unknown, Error, string, unknown>
 type StringMutation = UseMutationResult<unknown, Error, string, unknown>
-type TeamLockDateMutation = UseMutationResult<
-  unknown,
-  Error,
-  number | null,
-  unknown
->
 
 interface EventAdmin {
   id: string
@@ -124,6 +143,7 @@ const SETTINGS_FIELDS = [
   'gamblingEnabled',
   'maxQueueCredits',
   'queueCreditIntervalMinutes',
+  'tournamentAdvancementLimit',
   'isPrivate',
   'minTeamSize',
   'maxTeamSize',
@@ -138,16 +158,58 @@ const SETTINGS_FIELDS = [
   'githubOrg',
   'githubOrgSecret',
   'startDate',
-  'endDate',
+  'submissionDeadline',
+  'scheduledEndDate',
+  'introEnabled',
+  'introLeadMinutes',
+  'streamUrl',
+  'showtimeStreamUrl',
 ] as const
+
+/** The elimination bracket has no byes, so only powers of two are offered. */
+const TOURNAMENT_ADVANCEMENT_LIMITS = [2, 4, 8, 16, 32, 64, 128, 256]
+const NO_ADVANCEMENT_LIMIT = 'none'
+
+type GithubConfigErrors = Partial<Record<GithubConfigField, string>>
+
+/**
+ * An emptied URL field equals an unset one, so it does not count as a change.
+ * GitHub config values are compared after normalization (trimming etc.).
+ */
+function settingChanged(field: string, pending: unknown, saved: unknown) {
+  if (field === 'streamUrl' || field === 'showtimeStreamUrl')
+    return (pending || null) !== (saved || null)
+  if (isGithubConfigField(field) && typeof pending === 'string')
+    return normalizeGithubConfigValue(field, pending) !== (saved ?? '')
+  return pending !== saved
+}
+
+/** Errors for the GitHub config fields the admin has changed. */
+function getGithubConfigErrors(
+  pending: PendingEventSettings,
+  saved: Event,
+): GithubConfigErrors {
+  const errors: GithubConfigErrors = {}
+  for (const field of GITHUB_CONFIG_FIELDS) {
+    const value = pending[field]
+    if (
+      typeof value !== 'string' ||
+      !settingChanged(field, value, saved[field])
+    )
+      continue
+    const error = getGithubConfigError(field, value)
+    if (error) errors[field] = error
+  }
+  return errors
+}
 
 function DashboardRoute() {
   const { id } = Route.useParams()
   const session = useSession()
   const queryClient = useQueryClient()
   const { currentTab, onTabChange } = useTabParam('overview')
+  const now = useEventClock()
 
-  const [teamAutoLockTime, setTeamAutoLockTime] = useState('')
   const [userSearchQuery, setUserSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -161,12 +223,6 @@ function DashboardRoute() {
     queryKey: ['event', id],
     queryFn: () => getEventById(id),
   })
-
-  useEffect(() => {
-    if (eventQuery.data) {
-      setPendingSettings(eventQuery.data)
-    }
-  }, [eventQuery.data])
 
   const teamsCountQuery = useQuery({
     queryKey: ['event', id, 'teams-count'],
@@ -194,24 +250,6 @@ function DashboardRoute() {
   const starterTemplatesQuery = useQuery({
     queryKey: ['event', id, 'templates'],
     queryFn: () => getStarterTemplates(id),
-  })
-
-  const lockEventMutation = useMutation({
-    mutationFn: () => lockEvent(id),
-    onSuccess: async () => {
-      toast.success('Team repositories locked.')
-      await queryClient.invalidateQueries({ queryKey: ['event', id] })
-    },
-    onError: () => toast.error('Failed to lock team repositories.'),
-  })
-
-  const unlockEventMutation = useMutation({
-    mutationFn: () => unlockEvent(id),
-    onSuccess: async () => {
-      toast.success('Team repositories unlocked.')
-      await queryClient.invalidateQueries({ queryKey: ['event', id] })
-    },
-    onError: () => toast.error('Failed to unlock team repositories.'),
   })
 
   const startSwissMatchesMutation = useMutation({
@@ -252,21 +290,12 @@ function DashboardRoute() {
       toast.error(getErrorMessage(error, 'Failed to cleanup matches.')),
   })
 
-  const setTeamsLockDateMutation = useMutation({
-    mutationFn: (lockDate: number | null) =>
-      setEventTeamsLockDate(id, lockDate),
-    onSuccess: async () => {
-      toast.success('Team auto lock date updated.')
-      await queryClient.invalidateQueries({ queryKey: ['event', id] })
-    },
-    onError: () => toast.error('Failed to update team auto lock date.'),
-  })
-
   const updateEventSettingsMutation = useMutation({
     mutationFn: (settings: EventSettingsUpdate) =>
       updateEventSettings(id, settings),
     onSuccess: async () => {
       toast.success('Event settings updated.')
+      setPendingSettings({})
       await queryClient.invalidateQueries({ queryKey: ['event', id] })
     },
     onError: (error) =>
@@ -296,14 +325,6 @@ function DashboardRoute() {
     onError: (error) =>
       toast.error(getErrorMessage(error, 'Failed to remove admin.')),
   })
-
-  useEffect(() => {
-    if (eventQuery.data?.repoLockDate) {
-      setTeamAutoLockTime(new Date(eventQuery.data.repoLockDate).toISOString())
-      return
-    }
-    setTeamAutoLockTime('')
-  }, [eventQuery.data?.repoLockDate])
 
   useEffect(() => {
     const delayDebounceFn = window.setTimeout(async () => {
@@ -358,26 +379,89 @@ function DashboardRoute() {
     )
   }
 
-  const hasChanges = Object.keys(pendingSettings).some(
+  const hasChanges = SETTINGS_FIELDS.some(
     (key) =>
-      pendingSettings[key as keyof PendingEventSettings] !==
-      event[key as keyof Event],
+      key in pendingSettings &&
+      settingChanged(
+        key,
+        pendingSettings[key as keyof PendingEventSettings],
+        event[key as keyof Event],
+      ),
   )
 
+  const githubConfigErrors = getGithubConfigErrors(pendingSettings, event)
+  // Existing names are left alone, only a changed name is checked.
+  const eventNameError =
+    typeof pendingSettings.name === 'string' &&
+    settingChanged('name', pendingSettings.name, event.name)
+      ? getEventNameError(pendingSettings.name)
+      : undefined
+
   const handleSaveSettings = () => {
+    if (eventNameError) {
+      toast.error(`Fix the event name before saving: ${eventNameError}`)
+      return
+    }
+    const invalidGithubFields = Object.entries(githubConfigErrors)
+    if (invalidGithubFields.length > 0) {
+      toast.error(
+        `Fix the repository settings before saving: ${invalidGithubFields
+          .map(
+            ([field, message]) =>
+              `${GITHUB_CONFIG_LABELS[field as GithubConfigField]}: ${message}`,
+          )
+          .join('; ')}`,
+      )
+      return
+    }
+
     const updates: EventSettingsUpdate = {}
 
     SETTINGS_FIELDS.forEach((field) => {
-      if (pendingSettings[field] !== event[field as keyof Event]) {
-        Object.assign(updates, { [field]: pendingSettings[field] })
+      if (
+        field in pendingSettings &&
+        settingChanged(
+          field,
+          pendingSettings[field],
+          event[field as keyof Event],
+        )
+      ) {
+        const value = pendingSettings[field]
+        Object.assign(updates, {
+          [field]:
+            isGithubConfigField(field) && typeof value === 'string'
+              ? normalizeGithubConfigValue(field, value)
+              : value,
+        })
       }
     })
 
     if (updates.startDate) {
       updates.startDate = new Date(updates.startDate).getTime()
     }
-    if (updates.endDate) {
-      updates.endDate = new Date(updates.endDate).getTime()
+    if (updates.submissionDeadline) {
+      updates.submissionDeadline = new Date(
+        updates.submissionDeadline,
+      ).getTime()
+    }
+    if (updates.scheduledEndDate)
+      updates.scheduledEndDate = new Date(updates.scheduledEndDate).getTime()
+    const start = new Date(updates.startDate ?? event.startDate).getTime()
+    const deadline = new Date(
+      updates.submissionDeadline ?? event.submissionDeadline,
+    ).getTime()
+    const end = new Date(
+      updates.scheduledEndDate ?? event.scheduledEndDate,
+    ).getTime()
+    if (
+      ![start, deadline, end].every(Number.isFinite) ||
+      deadline <= start ||
+      end < start
+    ) {
+      toast.error(
+        'Enter valid dates: submission deadline must follow start and scheduled end cannot precede start.',
+      )
+      return
     }
 
     if (Object.keys(updates).length === 0) {
@@ -440,32 +524,34 @@ function DashboardRoute() {
 
         <TabsContent value="matches" className="space-y-6">
           <MatchesAnalytics eventId={id} />
+          <ManualMatchesManagement eventId={id} />
+          <QueueMatchesManagement eventId={id} />
         </TabsContent>
 
         <TabsContent value="operation" className="space-y-6">
           <OperationTab
             event={event}
-            teamAutoLockTime={teamAutoLockTime}
-            setTeamAutoLockTime={setTeamAutoLockTime}
-            lockEventMutation={lockEventMutation}
-            unlockEventMutation={unlockEventMutation}
             startSwissMatchesMutation={startSwissMatchesMutation}
             startTournamentMatchesMutation={startTournamentMatchesMutation}
             revealMatchesMutation={revealMatchesMutation}
             cleanupMatchesMutation={cleanupMatchesMutation}
-            setTeamsLockDateMutation={setTeamsLockDateMutation}
           />
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-6">
           <SettingsTab
-            pendingSettings={pendingSettings}
+            pendingSettings={{ ...event, ...pendingSettings }}
             updatePendingSetting={updatePendingSetting}
+            githubConfigErrors={githubConfigErrors}
+            eventNameError={eventNameError}
             isGameConfigExpanded={isGameConfigExpanded}
             setIsGameConfigExpanded={setIsGameConfigExpanded}
             isServerConfigExpanded={isServerConfigExpanded}
             setIsServerConfigExpanded={setIsServerConfigExpanded}
             eventId={id}
+            playClosed={!registrationOpen(event, now)}
+            saved={event}
+            onOpenOperation={() => onTabChange('operation')}
           />
         </TabsContent>
 
@@ -528,7 +614,21 @@ function OverviewTab({
               label="Start Date"
               value={formatDateTime(event.startDate)}
             />
-            <InfoBlock label="End Date" value={formatDateTime(event.endDate)} />
+            <InfoBlock
+              label="Submission Deadline"
+              value={formatDateTime(event.submissionDeadline)}
+            />
+            <InfoBlock
+              label="Scheduled End (informational)"
+              value={formatDateTime(event.scheduledEndDate)}
+            />
+            <InfoBlock label="State" value={event.state} />
+            {event.completedAt && (
+              <InfoBlock
+                label="Completed"
+                value={formatDateTime(event.completedAt)}
+              />
+            )}
             <InfoBlock label="Location" value={event.location || 'Online'} />
           </div>
         </CardContent>
@@ -610,56 +710,37 @@ function OverviewTab({
 
 function OperationTab({
   event,
-  teamAutoLockTime,
-  setTeamAutoLockTime,
-  lockEventMutation,
-  unlockEventMutation,
   startSwissMatchesMutation,
   startTournamentMatchesMutation,
   revealMatchesMutation,
   cleanupMatchesMutation,
-  setTeamsLockDateMutation,
 }: {
   event: Event
-  teamAutoLockTime: string
-  setTeamAutoLockTime: (value: string) => void
-  lockEventMutation: VoidMutation
-  unlockEventMutation: VoidMutation
   startSwissMatchesMutation: VoidMutation
   startTournamentMatchesMutation: VoidMutation
   revealMatchesMutation: PhaseMutation
   cleanupMatchesMutation: PhaseMutation
-  setTeamsLockDateMutation: TeamLockDateMutation
 }) {
+  const now = useEventClock()
+  const repositories = useQuery({
+    queryKey: ['event', event.id, 'repository-progress'],
+    queryFn: () =>
+      getTeamsForEventTable(event.id, undefined, 'name', 'asc', true),
+    refetchInterval: (query) => repositoryRefetchInterval(query.state.data),
+  })
+  const tournamentReady =
+    ['SUBMISSIONS_CLOSED', 'SHOWCASE'].includes(eventState(event, now)) &&
+    repositories.isSuccess &&
+    repositories.data.every(repositoryConfirmedForTournament)
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Operation Controls</CardTitle>
-        <CardDescription>
-          Immediate actions for running the event.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-10">
-        <OperationSection title="Repository Management">
-          <Button
-            disabled={event.lockedAt != null || lockEventMutation.isPending}
-            onClick={() => lockEventMutation.mutate(undefined)}
-          >
-            Lock Team Repositories
-          </Button>
-          <Button
-            disabled={event.lockedAt == null || unlockEventMutation.isPending}
-            onClick={() => unlockEventMutation.mutate(undefined)}
-            variant="outline"
-          >
-            Unlock Team Repositories
-          </Button>
-        </OperationSection>
-
+    <LifecycleControls event={event}>
+      <div className="space-y-6 border-t pt-6">
         <OperationSection title="Group Phase">
           <Button
             disabled={
-              event.currentRound !== 0 || startSwissMatchesMutation.isPending
+              !tournamentReady ||
+              event.currentRound !== 0 ||
+              startSwissMatchesMutation.isPending
             }
             onClick={() => startSwissMatchesMutation.mutate(undefined)}
             variant="secondary"
@@ -697,7 +778,9 @@ function OperationTab({
 
         <OperationSection title="Tournament Phase">
           <Button
-            disabled={startTournamentMatchesMutation.isPending}
+            disabled={
+              !tournamentReady || startTournamentMatchesMutation.isPending
+            }
             onClick={() => startTournamentMatchesMutation.mutate(undefined)}
             variant="secondary"
           >
@@ -731,116 +814,58 @@ function OperationTab({
             Clean Up Tournament Matches
           </Button>
         </OperationSection>
-
-        <div className="border-t pt-8">
-          <h3 className="mb-4 text-[10px] font-bold tracking-wider text-muted-foreground/80 uppercase">
-            Scheduling Auto-Lock
-          </h3>
-          <div className="flex max-w-md flex-wrap items-end gap-4">
-            <div className="min-w-60 flex-1 space-y-2">
-              <Label>Repo Lock Date & Time</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !teamAutoLockTime && 'text-muted-foreground',
-                    )}
-                  >
-                    <CalendarIcon className="h-4 w-4" />
-                    {teamAutoLockTime
-                      ? format(new Date(teamAutoLockTime), 'PPP p')
-                      : 'Pick a date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={
-                      teamAutoLockTime ? new Date(teamAutoLockTime) : undefined
-                    }
-                    onSelect={(date) =>
-                      date && setTeamAutoLockTime(date.toISOString())
-                    }
-                  />
-                  <div className="border-t p-3">
-                    <Input
-                      type="time"
-                      value={
-                        teamAutoLockTime
-                          ? format(new Date(teamAutoLockTime), 'HH:mm')
-                          : ''
-                      }
-                      onChange={(changeEvent) => {
-                        const value = changeEvent.target.value
-                        if (!value) return
-
-                        const [hours, minutes] = value
-                          .split(':')
-                          .map((part) => Number.parseInt(part, 10))
-                        if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-                          return
-                        }
-
-                        const current = teamAutoLockTime
-                          ? new Date(teamAutoLockTime)
-                          : new Date()
-                        const date = Number.isNaN(current.getTime())
-                          ? new Date()
-                          : current
-                        date.setHours(hours, minutes, 0, 0)
-                        setTeamAutoLockTime(date.toISOString())
-                      }}
-                    />
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <Button
-              onClick={() =>
-                setTeamsLockDateMutation.mutate(
-                  teamAutoLockTime
-                    ? new Date(teamAutoLockTime).getTime()
-                    : null,
-                )
-              }
-            >
-              Save
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => setTeamsLockDateMutation.mutate(null)}
-            >
-              Reset
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </LifecycleControls>
   )
 }
 
 function SettingsTab({
   pendingSettings,
   updatePendingSetting,
+  githubConfigErrors,
+  eventNameError,
   isGameConfigExpanded,
   setIsGameConfigExpanded,
   isServerConfigExpanded,
   setIsServerConfigExpanded,
   eventId,
+  playClosed,
+  saved,
+  onOpenOperation,
 }: {
   pendingSettings: PendingEventSettings
   updatePendingSetting: <TKey extends keyof PendingEventSettings>(
     key: TKey,
     value: PendingEventSettings[TKey],
   ) => void
+  /** Validation messages for changed GitHub config fields. */
+  githubConfigErrors: GithubConfigErrors
+  /** Validation message for a changed event name. */
+  eventNameError?: string
   isGameConfigExpanded: boolean
   setIsGameConfigExpanded: (value: boolean) => void
   isServerConfigExpanded: boolean
   setIsServerConfigExpanded: (value: boolean) => void
   eventId: string
+  /** After coding, the deadline and playing capabilities only change by reopening play. */
+  playClosed: boolean
+  /** Saved values: switches that were off when play closed stay off. */
+  saved: Pick<Event, 'canCreateTeam' | 'processQueue' | 'gamblingEnabled'>
+  onOpenOperation: () => void
 }) {
+  const reopenNotice = playClosed && (
+    <Alert role="status" className="md:col-span-2 lg:col-span-4">
+      <Lock className="size-4" aria-hidden="true" />
+      <AlertTitle>Coding is closed</AlertTitle>
+      <AlertDescription className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        To set a new submission deadline or turn team creation, match making or
+        gambling back on, reopen play with a new deadline.
+        <Button size="sm" variant="outline" onClick={onOpenOperation}>
+          Reopen play in Operation
+        </Button>
+      </AlertDescription>
+    </Alert>
+  )
   return (
     <>
       <Card>
@@ -854,6 +879,7 @@ function SettingsTab({
               label="Event Name"
               value={pendingSettings.name || ''}
               onChange={(value) => updatePendingSetting('name', value)}
+              error={eventNameError}
             />
             <DashboardInput
               label="Location"
@@ -873,6 +899,7 @@ function SettingsTab({
           </div>
 
           <div className="grid grid-cols-1 gap-6 border-t pt-4 md:grid-cols-2">
+            {reopenNotice}
             <DashboardInput
               label="Start Date"
               type="datetime-local"
@@ -880,10 +907,54 @@ function SettingsTab({
               onChange={(value) => updatePendingSetting('startDate', value)}
             />
             <DashboardInput
-              label="End Date"
+              label="Submission Deadline"
               type="datetime-local"
-              value={formatDateTimeInput(pendingSettings.endDate)}
-              onChange={(value) => updatePendingSetting('endDate', value)}
+              value={formatDateTimeInput(pendingSettings.submissionDeadline)}
+              disabled={playClosed}
+              onChange={(value) =>
+                updatePendingSetting('submissionDeadline', value)
+              }
+            />
+            <DashboardInput
+              label="Scheduled End (informational)"
+              type="datetime-local"
+              value={formatDateTimeInput(pendingSettings.scheduledEndDate)}
+              onChange={(value) =>
+                updatePendingSetting('scheduledEndDate', value)
+              }
+            />
+            <label className="flex items-center gap-3">
+              Optional introduction
+              <Switch
+                checked={pendingSettings.introEnabled ?? false}
+                onCheckedChange={(value) =>
+                  updatePendingSetting('introEnabled', value)
+                }
+              />
+            </label>
+            <DashboardInput
+              label="Introduction lead (minutes)"
+              type="number"
+              value={pendingSettings.introLeadMinutes ?? 15}
+              onChange={(value) =>
+                updatePendingSetting('introLeadMinutes', Number(value))
+              }
+            />
+            <DashboardInput
+              label="Stream URL (intro and Showtime)"
+              type="url"
+              placeholder="https://youtube.com/..."
+              value={pendingSettings.streamUrl ?? ''}
+              onChange={(value) => updatePendingSetting('streamUrl', value)}
+            />
+            <DashboardInput
+              label="Showtime stream URL (optional, replaces the stream URL during Showtime)"
+              type="url"
+              placeholder="https://youtube.com/..."
+              value={pendingSettings.showtimeStreamUrl ?? ''}
+              onChange={(value) =>
+                updatePendingSetting('showtimeStreamUrl', value)
+              }
             />
           </div>
         </CardContent>
@@ -938,15 +1009,52 @@ function SettingsTab({
                 )
               }
             />
+            <div className="space-y-2">
+              <Label htmlFor="tournamentAdvancementLimit">
+                Tournament Advancement Limit
+              </Label>
+              <Select
+                value={
+                  pendingSettings.tournamentAdvancementLimit?.toString() ??
+                  NO_ADVANCEMENT_LIMIT
+                }
+                onValueChange={(value) =>
+                  updatePendingSetting(
+                    'tournamentAdvancementLimit',
+                    value === NO_ADVANCEMENT_LIMIT
+                      ? null
+                      : Number.parseInt(value, 10),
+                  )
+                }
+              >
+                <SelectTrigger id="tournamentAdvancementLimit">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_ADVANCEMENT_LIMIT}>No limit</SelectItem>
+                  {TOURNAMENT_ADVANCEMENT_LIMITS.map((limit) => (
+                    <SelectItem key={limit} value={limit.toString()}>
+                      Top {limit} teams
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                Fewer teams advance if the event has too few for this bracket
+                size. Cannot change once the elimination bracket exists.
+              </p>
+            </div>
           </div>
 
           <div className="space-y-4 border-t pt-4">
             <h3 className="text-sm font-semibold">Toggles</h3>
+            {reopenNotice}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               <SettingSwitch
                 id="canCreateTeam"
                 label="Allow Team Creation"
                 checked={pendingSettings.canCreateTeam || false}
+                disabled={playClosed && !saved.canCreateTeam}
                 onCheckedChange={(value) =>
                   updatePendingSetting('canCreateTeam', value)
                 }
@@ -955,6 +1063,7 @@ function SettingsTab({
                 id="processQueue"
                 label="Enable Match Making"
                 checked={pendingSettings.processQueue || false}
+                disabled={playClosed && !saved.processQueue}
                 onCheckedChange={(value) =>
                   updatePendingSetting('processQueue', value)
                 }
@@ -963,6 +1072,7 @@ function SettingsTab({
                 id="gamblingEnabled"
                 label="Enable Gambling"
                 checked={pendingSettings.gamblingEnabled ?? true}
+                disabled={playClosed && !saved.gamblingEnabled}
                 onCheckedChange={(value) =>
                   updatePendingSetting('gamblingEnabled', value)
                 }
@@ -990,20 +1100,26 @@ function SettingsTab({
         <CardContent className="space-y-6">
           <DashboardInput
             label="Monorepo URL"
+            placeholder="https://github.com/<owner>/<repo>"
             value={pendingSettings.monorepoUrl || ''}
+            error={githubConfigErrors.monorepoUrl}
             onChange={(value) => updatePendingSetting('monorepoUrl', value)}
           />
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <DashboardInput
               label="Monorepo Version"
+              placeholder="e.g. dev, v1.2.3"
               value={pendingSettings.monorepoVersion || ''}
+              error={githubConfigErrors.monorepoVersion}
               onChange={(value) =>
                 updatePendingSetting('monorepoVersion', value)
               }
             />
             <DashboardInput
               label="Base Path"
+              placeholder="bots/softcore"
               value={pendingSettings.basePath || ''}
+              error={githubConfigErrors.basePath}
               onChange={(value) => updatePendingSetting('basePath', value)}
             />
           </div>
@@ -1044,6 +1160,7 @@ function SettingsTab({
           <DashboardInput
             label="GitHub Organization"
             value={pendingSettings.githubOrg || ''}
+            error={githubConfigErrors.githubOrg}
             onChange={(value) => updatePendingSetting('githubOrg', value)}
           />
           <DashboardInput
@@ -1220,15 +1337,38 @@ function AdminsTab({
   )
 }
 
+type TeamSortColumn = 'name' | 'membersCount' | 'queueScore'
+
 function TeamsTab({ eventId }: { eventId: string }) {
   const queryClient = useQueryClient()
   const [teamToDelete, setTeamToDelete] = useState<Team | null>(null)
+  const [sortColumn, setSortColumn] = useState<TeamSortColumn>('name')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
   const teamsQuery = useQuery({
-    queryKey: ['event', eventId, 'teams', 'admin'],
+    queryKey: ['event', eventId, 'teams', 'admin', sortColumn, sortDirection],
     queryFn: () =>
-      getTeamsForEventTable(eventId, undefined, 'name', 'asc', true),
+      getTeamsForEventTable(
+        eventId,
+        undefined,
+        sortColumn,
+        sortDirection,
+        true,
+      ),
+    placeholderData: (previousData) => previousData,
+    // Finished queue matches change the scores on the server.
+    refetchInterval: TEAMS_REFETCH_INTERVAL_MS,
   })
+
+  const handleSort = (column: TeamSortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+
+    setSortColumn(column)
+    setSortDirection('asc')
+  }
 
   const updateCreditsMutation = useMutation({
     mutationFn: ({ teamId, credits }: { teamId: string; credits: number }) =>
@@ -1281,7 +1421,7 @@ function TeamsTab({ eventId }: { eventId: string }) {
             <div className="flex items-center justify-center py-8">
               <Spinner />
             </div>
-          ) : teamsQuery.isError ? (
+          ) : !teamsQuery.data ? (
             <p className="py-8 text-center text-destructive">
               Failed to load teams.
             </p>
@@ -1289,8 +1429,30 @@ function TeamsTab({ eventId }: { eventId: string }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Members</TableHead>
+                  <SortableTableHead
+                    column="name"
+                    onSort={handleSort}
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                  >
+                    Team
+                  </SortableTableHead>
+                  <SortableTableHead
+                    column="membersCount"
+                    onSort={handleSort}
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                  >
+                    Members
+                  </SortableTableHead>
+                  <SortableTableHead
+                    column="queueScore"
+                    onSort={handleSort}
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                  >
+                    Queue Score
+                  </SortableTableHead>
                   <TableHead>Credits</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -1299,7 +1461,7 @@ function TeamsTab({ eventId }: { eventId: string }) {
                 {teamsQuery.data.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={4}
+                      colSpan={5}
                       className="py-8 text-center text-muted-foreground"
                     >
                       No teams found.
@@ -1405,6 +1567,7 @@ function TeamManagementRow({
     <TableRow>
       <TableCell className="font-medium">{team.name}</TableCell>
       <TableCell>{team.membersCount ?? '-'}</TableCell>
+      <TableCell>{team.queueScore ?? '-'}</TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           <Input
@@ -1515,11 +1678,13 @@ function SettingSwitch({
   id,
   label,
   checked,
+  disabled,
   onCheckedChange,
 }: {
   id: string
   label: string
   checked: boolean
+  disabled?: boolean
   onCheckedChange: (checked: boolean) => void
 }) {
   return (
@@ -1527,7 +1692,12 @@ function SettingSwitch({
       <Label className="cursor-pointer" htmlFor={id}>
         {label}
       </Label>
-      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+      <Switch
+        id={id}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onCheckedChange}
+      />
     </div>
   )
 }
@@ -1540,6 +1710,8 @@ function DashboardInput({
   placeholder,
   min,
   max,
+  disabled,
+  error,
 }: {
   label: string
   value: string | number
@@ -1548,18 +1720,37 @@ function DashboardInput({
   placeholder?: string
   min?: number
   max?: number
+  disabled?: boolean
+  /** Validation message shown below the input. */
+  error?: string
 }) {
+  const id = useId()
+  const errorId = `${id}-error`
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
+      <Label htmlFor={id}>{label}</Label>
       <Input
+        id={id}
         type={type}
         value={value}
         placeholder={placeholder}
         min={min}
         max={max}
+        disabled={disabled}
+        aria-invalid={error ? true : undefined}
+        className={
+          error
+            ? 'border-destructive focus-visible:ring-destructive'
+            : undefined
+        }
+        aria-describedby={error ? errorId : undefined}
         onChange={(event) => onChange(event.target.value)}
       />
+      {error && (
+        <p id={errorId} className="text-sm font-medium text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   )
 }
@@ -1619,6 +1810,11 @@ function formatDateTimeInput(value: string | number | undefined) {
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
+  if (isAxiosError<{ message?: string | string[] }>(error)) {
+    const message = error.response?.data.message
+    if (Array.isArray(message)) return message.join(', ')
+    if (message) return message
+  }
   if (error instanceof Error && error.message) {
     return error.message
   }

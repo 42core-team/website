@@ -4,6 +4,74 @@ import * as path from "node:path";
 import * as YAML from "yaml";
 import { Logger } from "@nestjs/common";
 import { GitHubRepository } from "./githubApi";
+import {
+  assertCheckoutInsideFolder,
+  resolveInsideFolder,
+  validateMonoRepoSource,
+} from "./repo-validation";
+
+/** Environment variables passed to git through simple-git's guard. */
+const MONO_REPO_GIT_ENV_KEYS = ["GIT_ALLOW_PROTOCOL", "GIT_TERMINAL_PROMPT"];
+
+/** Same as above, plus the variables that carry the team repo's auth header. */
+const TEAM_REPO_GIT_ENV_KEYS = [
+  ...MONO_REPO_GIT_ENV_KEYS,
+  "GIT_CONFIG_COUNT",
+  "GIT_CONFIG_KEY_0",
+  "GIT_CONFIG_VALUE_0",
+];
+
+/** The user name sent with the token. GitHub ignores it for token auth. */
+const TEAM_REPO_PUSH_USER = "x-access-token";
+
+/**
+ * A minimal environment for running git against a remote: git only gets what it
+ * needs (and none of this service's secrets), may only use https, and never
+ * prompts.
+ */
+function minimalGitEnv(): Record<string, string> {
+  const env: Record<string, string> = {
+    GIT_ALLOW_PROTOCOL: "https",
+    GIT_TERMINAL_PROMPT: "0",
+  };
+  for (const key of [
+    "PATH",
+    "HOME",
+    "HTTPS_PROXY",
+    "https_proxy",
+    "HTTP_PROXY",
+    "http_proxy",
+    "NO_PROXY",
+    "no_proxy",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+  ]) {
+    const value = process.env[key];
+    if (value !== undefined) env[key] = value;
+  }
+  return env;
+}
+
+/**
+ * The environment for pushing to a team repo. The token travels in a header
+ * instead of the remote URL: libcurl no longer reports credentials in its
+ * effective URL, which git treats as a redirect and then drops them, and this
+ * also keeps the token out of .git/config and the process arguments.
+ */
+function teamRepoPushEnv(
+  cloneUrl: string,
+  token: string,
+): Record<string, string> {
+  const credentials = Buffer.from(`${TEAM_REPO_PUSH_USER}:${token}`).toString(
+    "base64",
+  );
+  return {
+    ...minimalGitEnv(),
+    GIT_CONFIG_COUNT: "1",
+    GIT_CONFIG_KEY_0: `http.${new URL(cloneUrl).origin}/.extraHeader`,
+    GIT_CONFIG_VALUE_0: `Authorization: Basic ${credentials}`,
+  };
+}
 
 export class RepoUtils {
   // TODO: this needs to be dynamic in the future
@@ -25,46 +93,47 @@ export class RepoUtils {
     apiBaseUrl: string,
     starterTemplateId?: string,
   ): Promise<SimpleGit> {
+    validateMonoRepoSource(monoRepoUrl, monoRepoVersion, basePath);
+    const repoRoot = resolveInsideFolder(tempFolderPath, basePath);
+
     this.logger.log(
       `Cloning mono repo ${monoRepoUrl} to temp folder ${tempFolderPath}`,
     );
-    const gitMono = simpleGit(tempFolderPath);
-    await gitMono.clone(monoRepoUrl, "./", [
+    const gitMono = simpleGit({
+      baseDir: tempFolderPath,
+      allowEnvironment: MONO_REPO_GIT_ENV_KEYS,
+    }).env(minimalGitEnv());
+    await gitMono.raw([
+      "clone",
       "--filter=blob:none",
       "--sparse",
       "--branch",
       monoRepoVersion,
       "--depth=1",
+      "--",
+      monoRepoUrl,
+      ".",
     ]);
-    await gitMono.raw(["sparse-checkout", "set", basePath]);
+    await gitMono.raw(["sparse-checkout", "set", "--", basePath]);
+    await assertCheckoutInsideFolder(tempFolderPath, repoRoot);
 
     const [gitRepo] = await Promise.all([
-      this.initRepo(tempFolderPath, basePath),
-      this.updateGitignoreFromCoreignore(path.join(tempFolderPath, basePath)),
+      this.initRepo(tempFolderPath, repoRoot),
+      this.updateGitignoreFromCoreignore(repoRoot),
       this.updateDevcontainerDockerCompose(
-        path.join(tempFolderPath, basePath),
+        repoRoot,
         myCoreBotDockerImage,
         visualizerDockerImage,
       ),
-      this.updateTeamName(path.join(tempFolderPath, basePath), teamName),
+      this.updateTeamName(repoRoot, teamName),
+      this.writeJsonConfig(repoRoot, "game.config.json", gameConfig, "game"),
       this.writeJsonConfig(
-        path.join(tempFolderPath, basePath),
-        "game.config.json",
-        gameConfig,
-        "game",
-      ),
-      this.writeJsonConfig(
-        path.join(tempFolderPath, basePath),
+        repoRoot,
         "server.config.json",
         serverConfig,
         "server",
       ),
-      this.updateConfigsUrls(
-        path.join(tempFolderPath, basePath),
-        eventId,
-        apiBaseUrl,
-        starterTemplateId,
-      ),
+      this.updateConfigsUrls(repoRoot, eventId, apiBaseUrl, starterTemplateId),
     ]);
     return gitRepo;
   }
@@ -77,23 +146,19 @@ export class RepoUtils {
     basePath: string,
   ) {
     await this.updateReadmeRepoUrl(
-      path.join(tempFolderPath, basePath),
+      resolveInsideFolder(tempFolderPath, basePath),
       teamRepo.name,
       teamRepo.ssh_url,
     );
 
-    await gitRepo.addRemote(
-      "team-repo",
-      teamRepo.clone_url.replace(
-        "https://",
-        `https://${decryptedGithubAccessToken}@`,
-      ),
-    );
+    await gitRepo.addRemote("team-repo", teamRepo.clone_url);
     await gitRepo.add(".");
     await gitRepo.commit("Initial commit");
 
     await gitRepo.branch(["-M", "main"]);
-    await gitRepo.push("team-repo", "main", ["-u"]);
+    await gitRepo
+      .env(teamRepoPushEnv(teamRepo.clone_url, decryptedGithubAccessToken))
+      .push("team-repo", "main", ["-u"]);
     this.logger.log(
       `Pushed to team-repo ${teamRepo.clone_url} from temp folder ${tempFolderPath}`,
     );
@@ -101,17 +166,25 @@ export class RepoUtils {
 
   private async initRepo(
     tempFolderPath: string,
-    basePath: string,
+    repoRoot: string,
   ): Promise<SimpleGit> {
     await Promise.all([
-      fs.rm(`${tempFolderPath}/.git`, { recursive: true, force: true }),
-      fs.rm(`${tempFolderPath}/${basePath}/.git`, {
+      fs.rm(path.join(tempFolderPath, ".git"), {
+        recursive: true,
+        force: true,
+      }),
+      fs.rm(path.join(repoRoot, ".git"), {
         recursive: true,
         force: true,
       }),
     ]);
 
-    const gitRepo = simpleGit(path.join(tempFolderPath, basePath));
+    const gitRepo = simpleGit({
+      baseDir: repoRoot,
+      allowEnvironment: TEAM_REPO_GIT_ENV_KEYS,
+      // Only teamRepoPushEnv sets GIT_CONFIG_*, from values built by this service.
+      unsafe: { allowUnsafeConfigEnvCount: true },
+    });
     await gitRepo.init();
 
     return gitRepo;

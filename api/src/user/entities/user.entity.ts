@@ -25,6 +25,11 @@ export class UserEntity {
   @Column()
   githubAccessToken: string;
 
+  /** Last time GitHub confirmed the stored token is valid (ADR 0003). */
+  @Exclude()
+  @Column({ type: "timestamptz", nullable: true })
+  githubCheckedAt: Date | null;
+
   @Column()
   email: string;
 

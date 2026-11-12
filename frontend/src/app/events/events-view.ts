@@ -11,18 +11,13 @@ export interface EventsViewModel {
 }
 
 export function getEventStatus(event: Event, now: number): EventStatus {
-  const startDate = new Date(event.startDate).getTime()
-  const endDate = new Date(event.endDate).getTime()
-
-  if (now < startDate) {
+  if (event.state === 'COMPLETED') return 'completed'
+  if (
+    event.state === 'REGISTRATION' &&
+    now < new Date(event.startDate).getTime()
+  )
     return 'upcoming'
-  }
-
-  if (now <= endDate) {
-    return 'live'
-  }
-
-  return 'completed'
+  return 'live'
 }
 
 function compareByNewestStartDate(first: Event, second: Event) {
@@ -41,7 +36,8 @@ function compareByNextStartDate(first: Event, second: Event) {
 
 function compareByMostRecentEndDate(first: Event, second: Event) {
   const dateDifference =
-    new Date(second.endDate).getTime() - new Date(first.endDate).getTime()
+    new Date(second.completedAt ?? second.scheduledEndDate).getTime() -
+    new Date(first.completedAt ?? first.scheduledEndDate).getTime()
 
   return dateDifference || compareByNewestStartDate(first, second)
 }
@@ -57,9 +53,13 @@ function selectFeaturedEvent(events: Event[], now: number) {
 
   const recentlyCompletedEvents = events
     .filter((event) => {
-      const endDate = new Date(event.endDate).getTime()
+      const endDate = new Date(event.completedAt ?? '').getTime()
 
-      return endDate < now && endDate >= now - RECENT_EVENT_WINDOW_MS
+      return (
+        event.state === 'COMPLETED' &&
+        endDate <= now &&
+        endDate >= now - RECENT_EVENT_WINDOW_MS
+      )
     })
     .sort(compareByMostRecentEndDate)
 

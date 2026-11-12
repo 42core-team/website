@@ -3,8 +3,6 @@ image:
   tag: local
   pullPolicy: IfNotPresent
 
-imagePullSecrets: []
-
 fullnameOverride: "k8s-service"
 
 ingress:

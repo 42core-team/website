@@ -6,11 +6,13 @@ import {
   UserEventPermissionEntity,
   PermissionRole,
 } from "../user/entities/user.entity";
-import { TeamEntity } from "../team/entities/team.entity";
+import { RepositoryStatus, TeamEntity } from "../team/entities/team.entity";
+import { randomUUID } from "crypto";
 import { config } from "dotenv";
 import { DatabaseConfig } from "../DatabaseConfig";
 import { ConfigService } from "@nestjs/config";
 import { join } from "path";
+import { encryptSecret } from "../common/encryption";
 
 config();
 
@@ -63,12 +65,17 @@ async function bootstrap() {
       `Seeding ${numUsers} users and ${numTeams} teams for event: ${event.name} (${event.id})`,
     );
 
+    // Stored like real tokens so services can decrypt it; scrypt runs once.
+    const dummyToken = encryptSecret(
+      "dummy-token",
+      configService.getOrThrow<string>("API_SECRET_ENCRYPTION_KEY"),
+    );
     const users: UserEntity[] = [];
     const now = Date.now();
     for (let i = 1; i <= numUsers; i++) {
       const user = new UserEntity();
       user.githubId = `seed-user-${i}-${now}`;
-      user.githubAccessToken = "dummy-token";
+      user.githubAccessToken = dummyToken;
       user.email = `user${i}@example.com`;
       user.username = `seeduser${i}_${now.toString().slice(-5)}`;
       user.name = `Seed User ${i}`;
@@ -99,8 +106,12 @@ async function bootstrap() {
       // Assign 3 users to each team
       const teamUsers = savedUsers.slice((i - 1) * 3, i * 3);
       team.users = teamUsers;
-      team.repo = "https://github.com/42core-team/monorepo";
-      team.startedRepoCreationAt = new Date();
+      // In development github-service simulates permission, lock, unlock and
+      // delete operations on sim-<teamId> repositories, so these teams never
+      // touch GitHub. READY means no repository is ever created for them.
+      team.id = randomUUID();
+      team.repo = `sim-${team.id}`;
+      team.repositoryStatus = RepositoryStatus.READY;
 
       teams.push(team);
     }

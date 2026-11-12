@@ -162,7 +162,7 @@ The deployment is automated via GitHub Actions:
 
 ### Common Issues
 
-1. **Image Pull Errors**: Ensure `ghcr-secret` exists in namespace
+1. **Image Pull Errors**: Verify the image repository and tag exist and are accessible from the cluster
 2. **Ingress Issues**: Verify cert-manager and nginx-ingress are installed
 3. **Health Check Failures**: Check application logs and probe configuration
 

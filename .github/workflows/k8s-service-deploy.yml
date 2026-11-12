@@ -146,16 +146,6 @@ jobs:
         run: |
           kubectl create namespace ${{ steps.config.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Create image pull secret
-        run: |
-          kubectl create secret docker-registry ghcr-secret \
-            --docker-server=ghcr.io \
-            --docker-username=${{ github.actor }} \
-            --docker-password=${{ secrets.GITHUB_TOKEN }} \
-            --docker-email=${{ github.actor }}@users.noreply.github.com \
-            --namespace=${{ steps.config.outputs.namespace }} \
-            --dry-run=client -o yaml | kubectl apply -f -
-
       - name: Validate Helm chart
         run: |
           cd k8s-service/helm

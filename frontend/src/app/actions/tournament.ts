@@ -1,4 +1,9 @@
-import type { Match, MatchLogs } from '@/app/actions/tournament-model'
+import type {
+  Match,
+  MatchLogs,
+  PaginatedQueueMatches,
+  QueueMatch,
+} from '@/app/actions/tournament-model'
 import axiosInstance from '@/app/actions/axios'
 
 export async function getSwissMatches(eventId: string, adminReveal: boolean) {
@@ -58,8 +63,47 @@ export async function cleanupAllMatches(
   await axiosInstance.put<void>(`/match/cleanup-all/${eventId}/${phase}`)
 }
 
-export async function getMatchById(matchId: string): Promise<Match> {
-  return (await axiosInstance.get<Match>(`/match/${matchId}`)).data
+export async function getAllQueueMatches(
+  eventId: string,
+  page: number,
+  pageSize: number,
+  search: string,
+) {
+  return (
+    await axiosInstance.get<PaginatedQueueMatches>(
+      `/match/queue/${eventId}/admin`,
+      { params: { page, pageSize, search: search || undefined } },
+    )
+  ).data
+}
+
+export async function getManualMatches(eventId: string) {
+  return (await axiosInstance.get<QueueMatch[]>(`/match/manual/${eventId}`))
+    .data
+}
+
+export async function createManualMatch(
+  eventId: string,
+  teamOneId: string,
+  teamTwoId: string,
+) {
+  return (
+    await axiosInstance.post<{ id: string }>(`/match/manual/${eventId}`, {
+      teamOneId,
+      teamTwoId,
+    })
+  ).data
+}
+
+export async function getMatchById(
+  matchId: string,
+  adminReveal = false,
+): Promise<Match> {
+  const params = new URLSearchParams()
+  if (adminReveal) {
+    params.append('adminRevealQuery', 'true')
+  }
+  return (await axiosInstance.get<Match>(`/match/${matchId}`, { params })).data
 }
 
 export async function getMatchesForTeam(teamId: string): Promise<Match[]> {

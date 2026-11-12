@@ -17,7 +17,6 @@ const team: Team = {
   id: 'winner',
   name: 'Unrevealed winner',
   repo: '',
-  inQueue: false,
   credits: 0,
   score: 0,
   buchholzPoints: 0,

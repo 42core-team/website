@@ -1,6 +1,7 @@
 import type { EventStarterTemplate } from '@/app/actions/event'
 import { useForm } from '@tanstack/react-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import { Check, Loader2, Pencil, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -28,10 +29,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  getGithubConfigError,
+  githubConfigSchema,
+  normalizeGithubConfigValue,
+} from '@/lib/github-validation'
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  basePath: z.string().min(1, 'Base path is required'),
+  basePath: githubConfigSchema('basePath'),
   myCoreBotDockerImage: z.string().min(1, 'Bot docker image is required'),
 })
 
@@ -79,7 +85,10 @@ export function StarterTemplatesManagement({
       onChange: formSchema,
     },
     onSubmit: async ({ value }) => {
-      await createMutation.mutateAsync(value)
+      await createMutation.mutateAsync({
+        ...value,
+        basePath: normalizeGithubConfigValue('basePath', value.basePath),
+      })
       form.reset()
     },
   })
@@ -88,7 +97,8 @@ export function StarterTemplatesManagement({
     mutationFn: (data: {
       id: string
       name: string
-      basePath: string
+      /** Left out when the base path was not changed. */
+      basePath?: string
       myCoreBotDockerImage: string
     }) =>
       updateStarterTemplate(eventId, data.id, {
@@ -166,6 +176,30 @@ export function StarterTemplatesManagement({
 
   const templates = templatesQuery.data ?? []
 
+  const savedEditingTemplate = templates.find(
+    (template) => template.id === editingTemplate?.id,
+  )
+  const editedBasePath = editingTemplate
+    ? normalizeGithubConfigValue('basePath', editingTemplate.basePath)
+    : ''
+  const basePathChanged = editedBasePath !== savedEditingTemplate?.basePath
+  // Only validate the base path once it was edited, so other fields of a
+  // template can still be updated.
+  const editBasePathError =
+    editingTemplate && basePathChanged
+      ? getGithubConfigError('basePath', editingTemplate.basePath)
+      : undefined
+
+  const saveEditingTemplate = () => {
+    if (!editingTemplate || editBasePathError) return
+    updateMutation.mutate({
+      id: editingTemplate.id,
+      name: editingTemplate.name,
+      basePath: basePathChanged ? editedBasePath : undefined,
+      myCoreBotDockerImage: editingTemplate.myCoreBotDockerImage,
+    })
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -219,17 +253,31 @@ export function StarterTemplatesManagement({
                             className="h-8"
                           />
                         </TableCell>
-                        <TableCell>
-                          <Input
-                            value={editingTemplate.basePath}
-                            onChange={(event) =>
-                              setEditingTemplate({
-                                ...editingTemplate,
-                                basePath: event.target.value,
-                              })
-                            }
-                            className="h-8"
-                          />
+                        <TableCell className="align-top">
+                          <div className="space-y-1">
+                            <Input
+                              value={editingTemplate.basePath}
+                              onChange={(event) =>
+                                setEditingTemplate({
+                                  ...editingTemplate,
+                                  basePath: event.target.value,
+                                })
+                              }
+                              aria-invalid={
+                                editBasePathError ? true : undefined
+                              }
+                              className={`h-8 ${
+                                editBasePathError
+                                  ? 'border-destructive focus-visible:ring-destructive'
+                                  : ''
+                              }`}
+                            />
+                            {editBasePathError && (
+                              <p className="text-[10px] font-medium text-destructive">
+                                {editBasePathError}
+                              </p>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Input
@@ -248,10 +296,11 @@ export function StarterTemplatesManagement({
                             <Button
                               size="icon"
                               className="h-8 w-8"
-                              onClick={() =>
-                                updateMutation.mutate(editingTemplate)
+                              onClick={saveEditingTemplate}
+                              disabled={
+                                updateMutation.isPending ||
+                                Boolean(editBasePathError)
                               }
-                              disabled={updateMutation.isPending}
                             >
                               {updateMutation.isPending ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -349,6 +398,11 @@ export function StarterTemplatesManagement({
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
+  if (isAxiosError<{ message?: string | string[] }>(error)) {
+    const message = error.response?.data.message
+    if (Array.isArray(message)) return message.join(', ')
+    if (message) return message
+  }
   if (error instanceof Error && error.message) {
     return error.message
   }

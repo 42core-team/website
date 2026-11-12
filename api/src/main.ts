@@ -14,6 +14,10 @@ import { ConfigService } from "@nestjs/config";
 import cookieParser from "cookie-parser";
 import { createCsrfProtection } from "./common/csrf-protection";
 import { rabbitmqQueueName } from "./rabbitmq-queue-name";
+import {
+  getAuthCookieName,
+  REFRESH_COOKIE_NAME,
+} from "./auth/session.constants";
 
 export const getRabbitmqConfig = (
   configService: ConfigService,
@@ -47,10 +51,10 @@ async function bootstrap() {
   );
   app.use(cookieParser());
   app.use(
-    createCsrfProtection(
-      configService.getOrThrow<string>("CORS_ORIGIN"),
-      configService.get<string>("AUTH_COOKIE_NAME") || "token",
-    ),
+    createCsrfProtection(configService.getOrThrow<string>("CORS_ORIGIN"), [
+      getAuthCookieName(configService),
+      REFRESH_COOKIE_NAME,
+    ]),
   );
   app.enableCors({
     origin: configService.getOrThrow<string>("CORS_ORIGIN"),

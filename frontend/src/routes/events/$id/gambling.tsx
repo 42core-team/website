@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { toast } from 'sonner'
+import { getEventById } from '@/app/actions/event'
+import { bettingOpen } from '@/lib/event-lifecycle'
+import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
+import { GAMBLING_REFETCH_INTERVAL_MS } from '@/lib/query-intervals'
+import { useEventClock } from '@/hooks/use-event-clock'
 import {
   getGamblingSnapshot,
   joinGamblingList,
@@ -14,6 +19,7 @@ import {
   GamblingSidebar,
   getGamblingErrorMessage,
 } from '@/components/gambling'
+import { Lock } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Spinner } from '@/components/ui/spinner'
 
@@ -21,16 +27,29 @@ export const Route = createFileRoute('/events/$id/gambling')({
   component: GamblingRoute,
 })
 
-const GAMBLING_QUERY_INTERVAL_MS = 3000
-
 function GamblingRoute() {
+  const now = useEventClock()
   const { id } = Route.useParams()
   const queryClient = useQueryClient()
+  const eventQuery = useQuery({
+    queryKey: ['event', id],
+    queryFn: () => getEventById(id),
+  })
+  const teamQuery = useQuery({
+    queryKey: myTeamQueryKey(id),
+    queryFn: () => myTeamQueryFn(id),
+  })
+  const canBet = Boolean(
+    eventQuery.data &&
+    bettingOpen(eventQuery.data, now) &&
+    teamQuery.data?.repositoryStatus === 'READY' &&
+    !teamQuery.data.tournamentExcluded,
+  )
   const queryKey = ['event', id, 'gambling'] as const
   const gamblingQuery = useQuery({
     queryKey,
     queryFn: () => getGamblingSnapshot(id),
-    refetchInterval: GAMBLING_QUERY_INTERVAL_MS,
+    refetchInterval: GAMBLING_REFETCH_INTERVAL_MS,
   })
   const refresh = () => queryClient.invalidateQueries({ queryKey })
 
@@ -85,6 +104,15 @@ function GamblingRoute() {
 
   return (
     <main className="container mx-auto max-w-6xl space-y-6 px-4 py-8">
+      {!canBet && (
+        <Alert role="status">
+          <Lock className="size-4" aria-hidden="true" />
+          <AlertTitle>Betting closed</AlertTitle>
+          <AlertDescription>
+            Existing bets and results remain available.
+          </AlertDescription>
+        </Alert>
+      )}
       <GamblingHeader
         round={snapshot.round}
         onCountdownComplete={() => {
@@ -97,22 +125,25 @@ function GamblingRoute() {
           <GamblingMatchCard
             eventId={id}
             snapshot={snapshot}
+            bettingEnabled={canBet}
             isBetPending={betMutation.isPending}
             onPlaceBet={(teamId, credits) =>
-              betMutation.mutate({ teamId, credits })
+              canBet && betMutation.mutate({ teamId, credits })
             }
           />
           <GamblingLatestResult eventId={id} result={snapshot.latestResult} />
         </div>
 
         <GamblingSidebar
+          membershipEnabled={canBet}
           entries={snapshot.entries}
           myTeam={snapshot.myTeam}
           isMembershipPending={
             joinMutation.isPending || leaveMutation.isPending
           }
           onToggleMembership={(isEntered) =>
-            isEntered ? leaveMutation.mutate() : joinMutation.mutate()
+            canBet &&
+            (isEntered ? leaveMutation.mutate() : joinMutation.mutate())
           }
         />
       </div>

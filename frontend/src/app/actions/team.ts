@@ -1,6 +1,19 @@
 import type { QueueMatch } from '@/app/actions/tournament-model'
 import axiosInstance from '@/app/actions/axios'
 
+export interface TeamImage {
+  small: string
+  large: string
+}
+export interface TeamBackground {
+  large: string
+  small?: string // Legacy uploads only.
+}
+export interface TeamAppearance {
+  picture?: TeamImage | null
+  background?: TeamBackground | null
+}
+
 export interface QueueTeamSummary {
   id: string
   name: string
@@ -10,25 +23,35 @@ export interface QueueTeamSummary {
   nextCreditAt: string | null
 }
 
-export interface QueueOpponent {
+export interface QueueOpponent extends TeamAppearance {
   id: string
   name: string
 }
 
-export interface Team {
+export interface RepositoryState {
+  repositoryStatus?:
+    | 'PENDING'
+    | 'PROVISIONING'
+    | 'READY'
+    | 'LOCKING'
+    | 'LOCKED'
+    | 'UNLOCKING'
+    | 'FAILED'
+  repositoryError?: string | null
+  tournamentExcluded?: boolean
+}
+
+export interface Team extends TeamAppearance, RepositoryState {
   id: string
   name: string
   repo: string
-  inQueue: boolean
   credits: number
+  queueScore?: number
   score: number
   buchholzPoints: number
   hadBye: boolean
   locked?: boolean
-  created?: string
-  updated?: string
   createdAt?: Date
-  updatedAt?: Date
   membersCount?: number
   tags: string[]
 }
@@ -44,19 +67,20 @@ export interface TeamMember {
   tags: string[]
 }
 
-export interface TeamApiResponse {
+// Each team endpoint returns only the fields its views read, so most of these
+// are optional. Repository state and credits come for the own team and for
+// event admins only, the queue score for event admins only.
+export interface TeamApiResponse extends TeamAppearance, RepositoryState {
   id: string
   name: string
   repo?: string | null
-  inQueue?: boolean
   score?: number
   buchholzPoints?: number
   hadBye?: boolean
-  locked?: boolean
   createdAt?: Date
-  updatedAt?: Date
   userCount?: number
   credits?: number
+  queueScore?: number
   tags?: string[]
 }
 
@@ -80,11 +104,6 @@ export interface UserSearchResult {
 
 export async function getQueueMatches(eventId: string) {
   return (await axiosInstance.get(`/match/queue/${eventId}/`))
-    .data as QueueMatch[]
-}
-
-export async function getQueueMatchesAdmin(eventId: string) {
-  return (await axiosInstance.get(`/match/queue/${eventId}/admin`))
     .data as QueueMatch[]
 }
 
@@ -123,10 +142,6 @@ export async function getTeamById(teamId: string): Promise<Team | null> {
   return team ? mapTeamResponse(team) : null
 }
 
-export async function hasEventStarted(teamId: string): Promise<boolean> {
-  return (await axiosInstance.get(`team/${teamId}/event-started`)).data
-}
-
 export async function getMyEventTeam(eventId: string): Promise<Team | null> {
   const team = (
     await axiosInstance.get<TeamApiResponse | null>(`team/event/${eventId}/my`)
@@ -154,14 +169,6 @@ export async function deleteTeamAsAdmin(
   teamId: string,
 ): Promise<void> {
   await axiosInstance.delete(`team/event/${eventId}/admin/${teamId}`)
-}
-
-export async function lockEvent(eventId: string) {
-  return (await axiosInstance.put(`event/${eventId}/lock`)).data
-}
-
-export async function unlockEvent(eventId: string) {
-  return (await axiosInstance.put(`event/${eventId}/unlock`)).data
 }
 
 /**
@@ -266,6 +273,7 @@ export async function getTeamsForEventTable(
     | 'membersCount'
     | 'score'
     | 'buchholzPoints'
+    | 'queueScore'
     | undefined = 'name',
   sortDirection: 'asc' | 'desc' = 'asc',
   adminReveal: boolean = false,
@@ -288,16 +296,46 @@ export function mapTeamResponse(team: TeamApiResponse): Team {
   return {
     id: team.id,
     name: team.name,
+    picture: team.picture,
+    background: team.background,
     repo: team.repo ?? '',
-    inQueue: team.inQueue ?? false,
     score: team.score ?? 0,
     buchholzPoints: team.buchholzPoints ?? 0,
     hadBye: team.hadBye ?? false,
-    locked: team.locked,
+    locked: team.repositoryStatus === 'LOCKED',
+    repositoryStatus: team.repositoryStatus,
+    repositoryError: team.repositoryError,
+    tournamentExcluded: team.tournamentExcluded,
     createdAt: team.createdAt,
-    updatedAt: team.updatedAt,
     membersCount: team.userCount,
     credits: team.credits ?? 0,
+    queueScore: team.queueScore,
     tags: team.tags ?? [],
   }
+}
+
+export async function saveTeamImage(
+  eventId: string,
+  kind: 'picture' | 'background',
+  file: File,
+  x: number,
+  y: number,
+  scale = 1,
+) {
+  const data = new FormData()
+  data.append('file', file)
+  data.append('x', String(x))
+  data.append('y', String(y))
+  data.append('scale', String(scale))
+  return (
+    await axiosInstance.put(`team/event/${eventId}/my/images/${kind}`, data, {
+      headers: { 'Content-Type': undefined },
+    })
+  ).data as TeamImage | TeamBackground
+}
+export async function removeTeamImage(
+  eventId: string,
+  kind: 'picture' | 'background',
+) {
+  await axiosInstance.delete(`team/event/${eventId}/my/images/${kind}`)
 }

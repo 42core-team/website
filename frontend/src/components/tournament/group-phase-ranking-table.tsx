@@ -6,6 +6,7 @@ import { Fragment, useMemo } from 'react'
 import { MatchState } from '@/app/actions/tournament-model'
 import { MatchHistoryBadges } from '@/components/match/MatchHistoryBadges'
 import { LocationTags } from '@/components/team'
+import { TeamPicture } from '@/components/team/TeamAppearance'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -108,6 +109,7 @@ export function GroupPhaseRankingTable({
                     <TableCell>{rank}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-2">
+                        <TeamPicture team={team} />
                         <span>{team.name}</span>
                         <LocationTags tags={team.tags} />
                       </div>

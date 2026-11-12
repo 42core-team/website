@@ -15,18 +15,18 @@ This service handles GitHub operations including:
 
 ### Prerequisites
 
-Use Node.js 26 (Docker and CI use 26.10.0) and pnpm 12.8.1:
+Use Node.js 26 (Docker and CI use 26.10.0) and pnpm 12.11.2:
 
 Install pnpm:
 
 ```bash
-corepack enable && corepack prepare pnpm@12.8.1 --activate
+corepack enable && corepack prepare pnpm@12.11.2 --activate
 ```
 
 or
 
 ```bash
-npm install -g pnpm@12.8.1
+npm install -g pnpm@12.11.2
 ```
 
 ### Installation & Setup

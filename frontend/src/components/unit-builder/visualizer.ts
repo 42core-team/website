@@ -15,16 +15,13 @@ export function getUnitAssetPath(
   for (const component of components)
     counts.set(component.id, (counts.get(component.id) ?? 0) + 1)
 
-  const prioritized = components.some(
-    (component) => component.visualizer_asset_prioritized,
-  )
-
   return (
     components
-      .filter(
-        (component) => component.visualizer_asset_prioritized === prioritized,
+      .sort(
+        (a, b) =>
+          b.visualizer_asset_priority - a.visualizer_asset_priority ||
+          (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0),
       )
-      .sort((a, b) => (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0))
       .at(0)?.visualizer_asset_path ?? FALLBACK_UNIT_ASSET_PATH
   )
 }

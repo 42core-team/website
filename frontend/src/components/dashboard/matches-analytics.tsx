@@ -53,6 +53,7 @@ const MATCH_TYPES = [
   { phase: MatchPhase.SWISS, label: 'Group phase' },
   { phase: MatchPhase.ELIMINATION, label: 'Tournament' },
   { phase: MatchPhase.GAMBLING, label: 'Gambling' },
+  { phase: MatchPhase.MANUAL, label: 'Manual' },
 ] as const
 
 const ALL_PHASES = MATCH_TYPES.map(({ phase }) => phase)

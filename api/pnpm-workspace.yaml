@@ -5,12 +5,14 @@ peerDependencyRules:
     chokidar: ">=4 <6"
 
 allowBuilds:
-  "@nestjs/core": set this to true or false
+  "@nestjs/core": true
+  "@parcel/watcher": true
   "@scarf/scarf": true
   "@swc/core": true
   unrs-resolver: true
 onlyBuiltDependencies:
   - "@nestjs/core"
+  - "@parcel/watcher"
   - "@scarf/scarf"
   - "@swc/core"
   - unrs-resolver

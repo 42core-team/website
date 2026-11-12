@@ -1,14 +1,66 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
+  MaxLength,
   Min,
 } from "class-validator";
+import {
+  GIT_REF_MESSAGE,
+  GIT_REF_PATTERN,
+  GITHUB_OWNER_MESSAGE,
+  GITHUB_OWNER_PATTERN,
+  GITHUB_REPO_URL_MESSAGE,
+  GITHUB_REPO_URL_PATTERN,
+  REPO_RELATIVE_PATH_MESSAGE,
+  REPO_RELATIVE_PATH_PATTERN,
+} from "../../common/github-validation";
+import { NormalizeGithubConfig } from "../../common/github-config-normalization";
+import {
+  EVENT_NAME_MAX_LENGTH,
+  EVENT_NAME_MAX_LENGTH_MESSAGE,
+} from "../../common/name-limits";
+
+/** The elimination bracket has no byes, so only powers of two are valid. */
+export const TOURNAMENT_ADVANCEMENT_LIMITS = [2, 4, 8, 16, 32, 64, 128, 256];
 
 export class UpdateEventSettingsDto {
+  @IsOptional()
+  @IsNumber()
+  submissionDeadline?: number;
+
+  @IsOptional()
+  @IsNumber()
+  scheduledEndDate?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  introEnabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  introLeadMinutes?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  streamUrl?: string;
+
+  @ApiPropertyOptional({
+    description: "Showtime stream; falls back to streamUrl when empty",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  showtimeStreamUrl?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
@@ -36,14 +88,24 @@ export class UpdateEventSettingsDto {
   @Min(1)
   queueCreditIntervalMinutes?: number;
 
+  @ApiPropertyOptional({
+    description: "Most teams entering the bracket; null removes the limit",
+    enum: TOURNAMENT_ADVANCEMENT_LIMITS,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsIn(TOURNAMENT_ADVANCEMENT_LIMITS)
+  tournamentAdvancementLimit?: number | null;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
   isPrivate?: boolean;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ maxLength: EVENT_NAME_MAX_LENGTH })
   @IsOptional()
   @IsString()
+  @MaxLength(EVENT_NAME_MAX_LENGTH, { message: EVENT_NAME_MAX_LENGTH_MESSAGE })
   name?: string;
 
   @ApiPropertyOptional()
@@ -54,6 +116,8 @@ export class UpdateEventSettingsDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @NormalizeGithubConfig("githubOrg")
+  @Matches(GITHUB_OWNER_PATTERN, { message: GITHUB_OWNER_MESSAGE })
   githubOrg?: string;
 
   @ApiPropertyOptional()
@@ -104,16 +168,22 @@ export class UpdateEventSettingsDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @NormalizeGithubConfig("monorepoUrl")
+  @Matches(GITHUB_REPO_URL_PATTERN, { message: GITHUB_REPO_URL_MESSAGE })
   monorepoUrl?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @NormalizeGithubConfig("monorepoVersion")
+  @Matches(GIT_REF_PATTERN, { message: GIT_REF_MESSAGE })
   monorepoVersion?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @NormalizeGithubConfig("basePath")
+  @Matches(REPO_RELATIVE_PATH_PATTERN, { message: REPO_RELATIVE_PATH_MESSAGE })
   basePath?: string;
 
   @ApiPropertyOptional()

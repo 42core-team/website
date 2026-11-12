@@ -45,19 +45,31 @@ jobs:
     permissions:
       contents: read
       actions: write
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: session-tests
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6.1.0
+        uses: pnpm/action-setup@v6.1.1
         with:
-          version: 10
+          version: 12.18.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 25
+          node-version: 26
           cache: "pnpm"
           cache-dependency-path: api/pnpm-lock.yaml
 
@@ -70,6 +82,12 @@ jobs:
         run: |
           pnpm lint
           git diff --exit-code ..
+
+      - name: Test API including session concurrency
+        working-directory: ./api
+        env:
+          SESSION_TEST_DATABASE_URL: postgresql://postgres:session-tests@localhost:5432/postgres
+        run: pnpm test --runInBand
 
       - name: Cancel workflow on failure
         if: failure()
@@ -140,6 +158,8 @@ jobs:
         with:
           context: ./api
           file: ./api/Dockerfile
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
           platforms: ${{ matrix.platform }}
           push: false
           tags: ${{ steps.meta.outputs.tags }}
@@ -151,6 +171,8 @@ jobs:
         with:
           context: ./api
           file: ./api/Dockerfile
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
           platforms: ${{ matrix.platform }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}

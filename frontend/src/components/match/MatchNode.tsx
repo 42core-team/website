@@ -66,6 +66,11 @@ function getMatchStateIcon(state: MatchState) {
   }
 }
 
+// Only a revealed result has a score; teams carry no standings.
+function getResultScore(match: Match, teamId: string) {
+  return match.results?.find((result) => result.team.id === teamId)?.score
+}
+
 function MatchNode({ data }: MatchNodeProps) {
   const {
     match,
@@ -205,11 +210,9 @@ function MatchNode({ data }: MatchNodeProps) {
                   </div>
                   {!hideScore &&
                     match.state === MatchState.FINISHED &&
-                    team.score !== undefined && (
+                    getResultScore(match, team.id) !== undefined && (
                       <span className="ml-2 text-xs">
-                        {(match.results || []).find(
-                          (result) => result?.team?.id === team.id,
-                        )?.score ?? team.score}
+                        {getResultScore(match, team.id)}
                       </span>
                     )}
                 </div>
