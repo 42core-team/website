@@ -152,6 +152,9 @@ describe("team membership under lock", () => {
     });
     const deleteRepository = jest.fn(async () => order.push("delete:repo"));
     Reflect.set(service, "githubApiService", { deleteRepository });
+    Reflect.set(service, "githubAuthService", {
+      authFor: async () => ({ kind: "token", encryptedSecret: "secret" }),
+    });
 
     await expect(service.leaveTeam("team", "member")).resolves.toEqual({
       affected: 1,
@@ -163,7 +166,10 @@ describe("team membership under lock", () => {
       "commit",
       "delete:repo",
     ]);
-    expect(deleteRepository).toHaveBeenCalledWith("repo", "org", "secret");
+    expect(deleteRepository).toHaveBeenCalledWith("repo", "org", {
+      kind: "token",
+      encryptedSecret: "secret",
+    });
   });
 
   it("does not dispatch repository deletion if the team deletion fails", async () => {

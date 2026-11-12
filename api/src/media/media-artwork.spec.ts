@@ -25,9 +25,7 @@ describe("relational media artwork", () => {
 
   it("returns null when artwork is missing or a picture is incomplete", () => {
     expect(mediaArtwork({})).toEqual({ picture: null, background: null });
-    expect(
-      mediaArtwork({ pictureSmallUpload: upload("small.webp") }),
-    ).toEqual({
+    expect(mediaArtwork({ pictureSmallUpload: upload("small.webp") })).toEqual({
       picture: null,
       background: null,
     });
@@ -80,9 +78,11 @@ describe("media upload ORM schema", () => {
     const media = source.getMetadata(MediaUploadEntity);
     expect(media.tableName).toBe("media_uploads");
     expect(media.foreignKeys).toHaveLength(0);
-    expect(
-      media.columns.map((column) => column.propertyName).sort(),
-    ).toEqual(["createdAt", "id", "objectKey"]);
+    expect(media.columns.map((column) => column.propertyName).sort()).toEqual([
+      "createdAt",
+      "id",
+      "objectKey",
+    ]);
 
     const teamMeta = source.getMetadata(TeamEntity);
     const columns = teamMeta.columns.map((column) => column.propertyName);

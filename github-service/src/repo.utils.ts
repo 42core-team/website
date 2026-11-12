@@ -227,8 +227,7 @@ export class RepoUtils {
         for (const pair of services.items) {
           const serviceName = String(pair.key);
           const imageVal = doc.getIn(["services", serviceName, "image"]) as
-            | string
-            | undefined;
+            string | undefined;
           if (!imageVal || typeof imageVal !== "string") continue;
 
           if (serviceName === "my-core-bot") {

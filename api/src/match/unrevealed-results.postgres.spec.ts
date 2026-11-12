@@ -118,6 +118,7 @@ postgres("unrevealed match results (PostgreSQL)", () => {
     const teamService = new TeamService(
       database.getRepository(TeamEntity),
       {} as never,
+      {} as never,
       eventService,
       matchService,
       database,

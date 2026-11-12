@@ -27,6 +27,11 @@ import {
   GithubApiService,
   type RepositoryActivityStatus,
 } from "../github-api/github-api.service";
+import {
+  type GithubAuth,
+  GithubAuthService,
+  GithubNotConnectedError,
+} from "../github-api/github-auth";
 import { EventService } from "../event/event.service";
 import { MatchService } from "../match/match.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
@@ -78,6 +83,7 @@ export class TeamService {
     @InjectRepository(TeamEntity)
     private readonly teamRepository: Repository<TeamEntity>,
     private readonly githubApiService: GithubApiService,
+    private readonly githubAuthService: GithubAuthService,
     @Inject(forwardRef(() => EventService))
     private readonly eventService: EventService,
     @Inject(forwardRef(() => MatchService))
@@ -406,7 +412,7 @@ export class TeamService {
         locked,
         repositoryName: team.repo,
         githubOrg: team.event.githubOrg,
-        encryptedSecret: team.event.githubOrgSecret,
+        githubAuth: await this.githubAuthService.authFor(team.event),
         githubUsers: team.users.map((user) => ({
           username: user.username,
           githubId: user.githubId,
@@ -418,7 +424,10 @@ export class TeamService {
         teamId,
         operationId,
         repositoryName: team.repo,
-        error: "Could not dispatch repository permission operation.",
+        error:
+          error instanceof GithubNotConnectedError
+            ? error.message
+            : "Could not dispatch repository permission operation.",
       });
       throw error;
     }
@@ -657,6 +666,19 @@ export class TeamService {
       team.repositoryStatus !== RepositoryStatus.PENDING
     )
       return;
+    let githubAuth: GithubAuth;
+    try {
+      githubAuth = await this.githubAuthService.authFor(team.event);
+    } catch (error) {
+      // Failing here would roll back the caller's transaction, e.g. the team itself.
+      if (!(error instanceof GithubNotConnectedError)) throw error;
+      await teamRepository.update(teamId, {
+        repositoryStatus: RepositoryStatus.FAILED,
+        repositoryOperationId: null,
+        repositoryError: error.message,
+      });
+      return;
+    }
     const operationId = randomUUID();
     await teamRepository.update(teamId, {
       repositoryStatus: RepositoryStatus.PROVISIONING,
@@ -685,7 +707,7 @@ export class TeamService {
         githubAccessToken: user.githubAccessToken,
       })),
       team.event.githubOrg,
-      team.event.githubOrgSecret,
+      githubAuth,
       team.id,
       team.event.monorepoUrl,
       team.event.monorepoVersion,
@@ -795,12 +817,23 @@ export class TeamService {
   }
 
   private async deleteTeamRepository(team: TeamEntity) {
-    if (team.repo)
-      await this.githubApiService.deleteRepository(
-        team.repo,
-        team.event.githubOrg,
-        team.event.githubOrgSecret,
+    if (!team.repo) return;
+    let githubAuth: GithubAuth;
+    try {
+      githubAuth = await this.githubAuthService.authFor(team.event);
+    } catch (error) {
+      if (!(error instanceof GithubNotConnectedError)) throw error;
+      // Without access the repository cannot be removed; deleting the team must still work.
+      this.logger.warn(
+        `Skipping deletion of repository ${team.repo} for team ${team.id}: ${error.message}`,
       );
+      return;
+    }
+    await this.githubApiService.deleteRepository(
+      team.repo,
+      team.event.githubOrg,
+      githubAuth,
+    );
   }
 
   async setTeamCredits(eventId: string, teamId: string, credits: number) {
@@ -1182,11 +1215,11 @@ export class TeamService {
           // A push just before the deadline must not hide behind a coding result.
           `${event.githubOrg}:${isPlaying(event) ? "coding" : "closed"}`,
           repositoryNames,
-          (missing) =>
+          async (missing) =>
             this.githubApiService.getRepositoryActivity(
               missing,
               event.githubOrg,
-              event.githubOrgSecret,
+              await this.githubAuthService.authFor(event),
             ),
         );
       } catch (error) {

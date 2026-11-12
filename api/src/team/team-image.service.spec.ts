@@ -299,8 +299,9 @@ describe("team image publishing", () => {
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
       save: jest
         .fn()
-        .mockImplementation(async (_entity, rows: Array<{ objectKey: string }>) =>
-          rows.map((row, idx) => ({ id: `new-${idx + 1}`, ...row })),
+        .mockImplementation(
+          async (_entity, rows: Array<{ objectKey: string }>) =>
+            rows.map((row, idx) => ({ id: `new-${idx + 1}`, ...row })),
         ),
     };
     const transaction = jest.fn(

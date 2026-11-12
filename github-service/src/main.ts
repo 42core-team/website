@@ -1,6 +1,10 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
-import { MicroserviceOptions, Transport, RmqOptions } from "@nestjs/microservices";
+import {
+  MicroserviceOptions,
+  Transport,
+  RmqOptions,
+} from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
 import { Logger } from "@nestjs/common";
 import { HealthService } from "./health/health.service";
