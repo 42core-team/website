@@ -4,7 +4,9 @@ This document describes the message formats used for communication with the game
 
 ## Starting a Game
 
-To start a game, the API sends a message to the `game_queue` queue with the following JSON format (the k8s-service reads `data` and does not check `pattern`):
+To start a game, the API sends a message to the configured game request queue (by
+default `game_queue`) with the following JSON format (the k8s-service reads `data`
+and does not check `pattern`):
 
 ### Message Structure
 
@@ -51,7 +53,8 @@ To start a game, the API sends a message to the `game_queue` queue with the foll
 
 ## Game Results
 
-Game results will be published to the `game_results` queue in the following format:
+Game results will be published to the configured game result queue (by default
+`game_results`) in the following format:
 
 ```json
 {
@@ -102,8 +105,21 @@ The `death_reason` values are defined in `server/inc/game/ReplayEncoder.h` in th
 
 ## Queue Names
 
-- **Input Queue**: `game_queue` - Send game start messages here
-- **Output Queue**: `game_results` - Listen for game completion results here
+Set `RABBITMQ_QUEUE_PREFIX` to an empty string for production and local development,
+or to `dev_` for development on a shared broker. The prefix applies to all four
+queues used by the API, GitHub service, and K8s service:
+
+| Purpose | Production | Development |
+| --- | --- | --- |
+| Game requests | `game_queue` | `dev_game_queue` |
+| Game results | `game_results` | `dev_game_results` |
+| GitHub requests | `github_service` | `dev_github_service` |
+| GitHub results | `github-service-results` | `dev_github-service-results` |
+
+The K8s service passes the resolved game result queue to each game-server job as
+`RABBITMQ_RESULTS_QUEUE`. The game-server image must publish to that routing key
+through the RabbitMQ default exchange. Deploy a game-server image that supports
+this variable before enabling the development prefix.
 
 ## Notes
 

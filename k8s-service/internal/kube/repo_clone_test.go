@@ -38,7 +38,7 @@ func TestBuildGameResourcesKeepsTokenOutOfPodSpec(t *testing.T) {
 	maliciousName := `x'; touch /tmp/pwned; echo '$(id)`
 	game := newTestGame(maliciousName, "https://github.com/core-org/team-repo", testToken)
 
-	res, err := buildGameResources(game, "games", "https://s3.example/upload", "http://rabbit/publish")
+	res, err := buildGameResources(game, "games", "https://s3.example/upload", "http://rabbit/publish", "game_results")
 	if err != nil {
 		t.Fatalf("buildGameResources returned error: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestBuildGameResourcesKeepsTokenOutOfPodSpec(t *testing.T) {
 func TestBuildGameResourcesWithoutToken(t *testing.T) {
 	game := newTestGame("My Core Bot", "https://github.com/42core-team/my-core-bot.git", "")
 
-	res, err := buildGameResources(game, "games", "https://s3.example/upload", "http://rabbit/publish")
+	res, err := buildGameResources(game, "games", "https://s3.example/upload", "http://rabbit/publish", "game_results")
 	if err != nil {
 		t.Fatalf("buildGameResources returned error: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestBuildGameResourcesWithoutToken(t *testing.T) {
 
 func TestBuildGameResourcesRejectsInvalidRepoURL(t *testing.T) {
 	game := newTestGame("bot", "https://user:secret@github.com/core-org/team-repo", testToken)
-	if _, err := buildGameResources(game, "games", "", ""); err == nil {
+	if _, err := buildGameResources(game, "games", "", "", ""); err == nil {
 		t.Fatal("expected an error for a repository URL with credentials")
 	}
 }
