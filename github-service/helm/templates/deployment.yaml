@@ -56,6 +56,11 @@ spec:
                 secretKeyRef:
                   name: {{ include "github-service.fullname" . }}-secrets
                   key: API_SECRET_ENCRYPTION_KEY
+            - name: GITHUB_APP_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "github-service.fullname" . }}-secrets
+                  key: GITHUB_APP_PRIVATE_KEY
           {{- with .Values.lifecycle }}
           lifecycle:
             {{- toYaml . | nindent 12 }}

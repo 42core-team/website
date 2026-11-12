@@ -99,6 +99,32 @@ http://localhost:4000/auth/42/callback
 
 To change the credentials later, edit `.env.tilt`, or delete it and run `make dev` again.
 
+### GitHub App setup (optional)
+
+Events can use the CORE GitHub App instead of an organization token pasted by the organizer. Without an App configured, local development keeps using per-event tokens.
+
+To use one locally, [register your own GitHub App](https://github.com/settings/apps/new) with:
+
+- Repository permissions: Administration (read & write), Contents (read & write), Metadata (read)
+- Organization permissions: Members (read)
+- Setup URL: `http://localhost:4000/github/setup`
+- "Where can this GitHub App be installed?": Any account, so it can be installed on a test organization
+
+Then generate a private key and add the App to `.env.tilt`. The key must be on a single line, so encode it with base64:
+
+```bash
+base64 < your-app.private-key.pem | tr -d '\n'
+```
+
+```dotenv
+GITHUB_APP_ID=123456
+GITHUB_APP_SLUG=your-app-slug
+GITHUB_APP_PRIVATE_KEY=LS0tLS1CRUdJTi...
+GITHUB_APP_WEBHOOK_SECRET=
+```
+
+Deployed environments read `GITHUB_APP_ID` and `GITHUB_APP_SLUG` from GitHub environment variables, and `GITHUB_APP_PRIVATE_KEY` (base64, as above) and `GITHUB_APP_WEBHOOK_SECRET` from GitHub environment secrets.
+
 ### Other commands
 
 ```bash
