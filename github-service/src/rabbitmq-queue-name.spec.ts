@@ -3,17 +3,14 @@ import { rabbitmqQueueName } from "./rabbitmq-queue-name";
 
 describe("rabbitmqQueueName", () => {
   it.each([
-    [undefined, "github_service"],
-    ["", "github-service-results"],
-    ["dev_", "dev_github_service"],
-    ["dev_", "dev_github-service-results"],
-  ])("resolves %s prefix to %s", (prefix, expected) => {
+    [undefined, "github_service", "github_service"],
+    ["", "github-service-results", "github-service-results"],
+    ["dev_", "github_service", "dev_github_service"],
+    ["dev_", "github-service-results", "dev_github-service-results"],
+  ])("resolves %s prefix and %s to %s", (prefix, baseName, expected) => {
     const configService = {
       get: jest.fn().mockReturnValue(prefix),
     } as unknown as ConfigService;
-    const baseName = expected.startsWith("dev_")
-      ? expected.slice("dev_".length)
-      : expected;
 
     expect(rabbitmqQueueName(configService, baseName)).toBe(expected);
   });
