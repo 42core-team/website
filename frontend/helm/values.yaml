@@ -80,8 +80,10 @@ secrets:
 
 ingress:
   enabled: false
-  className: ""
-  annotations: {}
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
   hosts:
     - host: chart-example.local
       paths:
@@ -92,14 +94,14 @@ ingress:
 # Redirect ingress for handling domain redirects (e.g., www to apex domain)
 ingressRedirect:
   enabled: false
-  className: ""
+  className: traefik
   annotations: {}
   # Source host to redirect from (e.g., www.example.com)
   fromHost: ""
   # Destination host to redirect to (e.g., example.com)
   toHost: ""
-  # HTTP status code for redirect (default: 308 permanent redirect)
-  code: "308"
+  # Native permanent redirect: 301 for GET, 308 for non-GET in Traefik v3.7.17.
+  # The fixed destination drops the original path and query.
   tls:
     enabled: false
     secretName: ""
