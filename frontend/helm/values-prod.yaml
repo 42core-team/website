@@ -33,13 +33,11 @@ env:
 
 ingress:
   enabled: true
-  className: nginx
+  className: traefik
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-  #    nginx.ingress.kubernetes.io/limit-rps: "10"
-  #    nginx.ingress.kubernetes.io/limit-burst: "20"
-  #    nginx.ingress.kubernetes.io/limit-connections: "50"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
   hosts:
     - host: coregame.sh
       paths:
@@ -52,12 +50,11 @@ ingress:
 
 ingressRedirect:
   enabled: true
-  className: nginx
+  className: traefik
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
   fromHost: www.coregame.sh
   toHost: coregame.sh
-  code: "308"
   tls:
     enabled: true
     secretName: www-coregame-de-tls

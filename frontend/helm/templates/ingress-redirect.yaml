@@ -1,52 +1,61 @@
 {{- if .Values.ingressRedirect.enabled -}}
 {{- $fullName := include "frontend.fullname" . -}}
-{{- $svcPort := .Values.service.port -}}
-{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
+{{- if not .Values.ingressRedirect.tls.enabled -}}
+{{- fail "ingressRedirect.tls.enabled must be true for HTTPS redirects" -}}
+{{- end -}}
+{{- $_ := required "ingressRedirect.tls.secretName is required" .Values.ingressRedirect.tls.secretName -}}
+{{- range $key := list "fromHost" "toHost" -}}
+{{- $host := required (printf "ingressRedirect.%s is required" $key) (get $.Values.ingressRedirect $key) -}}
+{{- if or (gt (len $host) 253) (not (regexMatch "(?i)^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$" $host)) -}}
+{{- fail (printf "ingressRedirect.%s must be a hostname without scheme, port, path, or query" $key) -}}
+{{- end -}}
+{{- end -}}
+{{- if eq (lower .Values.ingressRedirect.fromHost) (lower .Values.ingressRedirect.toHost) -}}
+{{- fail "ingressRedirect.fromHost and ingressRedirect.toHost must be different to avoid a redirect loop" -}}
+{{- end -}}
+{{- $annotations := deepCopy (.Values.ingressRedirect.annotations | default dict) -}}
+{{- $_ := set $annotations "traefik.ingress.kubernetes.io/router.entrypoints" "websecure" -}}
+{{- $_ := set $annotations "traefik.ingress.kubernetes.io/router.tls" "true" -}}
+{{- $middleware := printf "%s-%s@kubernetescrd" .Release.Namespace (include "frontend.redirectMiddlewareName" .) -}}
+{{- with get $annotations "traefik.ingress.kubernetes.io/router.middlewares" -}}
+{{- $middleware = printf "%s,%s" $middleware . -}}
+{{- end -}}
+{{- $_ := set $annotations "traefik.ingress.kubernetes.io/router.middlewares" $middleware -}}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "frontend.redirectMiddlewareName" . }}
+  labels:
+    {{- include "frontend.labels" . | nindent 4 }}
+spec:
+  redirectRegex:
+    regex: {{ printf "(?i)^https?://%s(:[0-9]+)?(/.*)?$" (regexQuoteMeta .Values.ingressRedirect.fromHost) | quote }}
+    replacement: {{ printf "https://%s" .Values.ingressRedirect.toHost | quote }}
+    permanent: true
+---
 apiVersion: networking.k8s.io/v1
-{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
-apiVersion: networking.k8s.io/v1beta1
-{{- else -}}
-apiVersion: extensions/v1beta1
-{{- end }}
 kind: Ingress
 metadata:
   name: {{ $fullName }}-redirect
   labels:
     {{- include "frontend.labels" . | nindent 4 }}
   annotations:
-    # Required redirect annotations
-    nginx.ingress.kubernetes.io/permanent-redirect: "https://{{ .Values.ingressRedirect.toHost }}"
-    nginx.ingress.kubernetes.io/permanent-redirect-code: "{{ .Values.ingressRedirect.code | default "308" }}"
-    {{- with .Values.ingressRedirect.annotations }}
-    # Custom annotations (merged)
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
+    {{- toYaml $annotations | nindent 4 }}
 spec:
-  {{- if and .Values.ingressRedirect.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
-  ingressClassName: {{ .Values.ingressRedirect.className }}
-  {{- end }}
-  {{- if .Values.ingressRedirect.tls.enabled }}
+  ingressClassName: {{ required "ingressRedirect.className is required" .Values.ingressRedirect.className }}
   tls:
     - hosts:
         - {{ .Values.ingressRedirect.fromHost | quote }}
       secretName: {{ .Values.ingressRedirect.tls.secretName }}
-  {{- end }}
   rules:
     - host: {{ .Values.ingressRedirect.fromHost | quote }}
       http:
         paths:
           - path: /
-            {{- if and (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
             pathType: Prefix
-            {{- end }}
             backend:
-              {{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion }}
               service:
                 name: {{ $fullName }}
                 port:
-                  number: {{ $svcPort }}
-              {{- else }}
-              serviceName: {{ $fullName }}
-              servicePort: {{ $svcPort }}
-              {{- end }}
+                  number: {{ .Values.service.port }}
 {{- end }}
