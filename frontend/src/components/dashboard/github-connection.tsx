@@ -1,0 +1,119 @@
+import type { EventGithubStatus } from '@/app/actions/event'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
+import { GitBranch, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import {
+  getEventGithubStatus,
+  getGithubAppInstallUrl,
+} from '@/app/actions/event'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+
+export function githubStatusQueryKey(eventId: string) {
+  return ['event', eventId, 'github'] as const
+}
+
+export function useEventGithubStatus(eventId: string) {
+  return useQuery({
+    queryKey: githubStatusQueryKey(eventId),
+    queryFn: () => getEventGithubStatus(eventId),
+  })
+}
+
+/** Whether repositories can be created; false while the status is unknown. */
+export function isGithubReady(status: EventGithubStatus | undefined) {
+  if (!status) return true
+  if (status.installation) return status.installation.status === 'active'
+  return status.usesOrganizerToken
+}
+
+const STATUS_LABELS = {
+  active: 'Connected',
+  suspended: 'Suspended',
+  uninstalled: 'Uninstalled',
+} as const
+
+export function GithubConnection({ eventId }: { eventId: string }) {
+  const statusQuery = useEventGithubStatus(eventId)
+  const connectMutation = useMutation({
+    mutationFn: () => getGithubAppInstallUrl(eventId),
+    onSuccess: (url) => {
+      window.location.assign(url)
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  })
+
+  const status = statusQuery.data
+  if (!status) return null
+  const installation = status.installation
+  if (!status.appAvailable && !installation) return null
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <GitBranch className="size-5" aria-hidden="true" />
+          GitHub Connection
+          {installation && (
+            <Badge
+              variant={
+                installation.status === 'active' ? 'secondary' : 'destructive'
+              }
+            >
+              {STATUS_LABELS[installation.status]}
+            </Badge>
+          )}
+        </CardTitle>
+        <CardDescription>{describe(status)}</CardDescription>
+      </CardHeader>
+      {status.appAvailable && (
+        <CardContent>
+          <Button
+            variant={isGithubReady(status) ? 'outline' : 'default'}
+            disabled={connectMutation.isPending}
+            onClick={() => connectMutation.mutate()}
+          >
+            {connectMutation.isPending && (
+              <Loader2 className="size-4 animate-spin" />
+            )}
+            {installation
+              ? 'Reconnect GitHub App'
+              : status.usesOrganizerToken
+                ? 'Switch to the CORE GitHub App'
+                : 'Connect GitHub App'}
+          </Button>
+        </CardContent>
+      )}
+    </Card>
+  )
+}
+
+function describe(status: EventGithubStatus) {
+  const installation = status.installation
+  if (installation?.status === 'active')
+    return `Team repositories are created in ${installation.accountLogin} through the CORE GitHub App.`
+  if (installation?.status === 'suspended')
+    return `The CORE GitHub App is suspended on ${installation.accountLogin}. An organization owner must unsuspend it on GitHub before repositories can be created.`
+  if (installation?.status === 'uninstalled')
+    return `The CORE GitHub App was uninstalled from ${installation.accountLogin}. Reconnect it to create repositories and run matches.`
+  if (status.usesOrganizerToken)
+    return `Repositories are created in ${status.githubOrg} with the organization token. An owner of ${status.githubOrg} can switch this event to the CORE GitHub App, so no token has to be stored.`
+  return 'GitHub is not connected yet. An owner of the organization that should hold the team repositories must install the CORE GitHub App before teams can get repositories.'
+}
+
+function getErrorMessage(error: unknown) {
+  if (isAxiosError<{ message?: string | string[] }>(error)) {
+    const message = error.response?.data.message
+    if (Array.isArray(message)) return message.join(', ')
+    if (message) return message
+  }
+  return 'Could not start the GitHub connection.'
+}

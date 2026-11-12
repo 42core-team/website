@@ -20,6 +20,7 @@ import { Route as RushRouteImport } from './routes/rush'
 import { Route as WikiRouteImport } from './routes/wiki'
 import { Route as EventsIdRouteImport } from './routes/events/$id'
 import { Route as EventsCreateRouteImport } from './routes/events/create'
+import { Route as GithubSetupRouteImport } from './routes/github/setup'
 import { Route as WikiSplatRouteImport } from './routes/wiki.$'
 import { Route as EventsIdBracketRouteImport } from './routes/events/$id/bracket'
 import { Route as EventsIdDashboardRouteImport } from './routes/events/$id/dashboard'
@@ -86,6 +87,11 @@ const EventsCreateRoute = EventsCreateRouteImport.update({
   id: '/create',
   path: '/create',
   getParentRoute: () => EventsRoute,
+} as any)
+const GithubSetupRoute = GithubSetupRouteImport.update({
+  id: '/github/setup',
+  path: '/github/setup',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const WikiSplatRoute = WikiSplatRouteImport.update({
   id: '/$',
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/wiki': typeof WikiRouteWithChildren
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
+  '/github/setup': typeof GithubSetupRoute
   '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
@@ -179,6 +186,7 @@ export interface FileRoutesByTo {
   '/wiki': typeof WikiRouteWithChildren
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
+  '/github/setup': typeof GithubSetupRoute
   '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/wiki': typeof WikiRouteWithChildren
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
+  '/github/setup': typeof GithubSetupRoute
   '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/wiki'
     | '/events/$id'
     | '/events/create'
+    | '/github/setup'
     | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/wiki'
     | '/events/$id'
     | '/events/create'
+    | '/github/setup'
     | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/wiki'
     | '/events/$id'
     | '/events/create'
+    | '/github/setup'
     | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
@@ -301,6 +313,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   RushRoute: typeof RushRoute
   WikiRoute: typeof WikiRouteWithChildren
+  GithubSetupRoute: typeof GithubSetupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -381,6 +394,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/events/create'
       preLoaderRoute: typeof EventsCreateRouteImport
       parentRoute: typeof EventsRoute
+    }
+    '/github/setup': {
+      id: '/github/setup'
+      path: '/github/setup'
+      fullPath: '/github/setup'
+      preLoaderRoute: typeof GithubSetupRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/wiki/$': {
       id: '/wiki/$'
@@ -535,6 +555,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   RushRoute: RushRoute,
   WikiRoute: WikiRouteWithChildren,
+  GithubSetupRoute: GithubSetupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

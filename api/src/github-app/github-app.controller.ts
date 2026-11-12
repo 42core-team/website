@@ -31,6 +31,12 @@ export class GithubAppController {
     private readonly configService: ConfigService,
   ) {}
 
+  /** Lets the event form offer the App only where it is configured. */
+  @Get("github/app")
+  getAppAvailability() {
+    return { available: this.githubAppService.isAvailable() };
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("event/:id/github")
   async getStatus(
