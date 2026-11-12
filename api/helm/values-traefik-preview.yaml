@@ -1,0 +1,4 @@
+# Layer after values-dev.yaml or values-prod.yaml; leaves NGINX in charge of primary.
+ingress:
+  traefik:
+    preview: true
