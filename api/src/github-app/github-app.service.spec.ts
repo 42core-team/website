@@ -27,7 +27,7 @@ function setup(
     permissions?: Record<string, string>;
     membership?: { role: string; state: string } | null;
     event?: Partial<EventEntity>;
-    teams?: { repo: string | null; repositoryStatus?: string }[];
+    teams?: { id?: string; repo: string | null; repositoryStatus?: string }[];
     repositorySelection?: string;
     accessibleRepositories?: string[];
     existingInstallation?: Partial<GithubInstallationEntity> | null;
@@ -104,6 +104,7 @@ function setup(
   };
   const eventService = {
     isEventAdmin: jest.fn().mockResolvedValue(options.admin ?? true),
+    retryRepositoryOperation: jest.fn().mockResolvedValue(undefined),
   };
   const config = {
     getOrThrow: () => JWT_SECRET,
@@ -187,7 +188,11 @@ describe("GithubAppService", () => {
       );
       expect(repositories.get(EventEntity)!.update).toHaveBeenCalledWith(
         "event",
-        { githubInstallationId: "row", githubOrg: "Core-Org" },
+        {
+          githubInstallationId: "row",
+          githubOrg: "Core-Org",
+          githubOrgSecret: null,
+        },
       );
     });
 
@@ -276,6 +281,40 @@ describe("GithubAppService", () => {
         service.completeInstallation("user", 77, state),
       ).rejects.toThrow("already have repositories in old-org");
       expect(repositories.get(EventEntity)!.update).not.toHaveBeenCalled();
+    });
+
+    it("retries teams that failed without GitHub access during coding", async () => {
+      const { service, eventService, state } = setup({
+        event: {
+          startDate: new Date(0),
+          submissionDeadline: new Date("2099-01-01"),
+        },
+        teams: [
+          { id: "failed", repo: null, repositoryStatus: "FAILED" },
+          { id: "ready", repo: "repo", repositoryStatus: "READY" },
+          { id: "pending", repo: null, repositoryStatus: "PENDING" },
+        ],
+      });
+      eventService.retryRepositoryOperation.mockRejectedValueOnce(
+        new Error("queue down"),
+      );
+      await expect(
+        service.completeInstallation("user", 77, state),
+      ).resolves.toEqual({ eventId: "event" });
+      expect(eventService.retryRepositoryOperation).toHaveBeenCalledTimes(1);
+      expect(eventService.retryRepositoryOperation).toHaveBeenCalledWith(
+        "event",
+        "failed",
+      );
+    });
+
+    it("leaves failed teams alone outside coding", async () => {
+      const { service, eventService, state } = setup({
+        event: { startDate: new Date("2099-01-01") },
+        teams: [{ id: "failed", repo: null, repositoryStatus: "FAILED" }],
+      });
+      await service.completeInstallation("user", 77, state);
+      expect(eventService.retryRepositoryOperation).not.toHaveBeenCalled();
     });
 
     it("waits for repositories being created in the old organization", async () => {

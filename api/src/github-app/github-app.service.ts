@@ -10,6 +10,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 import { EventEntity } from "../event/entities/event.entity";
+import { isPlaying } from "../event/event-lifecycle";
 import { EventService } from "../event/event.service";
 import { GithubInstallationEntity } from "../github-api/entities/github-installation.entity";
 import {
@@ -154,62 +155,75 @@ export class GithubAppService {
         ? await this.listInstallationRepositories(installation.id)
         : null;
 
-    await this.dataSource.transaction(async (manager) => {
-      const event = await manager.getRepository(EventEntity).findOneOrFail({
-        where: { id: state.eventId },
-        lock: { mode: "pessimistic_write" },
-      });
-      // Provisioning locks the team row and then reads the event's
-      // credentials, so locking every team serializes this with it.
-      const teams = await manager
-        .getRepository(TeamEntity)
-        .createQueryBuilder("team")
-        .select(["team.id", "team.repo", "team.repositoryStatus"])
-        .where('team."eventId" = :eventId', { eventId: event.id })
-        .setLock("pessimistic_write")
-        .getMany();
-      const repositories = teams.flatMap((team) =>
-        team.repo ? [team.repo] : [],
-      );
-      if (
-        event.githubOrg &&
-        event.githubOrg.toLowerCase() !== account.login.toLowerCase() &&
-        (repositories.length ||
-          teams.some(
-            (team) => team.repositoryStatus === RepositoryStatus.PROVISIONING,
-          ))
-      )
-        throw new BadRequestException(
-          `Teams of this event already have repositories in ${event.githubOrg}. Install the App on that organization instead of ${account.login}.`,
+    const { event, failedTeamIds } = await this.dataSource.transaction(
+      async (manager) => {
+        const event = await manager.getRepository(EventEntity).findOneOrFail({
+          where: { id: state.eventId },
+          lock: { mode: "pessimistic_write" },
+        });
+        // Provisioning locks the team row and then reads the event's
+        // credentials, so locking every team serializes this with it.
+        const teams = await manager
+          .getRepository(TeamEntity)
+          .createQueryBuilder("team")
+          .select(["team.id", "team.repo", "team.repositoryStatus"])
+          .where('team."eventId" = :eventId', { eventId: event.id })
+          .setLock("pessimistic_write")
+          .getMany();
+        const repositories = teams.flatMap((team) =>
+          team.repo ? [team.repo] : [],
         );
-      const unreachable = accessibleRepositories
-        ? repositories.filter(
-            (name) => !accessibleRepositories.has(name.toLowerCase()),
-          )
-        : [];
-      if (unreachable.length)
-        throw new BadRequestException(
-          `The installation on ${account.login} cannot access ${unreachable.length} team ${unreachable.length === 1 ? "repository" : "repositories"} (e.g. ${unreachable[0]}). Grant it access to all repositories, or add them to the installation on GitHub.`,
-        );
+        if (
+          event.githubOrg &&
+          event.githubOrg.toLowerCase() !== account.login.toLowerCase() &&
+          (repositories.length ||
+            teams.some(
+              (team) => team.repositoryStatus === RepositoryStatus.PROVISIONING,
+            ))
+        )
+          throw new BadRequestException(
+            `Teams of this event already have repositories in ${event.githubOrg}. Install the App on that organization instead of ${account.login}.`,
+          );
+        const unreachable = accessibleRepositories
+          ? repositories.filter(
+              (name) => !accessibleRepositories.has(name.toLowerCase()),
+            )
+          : [];
+        if (unreachable.length)
+          throw new BadRequestException(
+            `The installation on ${account.login} cannot access ${unreachable.length} team ${unreachable.length === 1 ? "repository" : "repositories"} (e.g. ${unreachable[0]}). Grant it access to all repositories, or add them to the installation on GitHub.`,
+          );
 
-      const installations = manager.getRepository(GithubInstallationEntity);
-      const fields = {
-        accountId: account.id,
-        accountLogin: account.login,
-        accountType: account.type,
-        suspendedAt: installation.suspended_at
-          ? new Date(installation.suspended_at)
-          : null,
-        deletedAt: null,
-      };
-      let row = await installations.findOneBy({ installationId });
-      if (row) await installations.update(row.id, fields);
-      else row = await installations.save({ installationId, ...fields });
-      await manager.getRepository(EventEntity).update(event.id, {
-        githubInstallationId: row.id,
-        githubOrg: account.login,
-      });
-    });
+        const installations = manager.getRepository(GithubInstallationEntity);
+        const fields = {
+          accountId: account.id,
+          accountLogin: account.login,
+          accountType: account.type,
+          suspendedAt: installation.suspended_at
+            ? new Date(installation.suspended_at)
+            : null,
+          deletedAt: null,
+        };
+        let row = await installations.findOneBy({ installationId });
+        if (row) await installations.update(row.id, fields);
+        else row = await installations.save({ installationId, ...fields });
+        await manager.getRepository(EventEntity).update(event.id, {
+          githubInstallationId: row.id,
+          githubOrg: account.login,
+          // The App always takes precedence, so a kept token would never be used.
+          githubOrgSecret: null,
+        });
+        return {
+          event,
+          failedTeamIds: teams
+            .filter(
+              (team) =>
+                team.repositoryStatus === RepositoryStatus.FAILED && !team.repo,
+            )
+            .map((team) => team.id),
+        };
+      },
+    );
     this.logger.log({
       action: "github_app_connected",
       eventId: state.eventId,
@@ -217,6 +231,18 @@ export class GithubAppService {
       installationId,
       account: account.login,
     });
+    // Teams that could not get a repository without GitHub access get one now.
+    if (isPlaying(event))
+      for (const teamId of failedTeamIds) {
+        try {
+          await this.eventService.retryRepositoryOperation(event.id, teamId);
+        } catch (error) {
+          this.logger.error(
+            `Failed to retry repository creation for team ${teamId} after connecting GitHub`,
+            error,
+          );
+        }
+      }
     return { eventId: state.eventId };
   }
 
