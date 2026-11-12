@@ -19,7 +19,7 @@ const testNamespace = "games"
 func newTestResources(t *testing.T) *gameResources {
 	t.Helper()
 	game := newTestGame("bot", "https://github.com/core-org/team-repo", testToken)
-	res, err := buildGameResources(game, testNamespace, "", "")
+	res, err := buildGameResources(game, testNamespace, "", "", "")
 	if err != nil {
 		t.Fatalf("buildGameResources: %v", err)
 	}
@@ -123,8 +123,27 @@ func TestCreateGameResourcesDeletesConfigMapWhenJobCreateFails(t *testing.T) {
 
 func TestBuildGameResourcesMarksInvalidGames(t *testing.T) {
 	game := newTestGame("bot", "https://org:token@github.com/core-org/team-repo", testToken)
-	_, err := buildGameResources(game, testNamespace, "", "")
+	_, err := buildGameResources(game, testNamespace, "", "", "")
 	if !errors.Is(err, ErrInvalidGame) {
 		t.Fatalf("expected ErrInvalidGame, got %v", err)
 	}
+}
+
+func TestBuildGameResourcesSetsResultQueue(t *testing.T) {
+	game := newTestGame("bot", "https://github.com/core-org/team-repo", testToken)
+	res, err := buildGameResources(game, testNamespace, "", "", "dev_game_results")
+	if err != nil {
+		t.Fatalf("buildGameResources: %v", err)
+	}
+	for _, container := range res.job.Spec.Template.Spec.Containers {
+		for _, item := range container.Env {
+			if item.Name == "RABBITMQ_RESULTS_QUEUE" {
+				if item.Value != "dev_game_results" {
+					t.Errorf("result queue = %q, want %q", item.Value, "dev_game_results")
+				}
+				return
+			}
+		}
+	}
+	t.Error("game container has no RABBITMQ_RESULTS_QUEUE")
 }

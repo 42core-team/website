@@ -4,5 +4,6 @@ image:
 
 env:
   NAMESPACE: "development"
+  RABBITMQ_QUEUE_PREFIX: "dev_"
 
 # Secrets and vars are supplied via GitHub env during deploy
