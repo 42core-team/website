@@ -12,16 +12,6 @@ export interface RepositoryActivityResult {
   status: RepositoryActivityStatus;
 }
 
-/**
- * github-service workers older than `githubAuth` read only `encryptedSecret`;
- * token events keep sending it so a rolling deploy cannot break them.
- */
-function withLegacySecret(githubAuth: GithubAuth) {
-  return githubAuth.kind === "token"
-    ? { encryptedSecret: githubAuth.encryptedSecret }
-    : {};
-}
-
 const REPOSITORY_ACTIVITY_TIMEOUT_MS = 60000;
 // github-service checks 5 at a time with a 10 second limit each, so even a batch
 // of unresponsive requests finishes within the timeout.
@@ -51,7 +41,6 @@ export class GithubApiService {
       repoOwner,
       repoName,
       githubAuth,
-      ...withLegacySecret(githubAuth),
     });
   }
 
@@ -68,7 +57,6 @@ export class GithubApiService {
       repoOwner,
       repoName,
       githubAuth,
-      ...withLegacySecret(githubAuth),
     });
   }
 
@@ -86,7 +74,6 @@ export class GithubApiService {
       githubId,
       githubOrg,
       githubAuth,
-      ...withLegacySecret(githubAuth),
       githubAccessToken,
     });
   }
@@ -100,7 +87,6 @@ export class GithubApiService {
       repositoryName,
       githubOrg,
       githubAuth,
-      ...withLegacySecret(githubAuth),
     });
   }
 
@@ -136,7 +122,6 @@ export class GithubApiService {
         githubUsers,
         githubOrg,
         githubAuth,
-        ...withLegacySecret(githubAuth),
         teamId,
         monoRepoUrl,
         monoRepoVersion,
@@ -179,7 +164,6 @@ export class GithubApiService {
               ),
               githubOrg,
               githubAuth,
-              ...withLegacySecret(githubAuth),
             })
             .pipe(timeout(REPOSITORY_ACTIVITY_TIMEOUT_MS)),
         );
@@ -207,11 +191,6 @@ export class GithubApiService {
       githubAccessToken: string;
     }[];
   }) {
-    await lastValueFrom(
-      this.githubClient.emit("set_repository_access", {
-        ...data,
-        ...withLegacySecret(data.githubAuth),
-      }),
-    );
+    await lastValueFrom(this.githubClient.emit("set_repository_access", data));
   }
 }

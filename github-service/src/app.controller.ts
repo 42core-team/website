@@ -1,7 +1,7 @@
 import { Controller, Logger } from "@nestjs/common";
 import { AppService } from "./app.service";
 import { EventPattern, MessagePattern } from "@nestjs/microservices";
-import { GithubAuth, githubAuthOf } from "./github-auth";
+import { GithubAuth } from "./github-auth";
 
 @Controller()
 export class AppController {
@@ -10,22 +10,12 @@ export class AppController {
 
   @EventPattern("set_repository_access")
   async handleSetRepositoryAccess(
-    data: Omit<
-      Parameters<AppService["setRepositoryAccess"]>[0],
-      "githubAuth"
-    > & {
-      githubAuth?: GithubAuth;
-      encryptedSecret?: string;
-    },
+    data: Parameters<AppService["setRepositoryAccess"]>[0],
   ) {
     await this.appService.runRepositoryOperation(
       data.teamId,
       data.operationId,
-      () =>
-        this.appService.setRepositoryAccess({
-          ...data,
-          githubAuth: githubAuthOf(data),
-        }),
+      () => this.appService.setRepositoryAccess(data),
     );
   }
 
@@ -35,8 +25,7 @@ export class AppController {
     githubId: string;
     repoOwner: string;
     repoName: string;
-    githubAuth?: GithubAuth;
-    encryptedSecret?: string;
+    githubAuth: GithubAuth;
   }) {
     const safeData = {
       username: data.username,
@@ -51,7 +40,7 @@ export class AppController {
       data.githubId,
       data.repoOwner,
       data.repoName,
-      githubAuthOf(data),
+      data.githubAuth,
     );
   }
 
@@ -61,8 +50,7 @@ export class AppController {
     githubId: string;
     repoOwner: string;
     repoName: string;
-    githubAuth?: GithubAuth;
-    encryptedSecret?: string;
+    githubAuth: GithubAuth;
   }) {
     const safeData = {
       username: data.username,
@@ -77,7 +65,7 @@ export class AppController {
       data.githubId,
       data.repoOwner,
       data.repoName,
-      githubAuthOf(data),
+      data.githubAuth,
     );
   }
 
@@ -87,8 +75,7 @@ export class AppController {
     username: string;
     githubId: string;
     githubOrg: string;
-    githubAuth?: GithubAuth;
-    encryptedSecret?: string;
+    githubAuth: GithubAuth;
     githubAccessToken: string;
   }) {
     const safeData = {
@@ -104,7 +91,7 @@ export class AppController {
       data.username,
       data.githubId,
       data.githubOrg,
-      githubAuthOf(data),
+      data.githubAuth,
       data.githubAccessToken,
     );
   }
@@ -115,8 +102,7 @@ export class AppController {
     username: string;
     githubId: string;
     githubOrg: string;
-    githubAuth?: GithubAuth;
-    encryptedSecret?: string;
+    githubAuth: GithubAuth;
   }) {
     const safeData = {
       repositoryName: data.repositoryName,
@@ -131,7 +117,7 @@ export class AppController {
       data.username,
       data.githubId,
       data.githubOrg,
-      githubAuthOf(data),
+      data.githubAuth,
     );
     return { success: true };
   }
@@ -140,8 +126,7 @@ export class AppController {
   handleGetRepositoryActivity(data: {
     repositoryNames: string[];
     githubOrg: string;
-    githubAuth?: GithubAuth;
-    encryptedSecret?: string;
+    githubAuth: GithubAuth;
   }) {
     this.logger.log(
       `get_repository_activity event received ${JSON.stringify({
@@ -152,7 +137,7 @@ export class AppController {
     return this.appService.getRepositoryActivity(
       data.repositoryNames,
       data.githubOrg,
-      githubAuthOf(data),
+      data.githubAuth,
     );
   }
 
@@ -160,8 +145,7 @@ export class AppController {
   async handleDeleteRepository(data: {
     repositoryName: string;
     githubOrg: string;
-    githubAuth?: GithubAuth;
-    encryptedSecret?: string;
+    githubAuth: GithubAuth;
   }) {
     const safeData = {
       repositoryName: data.repositoryName,
@@ -173,7 +157,7 @@ export class AppController {
     return await this.appService.deleteRepository(
       data.repositoryName,
       data.githubOrg,
-      githubAuthOf(data),
+      data.githubAuth,
     );
   }
 
@@ -187,8 +171,7 @@ export class AppController {
       githubAccessToken: string;
     }[];
     githubOrg: string;
-    githubAuth?: GithubAuth;
-    encryptedSecret?: string;
+    githubAuth: GithubAuth;
     teamId: string;
     monoRepoUrl: string;
     monoRepoVersion: string;
@@ -231,7 +214,7 @@ export class AppController {
           data.teamName,
           data.githubUsers,
           data.githubOrg,
-          githubAuthOf(data),
+          data.githubAuth,
           data.teamId,
           data.monoRepoUrl,
           data.monoRepoVersion,

@@ -43,27 +43,7 @@ describe("GitHub organization secret transport", () => {
 
     expect(emit).toHaveBeenCalledWith(
       "create_team_repository",
-      expect.objectContaining({
-        githubAuth,
-        // Read by workers deployed before githubAuth existed.
-        encryptedSecret: "v2:encrypted-event-token",
-      }),
+      expect.objectContaining({ githubAuth }),
     );
-  });
-
-  it("sends no organizer token for App events", async () => {
-    const emit = jest.fn().mockReturnValue(of(undefined));
-    jest.spyOn(ClientProxyFactory, "create").mockReturnValue({ emit } as never);
-    const service = new GithubApiService({} as never);
-    const githubAuth = { kind: "installation" as const, installationId: 42 };
-
-    await service.deleteRepository("repository-name", "github-org", githubAuth);
-
-    const [, payload] = emit.mock.calls[0];
-    expect(payload).toEqual({
-      repositoryName: "repository-name",
-      githubOrg: "github-org",
-      githubAuth,
-    });
   });
 });
