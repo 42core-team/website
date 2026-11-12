@@ -121,6 +121,10 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       eventService,
       matchService,
       database,
+      {
+        rosterWillChange: async () => {},
+        rosterChanged: async () => {},
+      } as never,
     );
     // The constructor opens queue clients; the read paths never use them.
     Object.assign(matchService, {

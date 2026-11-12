@@ -115,6 +115,10 @@ function setup() {
     transaction: (action: (value: typeof manager) => unknown) =>
       action(manager),
   });
+  Reflect.set(service, "repositoryLifecycle", {
+    rosterWillChange: jest.fn(),
+    rosterChanged: jest.fn(),
+  });
   return {
     service,
     team,

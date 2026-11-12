@@ -70,6 +70,10 @@ postgres("team invite eligibility (PostgreSQL)", () => {
       eventService,
       {} as never,
       database,
+      {
+        rosterWillChange: async () => {},
+        rosterChanged: async () => {},
+      } as never,
     );
     Object.assign(eventService, { teamService });
     const userService = new UserService(

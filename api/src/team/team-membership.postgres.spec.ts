@@ -58,6 +58,10 @@ postgres("team membership concurrency (PostgreSQL)", () => {
       } as never,
       {} as never,
       database,
+      {
+        rosterWillChange: async () => {},
+        rosterChanged: async () => {},
+      } as never,
     );
   });
 

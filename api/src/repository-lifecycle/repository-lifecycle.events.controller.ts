@@ -1,14 +1,14 @@
 import { Controller } from "@nestjs/common";
 import { EventPattern, MessagePattern } from "@nestjs/microservices";
-import { TeamService } from "./team.service";
+import { RepositoryLifecycleService } from "./repository-lifecycle.service";
 
 @Controller("team.events")
-export class TeamEventsController {
-  constructor(private teamService: TeamService) {}
+export class RepositoryLifecycleEventsController {
+  constructor(private repositoryLifecycle: RepositoryLifecycleService) {}
 
   @MessagePattern("repository_operation_current")
   isOperationCurrent(data: { teamId: string; operationId: string }) {
-    return this.teamService.isRepositoryOperationCurrent(
+    return this.repositoryLifecycle.isRepositoryOperationCurrent(
       data.teamId,
       data.operationId,
     );
@@ -21,6 +21,6 @@ export class TeamEventsController {
     error?: string;
     action?: "CREATE" | "LOCK" | "UNLOCK";
   }) {
-    await this.teamService.completeRepositoryOperation(data);
+    await this.repositoryLifecycle.completeRepositoryOperation(data);
   }
 }

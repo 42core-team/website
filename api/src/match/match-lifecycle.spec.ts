@@ -182,6 +182,7 @@ describe("starting tournament matches", () => {
       release: jest.fn().mockResolvedValue(undefined),
       query: jest.fn().mockResolvedValue([]),
     };
+    Object.assign(queryRunner, { manager: progressionManager(service) });
     Object.assign(service, {
       dataSource: { createQueryRunner: () => queryRunner },
     });
@@ -242,6 +243,7 @@ function setupFourEntrants() {
     release: jest.fn(),
     query: jest.fn(),
   };
+  Object.assign(runner, { manager: progressionManager(service) });
   Reflect.set(service, "dataSource", {
     createQueryRunner: () => runner,
     getRepository: () => ({ find: jest.fn().mockResolvedValue([event]) }),
@@ -335,3 +337,21 @@ describe("elimination progression", () => {
     expectFinalAndThirdPlace(save);
   });
 });
+
+function progressionManager(service: MatchService) {
+  const events = Reflect.get(service, "eventService");
+  const teams = Reflect.get(service, "teamService");
+  return {
+    getRepository: () => Reflect.get(service, "matchRepository"),
+    findOneOrFail: (entity: unknown, options: { where: { id: string } }) =>
+      entity === EventEntity
+        ? events.getEventById(options.where.id)
+        : teams.getTeamById(options.where.id),
+    find: async () =>
+      teams.getSortedTeamsForTournament
+        ? teams.getSortedTeamsForTournament()
+        : [],
+    update: jest.fn(),
+    increment: jest.fn(),
+  };
+}
