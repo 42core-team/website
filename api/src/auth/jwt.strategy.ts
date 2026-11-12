@@ -10,7 +10,7 @@ export interface JwtPayload {
   sub: string; // user id
   email?: string;
   username?: string;
-  /** Refresh token family (session) id; absent on legacy 30-day JWTs. */
+  /** Refresh token family (session) id; absent on pre-#684 30-day JWTs. */
   fid?: string;
 }
 
@@ -38,7 +38,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload) {
     const userId = payload.sub;
     if (!userId) throw new UnauthorizedException();
-    // Legacy tokens without a family id must be exchanged via /auth/refresh.
+    // Tokens without a family id are not tied to a session; reject them.
     if (!payload.fid) throw new UnauthorizedException();
     // Load current user; if missing, reject token
     const user = await this.users.getUserById(userId).catch(() => null);
