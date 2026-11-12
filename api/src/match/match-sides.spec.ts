@@ -132,6 +132,16 @@ describe("getMatchSides", () => {
     ).toBeNull();
   });
 
+  it("is unknown when both ids map to the same team", () => {
+    expect(
+      getMatchSides({
+        game_id: "game-3",
+        team_results: TEAMS,
+        BOT_ID_MAPPING: { "42": "team-low", "418": "team-low" },
+      }),
+    ).toBeNull();
+  });
+
   it("is unknown for the simulated results that use website team ids", () => {
     expect(
       getMatchSides({

@@ -30,17 +30,38 @@ function setup() {
   return { controller: new MatchEventsController(service), match };
 }
 
-function result(overrides: object = {}) {
+type GameResult = Parameters<MatchEventsController["getNotifications"]>[0];
+
+const NO_STATS: GameResult["stats"] = {
+  actions_executed: 0,
+  damage_deposits: 0,
+  gempiles_destroyed: 0,
+  damage_total: 0,
+  gems_gained: 0,
+  damage_walls: 0,
+  damage_cores: 0,
+  units_spawned: 0,
+  tiles_traveled: 0,
+  damage_self: 0,
+  damage_units: 0,
+  walls_destroyed: 0,
+  gems_transferred: 0,
+  units_destroyed: 0,
+  cores_destroyed: 0,
+  damage_opponent: 0,
+};
+
+function result(overrides: Partial<GameResult> = {}): GameResult {
   return {
     game_id: GAME_ID,
     team_results: [
       { id: 418, name: "High", place: 0, death_reason: 0 },
       { id: 42, name: "Low", place: 1, death_reason: 1 },
     ],
-    stats: {},
+    stats: NO_STATS,
     BOT_ID_MAPPING: { "42": "team-low", "418": "team-high" },
     ...overrides,
-  } as never;
+  };
 }
 
 describe("storing match sides from a game result", () => {

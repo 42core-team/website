@@ -72,5 +72,7 @@ export function getMatchSides(result: {
 
   const leftTeamId = result.BOT_ID_MAPPING[sides.leftTeamId];
   const rightTeamId = result.BOT_ID_MAPPING[sides.rightTeamId];
-  return leftTeamId && rightTeamId ? { leftTeamId, rightTeamId } : null;
+  return leftTeamId && rightTeamId && leftTeamId !== rightTeamId
+    ? { leftTeamId, rightTeamId }
+    : null;
 }
