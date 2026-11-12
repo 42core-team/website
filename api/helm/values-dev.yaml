@@ -30,11 +30,16 @@ env:
 
 ingress:
   enabled: true
-  className: traefik
+  className: "nginx"
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "11m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://dev.coregame.sh"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+#    nginx.ingress.kubernetes.io/limit-rps: "5"
+#    nginx.ingress.kubernetes.io/limit-burst: "10"
+#    nginx.ingress.kubernetes.io/limit-connections: "20"
   hosts:
     - host: dev.api.coregame.sh
       paths:
