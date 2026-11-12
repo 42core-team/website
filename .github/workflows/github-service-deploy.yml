@@ -157,7 +157,7 @@ jobs:
             --set image.repository=${{ steps.config.outputs.image_repo }} \
             --set secrets.RABBITMQ_URL="${{ secrets.RABBITMQ_URL }}" \
             --set secrets.API_SECRET_ENCRYPTION_KEY="${{ secrets.API_SECRET_ENCRYPTION_KEY }}" \
-            --set env.GITHUB_APP_ID="${{ vars.GITHUB_APP_ID }}" \
+            --set env.GITHUB_APP_ID="${{ vars.CORE_APP_ID }}" \
             --validate
 
       - name: Deploy with Helm
@@ -172,8 +172,8 @@ jobs:
             --set image.repository=${{ steps.config.outputs.image_repo }} \
             --set secrets.RABBITMQ_URL="${{ secrets.RABBITMQ_URL }}" \
             --set secrets.API_SECRET_ENCRYPTION_KEY="${{ secrets.API_SECRET_ENCRYPTION_KEY }}" \
-            --set env.GITHUB_APP_ID="${{ vars.GITHUB_APP_ID }}" \
-            --set secrets.GITHUB_APP_PRIVATE_KEY="${{ secrets.GITHUB_APP_PRIVATE_KEY }}" \
+            --set env.GITHUB_APP_ID="${{ vars.CORE_APP_ID }}" \
+            --set secrets.CORE_APP_PRIVATE_KEY="${{ secrets.CORE_APP_PRIVATE_KEY }}" \
             --wait \
             --timeout=5m \
             --atomic \

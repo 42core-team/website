@@ -123,7 +123,7 @@ GITHUB_APP_PRIVATE_KEY=LS0tLS1CRUdJTi...
 GITHUB_APP_WEBHOOK_SECRET=
 ```
 
-Deployed environments read `GITHUB_APP_ID` and `GITHUB_APP_SLUG` from GitHub environment variables, and `GITHUB_APP_PRIVATE_KEY` (base64, as above) and `GITHUB_APP_WEBHOOK_SECRET` from GitHub environment secrets.
+Deployed environments read `CORE_APP_ID` and `CORE_APP_SLUG` from GitHub environment variables, and `CORE_APP_PRIVATE_KEY` (base64, as above) and `CORE_APP_WEBHOOK_SECRET` from GitHub environment secrets; GitHub reserves the `GITHUB_` prefix there. The deploy workflows pass them to the services as `GITHUB_APP_*`.
 
 ### Other commands
 
