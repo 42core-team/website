@@ -60,3 +60,9 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/* Release-scoped name for the same-namespace www redirect middleware. */}}
+{{- define "frontend.redirectMiddlewareName" -}}
+{{- $name := include "frontend.fullname" . -}}
+{{- printf "%s-%s-www-redirect" ($name | trunc 41 | trimSuffix "-") ($name | sha256sum | trunc 8) -}}
+{{- end }}

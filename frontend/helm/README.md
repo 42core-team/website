@@ -1,183 +1,73 @@
-# Frontend Helm Chart
+# Frontend Helm chart
 
-This Helm chart deploys the CORE frontend application to Kubernetes.
+Deploys the CORE frontend Service, application workload and Traefik HTTPS routes.
+Development uses `frontend-dev` in `development`; production uses `frontend-main`
+in `production`. Application configuration, image and secret arguments are
+supplied by the existing `.github/workflows/frontend-deploy.yml` workflow.
 
 ## Prerequisites
 
-- Self-hosted GitHub Actions runners with x64 architecture
-- Kubernetes cluster with Helm 3.x
-- kubectl configured to access the cluster
-- Docker registry access (GitHub Container Registry)
-- Ingress controller (nginx-ingress)
-- cert-manager (for SSL certificates)
+- Kubernetes 1.19 or newer, Helm 3, and registry access for the application image.
+- Traefik with the `traefik` IngressClass, `websecure` entrypoint and Kubernetes
+  Ingress/CRD providers enabled; the `Middleware` CRD must be installed.
+- HTTP-to-HTTPS redirection configured on Traefik, with HTTP-01 challenge routes
+  allowed to take precedence.
+- cert-manager and the Ready `letsencrypt-prod` ClusterIssuer configured to solve
+  HTTP-01 challenges through Traefik.
 
-## Configuration
+## HTTPS routes
 
-### Environment Variables
+Both environment values files select `ingress.className: traefik` and annotate the
+route for `websecure` with TLS enabled. Hostnames, frontend Service port **3000**,
+and existing certificate Secret names stay unchanged:
 
-The following environment variables can be configured in the values files:
+| Environment | Host | TLS Secret |
+| --- | --- | --- |
+| Development | `dev.coregame.sh` | `dev-coregame-de-tls` |
+| Production | `coregame.sh` | `coregame-de-tls` |
+| Production redirect | `www.coregame.sh` | `www-coregame-de-tls` |
 
-#### Vite Auth Configuration
+The chart retains cert-manager ownership through the original Ingress names.
+Enabled routes require TLS Secret references. The base values file disables
+public ingress until environment values are supplied.
 
-- `VITE_AUTH_URL`: The public URL for authentication
-- `VITE_AUTH_SECRET`: Secret for session encryption
+## Production www redirect
 
-#### GitHub OAuth Configuration
+`ingressRedirect` creates an HTTPS Ingress and release-scoped RedirectRegex
+Middleware in the same namespace. It redirects to exactly `https://coregame.sh`,
+discarding the original path and query. Its regex is anchored and escapes the
+source hostname. Additional explicitly configured middlewares run after the
+redirect middleware.
 
-- `CLIENT_ID_GITHUB`: GitHub OAuth app client ID
-- `CLIENT_SECRET_GITHUB`: GitHub OAuth app client secret (stored as Kubernetes secret)
+The accepted native permanent-redirect behavior in Traefik v3.7.18 is **301 for
+GET** and **308 for other methods**, including HEAD. There is no configurable
+redirect status code in this chart. See the version-pinned
+[redirect implementation](https://github.com/traefik/traefik/blob/v3.7.18/pkg/middlewares/redirect/redirect.go).
 
-#### Backend API Configuration
+## Deploy and verify
 
-- `BACKEND_URL`: Backend API base URL
-- `BACKEND_SECRET`: Backend API authentication secret (stored as Kubernetes secret)
+Run the existing frontend deployment workflow for the desired branch/environment.
+It selects `values-dev.yaml` or `values-prod.yaml` and retains the required image,
+environment and secret arguments. The platform Traefik deployment, DNS target and
+shared issuer solver must be configured for the direct cutover. This chart does
+not install the ingress controller or manage DNS.
 
-#### Vite Configuration
-
-- `NODE_ENV`: Set to "production" for all environments
-
-#### Vite Auth Configuration
-
-- `VITE_AUTH_URL`: The public URL for authentication
-- `VITE_AUTH_SECRET`: Secret for session encryption (stored as Kubernetes secret)
-
-### Ingress rate limiting
-
-Basic request rate limiting is enabled via nginx-ingress annotations in the environment values files:
-
-- `nginx.ingress.kubernetes.io/limit-rps`: max requests per second per client IP
-- `nginx.ingress.kubernetes.io/limit-burst`: allowed burst over the RPS
-- `nginx.ingress.kubernetes.io/limit-connections`: concurrent connections per client IP
-
-Notes:
-
-- Limits are enforced per nginx controller pod. With multiple replicas (e.g., 3), the effective total can be up to ~3x if traffic is evenly distributed.
-- If your cluster sits behind an external load balancer or proxy, ensure client IP is preserved (e.g., configure `use-forwarded-headers` and proper `proxy-real-ip-cidr` on the ingress controller) so limits apply per real client IP.
-- Tune values per environment in `values-dev.yaml` and `values-prod.yaml`.
-
-### Redirect ingress
-
-The chart supports an optional redirect ingress for handling domain redirects (e.g., www to apex domain). This uses nginx ingress annotations to issue HTTP redirects without requiring additional services.
-
-#### Configuration
-
-```yaml
-ingressRedirect:
-  enabled: true
-  className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-  fromHost: www.example.com
-  toHost: example.com
-  code: "308"
-  tls:
-    enabled: true
-    secretName: www-example-com-tls
-```
-
-#### Example: Production www redirect
-
-```yaml
-ingressRedirect:
-  enabled: true
-  className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-  fromHost: www.coregame.sh
-  toHost: coregame.sh
-  code: "308"
-  tls:
-    enabled: true
-    secretName: www-coregame-de-tls
-```
-
-This configuration will:
-
-- Create a separate ingress for `www.coregame.sh`
-- Issue HTTP 308 (permanent) redirects to `https://coregame.sh`
-- Include TLS certificate management for the www subdomain
-- Preserve the original request path and query parameters
-
-## Secrets Required
-
-Set up the following secrets in GitHub Environments:
-
-#### Development Environment (`dev`)
-
-- `KUBECONFIG_DATA`: Base64 encoded kubeconfig for dev cluster
-- `VITE_AUTH_SECRET`: Development authentication secret (GitHub Secret)
-- `CLIENT_ID_GITHUB`: Development GitHub OAuth client ID (Environment Variable)
-- `CLIENT_SECRET_GITHUB`: Development GitHub OAuth client secret (GitHub Secret)
-- `BACKEND_URL`: Development backend API URL (Environment Variable)
-- `BACKEND_SECRET`: Development backend API secret (GitHub Secret)
-
-#### Production Environment (`prod`)
-
-- `KUBECONFIG_DATA`: Base64 encoded kubeconfig for prod cluster
-- `VITE_AUTH_SECRET`: Production authentication secret (GitHub Secret)
-- `CLIENT_ID_GITHUB`: Production GitHub OAuth client ID (Environment Variable)
-- `CLIENT_SECRET_GITHUB`: Production GitHub OAuth client secret (GitHub Secret)
-- `BACKEND_URL`: Production backend API URL (Environment Variable)
-- `BACKEND_SECRET`: Production backend API secret (GitHub Secret)
-
-## Deployment
-
-### Manual Deployment
+From the website repository root:
 
 ```bash
-# Deploy to development
-helm upgrade --install frontend-dev . \
-  --namespace development \
-  --values values-dev.yaml \
-  --set image.tag=dev
+helm lint ./frontend/helm --values ./frontend/helm/values-dev.yaml
+helm lint ./frontend/helm --values ./frontend/helm/values-prod.yaml
+ruby ./frontend/helm/tests/ingress_test.rb
 
-# Deploy to production
-helm upgrade --install frontend-prod . \
-  --namespace production \
-  --values values-prod.yaml \
-  --set image.tag=main
+kubectl get ingress,certificate -n development
+kubectl get ingress,certificate -n production
+curl -I https://dev.coregame.sh/
+curl -I https://coregame.sh/
+curl -sS -D - -o /dev/null 'https://www.coregame.sh/a/path?test=1'
 ```
 
-### GitHub Actions Deployment
-
-The deployment is automated via GitHub Actions:
-
-1. **Build Workflow** (`frontend-build.yml`): Builds Docker image on push/PR
-2. **Deploy Workflow** (`frontend-deploy.yml`): Manual deployment with environment selection
-3. **Auto Deploy Workflow** (`frontend-auto-deploy.yml`): Automatic deployment on push to main/dev
-
-## Architecture
-
-- **Development**: Single replica, no autoscaling
-- **Production**: 2+ replicas with HPA enabled
-- **Ingress**: TLS-enabled with cert-manager
-- **Health Checks**: Liveness and readiness probes configured
-
-## Monitoring
-
-- Pod health via Kubernetes probes
-- Ingress metrics via nginx-ingress
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Image Pull Errors**: Verify the image repository and tag exist and are accessible from the cluster
-2. **Ingress Issues**: Verify cert-manager and nginx-ingress are installed
-3. **Health Check Failures**: Check application logs and probe configuration
-
-### Useful Commands
-
-```bash
-# Check deployment status
-kubectl get pods -n <namespace> -l app.kubernetes.io/name=frontend
-
-# View logs
-kubectl logs -n <namespace> -l app.kubernetes.io/name=frontend
-
-# Check ingress
-kubectl get ingress -n <namespace>
-
-# Helm status
-helm status <release-name> -n <namespace>
-```
+The last command uses GET: expect **301** and `Location: https://coregame.sh`,
+without the original path or query. `curl -I` uses HEAD and reports 308 instead.
+Validate browser login, OAuth callbacks, cookies and normal navigation. Do not
+bypass TLS verification. Render checks verify resource configuration; live
+routing and certificate issuance require the configured cluster and DNS.
