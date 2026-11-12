@@ -27,7 +27,9 @@ function setup(
     permissions?: Record<string, string>;
     membership?: { role: string; state: string } | null;
     event?: Partial<EventEntity>;
-    teamsHaveRepos?: boolean;
+    teams?: { repo: string | null; repositoryStatus?: string }[];
+    repositorySelection?: string;
+    accessibleRepositories?: string[];
     existingInstallation?: Partial<GithubInstallationEntity> | null;
     installationError?: Error;
   } = {},
@@ -49,7 +51,15 @@ function setup(
     [
       TeamEntity,
       {
-        existsBy: jest.fn().mockResolvedValue(options.teamsHaveRepos ?? false),
+        createQueryBuilder: jest.fn(() => {
+          const builder = {
+            select: () => builder,
+            where: () => builder,
+            setLock: () => builder,
+            getMany: async () => options.teams ?? [],
+          };
+          return builder;
+        }),
       },
     ],
     [
@@ -86,7 +96,7 @@ function setup(
             login: "Core-Org",
             type: options.accountType ?? "Organization",
           },
-          repository_selection: "all",
+          repository_selection: options.repositorySelection ?? "all",
           permissions: options.permissions ?? PERMISSIONS,
           suspended_at: null,
         }),
@@ -112,6 +122,14 @@ function setup(
       : options.membership;
   service.fetch = jest.fn(async (url: string | URL | Request) => {
     const path = new URL(String(url)).pathname;
+    if (path === "/installation/repositories")
+      return new Response(
+        JSON.stringify({
+          repositories: (options.accessibleRepositories ?? []).map((name) => ({
+            name,
+          })),
+        }),
+      );
     if (path === "/user/1001")
       return new Response(JSON.stringify({ login: "organizer" }));
     if (path === "/orgs/Core-Org/memberships/organizer")
@@ -235,7 +253,7 @@ describe("GithubAppService", () => {
       ) as never;
       await expect(
         service.completeInstallation("user", 77, state),
-      ).rejects.toThrow("Could not check your role");
+      ).rejects.toThrow("Could not check the installation");
     });
 
     it("rejects installations missing required permissions", async () => {
@@ -252,7 +270,7 @@ describe("GithubAppService", () => {
     it("keeps teams' repositories in their organization", async () => {
       const { service, repositories, state } = setup({
         event: { githubOrg: "old-org", githubOrgSecret: "enc" },
-        teamsHaveRepos: true,
+        teams: [{ repo: "team-repo" }],
       });
       await expect(
         service.completeInstallation("user", 77, state),
@@ -260,10 +278,46 @@ describe("GithubAppService", () => {
       expect(repositories.get(EventEntity)!.update).not.toHaveBeenCalled();
     });
 
+    it("waits for repositories being created in the old organization", async () => {
+      const { service, repositories, state } = setup({
+        event: { githubOrg: "old-org", githubOrgSecret: "enc" },
+        teams: [{ repo: null, repositoryStatus: "PROVISIONING" }],
+      });
+      await expect(
+        service.completeInstallation("user", 77, state),
+      ).rejects.toThrow("already have repositories in old-org");
+      expect(repositories.get(EventEntity)!.update).not.toHaveBeenCalled();
+    });
+
+    it("requires a selected-repositories installation to reach every team repository", async () => {
+      const { service, repositories, state } = setup({
+        event: { githubOrg: "core-org", githubOrgSecret: "enc" },
+        teams: [{ repo: "Team-A" }, { repo: "team-b" }],
+        repositorySelection: "selected",
+        accessibleRepositories: ["team-a"],
+      });
+      await expect(
+        service.completeInstallation("user", 77, state),
+      ).rejects.toThrow("cannot access 1 team repository (e.g. team-b)");
+      expect(repositories.get(EventEntity)!.update).not.toHaveBeenCalled();
+    });
+
+    it("accepts a selected-repositories installation that reaches every team repository", async () => {
+      const { service, state } = setup({
+        event: { githubOrg: "core-org", githubOrgSecret: "enc" },
+        teams: [{ repo: "Team-A" }],
+        repositorySelection: "selected",
+        accessibleRepositories: ["team-a"],
+      });
+      await expect(
+        service.completeInstallation("user", 77, state),
+      ).resolves.toEqual({ eventId: "event" });
+    });
+
     it("switches a token event on the same organization to the App", async () => {
       const { service, repositories, state } = setup({
         event: { githubOrg: "core-org", githubOrgSecret: "enc" },
-        teamsHaveRepos: true,
+        teams: [{ repo: "team-repo" }],
       });
       await service.completeInstallation("user", 77, state);
       expect(repositories.get(EventEntity)!.update).toHaveBeenCalled();

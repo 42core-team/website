@@ -8,7 +8,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectDataSource } from "@nestjs/typeorm";
-import { DataSource, IsNull, Not } from "typeorm";
+import { DataSource } from "typeorm";
 import { EventEntity } from "../event/entities/event.entity";
 import { EventService } from "../event/event.service";
 import { GithubInstallationEntity } from "../github-api/entities/github-installation.entity";
@@ -17,7 +17,7 @@ import {
   GithubAppInstallation,
   GithubAppRequestError,
 } from "../github-api/github-app-auth";
-import { TeamEntity } from "../team/entities/team.entity";
+import { RepositoryStatus, TeamEntity } from "../team/entities/team.entity";
 import { UserEntity } from "../user/entities/user.entity";
 import { GithubInstallStateSigner } from "./github-app-state";
 
@@ -148,22 +148,48 @@ export class GithubAppService {
       .getRepository(UserEntity)
       .findOneByOrFail({ id: userId });
     await this.assertCanManageAccount(installation, user.githubId);
+    // Fetched before the transaction so no GitHub call runs under its locks.
+    const accessibleRepositories =
+      installation.repository_selection === "selected"
+        ? await this.listInstallationRepositories(installation.id)
+        : null;
 
     await this.dataSource.transaction(async (manager) => {
       const event = await manager.getRepository(EventEntity).findOneOrFail({
         where: { id: state.eventId },
         lock: { mode: "pessimistic_write" },
       });
+      // Provisioning locks the team row and then reads the event's
+      // credentials, so locking every team serializes this with it.
+      const teams = await manager
+        .getRepository(TeamEntity)
+        .createQueryBuilder("team")
+        .select(["team.id", "team.repo", "team.repositoryStatus"])
+        .where('team."eventId" = :eventId', { eventId: event.id })
+        .setLock("pessimistic_write")
+        .getMany();
+      const repositories = teams.flatMap((team) =>
+        team.repo ? [team.repo] : [],
+      );
       if (
         event.githubOrg &&
         event.githubOrg.toLowerCase() !== account.login.toLowerCase() &&
-        (await manager.getRepository(TeamEntity).existsBy({
-          event: { id: event.id },
-          repo: Not(IsNull()),
-        }))
+        (repositories.length ||
+          teams.some(
+            (team) => team.repositoryStatus === RepositoryStatus.PROVISIONING,
+          ))
       )
         throw new BadRequestException(
           `Teams of this event already have repositories in ${event.githubOrg}. Install the App on that organization instead of ${account.login}.`,
+        );
+      const unreachable = accessibleRepositories
+        ? repositories.filter(
+            (name) => !accessibleRepositories.has(name.toLowerCase()),
+          )
+        : [];
+      if (unreachable.length)
+        throw new BadRequestException(
+          `The installation on ${account.login} cannot access ${unreachable.length} team ${unreachable.length === 1 ? "repository" : "repositories"} (e.g. ${unreachable[0]}). Grant it access to all repositories, or add them to the installation on GitHub.`,
         );
 
       const installations = manager.getRepository(GithubInstallationEntity);
@@ -299,6 +325,20 @@ export class GithubAppService {
       );
   }
 
+  /** Lower-cased names of the repositories a "selected repositories" installation can access. */
+  private async listInstallationRepositories(installationId: number) {
+    const token = await this.githubAppAuth.getInstallationToken(installationId);
+    const names = new Set<string>();
+    for (let page = 1; ; page++) {
+      const result = await this.githubRequest<{
+        repositories: { name: string }[];
+      }>(token, `/installation/repositories?per_page=100&page=${page}`);
+      const repositories = result?.repositories ?? [];
+      for (const { name } of repositories) names.add(name.toLowerCase());
+      if (repositories.length < 100) return names;
+    }
+  }
+
   /** A GET with an installation token; null when GitHub answers 404. */
   private async githubRequest<T>(token: string, path: string) {
     const response = await this.fetch(`${GITHUB_API_URL}${path}`, {
@@ -316,7 +356,7 @@ export class GithubAppService {
         `GitHub request ${path} failed with ${response.status}`,
       );
       throw new BadGatewayException(
-        "Could not check your role in the organization on GitHub. Try again.",
+        "Could not check the installation on GitHub. Try again.",
       );
     }
     return (await response.json()) as T;
