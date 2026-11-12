@@ -36,9 +36,10 @@ export class EventEntity {
   @Column()
   githubOrg: string;
 
+  /** The organizer's encrypted token; null for events that only use the GitHub App. */
   @Exclude()
-  @Column()
-  githubOrgSecret: string;
+  @Column({ type: "varchar", nullable: true })
+  githubOrgSecret: string | null;
 
   @Exclude()
   @Column({ type: "uuid", nullable: true })

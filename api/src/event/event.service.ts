@@ -297,8 +297,8 @@ export class EventService {
     userId: string,
     name: string,
     description: string,
-    githubOrg: string,
-    githubOrgSecret: string,
+    githubOrg: string | undefined,
+    githubOrgSecret: string | undefined,
     location: string,
     startDate: number,
     endDate: number | undefined,
@@ -343,16 +343,17 @@ export class EventService {
       ),
     );
 
-    githubOrgSecret = encryptSecret(
-      githubOrgSecret,
-      this.configService.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
-    );
-
     return this.eventRepository.save({
       name,
       description,
-      githubOrg,
-      githubOrgSecret,
+      // Without a token the organization is set when the GitHub App is connected.
+      githubOrg: githubOrgSecret ? githubOrg : "",
+      githubOrgSecret: githubOrgSecret
+        ? encryptSecret(
+            githubOrgSecret,
+            this.configService.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
+          )
+        : null,
       location,
       minTeamSize,
       maxTeamSize,
@@ -886,6 +887,16 @@ export class EventService {
         update.visualizerDockerImage,
       ].map(assertImageExists),
     );
+
+    if (
+      event.githubInstallationId &&
+      (settings.githubOrgSecret ||
+        (update.githubOrg !== undefined &&
+          update.githubOrg.toLowerCase() !== event.githubOrg.toLowerCase()))
+    )
+      throw new BadRequestException(
+        "This event uses the CORE GitHub App; its organization and access come from the App installation.",
+      );
 
     if (settings.githubOrgSecret) {
       update.githubOrgSecret = encryptSecret(

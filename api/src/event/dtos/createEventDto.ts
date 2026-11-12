@@ -9,6 +9,7 @@ import {
   IsBoolean,
   IsInt,
   Matches,
+  ValidateIf,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
@@ -27,6 +28,10 @@ import {
   EVENT_NAME_MAX_LENGTH_MESSAGE,
 } from "../../common/name-limits";
 
+/** Either field switches the event to the organizer token, which then needs both. */
+const usesOrganizerToken = (dto: CreateEventDto) =>
+  dto.githubOrg !== undefined || dto.githubOrgSecret !== undefined;
+
 export class CreateEventDto {
   @ApiProperty({ maxLength: EVENT_NAME_MAX_LENGTH })
   @IsString()
@@ -39,17 +44,23 @@ export class CreateEventDto {
   @IsString()
   description: string;
 
-  @ApiProperty()
+  /**
+   * The organization and token of the legacy token setup. Omit both to
+   * connect the CORE GitHub App after the event is created.
+   */
+  @ApiPropertyOptional()
+  @ValidateIf(usesOrganizerToken)
   @IsString()
   @IsNotEmpty()
   @NormalizeGithubConfig("githubOrg")
   @Matches(GITHUB_OWNER_PATTERN, { message: GITHUB_OWNER_MESSAGE })
-  githubOrg: string;
+  githubOrg?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @ValidateIf(usesOrganizerToken)
   @IsString()
   @IsNotEmpty()
-  githubOrgSecret: string;
+  githubOrgSecret?: string;
 
   @ApiProperty()
   @IsOptional()
