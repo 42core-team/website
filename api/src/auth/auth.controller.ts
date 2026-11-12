@@ -196,7 +196,6 @@ export class AuthController {
   ): Promise<void> {
     const tokens = await this.auth.refreshSession(
       req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined,
-      req.cookies?.[this.getAuthCookieName()] as string | undefined,
     );
     if (!tokens) {
       this.clearSessionCookies(res);

@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { isEncryptedSecret } from "../common/encryption";
 import { UserEntity } from "../user/entities/user.entity";
 import { UserService } from "../user/user.service";
 import { GithubGrantService } from "./github-grant.service";
@@ -39,9 +38,8 @@ export class AuthService {
    */
   async refreshSession(
     refreshToken: string | undefined,
-    accessToken: string | undefined,
   ): Promise<SessionTokens | null> {
-    if (!refreshToken) return this.upgradeLegacySession(accessToken);
+    if (!refreshToken) return null;
 
     const result = await this.refreshTokens.rotate(refreshToken);
     if (result.status === "rejected") return null;
@@ -68,36 +66,6 @@ export class AuthService {
   /** "Log out everywhere": revoke all of the user's sessions. */
   async endAllSessions(userId: string): Promise<void> {
     await this.refreshTokens.revokeAllForUser(userId);
-  }
-
-  // TODO(#785): remove legacy JWT upgrade 30 days after #684 deploy
-  /**
-   * Transition path: a still-valid legacy 30-day JWT (no `fid`) is exchanged
-   * once for a new session, so the deploy does not log anyone out.
-   */
-  private async upgradeLegacySession(
-    accessToken: string | undefined,
-  ): Promise<Required<SessionTokens> | null> {
-    if (!accessToken) return null;
-
-    let payload: JwtPayload;
-    try {
-      payload = this.jwt.verify<JwtPayload>(accessToken);
-    } catch {
-      return null;
-    }
-    if (payload.fid || !payload.sub) return null;
-
-    const user = await this.users.getUserById(payload.sub).catch(() => null);
-    if (!user) return null;
-    // Users whose stored GitHub token is not in the current format (cleared
-    // by migration 1792500000000) must log in again to store a new one.
-    if (!isEncryptedSecret(user.githubAccessToken)) return null;
-
-    // Start the session first so a revocation found by the check covers it.
-    const tokens = await this.startSession(user);
-    this.githubGrant.checkInBackground(user);
-    return tokens;
   }
 
   private signAccessToken(user: SessionUser, familyId: string): string {

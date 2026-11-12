@@ -329,70 +329,29 @@ describe("AuthController sessions", () => {
     expect(isCleared(parseSetCookies(response).get("token"))).toBe(true);
   });
 
-  describe("legacy 30-day JWT without a family id", () => {
-    function signLegacyToken(expiresIn = "30d"): string {
-      return jwt.sign(
+  describe("pre-#684 30-day JWT without a family id", () => {
+    const legacyToken = () =>
+      jwt.sign(
         { sub: USER.id, email: USER.email, username: USER.username },
-        { expiresIn: expiresIn as "30d" },
+        { expiresIn: "30d" },
       );
-    }
 
-    it("is rejected by protected endpoints so the client refreshes", async () => {
+    it("is rejected by protected endpoints", async () => {
       await request(app.getHttpServer())
         .get("/auth/me")
-        .set("Cookie", `token=${signLegacyToken()}`)
+        .set("Cookie", `token=${legacyToken()}`)
         .expect(401);
     });
 
-    it("is upgraded once into a new session by refresh", async () => {
+    it("is not exchanged for a new session by refresh", async () => {
       const response = await request(app.getHttpServer())
         .post("/auth/refresh")
-        .set("Cookie", `token=${signLegacyToken()}`)
-        .expect(204);
+        .set("Cookie", `token=${legacyToken()}`)
+        .expect(401);
 
       const cookies = parseSetCookies(response);
-      const access = cookies.get("token")!.value;
-      expect(jwt.verify<{ fid: string }>(access).fid).toEqual(
-        expect.any(String),
-      );
-      expect(cookies.get("refresh_token")!.value).not.toBe("");
-      await request(app.getHttpServer())
-        .get("/auth/me")
-        .set("Cookie", `token=${access}`)
-        .expect(200);
-    });
-
-    it("is not upgraded when expired", async () => {
-      await request(app.getHttpServer())
-        .post("/auth/refresh")
-        .set("Cookie", `token=${signLegacyToken("-1s")}`)
-        .expect(401);
-    });
-
-    it.each([
-      ["cleared", ""],
-      ["in the old format", "U2FsdGVkX1+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="],
-    ])(
-      "is not upgraded when the stored GitHub token is %s",
-      async (_, githubAccessToken) => {
-        users.set(USER.id, createUser({ githubAccessToken }));
-
-        const response = await request(app.getHttpServer())
-          .post("/auth/refresh")
-          .set("Cookie", `token=${signLegacyToken()}`)
-          .expect(401);
-
-        expect(isCleared(parseSetCookies(response).get("token"))).toBe(true);
-      },
-    );
-
-    it("is not upgraded when its user no longer exists", async () => {
-      users.delete(USER.id);
-
-      await request(app.getHttpServer())
-        .post("/auth/refresh")
-        .set("Cookie", `token=${signLegacyToken()}`)
-        .expect(401);
+      expect(isCleared(cookies.get("token"))).toBe(true);
+      expect(isCleared(cookies.get("refresh_token"))).toBe(true);
     });
   });
 
@@ -625,23 +584,6 @@ describe("AuthController sessions", () => {
       await backgroundTasks.drain();
 
       expect(githubCalls()).toBe(0);
-    });
-
-    it("checks after a legacy JWT is upgraded", async () => {
-      fetchMock.mockImplementation(async () => githubResponse(401));
-      const legacy = jwt.sign(
-        { sub: USER.id, email: USER.email, username: USER.username },
-        { expiresIn: "30d" },
-      );
-
-      const response = await request(app.getHttpServer())
-        .post("/auth/refresh")
-        .set("Cookie", `token=${legacy}`)
-        .expect(204);
-      await backgroundTasks.drain();
-
-      expect(githubCalls()).toBe(1);
-      await refresh(nextRefreshToken(response), 401);
     });
 
     it("answers the refresh without waiting for GitHub", async () => {
