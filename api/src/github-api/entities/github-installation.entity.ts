@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   Entity,
   PrimaryGeneratedColumn,
+  Unique,
   UpdateDateColumn,
   ValueTransformer,
 } from "typeorm";
@@ -15,11 +16,14 @@ const bigintToNumber: ValueTransformer = {
 
 /** An installation of the CORE GitHub App on an organization. */
 @Entity("github_installations")
+@Unique("UQ_github_installations_installation_id", ["installationId"])
 export class GithubInstallationEntity {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn("uuid", {
+    primaryKeyConstraintName: "PK_github_installations",
+  })
   id: string;
 
-  @Column({ type: "bigint", unique: true, transformer: bigintToNumber })
+  @Column({ type: "bigint", transformer: bigintToNumber })
   installationId: number;
 
   @Column({ type: "bigint", transformer: bigintToNumber })

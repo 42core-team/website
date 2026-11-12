@@ -149,6 +149,30 @@ describe("GithubAppAuth", () => {
       expect(jwt.payload.iss).toBe("Iv23liClientId");
     });
 
+    it("reuses the JWT until a minute before it expires", async () => {
+      let now = NOW;
+      const fetchMock = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(jsonResponse(200, { id: 42 })),
+        );
+      const auth = createAuth(fetchMock, () => now);
+      const jwtOf = (call: number) =>
+        requestOf(fetchMock, call).headers.Authorization;
+
+      await auth.getInstallation(42);
+      now = NOW + 7 * 60 * 1000;
+      await auth.getInstallation(42);
+      now = NOW + 8 * 60 * 1000 + 1;
+      await auth.getInstallation(42);
+
+      expect(jwtOf(1)).toBe(jwtOf(0));
+      expect(jwtOf(2)).not.toBe(jwtOf(0));
+      expect(decodeJwt(jwtOf(2)).payload.exp).toBe(
+        Math.floor(now / 1000) + 9 * 60,
+      );
+    });
+
     it("signs a new JWT after GitHub rejected the current one", async () => {
       let now = NOW;
       const fetchMock = jest
@@ -226,6 +250,68 @@ describe("GithubAppAuth", () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
+    it("refreshes an expired token once for concurrent callers", async () => {
+      let now = NOW;
+      let resolveRefresh: (response: Response) => void = () => undefined;
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(tokenResponse("token-1"))
+        .mockImplementationOnce(
+          () => new Promise<Response>((resolve) => (resolveRefresh = resolve)),
+        );
+      const auth = createAuth(fetchMock, () => now);
+
+      await auth.getInstallationToken(42);
+      now = NOW + HOUR;
+      const tokens = Promise.all([
+        auth.getInstallationToken(42),
+        auth.getInstallationToken(42),
+      ]);
+      await new Promise((resolve) => setImmediate(resolve));
+      resolveRefresh(tokenResponse("token-2", NOW + 2 * HOUR));
+
+      await expect(tokens).resolves.toEqual(["token-2", "token-2"]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("rejects every concurrent caller when the shared request fails", async () => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(404, { message: "Not Found" }))
+        .mockResolvedValueOnce(tokenResponse("token-1"));
+      const auth = createAuth(fetchMock);
+
+      const results = await Promise.allSettled([
+        auth.getInstallationToken(42),
+        auth.getInstallationToken(42),
+      ]);
+
+      expect(results.map((result) => result.status)).toEqual([
+        "rejected",
+        "rejected",
+      ]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      await expect(auth.getInstallationToken(42)).resolves.toBe("token-1");
+    });
+
+    it("bounds each request with a timeout and retries after one", async () => {
+      const fetchMock = jest
+        .fn()
+        .mockRejectedValueOnce(
+          new DOMException("The operation timed out.", "TimeoutError"),
+        )
+        .mockResolvedValueOnce(tokenResponse("token-1"));
+      const auth = createAuth(fetchMock);
+
+      await expect(auth.getInstallationToken(42)).rejects.toMatchObject({
+        name: "TimeoutError",
+      });
+      await expect(auth.getInstallationToken(42)).resolves.toBe("token-1");
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(init.signal).toBeInstanceOf(AbortSignal);
+    });
+
     it("does not cache a failed request", async () => {
       const fetchMock = jest
         .fn()
@@ -300,11 +386,39 @@ describe("GithubAppAuth", () => {
 
     it("refuses an unrestricted scoped token", async () => {
       const fetchMock = jest.fn();
+      const auth = createAuth(fetchMock);
 
+      await expect(auth.createScopedToken(42, {})).rejects.toThrow(
+        "needs repositories or permissions",
+      );
       await expect(
-        createAuth(fetchMock).createScopedToken(42, { repositories: [] }),
+        auth.createScopedToken(42, { permissions: {} }),
       ).rejects.toThrow("needs repositories or permissions");
       expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("refuses an empty repository list even with permissions", async () => {
+      const fetchMock = jest.fn();
+
+      await expect(
+        createAuth(fetchMock).createScopedToken(42, {
+          repositories: [],
+          permissions: { contents: "read" },
+        }),
+      ).rejects.toThrow("repository list must not be empty");
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("allows a permissions-only token", async () => {
+      const fetchMock = jest.fn().mockResolvedValue(tokenResponse("scoped"));
+
+      await createAuth(fetchMock).createScopedToken(42, {
+        permissions: { metadata: "read" },
+      });
+
+      expect(requestOf(fetchMock).body).toEqual({
+        permissions: { metadata: "read" },
+      });
     });
   });
 

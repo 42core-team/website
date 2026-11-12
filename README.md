@@ -101,9 +101,9 @@ To change the credentials later, edit `.env.tilt`, or delete it and run `make de
 
 ### GitHub App setup (optional)
 
-Events can use the CORE GitHub App instead of an organization token pasted by the organizer. Without an App configured, local development keeps using per-event tokens.
+The CORE GitHub App will replace the organization token that organizers paste into the event form ([#798](https://github.com/42core-team/website/issues/798)). The integration is being rolled out in steps: for now the services only load the App credentials, and events still use their organization token. The setup callback below is added in a later step. Without an App configured, everything keeps using per-event tokens.
 
-To use one locally, [register your own GitHub App](https://github.com/settings/apps/new) with:
+To prepare one locally, [register your own GitHub App](https://github.com/settings/apps/new) with:
 
 - Repository permissions: Administration (read & write), Contents (read & write), Metadata (read)
 - Organization permissions: Members (read)

@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   JoinTable,
   ManyToMany,
@@ -41,6 +42,7 @@ export class EventEntity {
 
   @Exclude()
   @Column({ type: "uuid", nullable: true })
+  @Index("IDX_events_github_installation_id")
   githubInstallationId: string | null;
 
   /** When set, the event uses the CORE GitHub App instead of `githubOrgSecret`. */
@@ -49,7 +51,10 @@ export class EventEntity {
     nullable: true,
     onDelete: "SET NULL",
   })
-  @JoinColumn({ name: "githubInstallationId" })
+  @JoinColumn({
+    name: "githubInstallationId",
+    foreignKeyConstraintName: "FK_events_github_installation",
+  })
   githubInstallation: GithubInstallationEntity | null;
 
   @Column({ default: "" })

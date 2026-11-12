@@ -11,6 +11,7 @@ const JWT_CLOCK_SKEW_SECONDS = 60;
 const JWT_REFRESH_MARGIN_MS = 60 * 1000;
 /** Installation tokens live for an hour; renew well before a caller could hold an expired one. */
 const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000;
+const REQUEST_TIMEOUT_MS = 10 * 1000;
 
 export type GithubAppPermissionLevel = "read" | "write" | "admin";
 
@@ -122,8 +123,10 @@ export class GithubAppAuth {
     assertInstallationId(installationId);
     const cached = this.installationTokens.get(installationId);
     if (cached) {
-      const token = await cached.catch(() => null);
-      if (token && this.isFresh(token)) return token.token;
+      // A failure rejects every caller sharing the request; the entry is
+      // already removed, so the next call retries.
+      const token = await cached;
+      if (this.isFresh(token)) return token.token;
       // Only drop the entry that was checked; a concurrent caller may have replaced it.
       if (this.installationTokens.get(installationId) === cached)
         this.installationTokens.delete(installationId);
@@ -152,7 +155,11 @@ export class GithubAppAuth {
     options: GithubAppScopedTokenOptions,
   ): Promise<GithubAppToken> {
     assertInstallationId(installationId);
-    if (!options.repositories?.length && !options.permissions)
+    // GitHub treats an omitted restriction as "everything", so an empty list
+    // must never silently widen the token to the whole installation.
+    if (options.repositories?.length === 0)
+      throw new Error("A scoped token's repository list must not be empty.");
+    if (!options.repositories && !Object.keys(options.permissions ?? {}).length)
       throw new Error(
         "A scoped token needs repositories or permissions; use getInstallationToken otherwise.",
       );
@@ -178,7 +185,7 @@ export class GithubAppAuth {
     options: GithubAppScopedTokenOptions,
   ): Promise<GithubAppToken> {
     const body: Record<string, unknown> = {};
-    if (options.repositories?.length) body.repositories = options.repositories;
+    if (options.repositories) body.repositories = options.repositories;
     if (options.permissions) body.permissions = options.permissions;
     const response = await this.request<{ token: string; expires_at: string }>(
       "POST",
@@ -203,6 +210,8 @@ export class GithubAppAuth {
         ...(body === undefined ? {} : { "Content-Type": "application/json" }),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
+      // A stalled request would otherwise hold every caller sharing the cached promise.
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!response.ok) {
       // A rejected JWT may come from clock drift; sign a fresh one next time.

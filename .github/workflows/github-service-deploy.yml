@@ -158,7 +158,6 @@ jobs:
             --set secrets.RABBITMQ_URL="${{ secrets.RABBITMQ_URL }}" \
             --set secrets.API_SECRET_ENCRYPTION_KEY="${{ secrets.API_SECRET_ENCRYPTION_KEY }}" \
             --set env.GITHUB_APP_ID="${{ vars.GITHUB_APP_ID }}" \
-            --set secrets.GITHUB_APP_PRIVATE_KEY="${{ secrets.GITHUB_APP_PRIVATE_KEY }}" \
             --validate
 
       - name: Deploy with Helm
