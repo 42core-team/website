@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   JoinTable,
   ManyToMany,
   ManyToOne,
@@ -47,6 +48,22 @@ export class MatchEntity {
 
   @ManyToOne(() => TeamEntity, { nullable: true, onDelete: "SET NULL" })
   creditWagerTeam: TeamEntity | null;
+
+  // Set when the result arrives: the game server's team IDs are not kept, so
+  // the side can't be worked out later. Null when it is unknown.
+  @Column({ type: "uuid", nullable: true })
+  leftTeamId: string | null;
+
+  @ManyToOne(() => TeamEntity, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "leftTeamId" })
+  leftTeam?: TeamEntity | null;
+
+  @Column({ type: "uuid", nullable: true })
+  rightTeamId: string | null;
+
+  @ManyToOne(() => TeamEntity, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "rightTeamId" })
+  rightTeam?: TeamEntity | null;
 
   @Column({ type: "enum", enum: MatchPhase, default: MatchPhase.SWISS })
   phase: MatchPhase;

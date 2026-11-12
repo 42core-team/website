@@ -41,6 +41,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 		c.namespace,
 		presignedURL,
 		c.cfg.RabbitMQHTTP+"/api/exchanges/%2f/amq.default/publish",
+		c.cfg.QueueName("game_results"),
 	)
 	if err != nil {
 		return err
@@ -116,7 +117,7 @@ func createGameResources(ctx context.Context, clientset kubernetes.Interface, na
 
 // buildGameResources builds the Job, ConfigMap and (if needed) credentials
 // Secret for a game without talking to the cluster.
-func buildGameResources(game *Game, namespace, presignedURL, rabbitMQPublishURL string) (*gameResources, error) {
+func buildGameResources(game *Game, namespace, presignedURL, rabbitMQPublishURL, resultsQueue string) (*gameResources, error) {
 	for _, bot := range game.Bots {
 		if err := validateRepoURL(bot.RepoURL); err != nil {
 			return nil, fmt.Errorf("%w: invalid repository URL for bot %s: %v", ErrInvalidGame, bot.ID, err)
@@ -274,6 +275,7 @@ func buildGameResources(game *Game, namespace, presignedURL, rabbitMQPublishURL 
 		{Name: "GAME_ID", Value: game.ID.String()},
 		{Name: "SEND_RESULTS", Value: "true"},
 		{Name: "RABBITMQ_URL", Value: rabbitMQPublishURL},
+		{Name: "RABBITMQ_RESULTS_QUEUE", Value: resultsQueue},
 		{Name: "S3_PRESIGNED_URL", Value: presignedURL},
 		{Name: "UPLOAD_REPLAY", Value: "true"},
 		{Name: "BOT_ID_MAPPING", Value: string(botMappingJSON)},

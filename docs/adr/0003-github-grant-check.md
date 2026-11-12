@@ -60,7 +60,7 @@ What GitHub documents for OAuth App tokens (fetched 2026-10-19):
 2. **Throttle:** at most **once per hour per user**, tracked in a new
    `users.githubCheckedAt` column.
 3. **Which refresh paths:** the normal rotation and the legacy JWT upgrade
-   (ADR 0002 decision 6). It is skipped on the 30 s grace path, which only
+   (ADR 0002 decision 6; that path was removed in #785). It is skipped on the 30 s grace path, which only
    follows a rotation that was just checked.
 4. **Runs in the background** (with a 10 s timeout): the refresh response doesn't wait for GitHub.
    The check runs afterwards, so refresh latency is unchanged. A revocation

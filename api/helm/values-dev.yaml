@@ -13,6 +13,7 @@ resources:
     memory: 256Mi
 
 env:
+  RABBITMQ_QUEUE_PREFIX: "dev_"
   # Database configuration
   DB_TYPE: postgres
   DB_PORT: "5432"

@@ -12,6 +12,14 @@ export function MatchTeamHeader({
   match: Match
   eventId: string
 }) {
+  // Matches the visualizer when the sides are known; they aren't for older
+  // matches and for teams that never played.
+  const teams =
+    match.leftTeamId && match.rightTeamId
+      ? [match.leftTeamId, match.rightTeamId].map((teamId) =>
+          match.teams.find((team) => team.id === teamId),
+        )
+      : match.teams
   return (
     <section
       aria-label="Match teams"
@@ -21,7 +29,7 @@ export function MatchTeamHeader({
     >
       {/* The API leaves deleted teams out, so a side can have no team at all. */}
       {[0, 1].map((side) => {
-        const team: Match['teams'][number] | undefined = match.teams[side]
+        const team: Match['teams'][number] | undefined = teams[side]
         const isFirst = side === 0
         const name = team?.name ?? 'Unknown team'
         const score =

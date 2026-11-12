@@ -49,6 +49,7 @@ import {
   type MatchResponse,
   toMatchTeamResponse,
 } from "./match-response";
+import type { CoreSides } from "./match-sides";
 import { QueueMatchesQueryDto } from "./dtos/queueMatchesQueryDto";
 
 const QUEUE_MATCH_SELECT: FindOptionsSelect<MatchEntity> = {
@@ -123,6 +124,7 @@ export class MatchService {
       cores_destroyed: number;
       damage_opponent: number;
     },
+    sides: CoreSides<string> | null = null,
   ) {
     const match = await this.matchRepository.findOne({
       where: { id: matchId },
@@ -144,8 +146,16 @@ export class MatchService {
     if (!winner)
       throw new Error(`Winner with id ${winnerId} not found in match teams.`);
 
+    const sidesAreMatchTeams =
+      sides &&
+      [sides.leftTeamId, sides.rightTeamId].every((teamId) =>
+        match.teams.some((team) => team.id === teamId),
+      );
+
     match.winner = winner;
     match.state = MatchState.FINISHED;
+    match.leftTeamId = sidesAreMatchTeams ? sides.leftTeamId : null;
+    match.rightTeamId = sidesAreMatchTeams ? sides.rightTeamId : null;
     match.results = [];
     match.stats = {
       ...match.stats,

@@ -58,6 +58,47 @@ describe('match team header', () => {
     expect(screen.queryByText('1234')).toBeNull()
   })
 
+  function displayedTeams() {
+    return screen
+      .getAllByText(/^(Alpha|Beta|Unknown team)$/)
+      .map((element) => element.textContent)
+  }
+
+  it('places each team on the side it played', () => {
+    render(
+      <MatchTeamHeader
+        match={{ ...match, leftTeamId: 'b', rightTeamId: 'a' }}
+        eventId="event"
+      />,
+    )
+    expect(displayedTeams()).toEqual(['Beta', 'Alpha'])
+  })
+
+  it('keeps the team order when the sides are unknown', () => {
+    render(
+      <MatchTeamHeader
+        match={{ ...match, leftTeamId: null, rightTeamId: null }}
+        eventId="event"
+      />,
+    )
+    expect(displayedTeams()).toEqual(['Alpha', 'Beta'])
+  })
+
+  it('keeps a team on its side when the other team is missing', () => {
+    render(
+      <MatchTeamHeader
+        match={{
+          ...match,
+          teams: [match.teams[0]],
+          leftTeamId: 'b',
+          rightTeamId: 'a',
+        }}
+        eventId="event"
+      />,
+    )
+    expect(displayedTeams()).toEqual(['Unknown team', 'Alpha'])
+  })
+
   it('keeps both sides when a team is missing', () => {
     render(
       <MatchTeamHeader

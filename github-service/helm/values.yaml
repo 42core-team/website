@@ -45,7 +45,8 @@ autoscaling:
   targetMemoryUtilizationPercentage: null
 
 # Optional non-sensitive environment variables
-env: {}
+env:
+  RABBITMQ_QUEUE_PREFIX: ""
 
 # Sensitive values are passed as Kubernetes Secret
 secrets:

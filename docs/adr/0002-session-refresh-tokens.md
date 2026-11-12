@@ -62,7 +62,9 @@ The frontend is a client-side SPA that sends the cookie via axios
    `/auth/refresh` accepts a valid legacy 30-day JWT (when there's no refresh
    cookie) and mints a new family, so the deploy doesn't log anyone out.
    The exchange is not tracked server-side, so it is not limited to one use
-   (see Consequences).
+   (see Consequences). *Done:* the transition period ended and the upgrade
+   path was removed in #785 (see 10). `JwtStrategy` still rejects any JWT
+   without `fid`, and `/auth/refresh` now requires the refresh cookie.
 7. **Revocation scope for #684:**
    - `POST /auth/logout` revokes the current family.
    - "Log out everywhere" revokes all of the user's families.
@@ -79,7 +81,7 @@ The frontend is a client-side SPA that sends the cookie via axios
    the access cookie has expired.
 10. **Legacy upgrade path is temporary:** legacy JWTs expire on their own
     within 30 days of deploy. A follow-up PR removes the upgrade branch after
-    that, tracked by a TODO and an issue.
+    that, tracked by a TODO and an issue. *Done:* removed in #785.
 11. **Frontend refresh is reactive and single-flight:** an axios response
     interceptor catches a 401 from any endpoint except `/auth/refresh` and
     `/auth/logout` (it does include `/auth/me`, which `useSession` calls on
@@ -102,7 +104,7 @@ The frontend is a client-side SPA that sends the cookie via axios
 
 | Endpoint | Auth | Success | Failure |
 | --- | --- | --- | --- |
-| `POST /auth/refresh` | `refresh_token` cookie (or legacy JWT in `token`) | 204; sets `token` (and `refresh_token` on rotation) | 401; clears both cookies |
+| `POST /auth/refresh` | `refresh_token` cookie | 204; sets `token` (and `refresh_token` on rotation) | 401; clears both cookies |
 | `POST /auth/logout` | none (uses `refresh_token` if present) | 204; revokes the family, clears both cookies | — |
 | `POST /auth/logout-all` | `JwtAuthGuard` | 204; revokes all of the user's families, clears both cookies | 401 |
 
@@ -120,8 +122,6 @@ refresh_tokens(
 )
 
 POST /auth/refresh
-  legacy: no refresh cookie, but a valid legacy JWT in `token`
-          → start a new family (temporary, see 10)
   row = find(hash(cookie)); missing / expired / revoked → 401
   if row.rotated_at:
     if now - rotated_at < 30s → set new access cookie only
@@ -143,8 +143,9 @@ POST /auth/refresh
   exclusion list.
 - Rare false positive: a reuse more than 30 s after rotation (for example a
   tab that was suspended mid-request) logs that session out.
-- Accepted risk: a legacy JWT stolen before the deploy can be exchanged for
-  new families repeatedly until it expires (at most 30 days after deploy), and
-  "log out everywhere" does not stop that. Families it created keep living
+- Accepted risk (until #785): a legacy JWT stolen before the deploy could be
+  exchanged for new families repeatedly until it expired (at most 30 days after
+  deploy), and "log out everywhere" did not stop that. Families it created keep living
   under the normal 90-day idle rule.
 - Follow-up: remove the legacy upgrade path 30 days after deploy (#785).
+  *Done.*
