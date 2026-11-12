@@ -100,7 +100,7 @@ ingressRedirect:
   fromHost: ""
   # Destination host to redirect to (e.g., example.com)
   toHost: ""
-  # Native permanent redirect: 301 for GET, 308 for non-GET in Traefik v3.7.18.
+  # Native permanent redirect: 301 for GET, 308 for non-GET in Traefik v3.7.17.
   # The fixed destination drops the original path and query.
   tls:
     enabled: false

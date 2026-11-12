@@ -39,10 +39,10 @@ discarding the original path and query. Its regex is anchored and escapes the
 source hostname. Additional explicitly configured middlewares run after the
 redirect middleware.
 
-The accepted native permanent-redirect behavior in Traefik v3.7.18 is **301 for
+The accepted native permanent-redirect behavior in Traefik v3.7.17 is **301 for
 GET** and **308 for other methods**, including HEAD. There is no configurable
 redirect status code in this chart. See the version-pinned
-[redirect implementation](https://github.com/traefik/traefik/blob/v3.7.18/pkg/middlewares/redirect/redirect.go).
+[redirect implementation](https://github.com/traefik/traefik/blob/v3.7.17/pkg/middlewares/redirect/redirect.go).
 
 ## Deploy and verify
 
