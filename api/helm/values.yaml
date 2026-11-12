@@ -98,18 +98,14 @@ secrets:
 
 ingress:
   enabled: false
-  className: traefik
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
+  className: ""
+  annotations: {}
   hosts:
     - host: api.chart-example.local
       paths:
         - path: /
           pathType: ImplementationSpecific
   tls: []
-  # Maximum complete request body, including multipart overhead: 11 MiB.
-  maxRequestBodyBytes: 11534336
 
 # Probes
 # startup/liveness only check the process; readiness also checks the database.
