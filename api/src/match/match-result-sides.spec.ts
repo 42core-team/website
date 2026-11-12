@@ -26,6 +26,20 @@ function setup() {
       save,
     },
   });
+  const repository = {
+    findOneOrFail: jest.fn().mockResolvedValue(match),
+    save,
+  };
+  const manager = {
+    findOneOrFail: repository.findOneOrFail,
+    getRepository: () => repository,
+    find: jest.fn().mockResolvedValue(match.teams),
+  };
+  Object.assign(service, {
+    dataSource: {
+      transaction: async (work: (manager: unknown) => unknown) => work(manager),
+    },
+  });
   jest.spyOn(Logger.prototype, "log").mockImplementation();
   return { controller: new MatchEventsController(service), match };
 }

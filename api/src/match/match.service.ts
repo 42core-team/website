@@ -12,6 +12,7 @@ import { MatchStatsEntity } from "./entites/matchStats.entity";
 import { getCreditWagerRefund } from "./match-credit-wager";
 import {
   DataSource,
+  EntityManager,
   In,
   MoreThan,
   Not,
@@ -51,6 +52,11 @@ import {
 } from "./match-response";
 import type { CoreSides } from "./match-sides";
 import { QueueMatchesQueryDto } from "./dtos/queueMatchesQueryDto";
+
+interface MatchTransaction {
+  manager: EntityManager;
+  starts: string[];
+}
 
 const QUEUE_MATCH_SELECT: FindOptionsSelect<MatchEntity> = {
   id: true,
@@ -126,181 +132,182 @@ export class MatchService {
     },
     sides: CoreSides<string> | null = null,
   ) {
-    const match = await this.matchRepository.findOne({
-      where: { id: matchId },
-      relations: {
-        teams: {
-          event: true,
-        },
-        winner: true,
-        creditWagerTeam: true,
-      },
-    });
+    return this.completeMatch({ matchId, winnerId, stats, sides });
+  }
 
-    if (!match) throw new Error(`Match with id ${matchId} not found.`);
-
-    if (match.state !== MatchState.IN_PROGRESS)
-      throw new Error(`Match with id ${matchId} is not in READY state.`);
-
-    const winner = match.teams.find((team) => team.id === winnerId);
-    if (!winner)
-      throw new Error(`Winner with id ${winnerId} not found in match teams.`);
-
-    const sidesAreMatchTeams =
-      sides &&
-      [sides.leftTeamId, sides.rightTeamId].every((teamId) =>
-        match.teams.some((team) => team.id === teamId),
-      );
-
-    match.winner = winner;
-    match.state = MatchState.FINISHED;
-    match.leftTeamId = sidesAreMatchTeams ? sides.leftTeamId : null;
-    match.rightTeamId = sidesAreMatchTeams ? sides.rightTeamId : null;
-    match.results = [];
-    match.stats = {
-      ...match.stats,
-      actionsExecuted: stats.actions_executed,
-      damageDeposits: stats.damage_deposits,
-      gempilesDestroyed: stats.gempiles_destroyed,
-      damageTotal: stats.damage_total,
-      gemsGained: stats.gems_gained,
-      damageWalls: stats.damage_walls,
-      damageCores: stats.damage_cores,
-      unitsSpawned: stats.units_spawned,
-      tilesTraveled: stats.tiles_traveled,
-      damageSelf: stats.damage_self,
-      damageUnits: stats.damage_units,
-      wallsDestroyed: stats.walls_destroyed,
-      gemsTransferred: stats.gems_transferred,
-      unitsDestroyed: stats.units_destroyed,
-      coresDestroyed: stats.cores_destroyed,
-      damageOpponent: stats.damage_opponent,
-    };
-
-    if (match.phase === MatchPhase.SWISS) {
-      await this.teamService.increaseTeamScore(winner.id, 1);
-      match.results = match.teams.map((team) => {
-        return {
-          team: { id: team.id } as TeamEntity,
-          score: team.id === winnerId ? team.score + 1 : team.score,
-          match: { id: match.id } as MatchEntity,
-        } as MatchTeamResultEntity;
+  async completeMatch(result: {
+    matchId: string;
+    winnerId: string;
+    stats: Parameters<MatchService["processMatchResult"]>[2];
+    sides?: CoreSides<string> | null;
+  }) {
+    const { matchId, winnerId, stats, sides = null } = result;
+    const starts: string[] = [];
+    await this.dataSource.transaction(async (manager) => {
+      // Lock only the match row: eager/outer joins cannot be locked in PostgreSQL.
+      await manager.findOneOrFail(MatchEntity, {
+        where: { id: matchId },
+        lock: { mode: "pessimistic_write" },
+        loadEagerRelations: false,
       });
-    } else if (match.phase === MatchPhase.QUEUE) {
-      const loser = match.teams.find((team) => team.id !== winnerId);
-      if (loser) {
-        const winnerElo = winner.queueScore;
-        const loserElo = loser.queueScore;
-        const k = 32;
-        const expectedWin =
-          1 / (1 + Math.pow(10, (loserElo - winnerElo) / 400));
-        const expectedLose =
-          1 / (1 + Math.pow(10, (winnerElo - loserElo) / 400));
-        const newWinnerElo = Math.round(winnerElo + k * (1 - expectedWin));
-        const newLoserElo = Math.max(
-          0,
-          Math.round(loserElo + k * (0 - expectedLose)),
+      const repository = manager.getRepository(MatchEntity);
+      const match = await repository.findOneOrFail({
+        where: { id: matchId },
+        relations: {
+          teams: { event: true },
+          winner: true,
+          creditWagerTeam: true,
+        },
+      });
+      if (match.state === MatchState.FINISHED) {
+        if (match.winner?.id !== winnerId)
+          throw new BadRequestException("Conflicting match result.");
+        return;
+      }
+      if (match.state !== MatchState.IN_PROGRESS)
+        throw new BadRequestException(`Match ${matchId} is not in progress.`);
+      const eventId = match.teams[0]?.event?.id;
+      if ([MatchPhase.SWISS, MatchPhase.ELIMINATION].includes(match.phase)) {
+        if (!eventId) throw new Error("Match event is missing.");
+        await lockEvent(manager, eventId);
+      }
+      if (match.phase === MatchPhase.GAMBLING)
+        await manager.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+          `gambling:${eventId}`,
+        ]);
+      // Serialize ratings and score snapshots across matches sharing teams.
+      const teams = await manager.find(TeamEntity, {
+        where: { id: In(match.teams.map((team) => team.id)) },
+        order: { id: "ASC" },
+        lock: { mode: "pessimistic_write" },
+        loadEagerRelations: false,
+      });
+      match.teams = match.teams.map((team) =>
+        Object.assign(
+          team,
+          teams.find((current) => current.id === team.id),
+        ),
+      );
+      const winner = match.teams.find((team) => team.id === winnerId);
+      if (!winner)
+        throw new Error(`Winner with id ${winnerId} not found in match teams.`);
+
+      const sidesAreMatchTeams =
+        sides &&
+        [sides.leftTeamId, sides.rightTeamId].every((teamId) =>
+          match.teams.some((team) => team.id === teamId),
         );
-        await this.teamService.setQueueScore(winner.id, newWinnerElo);
-        await this.teamService.setQueueScore(loser.id, newLoserElo);
+
+      match.winner = winner;
+      match.state = MatchState.FINISHED;
+      match.leftTeamId = sidesAreMatchTeams ? sides.leftTeamId : null;
+      match.rightTeamId = sidesAreMatchTeams ? sides.rightTeamId : null;
+      match.results = [];
+      match.stats = {
+        ...match.stats,
+        actionsExecuted: stats.actions_executed,
+        damageDeposits: stats.damage_deposits,
+        gempilesDestroyed: stats.gempiles_destroyed,
+        damageTotal: stats.damage_total,
+        gemsGained: stats.gems_gained,
+        damageWalls: stats.damage_walls,
+        damageCores: stats.damage_cores,
+        unitsSpawned: stats.units_spawned,
+        tilesTraveled: stats.tiles_traveled,
+        damageSelf: stats.damage_self,
+        damageUnits: stats.damage_units,
+        wallsDestroyed: stats.walls_destroyed,
+        gemsTransferred: stats.gems_transferred,
+        unitsDestroyed: stats.units_destroyed,
+        coresDestroyed: stats.cores_destroyed,
+        damageOpponent: stats.damage_opponent,
+      };
+
+      if (match.phase === MatchPhase.SWISS) {
+        await manager.increment(TeamEntity, { id: winner.id }, "score", 1);
         match.results = match.teams.map((team) => {
           return {
             team: { id: team.id } as TeamEntity,
-            score: team.id === winner.id ? newWinnerElo : newLoserElo,
+            score: team.id === winnerId ? team.score + 1 : team.score,
             match: { id: match.id } as MatchEntity,
           } as MatchTeamResultEntity;
         });
+      } else if (match.phase === MatchPhase.QUEUE) {
+        const loser = match.teams.find((team) => team.id !== winnerId);
+        if (loser) {
+          const winnerElo = winner.queueScore;
+          const loserElo = loser.queueScore;
+          const k = 32;
+          const expectedWin =
+            1 / (1 + Math.pow(10, (loserElo - winnerElo) / 400));
+          const expectedLose =
+            1 / (1 + Math.pow(10, (winnerElo - loserElo) / 400));
+          const newWinnerElo = Math.round(winnerElo + k * (1 - expectedWin));
+          const newLoserElo = Math.max(
+            0,
+            Math.round(loserElo + k * (0 - expectedLose)),
+          );
+          await manager.update(TeamEntity, winner.id, {
+            queueScore: newWinnerElo,
+          });
+          await manager.update(TeamEntity, loser.id, {
+            queueScore: newLoserElo,
+          });
+          match.results = match.teams.map((team) => {
+            return {
+              team: { id: team.id } as TeamEntity,
+              score: team.id === winner.id ? newWinnerElo : newLoserElo,
+              match: { id: match.id } as MatchEntity,
+            } as MatchTeamResultEntity;
+          });
+        }
+
+        const creditRefund = getCreditWagerRefund(match, winner.id);
+        if (creditRefund > 0)
+          await manager.increment(
+            TeamEntity,
+            { id: winner.id },
+            "credits",
+            creditRefund,
+          );
       }
 
-      const creditRefund = getCreditWagerRefund(match, winner.id);
-      if (creditRefund > 0)
-        await this.teamService.increaseTeamCredits(winner.id, creditRefund);
-    }
-    await this.matchRepository.save(match);
-    this.logger.log(
-      `Match with id ${matchId} finished. Winner: ${winner.name}`,
-    );
-
-    if (match.phase === MatchPhase.GAMBLING) {
-      await this.gamblingService.settleMatch(match.id, winner.id);
-      return;
-    }
-
-    // Manual matches are admin-triggered test games and never affect rounds.
-    if (match.phase === MatchPhase.MANUAL) return;
-
-    const event = match.teams[0].event;
-    if (!event) {
-      throw new Error(`Event for match with id ${matchId} not found.`);
-    }
-
-    const notFinishedMatches = await this.matchRepository.count({
-      where: {
-        teams: {
-          event: {
-            id: event.id,
-          },
-        },
-        state: Not(MatchState.FINISHED),
-        phase: match.phase,
-        round: match.round,
-      },
-    });
-
-    if (notFinishedMatches > 0) return;
-
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      // Use advisory lock to prevent multiple round finishes for the same event
-      await lockEvent(queryRunner, event.id);
-
-      // Re-check if the round is still unfinished inside the transaction
-      const stillNotFinished = await queryRunner.manager.count(MatchEntity, {
+      await repository.save(match);
+      if (match.phase === MatchPhase.GAMBLING) {
+        await this.gamblingService.settleMatch(match.id, winnerId, manager);
+        return;
+      }
+      if (![MatchPhase.SWISS, MatchPhase.ELIMINATION].includes(match.phase))
+        return;
+      if (!eventId) throw new Error("Match event is missing.");
+      const remaining = await repository.count({
         where: {
-          teams: { event: { id: event.id } },
+          teams: { event: { id: eventId } },
           state: Not(MatchState.FINISHED),
           phase: match.phase,
           round: match.round,
         },
       });
-
-      const currentEvent = await queryRunner.manager.findOne(EventEntity, {
-        where: { id: event.id },
+      const event = await manager.findOneOrFail(EventEntity, {
+        where: { id: eventId },
       });
-
-      if (
-        stillNotFinished === 0 &&
-        currentEvent &&
-        currentEvent.currentRound === match.round
-      ) {
-        if (match.phase == MatchPhase.SWISS) {
-          await this.processSwissFinishRound(event.id);
-        } else if (match.phase == MatchPhase.ELIMINATION) {
-          await this.processTournamentFinishRound(event.id);
-        }
+      if (remaining === 0 && event.currentRound === match.round) {
+        const tx = { manager, starts };
+        if (match.phase === MatchPhase.SWISS)
+          await this.processSwissFinishRound(eventId, tx);
+        else await this.processTournamentFinishRound(eventId, tx);
       }
-      await queryRunner.commitTransaction();
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(
-        `Error finishing round for event ${event.id}: ${message}`,
-      );
-    } finally {
-      await queryRunner.release();
-    }
+    });
+    for (const id of starts) await this.startMatch(id);
   }
 
-  async processSwissFinishRound(evenId: string) {
-    const event = await this.eventService.getEventById(evenId, {
-      teams: true,
-    });
+  async processSwissFinishRound(evenId: string, tx?: MatchTransaction) {
+    const event = await this.progressionEvent(evenId, tx);
 
     const finishedRound = event.currentRound;
-    await this.eventService.increaseEventRound(evenId);
+    await (tx
+      ? tx.manager.increment(EventEntity, { id: evenId }, "currentRound", 1)
+      : this.eventService.increaseEventRound(evenId));
     this.logger.log(`Event ${event.name} has finished round ${finishedRound}.`);
 
     if (
@@ -310,8 +317,10 @@ export class MatchService {
       this.logger.log(
         `Event ${event.name} has reached the maximum Swiss rounds.`,
       );
-      await this.eventService.setCurrentRound(event.id, 0);
-      await this.calculateBuchholzPoints(event.id);
+      await (tx
+        ? tx.manager.update(EventEntity, event.id, { currentRound: 0 })
+        : this.eventService.setCurrentRound(event.id, 0));
+      await this.calculateBuchholzPoints(event.id, tx);
       return;
     }
 
@@ -319,7 +328,7 @@ export class MatchService {
       this.logPausedProgression(event, finishedRound + 1);
       return;
     }
-    await this.createNextSwissMatches(event.id);
+    await this.createNextSwissMatches(event.id, tx);
   }
 
   private logPausedProgression(event: EventEntity, round: number) {
@@ -328,65 +337,108 @@ export class MatchService {
     );
   }
 
+  /** Recovers committed pairings left undispatched by a process interruption. */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async startPlannedTournamentMatches() {
+    const matches = await this.matchRepository.find({
+      where: {
+        state: MatchState.PLANNED,
+        phase: In([MatchPhase.SWISS, MatchPhase.ELIMINATION]),
+      },
+      relations: { teams: { event: true } },
+    });
+    for (const match of matches) {
+      const event = match.teams[0]?.event;
+      if (!event) continue;
+      const current = await this.eventService.getEventById(event.id, {
+        teams: true,
+      });
+      if (!this.isTournamentReady(current)) continue;
+      try {
+        await this.startMatch(match.id);
+      } catch (error) {
+        this.logger.error(`Could not start planned match ${match.id}`, error);
+      }
+    }
+  }
+
   /**
    * Creates the matches of a round whose predecessor finished while the
    * tournament gate was closed (for example during a reopen). Idempotent:
    * a round that already has matches is left alone.
    */
   async resumeTournamentProgression(eventId: string) {
-    await this.withEventLock(eventId, async () => {
-      const event = await this.eventService.getEventById(eventId, {
-        teams: true,
-      });
-      const phase = await this.getPausedProgressionPhase(event);
+    await this.withEventLock(eventId, async (tx) => {
+      const event = await this.progressionEvent(eventId, tx);
+      const phase = await this.getPausedProgressionPhase(event, tx);
       // Creation rechecks the tournament gate and rejects if it closed again.
       if (phase) {
         this.logger.log(
           `Resuming ${phase} round ${event.currentRound} for event ${event.name}.`,
         );
         if (phase === MatchPhase.SWISS)
-          await this.createNextSwissMatches(eventId);
-        else await this.createNextTournamentMatches(eventId);
+          await this.createNextSwissMatches(eventId, tx);
+        else await this.createNextTournamentMatches(eventId, tx);
       }
     });
   }
 
   /** Admin entry point; the lock keeps the entrants stable while pairing. */
   startSwissMatches(eventId: string) {
-    return this.withEventLock(eventId, () =>
-      this.createNextSwissMatches(eventId),
+    return this.withEventLock(eventId, (tx) =>
+      this.createNextSwissMatches(eventId, tx),
     );
   }
 
   /** Admin entry point; the lock keeps the advancement limit stable while seeding. */
   startTournamentMatches(eventId: string) {
-    return this.withEventLock(eventId, () =>
-      this.createNextTournamentMatches(eventId),
+    return this.withEventLock(eventId, (tx) =>
+      this.createNextTournamentMatches(eventId, tx),
     );
   }
 
-  private async withEventLock<T>(eventId: string, work: () => Promise<T>) {
+  private async withEventLock<T>(
+    eventId: string,
+    work: (tx: MatchTransaction) => Promise<T>,
+  ) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
+    const starts: string[] = [];
+    let result: T;
     try {
       await lockEvent(queryRunner, eventId);
-      const result = await work();
+      result = await work({ manager: queryRunner.manager, starts });
       await queryRunner.commitTransaction();
-      return result;
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
     } finally {
       await queryRunner.release();
     }
+    for (const id of starts) await this.startMatch(id);
+    return result;
+  }
+
+  private progressionEvent(id: string, tx?: MatchTransaction) {
+    return tx
+      ? tx.manager.findOneOrFail(EventEntity, {
+          where: { id },
+          relations: { teams: true },
+        })
+      : this.eventService.getEventById(id, { teams: true });
+  }
+
+  private async startAfterCommit(id: string, tx?: MatchTransaction) {
+    if (tx) tx.starts.push(id);
+    else await this.startMatch(id);
   }
 
   /** The phase whose current round finished its predecessor but has no matches. */
-  async getPausedProgressionPhase(event: EventEntity) {
+  async getPausedProgressionPhase(event: EventEntity, tx?: MatchTransaction) {
     if (event.currentRound === 0) return null;
     const countMatches = (phase: MatchPhase, round?: number) =>
-      this.matchRepository.countBy({
+      (tx?.manager.getRepository(MatchEntity) ?? this.matchRepository).countBy({
         teams: { event: { id: event.id } },
         phase,
         ...(round === undefined ? {} : { round }),
@@ -418,12 +470,12 @@ export class MatchService {
     }
   }
 
-  async processTournamentFinishRound(eventId: string) {
-    const event = await this.eventService.getEventById(eventId, {
-      teams: true,
-    });
+  async processTournamentFinishRound(eventId: string, tx?: MatchTransaction) {
+    const event = await this.progressionEvent(eventId, tx);
 
-    const finishedMatches = await this.matchRepository.countBy({
+    const finishedMatches = await (
+      tx?.manager.getRepository(MatchEntity) ?? this.matchRepository
+    ).countBy({
       teams: {
         event: {
           id: event.id,
@@ -434,7 +486,9 @@ export class MatchService {
       round: event.currentRound,
     });
 
-    const totalMatches = await this.matchRepository.countBy({
+    const totalMatches = await (
+      tx?.manager.getRepository(MatchEntity) ?? this.matchRepository
+    ).countBy({
       teams: {
         event: {
           id: event.id,
@@ -450,7 +504,7 @@ export class MatchService {
       );
     }
 
-    const tournamentTeamCount = await this.getTournamentTeamCount(event.id);
+    const tournamentTeamCount = await this.getTournamentTeamCount(event.id, tx);
     const finalRoundIndex = Math.max(0, Math.log2(tournamentTeamCount) - 1);
 
     if (event.currentRound >= finalRoundIndex) {
@@ -461,13 +515,15 @@ export class MatchService {
     if (finishedMatches < totalMatches) return;
 
     const finishedRound = event.currentRound;
-    await this.eventService.increaseEventRound(event.id);
+    await (tx
+      ? tx.manager.increment(EventEntity, { id: event.id }, "currentRound", 1)
+      : this.eventService.increaseEventRound(event.id));
     this.logger.log(`Event ${event.name} has finished round ${finishedRound}.`);
     if (!this.isTournamentReady(event)) {
       this.logPausedProgression(event, finishedRound + 1);
       return;
     }
-    await this.createNextTournamentMatches(event.id);
+    await this.createNextTournamentMatches(event.id, tx);
   }
 
   async startMatch(matchId: string) {
@@ -610,21 +666,29 @@ export class MatchService {
     };
   }
 
-  async createMatch(teamIds: string[], round: number, phase: MatchPhase) {
+  async createMatch(
+    teamIds: string[],
+    round: number,
+    phase: MatchPhase,
+    tx?: MatchTransaction,
+  ) {
     if (phase === MatchPhase.SWISS || phase === MatchPhase.ELIMINATION) {
-      const team = await this.teamService.getTeamById(teamIds[0], {
-        event: true,
-      });
-      const event = await this.eventService.getEventById(team.event.id, {
-        teams: true,
-      });
+      const team = await (tx
+        ? tx.manager.findOneOrFail(TeamEntity, {
+            where: { id: teamIds[0] },
+            relations: { event: true },
+          })
+        : this.teamService.getTeamById(teamIds[0], { event: true }));
+      const event = await this.progressionEvent(team.event.id, tx);
       const entrants = this.requireTournamentReady(event);
       if (teamIds.some((id) => !entrants.some((entrant) => entrant.id === id)))
         throw new BadRequestException(
           "Tournament teams must be nonexcluded participants in this event.",
         );
     }
-    const match = this.matchRepository.create({
+    const match = (
+      tx?.manager.getRepository(MatchEntity) ?? this.matchRepository
+    ).create({
       teams: teamIds.map((id) => ({ id })),
       round,
       phase,
@@ -632,7 +696,9 @@ export class MatchService {
       stats: new MatchStatsEntity(),
     });
 
-    return this.matchRepository.save(match);
+    return (
+      tx?.manager.getRepository(MatchEntity) ?? this.matchRepository
+    ).save(match);
   }
 
   async createManualMatch(
@@ -663,8 +729,13 @@ export class MatchService {
     return { id: match.id };
   }
 
-  async getFormerOpponents(teamId: string): Promise<TeamEntity[]> {
-    const matches = await this.matchRepository.find({
+  async getFormerOpponents(
+    teamId: string,
+    tx?: MatchTransaction,
+  ): Promise<TeamEntity[]> {
+    const matches = await (
+      tx?.manager.getRepository(MatchEntity) ?? this.matchRepository
+    ).find({
       where: {
         teams: {
           id: teamId,
@@ -689,13 +760,13 @@ export class MatchService {
     return Array.from(opponents);
   }
 
-  async createNextSwissMatches(eventId: string) {
-    const event = await this.eventService.getEventById(eventId, {
-      teams: true,
-    });
+  async createNextSwissMatches(eventId: string, tx?: MatchTransaction) {
+    const event = await this.progressionEvent(eventId, tx);
     const entrants = this.requireTournamentReady(event);
 
-    const existingMatches = await this.matchRepository.countBy({
+    const existingMatches = await (
+      tx?.manager.getRepository(MatchEntity) ?? this.matchRepository
+    ).countBy({
       teams: {
         event: {
           id: eventId,
@@ -720,60 +791,67 @@ export class MatchService {
       throw new Error(`Maximum Swiss rounds reached for event ${event.name}.`);
     }
 
-    const players: Player[] = await Promise.all(
-      entrants.map(async (team) => ({
+    const players: Player[] = [];
+    for (const team of entrants) {
+      players.push({
         id: team.id,
         score: team.score,
         receivedBye: team.hadBye,
-        avoid: await this.getFormerOpponents(team.id).then((opponents) =>
-          opponents.map((opponent) => opponent.id),
+        avoid: (await this.getFormerOpponents(team.id, tx)).map(
+          (opponent) => opponent.id,
         ),
         rating: team.score,
-      })),
-    );
+      });
+    }
 
     const matches = Swiss(players, event.currentRound);
-    const matchEntities: (MatchEntity | null)[] = await Promise.all(
-      matches.map(async (match) => {
-        if (match.player1 === match.player2) {
-          this.logger.error(
-            `Player ${match.player1} cannot be paired with themselves in Swiss pairing.`,
-          );
-          throw new Error(
-            "A player cannot be paired with themselves in Swiss pairing.",
-          );
-        }
+    const filteredMatchEntities: MatchEntity[] = [];
+    for (const match of matches) {
+      if (match.player1 === match.player2) {
+        this.logger.error(
+          `Player ${match.player1} cannot be paired with themselves in Swiss pairing.`,
+        );
+        throw new Error(
+          "A player cannot be paired with themselves in Swiss pairing.",
+        );
+      }
 
-        if (!match.player1 || !match.player2) {
-          const teamId = (match.player1 || match.player2) as string;
-          this.logger.log(
-            `The team ${teamId} got a bye in round ${event.currentRound} of event ${event.name}.`,
-          );
-          await this.teamService.setHadBye(teamId, true);
-          await this.teamService.increaseTeamScore(teamId, 1);
-          return null;
-        }
-        return this.createMatch(
+      if (!match.player1 || !match.player2) {
+        const teamId = (match.player1 || match.player2) as string;
+        this.logger.log(
+          `The team ${teamId} got a bye in round ${event.currentRound} of event ${event.name}.`,
+        );
+        await (tx
+          ? tx.manager.update(TeamEntity, teamId, { hadBye: true })
+          : this.teamService.setHadBye(teamId, true));
+        await (tx
+          ? tx.manager.increment(TeamEntity, { id: teamId }, "score", 1)
+          : this.teamService.increaseTeamScore(teamId, 1));
+        continue;
+      }
+      filteredMatchEntities.push(
+        await this.createMatch(
           [match.player1 as string, match.player2 as string],
           event.currentRound,
           MatchPhase.SWISS,
-        );
-      }),
-    );
-    const filteredMatchEntities = matchEntities.filter(
-      (match): match is MatchEntity => match !== null,
-    );
+          tx,
+        ),
+      );
+    }
 
     this.logger.log(
       `Created ${filteredMatchEntities.length} Swiss matches for event ${event.name} in round ${event.currentRound}.`,
     );
     for (const matchEntity of filteredMatchEntities)
-      await this.startMatch(matchEntity.id);
+      await this.startAfterCommit(matchEntity.id, tx);
     return filteredMatchEntities;
   }
 
-  async createFirstTournamentMatches(event: EventEntity) {
-    event = await this.eventService.getEventById(event.id, { teams: true });
+  async createFirstTournamentMatches(
+    event: EventEntity,
+    tx?: MatchTransaction,
+  ) {
+    event = await this.progressionEvent(event.id, tx);
     const entrants = this.requireTournamentReady(event);
     const bracketSize = this.getBracketSize(event, entrants.length);
 
@@ -784,10 +862,17 @@ export class MatchService {
     }
 
     const sortedTeams = (
-      await this.teamService.getSortedTeamsForTournament(event.id)
+      await (tx
+        ? tx.manager.find(TeamEntity, {
+            where: { event: { id: event.id } },
+            order: { score: "DESC", buchholzPoints: "DESC" },
+          })
+        : this.teamService.getSortedTeamsForTournament(event.id))
     ).filter((team) => entrants.some((entrant) => entrant.id === team.id));
 
-    const existingMatches = await this.matchRepository.countBy({
+    const existingMatches = await (
+      tx?.manager.getRepository(MatchEntity) ?? this.matchRepository
+    ).countBy({
       teams: {
         event: {
           id: event.id,
@@ -824,8 +909,9 @@ export class MatchService {
         [team1.id, team2.id],
         0,
         MatchPhase.ELIMINATION,
+        tx,
       );
-      await this.startMatch(newMatch.id);
+      await this.startAfterCommit(newMatch.id, tx);
     }
 
     this.logger.log(
@@ -833,16 +919,16 @@ export class MatchService {
     );
   }
 
-  async createNextTournamentMatches(eventId: string) {
-    const event = await this.eventService.getEventById(eventId, {
-      teams: true,
-    });
+  async createNextTournamentMatches(eventId: string, tx?: MatchTransaction) {
+    const event = await this.progressionEvent(eventId, tx);
     this.requireTournamentReady(event);
 
     if (event.currentRound == 0)
-      return this.createFirstTournamentMatches(event);
+      return this.createFirstTournamentMatches(event, tx);
 
-    const existingMatches = await this.matchRepository.countBy({
+    const existingMatches = await (
+      tx?.manager.getRepository(MatchEntity) ?? this.matchRepository
+    ).countBy({
       teams: {
         event: {
           id: eventId,
@@ -859,7 +945,9 @@ export class MatchService {
       return [];
     }
 
-    const lastMatches = await this.matchRepository.find({
+    const lastMatches = await (
+      tx?.manager.getRepository(MatchEntity) ?? this.matchRepository
+    ).find({
       where: {
         teams: {
           event: {
@@ -906,8 +994,9 @@ export class MatchService {
         [match1.winner.id, match2.winner.id],
         event.currentRound,
         MatchPhase.ELIMINATION,
+        tx,
       );
-      await this.startMatch(finalMatch.id);
+      await this.startAfterCommit(finalMatch.id, tx);
 
       // If this was the semi-final (2 matches in last round), also create third place match
       if (lastMatches.length === 2) {
@@ -919,8 +1008,9 @@ export class MatchService {
             [loser1.id, loser2.id],
             event.currentRound,
             MatchPhase.ELIMINATION,
+            tx,
           );
-          await this.startMatch(thirdPlaceMatch.id);
+          await this.startAfterCommit(thirdPlaceMatch.id, tx);
         }
       }
     }
@@ -992,10 +1082,8 @@ export class MatchService {
     return seedOrder;
   }
 
-  async getTournamentTeamCount(eventId: string) {
-    const event = await this.eventService.getEventById(eventId, {
-      teams: true,
-    });
+  async getTournamentTeamCount(eventId: string, tx?: MatchTransaction) {
+    const event = await this.progressionEvent(eventId, tx);
     return this.getBracketSize(event, this.getTournamentEntrants(event).length);
   }
 
@@ -1037,21 +1125,32 @@ export class MatchService {
     return entrants;
   }
 
-  async calculateBuchholzPoints(eventId: string): Promise<void> {
-    const teams = await this.teamService.getTeamsForEvent(eventId);
+  async calculateBuchholzPoints(
+    eventId: string,
+    tx?: MatchTransaction,
+  ): Promise<void> {
+    const teams = await (tx
+      ? tx.manager.find(TeamEntity, { where: { event: { id: eventId } } })
+      : this.teamService.getTeamsForEvent(eventId));
 
-    await Promise.all(
-      teams.map(async (team) => {
-        const buchholzPoints = await this.calculateBuchholzPointsForTeam(
-          team.id,
-        );
-        await this.teamService.updateBuchholzPoints(team.id, buchholzPoints);
-      }),
-    );
+    for (const team of teams) {
+      const buchholzPoints = await this.calculateBuchholzPointsForTeam(
+        team.id,
+        tx,
+      );
+      await (tx
+        ? tx.manager.update(TeamEntity, team.id, { buchholzPoints })
+        : this.teamService.updateBuchholzPoints(team.id, buchholzPoints));
+    }
   }
 
-  async calculateBuchholzPointsForTeam(teamId: string): Promise<number> {
-    const wonMatches = await this.matchRepository.find({
+  async calculateBuchholzPointsForTeam(
+    teamId: string,
+    tx?: MatchTransaction,
+  ): Promise<number> {
+    const wonMatches = await (
+      tx?.manager.getRepository(MatchEntity) ?? this.matchRepository
+    ).find({
       where: {
         winner: {
           id: teamId,

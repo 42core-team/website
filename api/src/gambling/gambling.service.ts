@@ -268,8 +268,12 @@ export class GamblingService {
     });
   }
 
-  async settleMatch(matchId: string, winnerId: string) {
-    await this.dataSource.transaction(async (manager) => {
+  async settleMatch(
+    matchId: string,
+    winnerId: string,
+    manager?: EntityManager,
+  ) {
+    const settle = async (manager: EntityManager) => {
       const context = await this.getSettlementContext(manager, matchId);
       if (!context) return;
 
@@ -277,7 +281,9 @@ export class GamblingService {
       const payout = this.calculateRoundPayout(bets, winnerId);
       await this.applyRoundPayouts(manager, bets, winnerId, payout);
       await this.completeSettledRound(manager, context, winnerId, payout);
-    });
+    };
+    if (manager) await settle(manager);
+    else await this.dataSource.transaction(settle);
   }
 
   private async advanceEvent(eventId: string) {

@@ -28,6 +28,7 @@ jest.mock("../user/user.service", () => ({
   UserService: class UserService {},
 }));
 
+import { RepositoryLifecycleService } from "../repository-lifecycle/repository-lifecycle.service";
 import { TeamService } from "./team.service";
 
 function setup(status = "PROVISIONING", closed = false) {
@@ -63,7 +64,9 @@ function setup(status = "PROVISIONING", closed = false) {
     find: jest.fn().mockResolvedValue([team, { ...team, id: "opponent" }]),
     save: jest.fn(),
   };
-  const service = Object.create(TeamService.prototype) as TeamService;
+  const service = Object.create(
+    RepositoryLifecycleService.prototype,
+  ) as RepositoryLifecycleService;
   Reflect.set(service, "teamRepository", repository);
   Reflect.set(service, "dataSource", {
     transaction: (action: (value: typeof manager) => unknown) =>
@@ -74,7 +77,13 @@ function setup(status = "PROVISIONING", closed = false) {
     createTeamRepository: jest.fn(),
   };
   Reflect.set(service, "githubApiService", github);
-  return { service, team, event, repository, manager, github };
+  const membership = Object.create(TeamService.prototype) as TeamService;
+  Object.assign(membership, {
+    teamRepository: repository,
+    dataSource: Reflect.get(service, "dataSource"),
+    repositoryLifecycle: service,
+  });
+  return { service, membership, team, event, repository, manager, github };
 }
 
 describe("repository lifecycle", () => {
@@ -288,7 +297,7 @@ describe("repository lifecycle", () => {
   it.each([true, false])(
     "rejects direct matches for closed events or unready repos (closed=%s)",
     async (closed) => {
-      const { service, manager } = setup(
+      const { membership: service, manager } = setup(
         closed ? "READY" : "PROVISIONING",
         closed,
       );
@@ -317,7 +326,7 @@ describe("repository lifecycle", () => {
       Object.assign(team, data),
     );
     Object.assign(context.event, { maxTeamSize: 3 });
-    Reflect.set(context.service, "eventService", {
+    Reflect.set(context.membership, "eventService", {
       isUserEligibleForEvent: jest.fn(async () => true),
     });
     Object.assign(manager, {
@@ -346,7 +355,7 @@ describe("repository lifecycle", () => {
         }),
       }),
     });
-    return { ...context, order };
+    return { ...context, service: context.membership, order };
   }
 
   it("removes a departing member under the team lock and reconciles the repository roster", async () => {
@@ -416,7 +425,7 @@ describe("repository lifecycle", () => {
   });
 
   it("blocks membership changes at the exact submission cutoff", async () => {
-    const { service } = setup("READY", true);
+    const { membership: service } = setup("READY", true);
     await expect(service.assertTeamMembershipOpen("team")).rejects.toThrow(
       "closed",
     );

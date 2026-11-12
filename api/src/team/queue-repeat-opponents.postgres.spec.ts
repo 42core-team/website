@@ -38,6 +38,10 @@ postgres("queue repeat opponents (PostgreSQL)", () => {
       {} as never,
       { startMatch: jest.fn() } as never,
       database,
+      {
+        rosterWillChange: async () => {},
+        rosterChanged: async () => {},
+      } as never,
     );
   });
 
