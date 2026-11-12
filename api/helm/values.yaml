@@ -98,19 +98,18 @@ secrets:
 
 ingress:
   enabled: false
-  className: ""
-  annotations: {}
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
   hosts:
     - host: api.chart-example.local
       paths:
         - path: /
           pathType: ImplementationSpecific
   tls: []
-  traefik:
-    # Add a second ingress while the primary ingress remains owned by NGINX.
-    preview: false
-    # Preserve nginx proxy-body-size: 11m. This caps the whole request body.
-    maxRequestBodyBytes: 11534336
+  # Maximum complete request body, including multipart overhead: 11 MiB.
+  maxRequestBodyBytes: 11534336
 
 # Probes
 # startup/liveness only check the process; readiness also checks the database.

@@ -1,5 +1,0 @@
-# Layer after the environment values ONLY after DNS cutover and cache expiry.
-ingress:
-  className: traefik
-  traefik:
-    preview: false

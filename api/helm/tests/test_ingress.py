@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Render real chart combinations and check migration traffic/certificate contracts.
+"""Render real API charts and check native Traefik routing and request policy.
 
 Run: uv run --with-requirements api/helm/tests/requirements.txt python api/helm/tests/test_ingress.py
 """
+import base64
 import subprocess
 import unittest
 from pathlib import Path
@@ -12,13 +13,13 @@ import yaml
 CHART = Path(__file__).resolve().parents[1]
 
 
-def render(env="dev", overlay=None, flags=(), release=None):
+def render(env="dev", flags=(), release=None):
     release = release or ("api-dev" if env == "dev" else "api-main")
     namespace = "development" if env == "dev" else "production"
     cmd = ["helm", "template", release, str(CHART), "--namespace", namespace,
-           "--kube-version", "1.36.5", "-f", str(CHART / f"values-{env}.yaml")]
-    if overlay:
-        cmd += ["-f", str(CHART / f"values-{overlay}.yaml")]
+           "--kube-version", "1.36.5"]
+    if env:
+        cmd += ["-f", str(CHART / f"values-{env}.yaml")]
     result = subprocess.run(cmd + list(flags), capture_output=True, text=True)
     if result.returncode:
         raise ValueError(result.stderr)
@@ -29,41 +30,25 @@ def resources(docs, kind):
     return [doc for doc in docs if doc["kind"] == kind]
 
 
-class IngressMigrationTests(unittest.TestCase):
-    def test_defaults_keep_nginx_without_traefik_resources(self):
+class TraefikIngressTests(unittest.TestCase):
+    def test_environment_routes_keep_hosts_services_and_certificate_owners(self):
         for env in ("dev", "prod"):
             with self.subTest(env=env):
                 docs = render(env)
-                self.assertEqual(resources(docs, "Middleware"), [])
                 ingress, = resources(docs, "Ingress")
-                self.assertEqual(ingress["spec"]["ingressClassName"], "nginx")
-                self.assertEqual(ingress["metadata"]["annotations"]["nginx.ingress.kubernetes.io/proxy-body-size"], "11m")
-                self.assertEqual(ingress["metadata"]["annotations"]["cert-manager.io/cluster-issuer"], "letsencrypt-prod")
-
-    def test_preview_reuses_backends_and_secrets_without_certificate_ownership(self):
-        for env in ("dev", "prod"):
-            with self.subTest(env=env):
-                docs = render(env, "traefik-preview")
-                ingresses = resources(docs, "Ingress")
-                self.assertEqual(len(ingresses), 2)
-                primary = next(i for i in ingresses if i["spec"]["ingressClassName"] == "nginx")
-                preview = next(i for i in ingresses if i["spec"]["ingressClassName"] == "traefik")
-                self.assertNotEqual(primary["metadata"]["name"], preview["metadata"]["name"])
-                for field in ("rules", "tls"):
-                    self.assertEqual(primary["spec"][field], preview["spec"][field])
-                self.assertFalse(any("cert-manager.io/" in k or "nginx.ingress" in k or k == "kubernetes.io/ingress.class"
-                                     for k in preview["metadata"]["annotations"]))
-                self.check_middlewares(docs, preview, env)
-
-    def test_final_primary_keeps_certificate_ownership_and_uses_native_annotations(self):
-        for env in ("dev", "prod"):
-            with self.subTest(env=env):
-                docs = render(env, "traefik")
-                ingress, = resources(docs, "Ingress")
+                release = "api-dev" if env == "dev" else "api-main"
+                host = "dev.api.coregame.sh" if env == "dev" else "api.coregame.sh"
+                secret = "dev-api-coregame-de-tls" if env == "dev" else "api-coregame-de-tls"
+                self.assertEqual(ingress["apiVersion"], "networking.k8s.io/v1")
+                self.assertEqual(ingress["metadata"]["name"], release)
                 self.assertEqual(ingress["spec"]["ingressClassName"], "traefik")
-                annotations = ingress["metadata"]["annotations"]
-                self.assertEqual(annotations["cert-manager.io/cluster-issuer"], "letsencrypt-prod")
-                self.assertFalse(any(k.startswith("nginx.") or k == "kubernetes.io/ingress.class" for k in annotations))
+                self.assertEqual(ingress["spec"]["tls"], [{"hosts": [host], "secretName": secret}])
+                self.assertEqual(ingress["metadata"]["annotations"]["cert-manager.io/cluster-issuer"], "letsencrypt-prod")
+                self.assertFalse(any(k.startswith("nginx.") or k == "kubernetes.io/ingress.class"
+                                     for k in ingress["metadata"]["annotations"]))
+                self.assertEqual(ingress["spec"]["rules"], [{"host": host, "http": {"paths": [{
+                    "path": "/", "pathType": "Prefix", "backend": {"service": {"name": release, "port": {"number": 80}}}
+                }]}}])
                 self.check_middlewares(docs, ingress, env)
 
     def check_middlewares(self, docs, ingress, env):
@@ -88,74 +73,68 @@ class IngressMigrationTests(unittest.TestCase):
         self.assertEqual(policy["stsSeconds"], 31536000)
         self.assertTrue(policy["stsIncludeSubdomains"])
 
-    def test_preview_excludes_all_issuer_and_legacy_annotations(self):
-        docs = render(overlay="traefik-preview", flags=("--set-string", "ingress.annotations.kubernetes\\.io/ingress\\.class=nginx", "--set-string", "ingress.annotations.acme\\.cert-manager\\.io/http01-ingress-class=nginx"))
-        preview = next(i for i in resources(docs, "Ingress") if i["spec"]["ingressClassName"] == "traefik")
-        self.assertFalse(any("cert-manager.io/" in k or k == "kubernetes.io/ingress.class" for k in preview["metadata"]["annotations"]))
+    def test_disabled_ingress_has_no_route_or_middlewares(self):
+        docs = render(env=None)
+        self.assertEqual(resources(docs, "Ingress"), [])
+        self.assertEqual(resources(docs, "Middleware"), [])
 
-    def test_traefik_issuer_override_stays_on_original_certificate_owner(self):
-        for overlay in ("traefik-preview", "traefik"):
-            with self.subTest(overlay=overlay):
-                docs = render(overlay=overlay, flags=("--set-string", "ingress.annotations.cert-manager\\.io/cluster-issuer=letsencrypt-traefik"))
-                ingresses = resources(docs, "Ingress")
-                owners = [i for i in ingresses if "cert-manager.io/cluster-issuer" in i["metadata"]["annotations"]]
-                self.assertEqual(len(owners), 1)
-                self.assertEqual(owners[0]["metadata"]["name"], "api-dev")
-                self.assertEqual(owners[0]["metadata"]["annotations"]["cert-manager.io/cluster-issuer"], "letsencrypt-traefik")
-                self.assertEqual(owners[0]["spec"]["tls"][0]["secretName"], "dev-api-coregame-de-tls")
-
-    def test_preview_cannot_send_primary_route_to_traefik_via_legacy_annotation(self):
-        flags = ("--set-string", "ingress.annotations.kubernetes\\.io/ingress\\.class=traefik")
-        with self.assertRaisesRegex(ValueError, "conflicting legacy annotation"):
-            render(overlay="traefik-preview", flags=flags)
-        # Preserve legacy compatibility when migration is not enabled.
-        default, = resources(render(flags=flags), "Ingress")
-        self.assertEqual(default["metadata"]["annotations"]["kubernetes.io/ingress.class"], "traefik")
-        final, = resources(render(overlay="traefik", flags=("--set-string", "ingress.annotations.kubernetes\\.io/ingress\\.class=nginx")), "Ingress")
-        self.assertNotIn("kubernetes.io/ingress.class", final["metadata"]["annotations"])
-        self.check_middlewares(render(overlay="traefik"), final, "dev")
-
-    def test_preview_does_not_publish_external_dns_records(self):
-        keys = ("external-dns.alpha.kubernetes.io/hostname", "external-dns.kubernetes.io/target")
-        flags = ("--set-string", "ingress.annotations.external-dns\\.alpha\\.kubernetes\\.io/hostname=dev.api.coregame.sh",
-                 "--set-string", "ingress.annotations.external-dns\\.kubernetes\\.io/target=188.34.94.183")
-        docs = render(overlay="traefik-preview", flags=flags)
-        original = next(i for i in resources(docs, "Ingress") if i["metadata"]["name"] == "api-dev")
-        preview = next(i for i in resources(docs, "Ingress") if i["spec"]["ingressClassName"] == "traefik")
-        self.assertTrue(all(key in original["metadata"]["annotations"] for key in keys))
-        self.assertTrue(all(key not in preview["metadata"]["annotations"] for key in keys))
-        final, = resources(render(overlay="traefik", flags=flags), "Ingress")
-        self.assertTrue(all(key in final["metadata"]["annotations"] for key in keys))
+    def test_application_resources_keep_pipeline_image_environment_and_secrets(self):
+        for env in ("dev", "prod"):
+            with self.subTest(env=env):
+                release = "api-dev" if env == "dev" else "api-main"
+                docs = render(env, flags=("--set-string", "image.repository=ghcr.io/42core-team/website-api",
+                                          "--set-string", "image.tag=test-sha", "--set-string", "env.DB_HOST=db.internal",
+                                          "--set-string", "secrets.DB_PASSWORD=test-only"))
+                service, = resources(docs, "Service")
+                deployment, = resources(docs, "Deployment")
+                secret, = resources(docs, "Secret")
+                self.assertEqual(service["metadata"]["name"], release)
+                self.assertEqual(service["spec"]["ports"][0]["port"], 80)
+                self.assertEqual(service["spec"]["selector"], deployment["spec"]["selector"]["matchLabels"])
+                container, = deployment["spec"]["template"]["spec"]["containers"]
+                self.assertEqual(container["image"], "ghcr.io/42core-team/website-api:test-sha")
+                self.assertIn({"name": "DB_HOST", "value": "db.internal"}, container["env"])
+                self.assertEqual(container["envFrom"], [{"secretRef": {"name": release + "-secrets"}}])
+                self.assertEqual(base64.b64decode(secret["data"]["DB_PASSWORD"]).decode(), "test-only")
 
     def test_additional_native_middleware_and_tls_options_are_preserved(self):
-        docs = render(overlay="traefik-preview", flags=("--set-string", "ingress.annotations.traefik\\.ingress\\.kubernetes\\.io/router\\.middlewares=development-auth@kubernetescrd", "--set-string", "ingress.annotations.traefik\\.ingress\\.kubernetes\\.io/router\\.tls\\.options=development-strict@kubernetescrd"))
-        preview = next(i for i in resources(docs, "Ingress") if i["spec"]["ingressClassName"] == "traefik")
-        annotations = preview["metadata"]["annotations"]
+        docs = render(flags=("--set-string", "ingress.annotations.traefik\\.ingress\\.kubernetes\\.io/router\\.middlewares=development-auth@kubernetescrd", "--set-string", "ingress.annotations.traefik\\.ingress\\.kubernetes\\.io/router\\.tls\\.options=development-strict@kubernetescrd"))
+        ingress, = resources(docs, "Ingress")
+        annotations = ingress["metadata"]["annotations"]
         self.assertTrue(annotations["traefik.ingress.kubernetes.io/router.middlewares"].endswith(",development-auth@kubernetescrd"))
         self.assertEqual(annotations["traefik.ingress.kubernetes.io/router.tls.options"], "development-strict@kubernetescrd")
+
+    def test_required_policy_cannot_be_disabled_by_ingress_annotations(self):
+        docs = render(flags=("--set-string", "ingress.annotations.traefik\\.ingress\\.kubernetes\\.io/router\\.entrypoints=web",
+                             "--set-string", "ingress.annotations.traefik\\.ingress\\.kubernetes\\.io/router\\.tls=false"))
+        ingress, = resources(docs, "Ingress")
+        self.check_middlewares(docs, ingress, "dev")
 
     def test_long_release_names_remain_distinct_and_valid(self):
         names = []
         for release in ("a" * 47 + "one", "a" * 47 + "two"):
-            docs = render(overlay="traefik-preview", release=release)
-            objs = resources(docs, "Middleware") + [i for i in resources(docs, "Ingress") if i["spec"]["ingressClassName"] == "traefik"]
+            docs = render(release=release)
+            objs = resources(docs, "Middleware")
             self.assertTrue(all(len(o["metadata"]["name"]) <= 63 for o in objs))
+            ingress, = resources(docs, "Ingress")
+            self.check_middlewares(docs, ingress, "dev")
             names.append({o["metadata"]["name"] for o in objs})
         self.assertFalse(names[0] & names[1])
 
     def test_unsafe_or_incomplete_settings_fail(self):
         for flags in (
-            ("--set", "ingress.traefik.maxRequestBodyBytes=0"),
-            ("--set", "ingress.traefik.maxRequestBodyBytes=11534337"),
-            ("--set", "ingress.enabled=false"),
+            ("--set", "ingress.maxRequestBodyBytes=0"),
+            ("--set", "ingress.maxRequestBodyBytes=11534337"),
             ("--set", "ingress.tls=null"),
+            ("--set-string", "ingress.tls[0].secretName="),
             ("--set-string", "env.CORS_ORIGIN=*"),
             ("--set-string", "env.CORS_ORIGIN=https://example.com/path"),
-            ("--set", "ingress.className=traefik"),
+            ("--set-string", "ingress.className=other-controller"),
+            ("--set-string", "ingress.annotations.kubernetes\\.io/ingress\\.class=nginx"),
             ("--set-string", "ingress.annotations.nginx\\.ingress\\.kubernetes\\.io/auth-type=basic"),
         ):
             with self.subTest(flags=flags), self.assertRaises(ValueError):
-                render(overlay="traefik-preview", flags=flags)
+                render(flags=flags)
 
 
 if __name__ == "__main__":

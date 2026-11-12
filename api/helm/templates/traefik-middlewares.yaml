@@ -1,4 +1,4 @@
-{{- if and .Values.ingress.enabled (or .Values.ingress.traefik.preview (eq .Values.ingress.className "traefik")) }}
+{{- if .Values.ingress.enabled }}
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -10,7 +10,7 @@ spec:
     accessControlAllowCredentials: true
     accessControlAllowOriginList:
       - {{ .Values.env.CORS_ORIGIN | quote }}
-    # Match the existing NGINX preflight policy; do not add wildcard access.
+    # Keep credentialed requests limited to the configured website origin.
     accessControlAllowMethods: [GET, PUT, POST, DELETE, PATCH, OPTIONS]
     accessControlAllowHeaders: [DNT, Keep-Alive, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Content-Type, Range, Authorization]
     accessControlMaxAge: 1728000
@@ -26,5 +26,5 @@ metadata:
     {{- include "api.labels" . | nindent 4 }}
 spec:
   buffering:
-    maxRequestBodyBytes: {{ .Values.ingress.traefik.maxRequestBodyBytes | int }}
+    maxRequestBodyBytes: {{ .Values.ingress.maxRequestBodyBytes | int }}
 {{- end }}
