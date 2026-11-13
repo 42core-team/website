@@ -140,6 +140,11 @@ PRIVATE_EVENT_CREATOR globally (no `eventId`), ADMIN and MODERATOR also for a
 single event. Policies in `src/authz` decide every route;
 `src/authz/route-coverage.spec.ts` pins each route's decision.
 
+The frontend only hides what the caller may not do: `/auth/me` reports the
+global abilities and `GET /event/:id/abilities` the abilities within one event
+(`administer`, `viewUnrevealedResults`, `publish`). Each route still checks
+its own ability.
+
 Private events are unlisted: any signed-in user can view one by id and join
 while registration is open. A populated whitelist restricts joins to its users;
 an empty whitelist allows anyone signed in to join. Guests get 404, as for an
