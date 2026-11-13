@@ -33,10 +33,25 @@ export function onSessionExpired(listener: () => void) {
   }
 }
 
+let sessionProbe: () => boolean = () => false
+
+/**
+ * Tell the refresh interceptor how to check whether the user is believed to
+ * be signed in, so a 404 from a private event can refresh an expired access
+ * cookie. Returns a function that resets it.
+ */
+export function setSessionProbe(probe: () => boolean) {
+  sessionProbe = probe
+  return () => {
+    if (sessionProbe === probe) sessionProbe = () => false
+  }
+}
+
 installRefreshInterceptor(axiosInstance, {
   onRefreshFailed: () => {
     sessionExpiredListeners.forEach((listener) => listener())
   },
+  hasSession: () => sessionProbe(),
 })
 
 export default axiosInstance

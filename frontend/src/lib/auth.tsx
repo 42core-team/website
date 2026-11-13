@@ -3,7 +3,10 @@ import type { QueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import type { TeamBackground, TeamImage } from '@/app/actions/team'
-import axiosInstance, { onSessionExpired } from '@/app/actions/axios'
+import axiosInstance, {
+  onSessionExpired,
+  setSessionProbe,
+} from '@/app/actions/axios'
 
 export interface UserAbilities {
   admin: boolean
@@ -97,6 +100,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onSessionExpired(() => {
         endSession(queryClient)
       }),
+    [queryClient],
+  )
+
+  useEffect(
+    () =>
+      setSessionProbe(() =>
+        Boolean(queryClient.getQueryData(SESSION_QUERY_KEY)),
+      ),
     [queryClient],
   )
 
