@@ -1,8 +1,11 @@
+import type { EventSettings, StarterTemplate } from './presets'
 import type { WhitelistPlatform } from '@/lib/constants/whitelist'
 
 import axiosInstance from '@/app/actions/axios'
 
 export interface Event {
+  preset?: { id: string; name: string } | null
+  presetVersion?: number | null
   state:
     'REGISTRATION' | 'PLAYING' | 'SUBMISSIONS_CLOSED' | 'SHOWCASE' | 'COMPLETED'
   submissionDeadline: string
@@ -110,31 +113,11 @@ export async function joinEvent(eventId: string): Promise<boolean> {
 }
 
 // Interface for creating events
-export interface EventCreateParams {
+export interface EventCreateParams extends Partial<EventSettings> {
   name: string
-  description?: string
-  /** Omit both to connect the CORE GitHub App after creating the event. */
-  githubOrg?: string
-  githubOrgSecret?: string
-  location?: string
-  startDate: number
-  submissionDeadline: number
-  scheduledEndDate: number
-  introEnabled: boolean
-  introLeadMinutes: number
-  streamUrl?: string
-  showtimeStreamUrl?: string
-  minTeamSize: number
-  maxTeamSize: number
-  monorepoVersion: string
-  gameServerDockerImage: string
-  myCoreBotDockerImage: string
-  visualizerDockerImage: string
-  monorepoUrl: string
-  basePath: string
-  gameConfig: string
-  serverConfig: string
-  isPrivate: boolean
+  presetId?: string
+  githubInstallationId?: string | null
+  starterTemplates?: StarterTemplate[]
 }
 
 export interface EventGithubStatus {
@@ -168,6 +151,7 @@ export async function getGithubAppInstallUrl(eventId: string): Promise<string> {
 
 /** An installation of the App on an account the user administers. */
 export interface LinkableGithubInstallation {
+  shared?: boolean
   installationId: number
   accountLogin: string
   accountType: string
