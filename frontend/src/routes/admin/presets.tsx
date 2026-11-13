@@ -23,6 +23,7 @@ import {
   SettingsFields,
   SettingsSection,
   PresetWarnings,
+  labels,
   numberValue,
   numberInput,
   TemplatesFields,
@@ -32,6 +33,7 @@ import {
 import {
   defaultSettings,
   presetSettingsSchema,
+  scheduleStartSchema,
   templatesSchema,
   schedulePreview,
   same,
@@ -327,7 +329,7 @@ export function PresetEditor({
       },
     })
   let preview = 'Enter a valid schedule'
-  if (presetSettingsSchema.shape.schedule.safeParse(schedule).success)
+  if (scheduleStartSchema.safeParse(schedule).success)
     preview = schedulePreview(schedule).toLocaleString('en-GB', {
       timeZone: 'Europe/Berlin',
       timeZoneName: 'short',
@@ -385,16 +387,7 @@ export function PresetEditor({
                   ] as const
                 ).map((key) => (
                   <label key={key} htmlFor={`schedule-${key}`}>
-                    {
-                      {
-                        startOffsetDays: 'Days from today',
-                        startTime: 'Start time',
-                        submissionDeadlineAfterHours:
-                          'Submission deadline after hours',
-                        scheduledEndAfterHours: 'Scheduled end after hours',
-                        endAfterHours: 'End after hours',
-                      }[key]
-                    }
+                    {labels[key]}
                     <Input
                       id={`schedule-${key}`}
                       {...(key === 'startTime'
