@@ -1,21 +1,27 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { isAxiosError } from 'axios'
 import { z } from 'zod'
-import { getEventsOverview } from '@/app/actions/event'
 import {
   getRoles,
   grantRole,
   removeRole,
+  searchAdminEvents,
   ROLE_LABELS,
   roleErrorMessage,
 } from '@/app/actions/roles'
-import type { GrantRoleParams, Role, RoleGrant } from '@/app/actions/roles'
+import type {
+  AdminEventSearchResult,
+  GrantRoleParams,
+  Role,
+  RoleGrant,
+} from '@/app/actions/roles'
 import { searchUsers } from '@/app/actions/user'
 import type { UserSearchResult } from '@/app/actions/user'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -78,17 +84,6 @@ function RolesPage() {
     queryKey: ['admin', 'roles'],
     queryFn: () => getRoles(),
   })
-  const events = useQuery({
-    queryKey: ['admin', 'role-events'],
-    queryFn: async () => {
-      const { allEvents, myEvents } = await getEventsOverview()
-      return Array.from(
-        new Map(
-          [...allEvents, ...myEvents].map((event) => [event.id, event]),
-        ).values(),
-      )
-    },
-  })
   const users = useQuery({
     queryKey: ['admin', 'role-users', debouncedSearch],
     queryFn: () => searchUsers(debouncedSearch),
@@ -129,7 +124,7 @@ function RolesPage() {
     onError: onRoleError,
   })
   const form = useForm({
-    defaultValues: { userId: '', role: 'ADMIN' as Role, eventId: '' },
+    defaultValues: { userId: '', role: 'MODERATOR' as Role, eventId: '' },
     validators: { onChange: schema },
     onSubmit: async ({ value }) => {
       const scoped = value.role === 'ADMIN' || value.role === 'MODERATOR'
@@ -248,44 +243,19 @@ function RolesPage() {
                   children={(field) => (
                     <div className="space-y-2">
                       <Label htmlFor="role-event">Event (optional)</Label>
-                      <Select
-                        disabled={
-                          (role !== 'ADMIN' && role !== 'MODERATOR') ||
-                          !events.isSuccess
-                        }
-                        value={field.state.value || 'global'}
-                        onValueChange={(value) =>
-                          field.handleChange(value === 'global' ? '' : value)
-                        }
-                      >
-                        <SelectTrigger id="role-event">
-                          <SelectValue placeholder="Global role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="global">Global role</SelectItem>
-                          {events.data?.map((event) => (
-                            <SelectItem key={event.id} value={event.id}>
-                              {event.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <EventPicker
+                        key={role}
+                        disabled={role !== 'ADMIN' && role !== 'MODERATOR'}
+                        value={field.state.value}
+                        onChange={(value) => {
+                          field.handleChange(value)
+                          grant.reset()
+                        }}
+                      />
                       <p className="text-sm text-muted-foreground">
                         Leave global to apply across all events. Only Admin and
                         Moderator support event scope.
                       </p>
-                      {events.isError && (
-                        <p role="alert" className="text-destructive">
-                          Failed to load events.{' '}
-                          <button
-                            type="button"
-                            className="underline"
-                            onClick={() => void events.refetch()}
-                          >
-                            Retry
-                          </button>
-                        </p>
-                      )}
                     </div>
                   )}
                 />
@@ -419,5 +389,112 @@ function RolesPage() {
         </DialogContent>
       </Dialog>
     </main>
+  )
+}
+
+function EventPicker({
+  disabled,
+  value,
+  onChange,
+}: {
+  disabled: boolean
+  value: string
+  onChange: (value: string) => void
+}) {
+  const [search, setSearch] = useState('')
+  const [selectedEvent, setSelectedEvent] =
+    useState<AdminEventSearchResult | null>(null)
+  const debouncedSearch = useDebouncedValue(search.trim())
+  useEffect(() => {
+    if (!value && selectedEvent) {
+      setSearch('')
+      setSelectedEvent(null)
+    }
+  }, [value, selectedEvent])
+  const selected = value ? selectedEvent : null
+  const events = useQuery({
+    queryKey: ['admin', 'role-events', debouncedSearch],
+    queryFn: () => searchAdminEvents(debouncedSearch),
+    enabled: !disabled && !selected,
+  })
+  return (
+    <>
+      <Input
+        id="role-event"
+        placeholder="Search events (leave empty for global)"
+        disabled={disabled}
+        value={search}
+        onChange={(event) => {
+          setSearch(event.target.value)
+          setSelectedEvent(null)
+          onChange('')
+        }}
+      />
+      {!disabled && (
+        <>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setSearch('')
+              setSelectedEvent(null)
+              onChange('')
+            }}
+          >
+            Global role
+          </Button>
+          {selected ? (
+            <div className="flex items-center gap-2 text-sm">
+              Selected: {selected.name}
+              {selected.isPrivate && <Badge variant="secondary">Private</Badge>}
+            </div>
+          ) : (
+            <>
+              {(search.trim() !== debouncedSearch || events.isFetching) && (
+                <p role="status">Searching…</p>
+              )}
+              {search.trim() === debouncedSearch && events.isError && (
+                <p role="alert" className="text-destructive">
+                  Failed to search events.{' '}
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => void events.refetch()}
+                  >
+                    Retry
+                  </button>
+                </p>
+              )}
+              {search.trim() === debouncedSearch && events.isSuccess && (
+                <ul
+                  aria-label="Event search results"
+                  className="max-h-60 overflow-auto"
+                >
+                  {events.data.map((event) => (
+                    <li key={event.id}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedEvent(event)
+                          setSearch(event.name)
+                          onChange(event.id)
+                        }}
+                      >
+                        {event.name}
+                        {event.isPrivate && (
+                          <Badge variant="secondary">Private</Badge>
+                        )}
+                      </Button>
+                    </li>
+                  ))}
+                  {events.data.length === 0 && <li>No events found.</li>}
+                </ul>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </>
   )
 }
