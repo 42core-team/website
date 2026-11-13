@@ -135,7 +135,7 @@ describe('compact round view', () => {
             results: undefined,
           }),
         ]}
-        isEventAdmin
+        canViewUnrevealedResults
       />,
     )
 
@@ -154,7 +154,7 @@ describe('compact round view', () => {
           createMatch('round-2', 1, MatchState.PLANNED),
           createMatch('round-1', 0, MatchState.FINISHED),
         ]}
-        isEventAdmin={false}
+        canViewUnrevealedResults={false}
       />,
     )
 
@@ -177,7 +177,9 @@ describe('compact round view', () => {
   })
 
   it('renders the shared empty state', () => {
-    render(<GroupPhaseGraphView matches={[]} isEventAdmin={false} />)
+    render(
+      <GroupPhaseGraphView matches={[]} canViewUnrevealedResults={false} />,
+    )
     expect(
       screen.getByText('Matches will appear here once the group phase starts.'),
     ).toBeTruthy()
@@ -190,7 +192,7 @@ describe('compact round view', () => {
           createMatch('finished', 0, MatchState.FINISHED),
           createMatch('planned', 0, MatchState.PLANNED),
         ]}
-        isEventAdmin={false}
+        canViewUnrevealedResults={false}
       />,
     )
 
@@ -201,11 +203,11 @@ describe('compact round view', () => {
     expect(push).not.toHaveBeenCalled()
   })
 
-  it('lets admins open unfinished matches', () => {
+  it('lets event staff open unfinished matches', () => {
     render(
       <GroupPhaseGraphView
         matches={[createMatch('active', 0, MatchState.IN_PROGRESS)]}
-        isEventAdmin
+        canViewUnrevealedResults
       />,
     )
     fireEvent.click(screen.getByLabelText('Open match active'))
@@ -216,7 +218,7 @@ describe('compact round view', () => {
     render(
       <GroupPhaseGraphView
         matches={[createMatch('finished', 0, MatchState.FINISHED)]}
-        isEventAdmin={false}
+        canViewUnrevealedResults={false}
       />,
     )
 
@@ -234,7 +236,7 @@ describe('compact round view', () => {
     const { rerender } = render(
       <GroupPhaseGraphView
         matches={[createMatch('mine', 0, MatchState.FINISHED)]}
-        isEventAdmin={false}
+        canViewUnrevealedResults={false}
         myTeamId="beta"
       />,
     )
@@ -248,7 +250,7 @@ describe('compact round view', () => {
     rerender(
       <GroupPhaseGraphView
         matches={[createMatch('hidden', 0, MatchState.PLANNED)]}
-        isEventAdmin
+        canViewUnrevealedResults
         myTeamId="beta"
       />,
     )
@@ -268,7 +270,7 @@ describe('compact round view', () => {
             ],
           }),
         ]}
-        isEventAdmin={false}
+        canViewUnrevealedResults={false}
       />,
     )
     expect(screen.getByLabelText('Score 2 to 2')).toBeTruthy()
@@ -277,7 +279,7 @@ describe('compact round view', () => {
     rerender(
       <GroupPhaseGraphView
         matches={[createMatch(undefined, 0, MatchState.PLANNED)]}
-        isEventAdmin
+        canViewUnrevealedResults
       />,
     )
     expect(screen.getAllByText('TBD')).toHaveLength(2)
@@ -290,7 +292,10 @@ describe('compact round view', () => {
       createMatch('second', 1, MatchState.FINISHED),
     ]
     const { unmount } = render(
-      <GroupPhaseGraphView matches={matches} isEventAdmin={false} />,
+      <GroupPhaseGraphView
+        matches={matches}
+        canViewUnrevealedResults={false}
+      />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: /Round 1/ }))
@@ -299,7 +304,12 @@ describe('compact round view', () => {
     fireEvent.scroll(window)
     unmount()
 
-    render(<GroupPhaseGraphView matches={matches} isEventAdmin={false} />)
+    render(
+      <GroupPhaseGraphView
+        matches={matches}
+        canViewUnrevealedResults={false}
+      />,
+    )
 
     expect(
       screen
