@@ -214,14 +214,6 @@ export async function createEvent(
   return (await axiosInstance.post<Event>(`event`, eventData)).data
 }
 
-export async function canUserCreateEvent(): Promise<boolean> {
-  try {
-    return (await axiosInstance.get<boolean>('user/canCreateEvent')).data
-  } catch {
-    return false
-  }
-}
-
 export async function updateEventSettings(
   eventId: string,
   settings: {

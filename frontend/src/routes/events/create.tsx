@@ -10,11 +10,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import * as z from 'zod'
 import type { EventCreateParams } from '@/app/actions/event'
-import {
-  canUserCreateEvent,
-  createEvent,
-  isGithubAppAvailable,
-} from '@/app/actions/event'
+import { createEvent, isGithubAppAvailable } from '@/app/actions/event'
 import Link from '@/components/app-link'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -134,7 +130,7 @@ const defaultValues: FormValues = {
   basePath: 'bots/softcore',
   gameConfig: '',
   serverConfig: '',
-  isPrivate: false,
+  isPrivate: true,
 }
 
 function parseGitHubRepo(url: string): { owner: string; repo: string } | null {
@@ -245,11 +241,7 @@ function CreateEventRoute() {
   const { data: session, status } = useSession()
   const [error, setError] = useState<string | null>(null)
 
-  const canCreateQuery = useQuery({
-    queryKey: ['events', 'can-create'],
-    queryFn: canUserCreateEvent,
-    enabled: Boolean(session?.user.id),
-  })
+  const canCreate = session?.user.abilities.createEvent === true
   const githubAppQuery = useQuery({
     queryKey: ['github', 'app-available'],
     queryFn: isGithubAppAvailable,
@@ -260,10 +252,10 @@ function CreateEventRoute() {
     if (status === 'unauthenticated') {
       void navigate({ to: '/events', replace: true })
     }
-    if (status === 'authenticated' && canCreateQuery.data === false) {
+    if (status === 'authenticated' && !canCreate) {
       void navigate({ to: '/events', replace: true })
     }
-  }, [canCreateQuery.data, navigate, status])
+  }, [canCreate, navigate, status])
 
   const createMutation = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -333,7 +325,7 @@ function CreateEventRoute() {
         basePath: normalizeGithubConfigValue('basePath', values.basePath),
         gameConfig: values.gameConfig,
         serverConfig: values.serverConfig,
-        isPrivate: values.isPrivate,
+        isPrivate: true,
       }
 
       return createEvent(payload)
@@ -509,12 +501,7 @@ function CreateEventRoute() {
     )
   }
 
-  if (
-    status === 'loading' ||
-    (session?.user.id && canCreateQuery.isPending) ||
-    status === 'unauthenticated' ||
-    canCreateQuery.data === false
-  ) {
+  if (status === 'loading' || status === 'unauthenticated' || !canCreate) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center">
         <Spinner size="lg" />
@@ -703,23 +690,10 @@ function CreateEventRoute() {
                   </label>
                 )}
               />
-              <form.Field
-                name="isPrivate"
-                children={(field) => (
-                  <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <Label className="text-base">Private event</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Private events are hidden from the All Events tab.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={field.state.value}
-                      onCheckedChange={field.handleChange}
-                    />
-                  </div>
-                )}
-              />
+              <p className="text-sm text-muted-foreground">
+                Events start private. You can publish it from the event
+                settings.
+              </p>
             </div>
           </Card>
 

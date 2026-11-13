@@ -303,7 +303,11 @@ function DashboardRoute() {
       await queryClient.invalidateQueries({ queryKey: ['event', id] })
     },
     onError: (error) =>
-      toast.error(getErrorMessage(error, 'Failed to update event settings.')),
+      toast.error(
+        isAxiosError(error) && error.response?.status === 403
+          ? 'You do not have permission to publish this event. You can still make it private.'
+          : getErrorMessage(error, 'Failed to update event settings.'),
+      ),
   })
 
   const addAdminMutation = useMutation({
@@ -555,6 +559,10 @@ function DashboardRoute() {
             setIsServerConfigExpanded={setIsServerConfigExpanded}
             eventId={id}
             playClosed={!registrationOpen(event, now)}
+            canPublish={Boolean(
+              session.data?.user.abilities.createPublicEvent ||
+              session.data?.user.abilities.admin,
+            )}
             saved={event}
             onOpenOperation={() => onTabChange('operation')}
           />
@@ -837,7 +845,9 @@ function SettingsTab({
   playClosed,
   saved,
   onOpenOperation,
+  canPublish,
 }: {
+  canPublish: boolean
   pendingSettings: PendingEventSettings
   updatePendingSetting: <TKey extends keyof PendingEventSettings>(
     key: TKey,
@@ -1086,11 +1096,18 @@ function SettingsTab({
               <SettingSwitch
                 id="isPrivate"
                 label="Private Event"
+                disabled={Boolean(pendingSettings.isPrivate) && !canPublish}
                 checked={pendingSettings.isPrivate || false}
                 onCheckedChange={(value) =>
                   updatePendingSetting('isPrivate', value)
                 }
               />
+              {!canPublish && (
+                <p className="text-sm text-muted-foreground">
+                  Publishing requires the Public event creator or global Admin
+                  role. You can still make a public event private.
+                </p>
+              )}
             </div>
           </div>
         </CardContent>
