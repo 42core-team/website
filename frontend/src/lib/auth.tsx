@@ -5,7 +5,15 @@ import type { ReactNode } from 'react'
 import type { TeamBackground, TeamImage } from '@/app/actions/team'
 import axiosInstance, { onSessionExpired } from '@/app/actions/axios'
 
+export interface UserAbilities {
+  admin: boolean
+  moderator: boolean
+  createEvent: boolean
+  createPublicEvent: boolean
+}
+
 export interface ClientUser {
+  abilities: UserAbilities
   id: string
   username: string
   name: string

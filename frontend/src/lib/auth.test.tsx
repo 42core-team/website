@@ -24,6 +24,12 @@ const user = {
   name: 'Ada Lovelace',
   email: 'ada@example.com',
   profilePicture: '',
+  abilities: {
+    admin: true,
+    moderator: true,
+    createEvent: true,
+    createPublicEvent: false,
+  },
 }
 
 let routes: Record<string, number>
@@ -70,6 +76,15 @@ function renderWithProviders<T>(hook: () => T) {
 }
 
 describe('useSession', () => {
+  it('shares abilities between session consumers without an extra request', async () => {
+    routes['GET /auth/me'] = 200
+    const { result } = renderWithProviders(() => [useSession(), useSession()])
+    await waitFor(() => expect(result.current[0].status).toBe('authenticated'))
+    expect(result.current[0].data?.user.abilities).toEqual(user.abilities)
+    expect(result.current[1].data?.user.abilities.createPublicEvent).toBe(false)
+    expect(calls).toEqual(['GET /auth/me'])
+  })
+
   it('is unauthenticated when /auth/me is 401 and the refresh fails', async () => {
     routes['GET /auth/me'] = 401
     routes['POST /auth/refresh'] = 401

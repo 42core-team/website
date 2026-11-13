@@ -19,6 +19,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RushRouteImport } from './routes/rush'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as WikiRouteImport } from './routes/wiki'
+import { Route as AdminRolesRouteImport } from './routes/admin/roles'
 import { Route as EventsIdRouteImport } from './routes/events/$id'
 import { Route as EventsCreateRouteImport } from './routes/events/create'
 import { Route as GithubSetupRouteImport } from './routes/github/setup'
@@ -83,6 +84,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const WikiRoute = WikiRouteImport.update({
   id: '/wiki',
   path: '/wiki',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRolesRoute = AdminRolesRouteImport.update({
+  id: '/admin/roles',
+  path: '/admin/roles',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EventsIdRoute = EventsIdRouteImport.update({
@@ -172,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/rush': typeof RushRoute
   '/settings': typeof SettingsRoute
   '/wiki': typeof WikiRouteWithChildren
+  '/admin/roles': typeof AdminRolesRoute
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
   '/github/setup': typeof GithubSetupRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/rush': typeof RushRoute
   '/settings': typeof SettingsRoute
   '/wiki': typeof WikiRouteWithChildren
+  '/admin/roles': typeof AdminRolesRoute
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
   '/github/setup': typeof GithubSetupRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   '/rush': typeof RushRoute
   '/settings': typeof SettingsRoute
   '/wiki': typeof WikiRouteWithChildren
+  '/admin/roles': typeof AdminRolesRoute
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
   '/github/setup': typeof GithubSetupRoute
@@ -256,6 +265,7 @@ export interface FileRouteTypes {
     | '/rush'
     | '/settings'
     | '/wiki'
+    | '/admin/roles'
     | '/events/$id'
     | '/events/create'
     | '/github/setup'
@@ -283,6 +293,7 @@ export interface FileRouteTypes {
     | '/rush'
     | '/settings'
     | '/wiki'
+    | '/admin/roles'
     | '/events/$id'
     | '/events/create'
     | '/github/setup'
@@ -310,6 +321,7 @@ export interface FileRouteTypes {
     | '/rush'
     | '/settings'
     | '/wiki'
+    | '/admin/roles'
     | '/events/$id'
     | '/events/create'
     | '/github/setup'
@@ -338,6 +350,7 @@ export interface RootRouteChildren {
   RushRoute: typeof RushRoute
   SettingsRoute: typeof SettingsRoute
   WikiRoute: typeof WikiRouteWithChildren
+  AdminRolesRoute: typeof AdminRolesRoute
   GithubSetupRoute: typeof GithubSetupRoute
   UsersUsernameRoute: typeof UsersUsernameRoute
 }
@@ -412,6 +425,13 @@ declare module '@tanstack/react-router' {
       path: '/wiki'
       fullPath: '/wiki'
       preLoaderRoute: typeof WikiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/roles': {
+      id: '/admin/roles'
+      path: '/admin/roles'
+      fullPath: '/admin/roles'
+      preLoaderRoute: typeof AdminRolesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/events/$id': {
@@ -596,6 +616,7 @@ const rootRouteChildren: RootRouteChildren = {
   RushRoute: RushRoute,
   SettingsRoute: SettingsRoute,
   WikiRoute: WikiRouteWithChildren,
+  AdminRolesRoute: AdminRolesRoute,
   GithubSetupRoute: GithubSetupRoute,
   UsersUsernameRoute: UsersUsernameRoute,
 }
