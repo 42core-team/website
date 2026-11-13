@@ -133,6 +133,36 @@ the new session survives. They are skipped when the test database URL is absent.
 
   An application token works: `curl -X POST https://api.intra.42.fr/oauth/token -d grant_type=client_credentials -d client_id=<uid> -d client_secret=<secret>`. Requests are spaced to stay within the default limit of 2 per second, and the run stops at once if the token is rejected.
 
+## Roles and authorization
+
+Roles live in `user_roles`: ADMIN, MODERATOR, PUBLIC_EVENT_CREATOR and
+PRIVATE_EVENT_CREATOR globally (no `eventId`), ADMIN and MODERATOR also for a
+single event. Policies in `src/authz` decide every route;
+`src/authz/route-coverage.spec.ts` pins each route's decision.
+
+A private event is visible only to global admins and moderators, its own
+admins and moderators, its participants and team members, and the users on its
+whitelist. Everyone else gets 404 for it, as for an unknown id.
+
+### Bootstrapping the first global admin
+
+Global admins grant every other role through `/admin/roles`, so the first one
+is inserted by hand, once the user has signed in with GitHub:
+
+```sql
+INSERT INTO user_roles ("userId", role) SELECT id, 'ADMIN' FROM users WHERE username = '<github-login>';
+```
+
+The role API never removes the last global admin, nor the last admin of an
+event.
+
+### The user_roles migration is forward-only
+
+`UserRoles1793000000000` copies `users.canCreateEvent` and the ADMIN rows of
+`user_event_permissions` into `user_roles`. Do not revert it once roles have
+been granted: reverting drops `user_roles`, so the old code reads the legacy
+permissions again and every grant made since the migration is lost.
+
 ## API Documentation
 
 When running in development mode, Swagger documentation is available at:
