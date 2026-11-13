@@ -37,6 +37,8 @@ describe('presets API contract', () => {
       ...input,
       version: 3,
     })
+    await api.setDefaultPreset('id')
+    expect(post).toHaveBeenLastCalledWith('/admin/event-presets/id/default')
     await api.duplicatePreset('id')
     expect(post).toHaveBeenLastCalledWith('/admin/event-presets/id/duplicate')
     await api.archivePreset('id')
