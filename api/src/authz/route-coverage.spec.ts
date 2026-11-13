@@ -140,7 +140,7 @@ const DECISIONS: Record<string, string> = {
   "GET /event-presets/:id/resolved": "PlatformPolicy.createEvent",
   "GET /gambling/event/:eventId": "SessionPolicy.signedIn+EventPolicy.view",
   "GET /github/app": "public",
-  "GET /github/installations": "SessionPolicy.signedIn",
+  "GET /github/installations": "PlatformPolicy.createEvent",
   "GET /health": "public",
   "GET /health/ready": "public",
   "GET /match/:matchId": "SessionPolicy.signedIn",
