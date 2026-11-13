@@ -1051,7 +1051,7 @@ export class EventService {
     if (outcome === "not-found")
       throw new NotFoundException("Admin permission not found");
     if (outcome === "last-admin")
-      throw new BadRequestException("Cannot remove the last admin of an event");
+      throw new ConflictException("Cannot remove the last admin of an event");
   }
 
   async getCurrentLiveEvent() {

@@ -456,6 +456,15 @@ postgres("private event visibility (PostgreSQL)", () => {
     await asMember(`/team/${team.id}`).expect(404);
   });
 
+  it("answers 409 when the event admin route would remove its last admin", async () => {
+    await request(app.getHttpServer())
+      .delete(
+        `/event/${privateEvent.event.id}/admins/${users["event admin"].id}`,
+      )
+      .set("x-test-user", users["event admin"].id)
+      .expect(409, /Cannot remove the last admin/);
+  });
+
   it("lists private events only in the overview of those taking part", async () => {
     const ids = (events: { id: string }[]) => events.map((event) => event.id);
     const listed = await get("/event", "participant").expect(200);
