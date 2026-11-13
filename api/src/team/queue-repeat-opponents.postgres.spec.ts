@@ -35,7 +35,7 @@ postgres("queue repeat opponents (PostgreSQL)", () => {
     teamService = new TeamService(
       database.getRepository(TeamEntity),
       {} as never,
-      {} as never,
+      { authFor: async () => ({ installationId: 1 }) } as never,
       {} as never,
       { startMatch: jest.fn() } as never,
       database,
