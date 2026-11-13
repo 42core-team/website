@@ -297,24 +297,27 @@ describe('installRefreshInterceptor', () => {
       expect(refreshCalls()).toBe(0)
     })
 
-    it('rejects with the original 404 when the refresh fails', async () => {
-      const { instance, calls } = createClient(
-        (config) => (config.url === '/auth/refresh' ? 401 : 404),
-        { hasSession: signedIn },
-      )
+    it.each([401, 502])(
+      'rejects with the original 404 when refresh returns %s',
+      async (status) => {
+        const { instance, calls } = createClient(
+          (config) => (config.url === '/auth/refresh' ? status : 404),
+          { hasSession: signedIn },
+        )
 
-      const error = await instance
-        .get('event/private-id')
-        .catch((e: unknown) => e)
+        const error = await instance
+          .get('event/private-id')
+          .catch((e: unknown) => e)
 
-      expect(error).toBeInstanceOf(AxiosError)
-      expect((error as AxiosError).response?.status).toBe(404)
-      expect((error as AxiosError).config?.url).toBe('event/private-id')
-      expect(calls).toEqual([
-        { method: 'get', url: 'event/private-id' },
-        { method: 'post', url: '/auth/refresh' },
-      ])
-    })
+        expect(error).toBeInstanceOf(AxiosError)
+        expect((error as AxiosError).response?.status).toBe(404)
+        expect((error as AxiosError).config?.url).toBe('event/private-id')
+        expect(calls).toEqual([
+          { method: 'get', url: 'event/private-id' },
+          { method: 'post', url: '/auth/refresh' },
+        ])
+      },
+    )
 
     it('shares one refresh between concurrent 404s and 401s', async () => {
       let loggedIn = false
