@@ -1,6 +1,19 @@
 import { BadGatewayException, ForbiddenException } from "@nestjs/common";
 import { GithubAppAuth, GithubAppInstallation } from "./github-app-auth";
 
+/** What repository provisioning and match cloning need from an installation. */
+const REQUIRED_PERMISSIONS: Record<string, readonly string[]> = {
+  administration: ["write"],
+  contents: ["write"],
+  members: ["read", "write"],
+};
+
+export function missingPermissions(granted: Record<string, string>) {
+  return Object.entries(REQUIRED_PERMISSIONS)
+    .filter(([name, levels]) => !levels.includes(granted[name]))
+    .map(([name]) => name);
+}
+
 /** Shared by create, share, and the existing event connection flow. */
 export class GithubInstallationOwner {
   constructor(
