@@ -87,16 +87,7 @@ const platformAllowed: Record<(typeof platformAbilities)[number], Who[]> = {
   ],
 };
 const eventAllowed: Record<(typeof eventAbilities)[number], Who[]> = {
-  // Without participation or a whitelist entry; see the audience tests.
-  view: [
-    "global ADMIN",
-    "global MODERATOR",
-    "event ADMIN",
-    "event MODERATOR",
-    "event ADMIN + global PUBLIC_EVENT_CREATOR",
-    "event ADMIN + global PRIVATE_EVENT_CREATOR",
-    "event MODERATOR + global PUBLIC_EVENT_CREATOR",
-  ],
+  view: Object.keys(principals).filter((who) => who !== "guest"),
   administer: [
     "global ADMIN",
     "event ADMIN",
@@ -126,8 +117,8 @@ function cases<A extends string>(
   );
 }
 
-// Answers for participation and whitelists; the PostgreSQL tests cover it.
-const audience = { includes: jest.fn(async () => false) };
+// Guest public visibility; the PostgreSQL tests cover the real lookup.
+const audience = { isPublic: jest.fn(async () => false) };
 
 @Module({
   providers: [{ provide: EventAudience, useValue: audience }],
@@ -188,23 +179,20 @@ describe("policies", () => {
           expect(policy.before(principals[who])).toBeUndefined();
     });
 
-    it("asks the audience about everyone the roles do not let see the event", async () => {
-      audience.includes.mockClear();
-      for (const who of ["global ADMIN", "event MODERATOR"] as Who[])
-        await authorization.can(EventPolicy, "view", principals[who], EVENT);
-      expect(audience.includes).not.toHaveBeenCalled();
+    it("only looks up public visibility for guests", async () => {
+      audience.isPublic.mockClear();
+      for (const user of Object.values(principals))
+        if (user) await authorization.can(EventPolicy, "view", user, EVENT);
+      expect(audience.isPublic).not.toHaveBeenCalled();
 
-      audience.includes.mockResolvedValueOnce(true);
+      audience.isPublic.mockResolvedValueOnce(true);
       await expect(
-        authorization.can(EventPolicy, "view", principals["no roles"], EVENT),
+        authorization.can(EventPolicy, "view", null, EVENT),
       ).resolves.toBe(true);
       await expect(
-        authorization.can(EventPolicy, "view", principals.guest, EVENT),
+        authorization.can(EventPolicy, "view", null, OTHER_EVENT),
       ).resolves.toBe(false);
-      expect(audience.includes.mock.calls).toEqual([
-        [EVENT, "u"],
-        [EVENT, null],
-      ]);
+      expect(audience.isPublic.mock.calls).toEqual([[EVENT], [OTHER_EVENT]]);
     });
 
     it("lets a global admin publish an event they hold no grant in", async () => {
@@ -221,7 +209,7 @@ describe("policies", () => {
     it.each(["not-a-uuid", "", undefined as unknown as string])(
       "denies a malformed event id %p without throwing",
       async (eventId) => {
-        for (const ability of eventAbilities)
+        for (const ability of eventAbilities.filter((a) => a !== "view"))
           await expect(
             authorization.can(
               EventPolicy,

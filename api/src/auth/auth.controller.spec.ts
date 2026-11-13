@@ -189,7 +189,7 @@ describe("AuthController sessions", () => {
       ],
     })
       .overrideProvider(EventAudience)
-      .useValue({ includes: async () => false })
+      .useValue({ isPublic: async () => false })
       .compile();
 
     app = module.createNestApplication();

@@ -11,8 +11,8 @@ import { Principal, UserRole } from "./roles";
 class TestEventAudienceModule {}
 
 /**
- * EventAudience on the test's database. Without one, `EventPolicy.view`
- * fails for everyone its roles do not already let in.
+ * EventAudience on the test's database. Without one, guest visibility checks
+ * fail explicitly; signed-in viewers do not need a database lookup.
  */
 function eventAudienceModule(database?: DataSource): DynamicModule {
   return {
@@ -26,7 +26,7 @@ function eventAudienceModule(database?: DataSource): DynamicModule {
         : {
             provide: EventAudience,
             useValue: {
-              includes: () =>
+              isPublic: () =>
                 Promise.reject(
                   new Error(
                     "EventPolicy.view needs a database: pass it to the authz test helper.",

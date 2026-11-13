@@ -71,13 +71,13 @@ export class EventController {
     return await this.eventService.getEventById(id);
   }
 
-  @Can(EventPolicy, "view", param("id"))
+  @Public()
   @Get(":id/version")
   async getEventVersion(@Param("id", new ParseUUIDPipe()) id: string) {
     return await this.eventService.getEventVersion(id);
   }
 
-  @Can(EventPolicy, "view", param("id"))
+  @Public()
   @Get(":id/templates/:templateId/version")
   async getStarterTemplateVersion(
     @Param("id", new ParseUUIDPipe()) id: string,
@@ -180,7 +180,6 @@ export class EventController {
     return this.authorization.can(EventPolicy, "administer", user, eventId);
   }
 
-  // Whitelisted users see a private event before joining it.
   @SignedIn()
   @Can(EventPolicy, "view", param("id"))
   @Put(":id/join")

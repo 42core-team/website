@@ -202,8 +202,7 @@ postgres("team invite eligibility (PostgreSQL)", () => {
   it("does not invite a user who is neither whitelisted nor registered", async () => {
     const { event, member, teamId } = await privateEventWithTeam();
     const outsider = await createUser();
-    // The event is hidden from them, so it answers like an unknown one.
-    await put(`/event/${event.id}/join`, outsider.id).expect(404);
+    await put(`/event/${event.id}/join`, outsider.id).expect(401);
 
     const response = await invite(event, member, outsider.id);
 
@@ -228,14 +227,7 @@ postgres("team invite eligibility (PostgreSQL)", () => {
   it("does not invite an unregistered user to a private event without a whitelist", async () => {
     const event = await createEvent(true);
     const member = await createUser();
-    // Only its admins and moderators see a private event without a
-    // whitelist, so nobody can join it; enrol the member directly.
-    await put(`/event/${event.id}/join`, member.id).expect(404);
-    await database
-      .createQueryBuilder()
-      .relation(UserEntity, "events")
-      .of(member.id)
-      .add(event.id);
+    await register(event, member);
     const teamId = await createTeamOf(event, member);
     const outsider = await createUser();
 

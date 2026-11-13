@@ -140,9 +140,13 @@ PRIVATE_EVENT_CREATOR globally (no `eventId`), ADMIN and MODERATOR also for a
 single event. Policies in `src/authz` decide every route;
 `src/authz/route-coverage.spec.ts` pins each route's decision.
 
-A private event is visible only to global admins and moderators, its own
-admins and moderators, its participants and team members, and the users on its
-whitelist. Everyone else gets 404 for it, as for an unknown id.
+Private events are unlisted: any signed-in user can view one by id and join
+while registration is open. A populated whitelist restricts joins to its users;
+an empty whitelist allows anyone signed in to join. Guests get 404, as for an
+unknown id. Version routes (`/event/:id/version`,
+`/event/:id/templates/:templateId/version` and `/check/:id`) stay public.
+Public listings exclude private events; the overview includes private events
+only among the user's own events.
 
 ### Bootstrapping the first global admin
 
