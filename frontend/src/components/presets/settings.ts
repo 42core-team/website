@@ -53,13 +53,28 @@ export const eventSettingsSchema = z
       path: ['submissionDeadline'],
     },
   )
-export const scheduleSchema = z.object({
+// The API caps each offset at a leap year of hours.
+const afterHours = z
+  .number()
+  .min(0)
+  .max(366 * 24)
+  .optional()
+/** Enough of a schedule to preview its start. */
+export const scheduleStartSchema = z.object({
   startOffsetDays: z.number().int().min(0).max(365),
   startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  submissionDeadlineAfterHours: z.number().min(0).optional(),
-  scheduledEndAfterHours: z.number().min(0).optional(),
-  endAfterHours: z.number().min(0).optional(),
 })
+export const scheduleSchema = scheduleStartSchema
+  .extend({
+    submissionDeadlineAfterHours: afterHours,
+    scheduledEndAfterHours: afterHours,
+    endAfterHours: afterHours,
+  })
+  // A missing deadline falls back to the end, then to one hour, as in the API.
+  .refine((v) => (v.submissionDeadlineAfterHours ?? v.endAfterHours ?? 1) > 0, {
+    message: 'The submission deadline must be after the start',
+    path: ['submissionDeadlineAfterHours'],
+  })
 export const presetSettingsSchema = z
   .object({ ...settingsShape, schedule: scheduleSchema })
   .refine((v) => v.maxTeamSize >= v.minTeamSize, {

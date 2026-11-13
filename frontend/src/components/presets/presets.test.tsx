@@ -547,6 +547,22 @@ describe('preset administration', () => {
     await screen.findByRole('alert')
     expect(api.updatePreset).not.toHaveBeenCalled()
   })
+  it('refuses a submission deadline at the start, as the API does', async () => {
+    await mount(
+      <PresetEditor preset={preset} onSaved={vi.fn()} onCancel={vi.fn()} />,
+    )
+    fireEvent.change(screen.getByLabelText('Submission deadline after hours'), {
+      target: { value: '0' },
+    })
+    expect(
+      screen.getByText(/An event created today would start on \d/),
+    ).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Save preset' }))
+    await screen.findByText(
+      'Submission deadline after hours: The submission deadline must be after the start',
+    )
+    expect(api.updatePreset).not.toHaveBeenCalled()
+  })
   it('does not let the default preset be unmarked as default', async () => {
     await mount(
       <PresetEditor preset={preset} onSaved={vi.fn()} onCancel={vi.fn()} />,
