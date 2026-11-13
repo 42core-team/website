@@ -136,6 +136,25 @@ export class EventService {
     return events;
   }
 
+  getAdminEvents({
+    q = "",
+    limit = 20,
+  }: {
+    q?: string;
+    limit?: number;
+  }): Promise<Pick<EventEntity, "id" | "name" | "isPrivate" | "startDate">[]> {
+    return this.eventRepository
+      .createQueryBuilder("event")
+      .select(["event.id", "event.name", "event.isPrivate", "event.startDate"])
+      .where("event.name ILIKE :name", {
+        name: `%${q.replace(/[\\%_]/g, "\\$&")}%`,
+      })
+      .orderBy("event.startDate", "DESC")
+      .addOrderBy("event.id", "ASC")
+      .take(limit)
+      .getMany();
+  }
+
   async getEventsForUser(userId: string): Promise<EventEntity[]> {
     const events = await this.eventRepository.find({
       where: [
