@@ -4,6 +4,9 @@ import type { MatchTeamResponse } from "../match/match-response";
 import type { TeamBackground, TeamImage } from "../team/team-image.service";
 import type { BracketFinish } from "./profile-finish";
 import type { ProfileRepo } from "./profile-repo";
+import type { MatchRecord, ProfileMatchResult } from "./profile-summary";
+
+export type { MatchRecord, ProfileMatchResult };
 
 export interface ProfileUserResponse {
   id: string;
@@ -37,15 +40,63 @@ export interface ProfileTeamResponse {
     state: EventState;
     startDate: Date;
     scheduledEndDate: Date;
-    /** Teams in the elimination bracket; null before it is drawn. */
-    bracketSize: number | null;
   };
   members: ProfileTeamMemberResponse[];
+  /** From the listed matches only, like everything else on the profile. */
+  record: MatchRecord;
+  swissRecord: MatchRecord;
   /** From revealed bracket matches only. */
   finish: BracketFinish | null;
 }
 
-export type ProfileMatchResult = "WIN" | "LOSS" | "DRAW";
+export interface ProfileRivalResponse {
+  team: MatchTeamResponse;
+  eventId: string;
+  wins: number;
+  losses: number;
+  total: number;
+}
+
+export interface ProfileSummaryResponse {
+  record: MatchRecord;
+  /** The latest 20 results, oldest first. */
+  form: Array<{
+    result: ProfileMatchResult;
+    createdAt: Date;
+    opponent: string | null;
+  }>;
+  streaks: {
+    longestWin: number;
+    current: { result: ProfileMatchResult; length: number } | null;
+  };
+  phases: Array<{ phase: MatchPhase } & MatchRecord>;
+  /** Matches per UTC day (YYYY-MM-DD) from `since` through today. */
+  activity: { since: string; days: Array<{ day: string; count: number }> };
+  rivals: {
+    nemesis: ProfileRivalResponse | null;
+    favourite: ProfileRivalResponse | null;
+    mostPlayed: ProfileRivalResponse | null;
+  };
+}
+
+/** Sums over the profile's listed matches, both sides of each match. */
+export interface ProfileCombatTotals {
+  matches: number;
+  unitsSpawned: number;
+  unitsDestroyed: number;
+  damageTotal: number;
+  coresDestroyed: number;
+  wallsDestroyed: number;
+  gemsGained: number;
+  tilesTraveled: number;
+}
+
+export interface ProfileResponse {
+  user: ProfileUserResponse;
+  teams: ProfileTeamResponse[];
+  summary: ProfileSummaryResponse;
+  combat: ProfileCombatTotals;
+}
 
 export interface ProfileMatchStats {
   unitsSpawned: number;
@@ -66,21 +117,8 @@ export interface ProfileMatchResponse {
   stats: ProfileMatchStats | null;
 }
 
-/** Sums over the profile's listed matches, both sides of each match. */
-export interface ProfileCombatTotals {
-  matches: number;
-  unitsSpawned: number;
-  unitsDestroyed: number;
-  damageTotal: number;
-  coresDestroyed: number;
-  wallsDestroyed: number;
-  gemsGained: number;
-  tilesTraveled: number;
-}
-
-export interface ProfileResponse {
-  user: ProfileUserResponse;
-  teams: ProfileTeamResponse[];
+/** One page of the match history, newest first. */
+export interface ProfileMatchesResponse {
+  total: number;
   matches: ProfileMatchResponse[];
-  combat: ProfileCombatTotals;
 }

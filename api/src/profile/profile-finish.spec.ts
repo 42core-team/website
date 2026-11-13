@@ -25,14 +25,25 @@ describe("getBracketFinish", () => {
       { round: 0, won: true },
       { round: 1, won: false },
     ];
-    expect(getBracketFinish([...path, { round: 2, won: true }], 8)).toEqual({
+    const third = { round: 2, isPlacementMatch: true };
+    expect(getBracketFinish([...path, { ...third, won: true }], 8)).toEqual({
       kind: "THIRD",
       roundOf: 4,
     });
-    expect(getBracketFinish([...path, { round: 2, won: false }], 8)).toEqual({
+    expect(getBracketFinish([...path, { ...third, won: false }], 8)).toEqual({
       kind: "FOURTH",
       roundOf: 4,
     });
+  });
+
+  it("keeps third place when it is revealed before the semifinal", () => {
+    // Admins can reveal single matches, so the semifinal may still be hidden.
+    expect(
+      getBracketFinish([{ round: 2, won: true, isPlacementMatch: true }], 8),
+    ).toEqual({ kind: "THIRD", roundOf: 4 });
+    expect(
+      getBracketFinish([{ round: 2, won: false, isPlacementMatch: true }], 8),
+    ).toEqual({ kind: "FOURTH", roundOf: 4 });
   });
 
   it("names the round a team went out in", () => {
