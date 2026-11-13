@@ -484,6 +484,12 @@ function DashboardRoute() {
     <main className="container mx-auto flex min-h-lvh max-w-7xl flex-col gap-6 px-4 py-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">Event Dashboard: {event.name}</h1>
+        {event.preset && (
+          <p>
+            Created from {event.preset.name}
+            {event.presetVersion != null && ` (v${event.presetVersion})`}
+          </p>
+        )}
         {hasChanges && (
           <Button
             onClick={handleSaveSettings}
