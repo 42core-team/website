@@ -31,7 +31,6 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { EventVersionDto } from "./dtos/eventVersionDto";
 import { LockKeys } from "../constants";
 import { WhitelistPlatform } from "./entities/event-whitelist.entity";
-import { encryptSecret } from "../common/encryption";
 import {
   EventState,
   getEventState,
@@ -441,7 +440,6 @@ export class EventService {
           description: settings.description,
           // Without an installation the organization is set when the GitHub App is connected.
           githubOrg: installation?.accountLogin ?? "",
-          githubOrgSecret: null,
           githubInstallationId: installation?.id ?? null,
           location: settings.location,
           minTeamSize: settings.minTeamSize,
@@ -905,8 +903,6 @@ export class EventService {
       isPrivate?: boolean;
       name?: string;
       description?: string;
-      githubOrg?: string;
-      githubOrgSecret?: string;
       location?: string;
       startDate?: number;
       endDate?: number;
@@ -948,7 +944,6 @@ export class EventService {
     const stringFields = [
       "name",
       "description",
-      "githubOrg",
       "location",
       "gameServerDockerImage",
       "myCoreBotDockerImage",
@@ -972,23 +967,6 @@ export class EventService {
         update.visualizerDockerImage,
       ].map(assertImageExists),
     );
-
-    if (
-      event.githubInstallationId &&
-      (settings.githubOrgSecret ||
-        (update.githubOrg !== undefined &&
-          update.githubOrg.toLowerCase() !== event.githubOrg.toLowerCase()))
-    )
-      throw new BadRequestException(
-        "This event uses the CORE GitHub App; its organization and access come from the App installation.",
-      );
-
-    if (settings.githubOrgSecret) {
-      update.githubOrgSecret = encryptSecret(
-        settings.githubOrgSecret,
-        this.configService.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
-      );
-    }
 
     const numberFields = [
       "minTeamSize",

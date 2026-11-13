@@ -42,7 +42,6 @@ export interface Event {
   gameConfig?: string
   serverConfig?: string
   isPrivate: boolean
-  githubOrgSecret?: string
   starterTemplates?: EventStarterTemplate[]
 }
 
@@ -74,8 +73,17 @@ export async function isUserRegisteredForEvent(
     .data
 }
 
-export async function isEventAdmin(eventId: string): Promise<boolean> {
-  return (await axiosInstance.get<boolean>(`event/${eventId}/isEventAdmin`))
+/** What the signed-in user may do in one event; the API enforces each. */
+export interface EventAbilities {
+  administer: boolean
+  viewUnrevealedResults: boolean
+  publish: boolean
+}
+
+export async function getEventAbilities(
+  eventId: string,
+): Promise<EventAbilities> {
+  return (await axiosInstance.get<EventAbilities>(`event/${eventId}/abilities`))
     .data
 }
 
@@ -113,9 +121,6 @@ export async function joinEvent(eventId: string): Promise<boolean> {
 export interface EventCreateParams {
   name: string
   description?: string
-  /** Omit both to connect the CORE GitHub App after creating the event. */
-  githubOrg?: string
-  githubOrgSecret?: string
   location?: string
   startDate: number
   submissionDeadline: number
@@ -140,7 +145,6 @@ export interface EventCreateParams {
 export interface EventGithubStatus {
   appAvailable: boolean
   githubOrg: string
-  usesOrganizerToken: boolean
   installation: {
     accountLogin: string
     status: 'active' | 'suspended' | 'uninstalled'
@@ -226,8 +230,6 @@ export async function updateEventSettings(
     isPrivate?: boolean
     name?: string
     description?: string
-    githubOrg?: string
-    githubOrgSecret?: string
     location?: string
     startDate?: number
     endDate?: number

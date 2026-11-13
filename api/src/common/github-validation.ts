@@ -32,8 +32,6 @@ export const GIT_REF_PATTERN =
 export const REPO_RELATIVE_PATH_PATTERN =
   /^(?=.{1,255}$)(?!\.{1,2}(?:\/|$))[A-Za-z0-9._][A-Za-z0-9._-]*(?:\/(?!\.{1,2}(?:\/|$))[A-Za-z0-9._][A-Za-z0-9._-]*)*\/?$/;
 
-export const GITHUB_OWNER_MESSAGE =
-  "githubOrg must be a valid GitHub organization name (letters, digits and single hyphens, max 39 characters, no leading or trailing hyphen)";
 export const GITHUB_REPO_URL_MESSAGE =
   "monorepoUrl must be a URL of the form https://github.com/<owner>/<repo>";
 export const GIT_REF_MESSAGE =
@@ -69,7 +67,6 @@ function normalizeRepoUrl(value: unknown): unknown {
 }
 
 export const GITHUB_CONFIG_NORMALIZERS = {
-  githubOrg: trimString,
   monorepoUrl: normalizeRepoUrl,
   monorepoVersion: trimString,
   basePath: trimString,

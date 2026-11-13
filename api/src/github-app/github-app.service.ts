@@ -42,7 +42,6 @@ export interface EventGithubStatus {
   /** Whether this server can connect events to the App. */
   appAvailable: boolean;
   githubOrg: string;
-  usesOrganizerToken: boolean;
   installation: {
     accountLogin: string;
     status: GithubConnectionStatus;
@@ -132,7 +131,6 @@ export class GithubAppService {
     return {
       appAvailable: this.isAvailable(),
       githubOrg: event.githubOrg,
-      usesOrganizerToken: !installation && !!event.githubOrgSecret,
       installation: installation && {
         accountLogin: installation.accountLogin,
         status: connectionStatus(installation),
@@ -391,8 +389,6 @@ export class GithubAppService {
         await manager.getRepository(EventEntity).update(event.id, {
           githubInstallationId: row.id,
           githubOrg: account.login,
-          // The App always takes precedence, so a kept token would never be used.
-          githubOrgSecret: null,
         });
         return {
           event,

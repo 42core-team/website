@@ -5,7 +5,10 @@ import { installRefreshInterceptor } from './refresh-interceptor'
 
 type Handler = (config: InternalAxiosRequestConfig) => number | Promise<number>
 
-function createClient(handler: Handler) {
+function createClient(
+  handler: Handler,
+  { hasSession }: { hasSession?: () => boolean } = {},
+) {
   const calls: Array<{ method?: string; url?: string }> = []
   const adapter: AxiosAdapter = async (config) => {
     calls.push({ method: config.method, url: config.url })
@@ -30,7 +33,7 @@ function createClient(handler: Handler) {
   }
   const instance = axios.create({ baseURL: 'http://api.test', adapter })
   const onRefreshFailed = vi.fn()
-  installRefreshInterceptor(instance, { onRefreshFailed })
+  installRefreshInterceptor(instance, { onRefreshFailed, hasSession })
   const refreshCalls = () =>
     calls.filter((call) => call.url === '/auth/refresh').length
   return { instance, calls, refreshCalls, onRefreshFailed }
@@ -203,5 +206,152 @@ describe('installRefreshInterceptor', () => {
       response: { status: 403 },
     })
     expect(refreshCalls()).toBe(0)
+  })
+
+  describe('on a 404 from an event-scoped route', () => {
+    const signedIn = () => true
+
+    it('refreshes an expired session and replays the request once', async () => {
+      let loggedIn = false
+      const { instance, calls, onRefreshFailed } = createClient(
+        (config) => {
+          if (config.url === '/auth/refresh') {
+            loggedIn = true
+            return 204
+          }
+          // A private event looks unknown to a guest.
+          return loggedIn ? 200 : 404
+        },
+        { hasSession: signedIn },
+      )
+
+      const response = await instance.get('event/private-id')
+
+      expect(response.status).toBe(200)
+      expect(calls).toEqual([
+        { method: 'get', url: 'event/private-id' },
+        { method: 'post', url: '/auth/refresh' },
+        { method: 'get', url: 'event/private-id' },
+      ])
+      expect(onRefreshFailed).not.toHaveBeenCalled()
+    })
+
+    it.each(['/team/event/x/my', 'match/logs/x', '/gambling/event/x?y=1'])(
+      'also retries %s',
+      async (url) => {
+        const { instance, refreshCalls } = createClient(
+          (config) => (config.url === '/auth/refresh' ? 204 : 404),
+          { hasSession: signedIn },
+        )
+
+        await expect(instance.get(url)).rejects.toMatchObject({
+          response: { status: 404 },
+        })
+        expect(refreshCalls()).toBe(1)
+      },
+    )
+
+    it('replays only once when the event is still not found', async () => {
+      const { instance, calls } = createClient(
+        (config) => (config.url === '/auth/refresh' ? 204 : 404),
+        { hasSession: signedIn },
+      )
+
+      await expect(instance.get('event/unknown-id')).rejects.toMatchObject({
+        response: { status: 404 },
+      })
+      expect(calls).toEqual([
+        { method: 'get', url: 'event/unknown-id' },
+        { method: 'post', url: '/auth/refresh' },
+        { method: 'get', url: 'event/unknown-id' },
+      ])
+    })
+
+    it('does not refresh for a guest', async () => {
+      const { instance, calls } = createClient(() => 404, {
+        hasSession: () => false,
+      })
+
+      await expect(instance.get('event/private-id')).rejects.toMatchObject({
+        response: { status: 404 },
+      })
+      expect(calls).toEqual([{ method: 'get', url: 'event/private-id' }])
+    })
+
+    it('does not refresh without a session probe', async () => {
+      const { instance, refreshCalls } = createClient(() => 404)
+
+      await expect(instance.get('event/private-id')).rejects.toBeDefined()
+      expect(refreshCalls()).toBe(0)
+    })
+
+    it('does not refresh on a 404 outside the event-scoped routes', async () => {
+      const { instance, refreshCalls } = createClient(() => 404, {
+        hasSession: signedIn,
+      })
+
+      await expect(instance.get('/user/someone')).rejects.toMatchObject({
+        response: { status: 404 },
+      })
+      await expect(instance.get('/events')).rejects.toBeDefined()
+      expect(refreshCalls()).toBe(0)
+    })
+
+    it.each([401, 502])(
+      'rejects with the original 404 when refresh returns %s',
+      async (status) => {
+        const { instance, calls } = createClient(
+          (config) => (config.url === '/auth/refresh' ? status : 404),
+          { hasSession: signedIn },
+        )
+
+        const error = await instance
+          .get('event/private-id')
+          .catch((e: unknown) => e)
+
+        expect(error).toBeInstanceOf(AxiosError)
+        expect((error as AxiosError).response?.status).toBe(404)
+        expect((error as AxiosError).config?.url).toBe('event/private-id')
+        expect(calls).toEqual([
+          { method: 'get', url: 'event/private-id' },
+          { method: 'post', url: '/auth/refresh' },
+        ])
+      },
+    )
+
+    it('shares one refresh between concurrent 404s and 401s', async () => {
+      let loggedIn = false
+      let finishRefresh!: () => void
+      const refreshGate = new Promise<void>((resolve) => {
+        finishRefresh = resolve
+      })
+      const { instance, refreshCalls } = createClient(
+        async (config) => {
+          if (config.url === '/auth/refresh') {
+            await refreshGate
+            loggedIn = true
+            return 204
+          }
+          if (loggedIn) return 200
+          return config.url === '/auth/me' ? 401 : 404
+        },
+        { hasSession: signedIn },
+      )
+
+      const requests = Promise.all([
+        instance.get('event/private-id'),
+        instance.get('team/event/private-id/my'),
+        instance.get('match/queue/private-id'),
+        instance.get('/auth/me'),
+      ])
+      await vi.waitFor(() => expect(refreshCalls()).toBe(1))
+      finishRefresh()
+      const responses = await requests
+
+      expect(responses.map((response) => response.status)).toEqual([
+        200, 200, 200, 200,
+      ])
+      expect(refreshCalls()).toBe(1)
+    })
   })
 })

@@ -44,6 +44,12 @@ import {
   RetryEventRepositoryDto,
 } from "./dtos/eventLifecycleDto";
 
+export interface EventAbilities {
+  administer: boolean;
+  viewUnrevealedResults: boolean;
+  publish: boolean;
+}
+
 @Controller("event")
 export class EventController {
   private readonly logger = new Logger(EventController.name);
@@ -155,13 +161,26 @@ export class EventController {
     return this.eventService.isUserRegisteredForEvent(eventId, userId);
   }
 
+  /**
+   * What the caller may do in this event, so the frontend can decide what to
+   * offer. Every route still enforces its own ability.
+   */
   @SignedIn()
-  @Get(":id/isEventAdmin")
-  isEventAdmin(
+  @Can(EventPolicy, "view", param("id"))
+  @Get(":id/abilities")
+  async getEventAbilities(
     @Param("id", new ParseUUIDPipe()) eventId: string,
     @CurrentUser() user: UserEntity,
-  ) {
-    return this.authorization.can(EventPolicy, "administer", user, eventId);
+  ): Promise<EventAbilities> {
+    await this.eventService.getEventById(eventId);
+    const can = (ability: keyof EventAbilities) =>
+      this.authorization.can(EventPolicy, ability, user, eventId);
+    const [administer, viewUnrevealedResults, publish] = await Promise.all([
+      can("administer"),
+      can("viewUnrevealedResults"),
+      can("publish"),
+    ]);
+    return { administer, viewUnrevealedResults, publish };
   }
 
   @SignedIn()

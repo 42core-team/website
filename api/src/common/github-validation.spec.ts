@@ -85,7 +85,7 @@ describe("GitHub config normalization", () => {
 
   it("leaves non-string values alone", () => {
     expect(normalizeGithubConfigValue("monorepoUrl", 42)).toBe(42);
-    expect(normalizeGithubConfigValue("githubOrg", undefined)).toBeUndefined();
+    expect(normalizeGithubConfigValue("basePath", undefined)).toBeUndefined();
   });
 
   it("normalizes only the GitHub config fields of a body", () => {
@@ -96,7 +96,7 @@ describe("GitHub config normalization", () => {
       monorepoUrl: 1,
     });
     expect(body.basePath).toBe(" bots/c ");
-    expect("githubOrg" in normalizeGithubConfigBody(body)).toBe(false);
+    expect("monorepoVersion" in normalizeGithubConfigBody(body)).toBe(false);
   });
 });
 
@@ -127,7 +127,6 @@ describe("event DTO validation", () => {
   });
 
   it.each([
-    ["githubOrg", "org:token@evil"],
     ["monorepoUrl", "file:///etc"],
     ["monorepoVersion", "--upload-pack=id"],
     ["basePath", "../../app"],
@@ -201,7 +200,6 @@ describe("event DTO validation", () => {
   });
 
   it.each([
-    ["githubOrg", " -core "],
     ["monorepoUrl", "https://github.com/a/b//"],
     ["monorepoUrl", "https://github.com/a/"],
     ["monorepoVersion", " -b "],

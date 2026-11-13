@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { isEventAdmin } from '@/app/actions/event'
 import { getTeamsForEventTable } from '@/app/actions/team'
 import {
   getTournamentMatches,
@@ -9,6 +8,7 @@ import {
 import { AdminRevealSwitch } from '@/components/tournament/admin-reveal-switch'
 import { BracketTabs } from '@/components/tournament/tournament-tabs'
 import { Spinner } from '@/components/ui/spinner'
+import { useEventAbilities } from '@/hooks/use-event-abilities'
 import { useSearchParams } from '@/lib/router-hooks'
 
 export const Route = createFileRoute('/events/$id/bracket')({
@@ -20,12 +20,9 @@ function BracketRoute() {
   const searchParams = useSearchParams()
   const isAdminReveal = searchParams.get('adminReveal') === 'true'
 
-  const eventAdminQuery = useQuery({
-    queryKey: ['event', id, 'is-event-admin'],
-    queryFn: () => isEventAdmin(id),
-  })
+  const { abilities, isPending: abilitiesPending } = useEventAbilities(id)
   // Reveal controls need finished match data even with Admin View switched off.
-  const fetchAdminMatches = eventAdminQuery.data === true
+  const fetchAdminMatches = abilities.viewUnrevealedResults
 
   const matchesQuery = useQuery({
     queryKey: [
@@ -35,7 +32,7 @@ function BracketRoute() {
       { adminReveal: fetchAdminMatches },
     ],
     queryFn: () => getTournamentMatches(id, fetchAdminMatches),
-    enabled: !eventAdminQuery.isPending,
+    enabled: !abilitiesPending,
   })
 
   const teamCountQuery = useQuery({
@@ -61,7 +58,7 @@ function BracketRoute() {
     matchesQuery.isPending ||
     teamCountQuery.isPending ||
     teamsQuery.isPending ||
-    eventAdminQuery.isPending
+    abilitiesPending
   ) {
     return (
       <main className="flex min-h-[45vh] items-center justify-center">
@@ -70,12 +67,7 @@ function BracketRoute() {
     )
   }
 
-  if (
-    matchesQuery.isError ||
-    teamCountQuery.isError ||
-    teamsQuery.isError ||
-    eventAdminQuery.isError
-  ) {
+  if (matchesQuery.isError || teamCountQuery.isError || teamsQuery.isError) {
     return (
       <main className="container mx-auto max-w-7xl px-4 py-8">
         <p className="text-center text-destructive">
@@ -84,8 +76,6 @@ function BracketRoute() {
       </main>
     )
   }
-
-  const isAdmin = eventAdminQuery.data
 
   return (
     <main className="container mx-auto max-w-7xl px-4 py-8">
@@ -100,7 +90,7 @@ function BracketRoute() {
               ultimately compete in the finals.
             </p>
           </div>
-          {isAdmin && (
+          {abilities.viewUnrevealedResults && (
             <div className="flex-shrink-0">
               <AdminRevealSwitch />
             </div>
@@ -111,7 +101,7 @@ function BracketRoute() {
           eventId={id}
           matches={matchesQuery.data}
           teams={teamsQuery.data}
-          isEventAdmin={isAdmin}
+          abilities={abilities}
           teamCount={teamCountQuery.data}
           isAdminReveal={isAdminReveal}
         />

@@ -111,7 +111,6 @@ postgres("GitHub App connection (PostgreSQL)", () => {
     return database.getRepository(EventEntity).save({
       name: randomUUID(),
       githubOrg,
-      githubOrgSecret: githubOrg ? "secret" : null,
       minTeamSize: 1,
       maxTeamSize: 4,
       startDate: new Date("2099-01-01"),

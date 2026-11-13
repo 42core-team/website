@@ -99,9 +99,9 @@ http://localhost:4000/auth/42/callback
 
 To change the credentials later, edit `.env.tilt`, or delete it and run `make dev` again.
 
-### GitHub App setup (optional)
+### GitHub App setup
 
-Events can use the CORE GitHub App instead of an organization token ([#798](https://github.com/42core-team/website/issues/798)). An organization owner installs the App from the event dashboard, or, when it is already installed on an organization they own (e.g. for an earlier event), links that installation there with one click; team repositories are then created through the installation, and each match pod gets a short-lived token that can only read its own team's repository. Events created with an organization token keep working, and can switch to the App from the dashboard; the stored token is deleted when they do. Teams whose repository could not be created before GitHub was connected are retried once it is. Without an App configured, the event form only offers the token.
+Events create team repositories through the CORE GitHub App ([#798](https://github.com/42core-team/website/issues/798)). An organization owner installs the App from the event dashboard, or, when it is already installed on an organization they own (e.g. for an earlier event), links that installation there with one click; team repositories are then created through the installation, and each match pod gets a short-lived token that can only read its own team's repository. Teams whose repository could not be created before GitHub was connected are retried once it is. Events that used an organization token before keep their organization and must connect the App there. Without an App configured, events cannot create team repositories.
 
 To try it locally, register your own development App and add it to `.env.tilt`; see [GitHub App: local setup](docs/github-app.md).
 

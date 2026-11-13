@@ -20,7 +20,6 @@ vi.mock('@/app/actions/event', () => ({
 const notConnected: EventGithubStatus = {
   appAvailable: true,
   githubOrg: '',
-  usesOrganizerToken: false,
   installation: null,
 }
 
@@ -123,11 +122,24 @@ describe('GithubConnection', () => {
     ).toBeTruthy()
   })
 
-  it('stays hidden for token events while the App is not configured', async () => {
+  it('asks events that used an organization token to connect the App there', async () => {
+    vi.mocked(getEventGithubStatus).mockResolvedValue({
+      ...notConnected,
+      githubOrg: 'core-org',
+    })
+    renderConnection()
+    expect(
+      await screen.findByText(/team repositories are in core-org/),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: 'Connect GitHub App' }),
+    ).toBeTruthy()
+  })
+
+  it('stays hidden while the App is not configured', async () => {
     vi.mocked(getEventGithubStatus).mockResolvedValue({
       ...notConnected,
       appAvailable: false,
-      usesOrganizerToken: true,
     })
     const { container } = render(
       <QueryClientProvider client={new QueryClient()}>

@@ -13,8 +13,6 @@ import {
 import {
   GIT_REF_MESSAGE,
   GIT_REF_PATTERN,
-  GITHUB_OWNER_MESSAGE,
-  GITHUB_OWNER_PATTERN,
   GITHUB_REPO_URL_MESSAGE,
   GITHUB_REPO_URL_PATTERN,
   REPO_RELATIVE_PATH_MESSAGE,
@@ -112,18 +110,6 @@ export class UpdateEventSettingsDto {
   @IsOptional()
   @IsString()
   description?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  @NormalizeGithubConfig("githubOrg")
-  @Matches(GITHUB_OWNER_PATTERN, { message: GITHUB_OWNER_MESSAGE })
-  githubOrg?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  githubOrgSecret?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

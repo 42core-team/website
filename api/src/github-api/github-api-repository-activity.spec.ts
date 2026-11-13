@@ -17,7 +17,7 @@ describe("GithubApiService.getRepositoryActivity", () => {
 
   afterEach(() => jest.restoreAllMocks());
 
-  const tokenAuth = { kind: "token" as const, encryptedSecret: "secret" };
+  const githubAuth = { installationId: 42 };
 
   function service(send: jest.Mock) {
     jest.spyOn(ClientProxyFactory, "create").mockReturnValue({ send } as never);
@@ -29,7 +29,7 @@ describe("GithubApiService.getRepositoryActivity", () => {
     const results = await service(send).getRepositoryActivity(
       names,
       "org",
-      tokenAuth,
+      githubAuth,
     );
     expect(
       send.mock.calls.map(([, data]) => data.repositoryNames.length),
@@ -47,7 +47,7 @@ describe("GithubApiService.getRepositoryActivity", () => {
     const results = await service(send).getRepositoryActivity(
       names,
       "org",
-      tokenAuth,
+      githubAuth,
     );
     expect(results).toHaveLength(25);
     expect(send).toHaveBeenCalledTimes(2);
@@ -56,7 +56,7 @@ describe("GithubApiService.getRepositoryActivity", () => {
   it("fails when nothing could be checked", async () => {
     const send = jest.fn(() => throwError(() => new Error("timeout")));
     await expect(
-      service(send).getRepositoryActivity(names, "org", tokenAuth),
+      service(send).getRepositoryActivity(names, "org", githubAuth),
     ).rejects.toThrow("timeout");
   });
 
@@ -69,7 +69,7 @@ describe("GithubApiService.getRepositoryActivity", () => {
         })),
       ),
     );
-    await service(send).getRepositoryActivity(names, "org", tokenAuth);
+    await service(send).getRepositoryActivity(names, "org", githubAuth);
     expect(send).toHaveBeenCalledTimes(1);
   });
 });

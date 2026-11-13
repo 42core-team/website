@@ -235,7 +235,6 @@ postgres("creating events from presets (PostgreSQL)", () => {
       presetVersion: 3,
       githubInstallationId: installation.id,
       githubOrg: "core-org",
-      githubOrgSecret: null,
     });
     // Seven days ahead at 10:00 in Berlin, deadline 48h and end 50h later.
     const start = event.startDate.getTime();

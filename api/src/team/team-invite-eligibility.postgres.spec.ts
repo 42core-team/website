@@ -136,7 +136,6 @@ postgres("team invite eligibility (PostgreSQL)", () => {
     return database.getRepository(EventEntity).save({
       name: randomUUID().slice(0, 30),
       githubOrg: "org",
-      githubOrgSecret: "secret",
       isPrivate,
       minTeamSize: 1,
       maxTeamSize: 4,

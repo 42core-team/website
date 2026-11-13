@@ -40,7 +40,6 @@ function setup(
   const event = {
     id: "event",
     githubOrg: "",
-    githubOrgSecret: null,
     ...options.event,
   };
   const repositories = new Map<unknown, Record<string, jest.Mock>>([
@@ -208,7 +207,6 @@ describe("GithubAppService", () => {
         {
           githubInstallationId: "row",
           githubOrg: "Core-Org",
-          githubOrgSecret: null,
         },
       );
     });
@@ -291,7 +289,7 @@ describe("GithubAppService", () => {
 
     it("keeps teams' repositories in their organization", async () => {
       const { service, repositories, state } = setup({
-        event: { githubOrg: "old-org", githubOrgSecret: "enc" },
+        event: { githubOrg: "old-org" },
         teams: [{ repo: "team-repo" }],
       });
       await expect(
@@ -336,7 +334,7 @@ describe("GithubAppService", () => {
 
     it("waits for repositories being created in the old organization", async () => {
       const { service, repositories, state } = setup({
-        event: { githubOrg: "old-org", githubOrgSecret: "enc" },
+        event: { githubOrg: "old-org" },
         teams: [{ repo: null, repositoryStatus: "PROVISIONING" }],
       });
       await expect(
@@ -347,7 +345,7 @@ describe("GithubAppService", () => {
 
     it("requires a selected-repositories installation to reach every team repository", async () => {
       const { service, repositories, state } = setup({
-        event: { githubOrg: "core-org", githubOrgSecret: "enc" },
+        event: { githubOrg: "core-org" },
         teams: [{ repo: "Team-A" }, { repo: "team-b" }],
         repositorySelection: "selected",
         accessibleRepositories: ["team-a"],
@@ -360,7 +358,7 @@ describe("GithubAppService", () => {
 
     it("accepts a selected-repositories installation that reaches every team repository", async () => {
       const { service, state } = setup({
-        event: { githubOrg: "core-org", githubOrgSecret: "enc" },
+        event: { githubOrg: "core-org" },
         teams: [{ repo: "Team-A" }],
         repositorySelection: "selected",
         accessibleRepositories: ["team-a"],
@@ -370,9 +368,9 @@ describe("GithubAppService", () => {
       ).resolves.toEqual({ eventId: "event" });
     });
 
-    it("switches a token event on the same organization to the App", async () => {
+    it("connects an event that already has repositories in the same organization", async () => {
       const { service, repositories, state } = setup({
-        event: { githubOrg: "core-org", githubOrgSecret: "enc" },
+        event: { githubOrg: "core-org" },
         teams: [{ repo: "team-repo" }],
       });
       await service.completeInstallation(USER, 77, state);
@@ -463,7 +461,7 @@ describe("GithubAppService", () => {
 
     it("offers only the event's organization once teams have repositories", async () => {
       const { service } = setup({
-        event: { githubOrg: "core-org", githubOrgSecret: "enc" },
+        event: { githubOrg: "core-org" },
         teams: [{ repo: "team-repo" }],
         installations: [
           installation(77, "Core-Org"),

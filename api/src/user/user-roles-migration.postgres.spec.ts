@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { DataSource } from "typeorm";
-import { UserRoles1793000000000 } from "../../db/migrations/1793000000000-user-roles";
+import { UserRoles1793050000000 } from "../../db/migrations/1793050000000-user-roles";
 
 // A dedicated test database is required; each run owns only its random schema.
 const databaseUrl = process.env.SESSION_TEST_DATABASE_URL;
@@ -25,7 +25,7 @@ postgres("UserRoles migration (PostgreSQL)", () => {
     database = new DataSource({
       type: "postgres",
       url: databaseUrl,
-      migrations: [UserRoles1793000000000],
+      migrations: [UserRoles1793050000000],
       // public holds uuid_generate_v4().
       extra: { options: `-c search_path=${schema},public` },
     });
@@ -60,7 +60,7 @@ postgres("UserRoles migration (PostgreSQL)", () => {
     );
 
     const queryRunner = database.createQueryRunner();
-    await new UserRoles1793000000000().up(queryRunner);
+    await new UserRoles1793050000000().up(queryRunner);
     await queryRunner.release();
   });
 
@@ -152,7 +152,7 @@ postgres("UserRoles migration (PostgreSQL)", () => {
 
   it("drops the table and the enum on down", async () => {
     const queryRunner = database.createQueryRunner();
-    await new UserRoles1793000000000().down(queryRunner);
+    await new UserRoles1793050000000().down(queryRunner);
     await queryRunner.release();
     const [{ table, type }] = await database.query(
       `SELECT to_regclass('user_roles') AS table, to_regtype('user_role') AS type`,

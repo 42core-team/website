@@ -10,7 +10,7 @@ import { AxiosError } from 'axios'
 import type { AxiosAdapter } from 'axios'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import axiosInstance from '@/app/actions/axios'
+import axiosInstance, { setSessionProbe } from '@/app/actions/axios'
 import {
   AuthProvider,
   useSession,
@@ -243,5 +243,69 @@ describe('useSignOutEverywhere', () => {
       expect(result.current.session.status).toBe('unauthenticated'),
     )
     expect(calls).toContain('POST /auth/logout-all')
+  })
+})
+
+describe('the refresh interceptor on a 404', () => {
+  it('refreshes and replays an event request while a session is cached', async () => {
+    routes['GET /auth/me'] = 200
+    routes['POST /auth/refresh'] = 204
+    const { result } = renderWithProviders(() => useSession())
+    await waitFor(() => expect(result.current.status).toBe('authenticated'))
+    calls = []
+
+    await expect(axiosInstance.get('event/private-id')).rejects.toMatchObject({
+      response: { status: 404 },
+    })
+    expect(calls).toEqual([
+      'GET event/private-id',
+      'POST /auth/refresh',
+      'GET event/private-id',
+    ])
+  })
+
+  it('leaves a guest alone', async () => {
+    routes['GET /auth/me'] = 401
+    routes['POST /auth/refresh'] = 401
+    const { result } = renderWithProviders(() => useSession())
+    await waitFor(() => expect(result.current.status).toBe('unauthenticated'))
+    calls = []
+
+    await expect(axiosInstance.get('event/private-id')).rejects.toBeDefined()
+    expect(calls).toEqual(['GET event/private-id'])
+  })
+})
+
+describe('session probe registration', () => {
+  it('stops probing a provider after it unmounts', async () => {
+    routes['GET /auth/me'] = 200
+    const { result, unmount } = renderWithProviders(() => useSession())
+    await waitFor(() => expect(result.current.status).toBe('authenticated'))
+    unmount()
+    calls = []
+
+    await expect(axiosInstance.get('event/private-id')).rejects.toBeDefined()
+
+    expect(calls).toEqual(['GET event/private-id'])
+  })
+
+  it('does not let an old cleanup remove a newer probe', async () => {
+    const clearOld = setSessionProbe(() => false)
+    const clearNew = setSessionProbe(() => true)
+    clearOld()
+    routes['POST /auth/refresh'] = 204
+    try {
+      await expect(axiosInstance.get('event/private-id')).rejects.toBeDefined()
+      expect(calls).toEqual([
+        'GET event/private-id',
+        'POST /auth/refresh',
+        'GET event/private-id',
+      ])
+    } finally {
+      clearNew()
+    }
+    calls = []
+    await expect(axiosInstance.get('event/private-id')).rejects.toBeDefined()
+    expect(calls).toEqual(['GET event/private-id'])
   })
 })

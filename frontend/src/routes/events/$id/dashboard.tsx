@@ -27,7 +27,6 @@ import {
   getParticipantsCountForEvent,
   getStarterTemplates,
   getTeamsCountForEvent,
-  isEventAdmin,
   removeEventAdmin,
   updateEventSettings,
 } from '@/app/actions/event'
@@ -88,13 +87,10 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  GithubConnection,
-  useEventGithubStatus,
-} from '@/components/dashboard/github-connection'
+import { GithubConnection } from '@/components/dashboard/github-connection'
 import { useTabParam } from '@/hooks/useTabParam'
+import { useEventAbilities } from '@/hooks/use-event-abilities'
 import { useEventClock } from '@/hooks/use-event-clock'
-import { useSession } from '@/lib/auth'
 import { getEventNameError } from '@/lib/event-validation'
 import {
   GITHUB_CONFIG_FIELDS,
@@ -159,8 +155,6 @@ const SETTINGS_FIELDS = [
   'basePath',
   'gameConfig',
   'serverConfig',
-  'githubOrg',
-  'githubOrgSecret',
   'startDate',
   'submissionDeadline',
   'scheduledEndDate',
@@ -209,7 +203,6 @@ function getGithubConfigErrors(
 
 function DashboardRoute() {
   const { id } = Route.useParams()
-  const session = useSession()
   const queryClient = useQueryClient()
   const { currentTab, onTabChange } = useTabParam('overview')
   const now = useEventClock()
@@ -238,17 +231,12 @@ function DashboardRoute() {
     queryFn: () => getParticipantsCountForEvent(id),
   })
 
-  const isAdminQuery = useQuery({
-    queryKey: ['event', id, 'is-admin'],
-    queryFn: isEventAdmin.bind(null, id),
-    enabled: session.status !== 'loading',
-    retry: false,
-  })
+  const { abilities, isPending: abilitiesPending } = useEventAbilities(id)
 
   const adminsQuery = useQuery<EventAdmin[]>({
     queryKey: ['event', id, 'admins'],
     queryFn: () => getEventAdmins(id),
-    enabled: isAdminQuery.data === true,
+    enabled: abilities.administer,
   })
 
   const starterTemplatesQuery = useQuery({
@@ -361,7 +349,7 @@ function DashboardRoute() {
     eventQuery.isPending ||
     teamsCountQuery.isPending ||
     participantsCountQuery.isPending ||
-    isAdminQuery.isPending
+    abilitiesPending
 
   if (isLoading || !event) {
     return (
@@ -381,7 +369,7 @@ function DashboardRoute() {
     )
   }
 
-  if (!isAdminQuery.data) {
+  if (!abilities.administer) {
     return (
       <main className="flex min-h-[45vh] items-center justify-center px-4 text-center text-muted-foreground">
         You are not authorized to access this dashboard.
@@ -561,10 +549,7 @@ function DashboardRoute() {
             setIsServerConfigExpanded={setIsServerConfigExpanded}
             eventId={id}
             playClosed={!registrationOpen(event, now)}
-            canPublish={Boolean(
-              session.data?.user.abilities.createPublicEvent ||
-              session.data?.user.abilities.admin,
-            )}
+            canPublish={abilities.publish}
             saved={event}
             onOpenOperation={() => onTabChange('operation')}
           />
@@ -876,7 +861,6 @@ function SettingsTab({
   >
   onOpenOperation: () => void
 }) {
-  const githubStatusQuery = useEventGithubStatus(eventId)
   const reopenNotice = playClosed && (
     <Alert role="status" className="md:col-span-2 lg:col-span-4">
       <Lock className="size-4" aria-hidden="true" />
@@ -1186,32 +1170,10 @@ function SettingsTab({
 
       <Card>
         <CardHeader>
-          <CardTitle>Advanced / Secrets</CardTitle>
-          <CardDescription>
-            Sensitive configuration and JSON configs.
-          </CardDescription>
+          <CardTitle>Advanced</CardTitle>
+          <CardDescription>Game and server JSON configs.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* With the App, the organization and access come from the installation. */}
-          {!githubStatusQuery.data?.installation && (
-            <>
-              <DashboardInput
-                label="GitHub Organization"
-                value={pendingSettings.githubOrg || ''}
-                error={githubConfigErrors.githubOrg}
-                onChange={(value) => updatePendingSetting('githubOrg', value)}
-              />
-              <DashboardInput
-                label="GitHub Organization Secret (Token)"
-                type="password"
-                placeholder="Enter new token to update (leave blank to keep current)"
-                value={pendingSettings.githubOrgSecret || ''}
-                onChange={(value) =>
-                  updatePendingSetting('githubOrgSecret', value)
-                }
-              />
-            </>
-          )}
           <ExpandableJsonTextarea
             label="Game Config (JSON)"
             value={pendingSettings.gameConfig || ''}
