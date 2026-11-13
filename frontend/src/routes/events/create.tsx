@@ -208,7 +208,15 @@ function CreatePresetForm({
       >
         Adjust settings
       </Button>
-      {!adjust && <PresetWarnings warnings={preset.warnings} />}
+      {!adjust && (
+        <PresetWarnings
+          warnings={
+            values.githubInstallationId === baseline.githubInstallationId
+              ? preset.warnings
+              : []
+          }
+        />
+      )}
       {adjust && (
         <div className="space-y-6 rounded border p-4">
           <SettingsFields
@@ -278,7 +286,13 @@ function CreatePresetForm({
                 </option>
               ))}
             </select>
-            <PresetWarnings warnings={preset.warnings} />
+            <PresetWarnings
+              warnings={
+                values.githubInstallationId === baseline.githubInstallationId
+                  ? preset.warnings
+                  : []
+              }
+            />
             {installations.isError && (
               <p role="alert">
                 Could not load installations.{' '}

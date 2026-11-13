@@ -147,6 +147,7 @@ beforeEach(() => {
       shared: true,
     },
   ])
+  vi.mocked(api.getAdminPreset).mockResolvedValue(preset)
   vi.mocked(api.getAdminInstallations).mockResolvedValue([installation])
   vi.mocked(api.getAdminPresets).mockResolvedValue([
     { ...preset, updatedBy: null, eventCount: 0 },
@@ -178,6 +179,23 @@ async function createPage() {
   })
 }
 describe('preset event creation', () => {
+  it('hides a stale installation warning after selecting a replacement', async () => {
+    vi.mocked(api.resolvePreset).mockResolvedValue({
+      ...resolved,
+      warnings: [unavailable],
+    })
+    await createPage()
+    expect(screen.getByRole('status').textContent).toContain(unavailable)
+    fireEvent.click(screen.getByText('Adjust settings'))
+    await screen.findByRole('option', { name: 'shared-core (shared)' })
+    fireEvent.change(screen.getByLabelText('GitHub installation'), {
+      target: { value: 'shared' },
+    })
+    expect(screen.queryByRole('status')).toBeNull()
+    fireEvent.click(screen.getByText('Adjust settings'))
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
   it('sends only name and preset when settings are unchanged', async () => {
     await createPage()
     expect(
@@ -443,6 +461,72 @@ describe('preset event creation', () => {
   })
 })
 describe('preset administration', () => {
+  it('initializes new presets from the default detail without copying identity', async () => {
+    const defaults = {
+      ...preset,
+      settings: { ...defaultSettings, location: 'Default venue' },
+      starterTemplates: [
+        {
+          name: 'Starter',
+          basePath: 'bots/c',
+          myCoreBotDockerImage: 'image:dev',
+        },
+      ],
+      githubInstallation: { id: 'uuid', accountLogin: 'core' },
+    }
+    vi.mocked(api.getAdminPreset).mockResolvedValue(defaults)
+    vi.mocked(api.getAdminInstallations).mockResolvedValue([
+      { ...installation, sharedAt: 'now' },
+    ])
+    vi.mocked(api.createPreset).mockResolvedValue(preset)
+    await mount(<PresetsPage />)
+    fireEvent.click(screen.getByText('Create preset'))
+    expect(
+      (await screen.findByLabelText<HTMLInputElement>('Location')).value,
+    ).toBe('Default venue')
+    expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
+      '',
+    )
+    fireEvent.change(screen.getByLabelText('Preset name'), {
+      target: { value: 'New copy' },
+    })
+    fireEvent.click(screen.getByText('Save preset'))
+    await waitFor(() =>
+      expect(api.createPreset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'New copy',
+          description: '',
+          isDefault: false,
+          settings: defaults.settings,
+          starterTemplates: defaults.starterTemplates,
+          githubInstallationId: 'uuid',
+        }),
+      ),
+    )
+    expect(api.getAdminPreset).toHaveBeenCalledWith('one')
+    expect(api.updatePreset).not.toHaveBeenCalled()
+  })
+  it('uses blank values when there is no default preset', async () => {
+    vi.mocked(api.getAdminPresets).mockResolvedValue([])
+    await mount(<PresetsPage />)
+    fireEvent.click(screen.getByText('Create preset'))
+    expect(
+      (await screen.findByLabelText<HTMLInputElement>('Location')).value,
+    ).toBe('')
+    expect(api.getAdminPreset).not.toHaveBeenCalled()
+  })
+  it('retries a failed default detail before opening the editor', async () => {
+    vi.mocked(api.getAdminPreset).mockRejectedValueOnce(
+      new Error('Unavailable'),
+    )
+    await mount(<PresetsPage />)
+    fireEvent.click(screen.getByText('Create preset'))
+    await screen.findByText(/Could not load default preset/)
+    expect(screen.queryByLabelText('Preset name')).toBeNull()
+    fireEvent.click(screen.getByText('Retry'))
+    await screen.findByLabelText('Preset name')
+  })
+
   it('does not render admin pages or run admin queries for non-admins', async () => {
     vi.mocked(useSession).mockReturnValue({
       status: 'authenticated',
@@ -486,11 +570,11 @@ describe('preset administration', () => {
     await mount(<PresetsPage />)
     fireEvent.click(screen.getByText('Create preset'))
     expect(screen.getByRole('dialog')).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Preset name'), {
+    fireEvent.change(await screen.findByLabelText('Preset name'), {
       target: { value: 'Unsaved' },
     })
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    fireEvent.click(screen.getByText('Cancel'))
+    fireEvent.click(await screen.findByText('Cancel'))
     expect(confirm).toHaveBeenCalledOnce()
     expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
       'Unsaved',
@@ -504,17 +588,17 @@ describe('preset administration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(screen.getByRole('dialog')).toBeTruthy()
     confirm.mockReturnValue(true)
-    fireEvent.click(screen.getByText('Cancel'))
+    fireEvent.click(await screen.findByText('Cancel'))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
   it('closes a clean editor without confirmation and saves edits without a discard prompt', async () => {
     const confirm = vi.spyOn(window, 'confirm')
     await mount(<PresetsPage />)
     fireEvent.click(screen.getByText('Create preset'))
-    fireEvent.click(screen.getByText('Cancel'))
+    fireEvent.click(await screen.findByText('Cancel'))
     expect(confirm).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText('Create preset'))
-    fireEvent.change(screen.getByLabelText('Preset name'), {
+    fireEvent.change(await screen.findByLabelText('Preset name'), {
       target: { value: 'New preset' },
     })
     vi.mocked(api.createPreset).mockResolvedValue({
@@ -586,7 +670,7 @@ describe('preset administration conflicts', () => {
         onReload={reload}
       />,
     )
-    fireEvent.change(screen.getByLabelText('Preset name'), {
+    fireEvent.change(await screen.findByLabelText('Preset name'), {
       target: { value: 'My changes' },
     })
     fireEvent.click(screen.getByText('Save preset'))
