@@ -431,12 +431,12 @@ postgres("private event visibility (PostgreSQL)", () => {
       await get(`/event/${event.id}/abilities`, "guest").expect(401);
   });
 
-  it("answers abilities for an unknown event with no abilities", async () => {
-    await get(`/event/${randomUUID()}/abilities`, "event admin").expect(
-      200,
-      NO_ABILITIES,
-    );
-  });
+  it.each(PERSONAS.filter((persona) => persona !== "guest"))(
+    "answers 404 for an unknown event's abilities for a %s",
+    async (persona) => {
+      await get(`/event/${randomUUID()}/abilities`, persona).expect(404);
+    },
+  );
 
   // The timestamp and path differ per request; the rest must not.
   const shape = (body: Record<string, unknown>) => ({

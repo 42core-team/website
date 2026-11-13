@@ -186,6 +186,7 @@ export class EventController {
     @Param("id", new ParseUUIDPipe()) eventId: string,
     @CurrentUser() user: UserEntity,
   ): Promise<EventAbilities> {
+    await this.eventService.getEventById(eventId);
     const can = (ability: keyof EventAbilities) =>
       this.authorization.can(EventPolicy, ability, user, eventId);
     const [administer, viewUnrevealedResults, publish] = await Promise.all([
