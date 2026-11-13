@@ -26,6 +26,7 @@ describe('eventTabs', () => {
     isRegistered: true,
     team: { locked: false, repositoryStatus: 'READY' } as TabTeam | null,
     isAdmin: false,
+    canViewUnrevealedResults: false,
     formatTime: () => '09:00',
   }
   const names = (tabs: { name: string }[]) => tabs.map((t) => t.name)
@@ -159,6 +160,21 @@ describe('eventTabs', () => {
       'tournament:Tournament Tree',
       'admin:Dashboard',
     ])
+  })
+
+  it('unlocks tournament tabs early for moderators without showing Dashboard', () => {
+    const tabs = eventTabs({
+      ...base,
+      now: start - 1,
+      canViewUnrevealedResults: true,
+    })
+    for (const name of ['Group Phase', 'Tournament Tree']) {
+      const tab = tabs.find((t) => t.name === name)
+      expect(tab).toBeDefined()
+      expect(tab?.lockedReason).toBeUndefined()
+      expect(tab?.disabled).toBeUndefined()
+    }
+    expect(names(tabs)).not.toContain('Dashboard')
   })
 
   it('opens tournament tabs from code freeze on, and always to admins', () => {

@@ -35,6 +35,7 @@ export function eventTabs({
   team,
   viewerKnown = true,
   isAdmin,
+  canViewUnrevealedResults,
   formatTime,
 }: {
   event: MomentEvent & Pick<Event, 'gamblingEnabled'>
@@ -44,6 +45,7 @@ export function eventTabs({
   /** False while registration and team are loading; their locks wait. */
   viewerKnown?: boolean
   isAdmin: boolean
+  canViewUnrevealedResults: boolean
   formatTime: (iso: string) => string
 }): EventTab[] {
   const phase = eventState(event, now)
@@ -119,8 +121,8 @@ export function eventTabs({
       name,
       path: `${eventPath}/${name === 'Group Phase' ? 'groups' : 'bracket'}`,
       group: 'tournament',
-      // Admins prepare the tournament before it is public.
-      ...(tournamentOpen || isAdmin
+      // Staff can inspect the tournament before it is public.
+      ...(tournamentOpen || isAdmin || canViewUnrevealedResults
         ? {}
         : lockedOut(`Opens ${formatTime(event.submissionDeadline)}`)),
     })),

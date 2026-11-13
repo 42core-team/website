@@ -158,6 +158,7 @@ function EventRoute() {
     team: myTeam,
     viewerKnown,
     isAdmin: abilities.administer,
+    canViewUnrevealedResults: abilities.viewUnrevealedResults,
     formatTime: (iso) => formatEventTime(iso, now),
   })
   const eventShell = (children: ReactNode) => (
