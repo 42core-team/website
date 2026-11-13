@@ -9,6 +9,7 @@ import request from "supertest";
 import { UserRole } from "../authz";
 import { authzTestingModule, principalWith } from "../authz/testing";
 import { AdminEventPresetsController } from "./admin-event-presets.controller";
+import { EventPresetsController } from "./event-presets.controller";
 import { EventPresetsService } from "./event-presets.service";
 import { PRESET_SETTINGS } from "./testing";
 
@@ -27,6 +28,7 @@ const principals = {
 type Who = keyof typeof principals;
 
 const preset = { name: "Preset", settings: PRESET_SETTINGS };
+const creators: Who[] = ["admin", "publicCreator", "privateCreator"];
 
 /** Each route, the users it lets in, and the status they get. */
 const ROUTES: {
@@ -36,6 +38,13 @@ const ROUTES: {
   status: number;
   allowed: Who[];
 }[] = [
+  { method: "get", path: "/event-presets", status: 200, allowed: creators },
+  {
+    method: "get",
+    path: `/event-presets/${ID}/resolved`,
+    status: 200,
+    allowed: creators,
+  },
   {
     method: "get",
     path: "/admin/event-presets",
@@ -86,6 +95,8 @@ describe("event preset route authorization", () => {
   let app: INestApplication;
   const answer = jest.fn(async () => ({ ok: true }));
   const service = {
+    listForOrganizers: answer,
+    getResolved: answer,
     listForAdmin: answer,
     getDetail: answer,
     create: answer,
@@ -100,7 +111,7 @@ describe("event preset route authorization", () => {
       imports: [
         authzTestingModule(async (id) => principals[id as Who] ?? null),
       ],
-      controllers: [AdminEventPresetsController],
+      controllers: [AdminEventPresetsController, EventPresetsController],
       providers: [{ provide: EventPresetsService, useValue: service }],
     }).compile();
     app = moduleRef.createNestApplication({ logger: false });
