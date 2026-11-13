@@ -10,7 +10,6 @@ import {
   Post,
   Put,
   Query,
-  UnauthorizedException,
   UseGuards,
   Logger,
 } from "@nestjs/common";
@@ -20,7 +19,7 @@ import { CreateTeamDto } from "./dtos/createTeamDto";
 import { InviteUserDto } from "./dtos/inviteUserDto";
 import { UserService } from "../user/user.service";
 import { EventService } from "../event/event.service";
-import { PermissionRole } from "../user/entities/user.entity";
+import { UserEntity } from "../user/entities/user.entity";
 import {
   EventId,
   TeamNotLockedGuard,
@@ -30,7 +29,16 @@ import {
 } from "../guards/TeamGuard";
 import { EVENT_ID_PARAM, TEAM_ID_PARAM } from "../guards/GuardConstants";
 import { TeamEntity } from "./entities/team.entity";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import {
+  Can,
+  CurrentUser,
+  EventPolicy,
+  hasInEvent,
+  param,
+  Public,
+  SignedIn,
+  UserRole,
+} from "../authz";
 import { getLocationTags } from "../user/location-tags";
 import { UpdateTeamCreditsDto } from "./dtos/updateTeamCreditsDto";
 
@@ -44,16 +52,21 @@ export class TeamController {
     private readonly eventService: EventService,
   ) {}
 
+  @Public()
   @Get(":id")
-  getTeamById(@Param("id", new ParseUUIDPipe()) id: string) {
-    return this.teamService.getTeamByIdWithTags(id);
+  getTeamById(
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @CurrentUser() user: UserEntity | null,
+  ) {
+    return this.teamService.getTeamByIdWithTags(id, user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
+  @Can(EventPolicy, "view", param(EVENT_ID_PARAM))
   @Get(`event/:${EVENT_ID_PARAM}`)
   getTeamsForEvent(
     @EventId eventId: string,
-    @UserId() userId: string,
+    @CurrentUser() user: UserEntity,
     @Query("adminRevealQuery") adminRevealQuery: string, // It's a string in query params
     @Query("searchName") searchName?: string,
     @Query("sortDir") sortDir?: string,
@@ -64,18 +77,18 @@ export class TeamController {
       searchName,
       sortDir,
       sortBy,
-      userId,
+      user,
       adminRevealQuery === "true",
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Get(`event/:${EVENT_ID_PARAM}/my`)
   getMyTeamForEvent(@EventId eventId: string, @UserId("id") userId: string) {
     return this.teamService.getTeamOfUserForEventWithTags(eventId, userId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Can(EventPolicy, "administer", param(EVENT_ID_PARAM))
   @Put(`event/:${EVENT_ID_PARAM}/admin/:${TEAM_ID_PARAM}/credits`)
   async updateTeamCredits(
     @EventId eventId: string,
@@ -83,11 +96,6 @@ export class TeamController {
     @UserId() userId: string,
     @Body() body: UpdateTeamCreditsDto,
   ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to update team credits for this event.",
-      );
-
     this.logger.log({
       action: "attempt_update_team_credits",
       userId,
@@ -99,18 +107,13 @@ export class TeamController {
     return this.teamService.setTeamCredits(eventId, teamId, body.credits);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Can(EventPolicy, "administer", param(EVENT_ID_PARAM))
   @Delete(`event/:${EVENT_ID_PARAM}/admin/:${TEAM_ID_PARAM}`)
   async deleteTeamAsAdmin(
     @EventId eventId: string,
     @TeamId teamId: string,
     @UserId() userId: string,
   ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to delete teams for this event.",
-      );
-
     this.logger.log({
       action: "attempt_admin_delete_team",
       userId,
@@ -121,7 +124,7 @@ export class TeamController {
     return this.teamService.deleteTeamForEvent(eventId, teamId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Post(`event/:${EVENT_ID_PARAM}/create`)
   async createTeam(
     @UserId() userId: string,
@@ -158,7 +161,8 @@ export class TeamController {
     );
   }
 
-  @UseGuards(JwtAuthGuard, MyTeamGuards, TeamNotLockedGuard)
+  @SignedIn()
+  @UseGuards(MyTeamGuards, TeamNotLockedGuard)
   @Put(`event/:${EVENT_ID_PARAM}/leave`)
   async leaveTeam(@UserId() userId: string, @Team() team: TeamEntity) {
     this.logger.log({
@@ -169,22 +173,22 @@ export class TeamController {
     return this.teamService.leaveTeam(team.id, userId);
   }
 
+  @Public()
   @Get(":id/members")
-  async getTeamMembers(@Param("id", new ParseUUIDPipe()) teamId: string) {
-    const event = await this.eventService.getEventByTeamId(teamId);
-    const team = await this.teamService.getTeamById(teamId, {
+  async getTeamMembers(
+    @Param("id", new ParseUUIDPipe()) teamId: string,
+    @CurrentUser() viewer: UserEntity | null,
+  ) {
+    const team = await this.teamService.getVisibleTeamById(teamId, viewer, {
       users: {
         socialAccounts: true,
-        permissions: {
-          event: true,
-        },
+        roles: true,
       },
     });
 
     return team.users.map((user) => {
-      const isEventAdmin = user.permissions.some(
-        (p) => p.event.id === event.id && p.role === PermissionRole.ADMIN,
-      );
+      // The event's own admins; global admins are not listed as such.
+      const isEventAdmin = hasInEvent(user, team.eventId, UserRole.ADMIN);
       return {
         id: user.id,
         name: user.name,
@@ -200,7 +204,8 @@ export class TeamController {
     });
   }
 
-  @UseGuards(JwtAuthGuard, MyTeamGuards, TeamNotLockedGuard)
+  @SignedIn()
+  @UseGuards(MyTeamGuards, TeamNotLockedGuard)
   @Post(`event/:${EVENT_ID_PARAM}/sendInvite`)
   async sendInviteToTeam(
     @EventId eventId: string,
@@ -261,7 +266,8 @@ export class TeamController {
     );
   }
 
-  @UseGuards(JwtAuthGuard, MyTeamGuards, TeamNotLockedGuard)
+  @SignedIn()
+  @UseGuards(MyTeamGuards, TeamNotLockedGuard)
   @Get(`event/:${EVENT_ID_PARAM}/searchInviteUsers/:searchQuery`)
   async searchUsersForInvite(
     @EventId eventId: string,
@@ -277,7 +283,7 @@ export class TeamController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Get(`event/:${EVENT_ID_PARAM}/pending`)
   async getUserPendingInvites(
     @UserId() userId: string,
@@ -286,7 +292,8 @@ export class TeamController {
     return this.teamService.getTeamsUserIsInvitedTo(userId, eventId);
   }
 
-  @UseGuards(JwtAuthGuard, TeamNotLockedGuard)
+  @SignedIn()
+  @UseGuards(TeamNotLockedGuard)
   @Put(`event/:${EVENT_ID_PARAM}/acceptInvite/:${TEAM_ID_PARAM}`)
   async acceptTeamInvite(
     @UserId() userId: string,
@@ -314,7 +321,7 @@ export class TeamController {
   }
 
   // TODO: eventId is not used here, should be removed
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Delete(`event/:${EVENT_ID_PARAM}/declineInvite/:${TEAM_ID_PARAM}`)
   async declineTeamInvite(@UserId() userId: string, @TeamId teamId: string) {
     if (!(await this.teamService.isUserInvitedToTeam(userId, teamId)))
@@ -329,7 +336,8 @@ export class TeamController {
     return this.teamService.declineTeamInvite(userId, teamId);
   }
 
-  @UseGuards(JwtAuthGuard, MyTeamGuards)
+  @SignedIn()
+  @UseGuards(MyTeamGuards)
   @Put(`event/:${EVENT_ID_PARAM}/queue/join`)
   async joinQueue(
     @Team() team: TeamEntity,
@@ -348,19 +356,21 @@ export class TeamController {
     return this.teamService.joinQueue(team.id, eventId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Get(`event/:${EVENT_ID_PARAM}/queue/summary`)
   getQueueSummary(@EventId eventId: string, @UserId() userId: string) {
     return this.teamService.getQueueSummary(eventId, userId);
   }
 
-  @UseGuards(JwtAuthGuard, MyTeamGuards)
+  @SignedIn()
+  @UseGuards(MyTeamGuards)
   @Get(`event/:${EVENT_ID_PARAM}/queue/opponents`)
   getQueueOpponents(@EventId eventId: string, @Team() team: TeamEntity) {
     return this.teamService.getQueueOpponents(eventId, team.id);
   }
 
-  @UseGuards(JwtAuthGuard, MyTeamGuards)
+  @SignedIn()
+  @UseGuards(MyTeamGuards)
   @Post(`event/:${EVENT_ID_PARAM}/queue/direct/:targetTeamId`)
   async startDirectMatch(
     @Team() team: TeamEntity,

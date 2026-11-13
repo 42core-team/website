@@ -133,6 +133,45 @@ the new session survives. They are skipped when the test database URL is absent.
 
   An application token works: `curl -X POST https://api.intra.42.fr/oauth/token -d grant_type=client_credentials -d client_id=<uid> -d client_secret=<secret>`. Requests are spaced to stay within the default limit of 2 per second, and the run stops at once if the token is rejected.
 
+## Roles and authorization
+
+Roles live in `user_roles`: ADMIN, MODERATOR, PUBLIC_EVENT_CREATOR and
+PRIVATE_EVENT_CREATOR globally (no `eventId`), ADMIN and MODERATOR also for a
+single event. Policies in `src/authz` decide every route;
+`src/authz/route-coverage.spec.ts` pins each route's decision.
+
+The frontend only hides what the caller may not do: `/auth/me` reports the
+global abilities and `GET /event/:id/abilities` the abilities within one event
+(`administer`, `viewUnrevealedResults`, `publish`). Each route still checks
+its own ability.
+
+Private events are unlisted: any signed-in user can view one by id and join
+while registration is open. A populated whitelist restricts joins to its users;
+an empty whitelist allows anyone signed in to join. Guests get 404, as for an
+unknown id. Version routes (`/event/:id/version`,
+`/event/:id/templates/:templateId/version` and `/check/:id`) stay public.
+Public listings exclude private events; the overview includes private events
+only among the user's own events.
+
+### Bootstrapping the first global admin
+
+Global admins grant every other role through `/admin/roles`, so the first one
+is inserted by hand, once the user has signed in with GitHub:
+
+```sql
+INSERT INTO user_roles ("userId", role) SELECT id, 'ADMIN' FROM users WHERE username = '<github-login>';
+```
+
+The role API never removes the last global admin, nor the last admin of an
+event.
+
+### The user_roles migration is forward-only
+
+`UserRoles1793050000000` copies `users.canCreateEvent` and the ADMIN rows of
+`user_event_permissions` into `user_roles`. Do not revert it once roles have
+been granted: reverting drops `user_roles`, so the old code reads the legacy
+permissions again and every grant made since the migration is lost.
+
 ## API Documentation
 
 When running in development mode, Swagger documentation is available at:

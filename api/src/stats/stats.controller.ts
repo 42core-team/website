@@ -1,7 +1,9 @@
 import { Controller, Get } from "@nestjs/common";
 import { MatchService } from "../match/match.service";
 import { Cron } from "@nestjs/schedule";
+import { Public } from "../authz";
 
+@Public()
 @Controller("stats")
 export class StatsController {
   constructor(private matchService: MatchService) {}

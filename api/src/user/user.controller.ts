@@ -3,12 +3,11 @@ import {
   Controller,
   Get,
   Query,
-  UseGuards,
   Logger,
 } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { UserId } from "../guards/UserGuard";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { SignedIn } from "../authz";
 import { PublicUserDto, toPublicUsers } from "./dtos/public-user.dto";
 
 @Controller("user")
@@ -17,13 +16,7 @@ export class UserController {
 
   constructor(private readonly userService: UserService) {}
 
-  @UseGuards(JwtAuthGuard)
-  @Get("canCreateEvent")
-  async canCreateEvent(@UserId() id: string) {
-    return this.userService.canCreateEvent(id);
-  }
-
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Get("search")
   async searchUsers(
     @UserId() userId: string,

@@ -22,7 +22,15 @@ import {
   REFRESH_COOKIE_PATH,
   REFRESH_TOKEN_IDLE_TTL_MS,
 } from "./session.constants";
-import { JwtAuthGuard } from "./jwt-auth.guard";
+import {
+  AuthorizationService,
+  CurrentUser,
+  hasGlobal,
+  PlatformPolicy,
+  Public,
+  SignedIn,
+  UserRole,
+} from "../authz";
 import { ConfigService } from "@nestjs/config";
 import { UserService } from "../user/user.service";
 import { UserId } from "../guards/UserGuard";
@@ -50,8 +58,10 @@ export class AuthController {
     private readonly socialAccountService: SocialAccountService,
     private readonly oauthStates: OAuthStateService,
     private readonly githubOAuth: GithubOAuthClient,
+    private readonly authorization: AuthorizationService,
   ) {}
 
+  @Public()
   @Get("/github/callback")
   async githubCallback(@Req() req: Request, @Res() res: Response) {
     const code =
@@ -108,7 +118,7 @@ export class AuthController {
   }
 
   @Get("/42/getUrl")
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   async getFortyTwoAuthUrl(
     @UserId() userId: string,
     @Res({ passthrough: true }) res: Response,
@@ -135,7 +145,9 @@ export class AuthController {
     return url.toString();
   }
 
+  // The signed-in user comes from the OAuth state, not the session cookie.
   @Get("/42/callback")
+  @Public()
   @UseGuards(FortyTwoOAuthStateGuard, AuthGuard("42"))
   async fortyTwoCallback(
     @Req()
@@ -182,12 +194,28 @@ export class AuthController {
   }
 
   @Get("/me")
-  @UseGuards(JwtAuthGuard)
-  me(@Req() req: Request) {
-    const user = req.user as UserEntity;
-    return this.userService.getUserWithSocialAccounts(user.id);
+  @SignedIn()
+  async me(@CurrentUser() user: UserEntity) {
+    const profile = await this.userService.getUserWithSocialAccounts(user.id);
+    // Global abilities only, so the frontend can decide what to offer.
+    const abilities = {
+      admin: hasGlobal(user, UserRole.ADMIN),
+      moderator: hasGlobal(user, UserRole.ADMIN, UserRole.MODERATOR),
+      createEvent: await this.authorization.can(
+        PlatformPolicy,
+        "createEvent",
+        user,
+      ),
+      createPublicEvent: await this.authorization.can(
+        PlatformPolicy,
+        "createPublicEvent",
+        user,
+      ),
+    };
+    return Object.assign(profile, { abilities });
   }
 
+  @Public()
   @Post("/refresh")
   @HttpCode(204)
   async refresh(
@@ -204,6 +232,7 @@ export class AuthController {
     this.setSessionCookies(res, tokens);
   }
 
+  @Public()
   @Post("/logout")
   @HttpCode(204)
   async logout(
@@ -218,7 +247,7 @@ export class AuthController {
 
   @Post("/logout-all")
   @HttpCode(204)
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   async logoutAll(
     @UserId() userId: string,
     @Res({ passthrough: true }) res: Response,

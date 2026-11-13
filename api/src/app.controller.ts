@@ -1,9 +1,11 @@
 import { Controller, Get, ServiceUnavailableException } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { AppService } from "./app.service";
+import { Public } from "./authz";
 
 const READINESS_DB_TIMEOUT_MS = 1500;
 
+@Public()
 @Controller()
 export class AppController {
   constructor(

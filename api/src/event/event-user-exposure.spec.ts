@@ -29,7 +29,7 @@ describe("event responses do not expose user details", () => {
 
   it("returns only public fields for event admins", async () => {
     const service = Object.create(EventService.prototype) as EventService;
-    Reflect.set(service, "permissionRepository", {
+    Reflect.set(service, "roleRepository", {
       find: jest.fn().mockResolvedValue([{ user: fullUser }]),
     });
 

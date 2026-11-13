@@ -3,8 +3,16 @@ jest.mock("../main", () => ({ getRabbitmqConfig: jest.fn() }));
 import { NotFoundException } from "@nestjs/common";
 import { MatchEntity, MatchPhase, MatchState } from "./entites/match.entity";
 import { MatchService } from "./match.service";
+import { EventPolicy } from "../authz";
 
-function setup(phase: MatchPhase, isRevealed: boolean, isAdmin: boolean) {
+const as = (id: string) => ({ id, roles: [] });
+
+function setup(
+  phase: MatchPhase,
+  isRevealed: boolean,
+  isAdmin: boolean,
+  seesEvent = true,
+) {
   const match = Object.assign(new MatchEntity(), {
     id: "match",
     phase,
@@ -19,16 +27,18 @@ function setup(phase: MatchPhase, isRevealed: boolean, isAdmin: boolean) {
     results: [{ team: { id: "a", name: "A" }, score: 1 }],
     stats: { actionsExecuted: 918273 },
   });
-  const isEventAdmin = jest.fn().mockResolvedValue(isAdmin);
+  const can = jest.fn(async (_policy: unknown, ability: string) =>
+    ability === "view" ? seesEvent : isAdmin,
+  );
   const service = Object.create(MatchService.prototype) as MatchService;
   Object.assign(service, {
-    eventService: { isEventAdmin },
+    authorization: { can },
     matchRepository: {
       findOne: jest.fn().mockResolvedValue(match),
       find: jest.fn().mockResolvedValue([match]),
     },
   });
-  return { service, isEventAdmin };
+  return { service, can };
 }
 
 describe("MatchService.getMatchResponseById", () => {
@@ -42,24 +52,38 @@ describe("MatchService.getMatchResponseById", () => {
       ]) {
         const { service } = setup(phase, false, isAdmin);
         await expect(
-          service.getMatchResponseById("match", "user", adminReveal),
+          service.getMatchResponseById("match", as("user"), adminReveal),
         ).rejects.toThrow(NotFoundException);
       }
     },
   );
 
   it("does not ask for admin rights without reveal mode", async () => {
-    const { service, isEventAdmin } = setup(MatchPhase.SWISS, false, true);
+    const { service, can } = setup(MatchPhase.SWISS, false, true);
     await expect(
-      service.getMatchResponseById("match", "admin", false),
+      service.getMatchResponseById("match", as("admin"), false),
     ).rejects.toThrow(NotFoundException);
-    expect(isEventAdmin).not.toHaveBeenCalled();
+    expect(can).not.toHaveBeenCalledWith(
+      EventPolicy,
+      "viewUnrevealedResults",
+      expect.anything(),
+      expect.anything(),
+    );
   });
 
   it("gives a verified admin in reveal mode the result", async () => {
-    const { service, isEventAdmin } = setup(MatchPhase.SWISS, false, true);
-    const response = await service.getMatchResponseById("match", "admin", true);
-    expect(isEventAdmin).toHaveBeenCalledWith("event", "admin");
+    const { service, can } = setup(MatchPhase.SWISS, false, true);
+    const response = await service.getMatchResponseById(
+      "match",
+      as("admin"),
+      true,
+    );
+    expect(can).toHaveBeenCalledWith(
+      EventPolicy,
+      "viewUnrevealedResults",
+      as("admin"),
+      "event",
+    );
     expect(response).toMatchObject({
       id: "match",
       winner: { id: "a" },
@@ -73,10 +97,10 @@ describe("MatchService.getMatchResponseById", () => {
   ])(
     "shows a queue match to anyone with its id (admin %s, reveal mode %s)",
     async (isAdmin, adminReveal) => {
-      const { service, isEventAdmin } = setup(MatchPhase.QUEUE, false, isAdmin);
+      const { service, can } = setup(MatchPhase.QUEUE, false, isAdmin);
       const response = await service.getMatchResponseById(
         "match",
-        "user",
+        as("user"),
         adminReveal,
       );
       expect(response).toMatchObject({
@@ -85,7 +109,19 @@ describe("MatchService.getMatchResponseById", () => {
         winner: { id: "a" },
         stats: { actionsExecuted: 918273 },
       });
-      expect(isEventAdmin).not.toHaveBeenCalled();
+      expect(can.mock.calls).toEqual([
+        [EventPolicy, "view", as("user"), "event"],
+      ]);
+    },
+  );
+
+  it.each(Object.values(MatchPhase))(
+    "answers 404 for a revealed %s match of an event hidden from the viewer",
+    async (phase) => {
+      const { service } = setup(phase, true, true, false);
+      await expect(
+        service.getMatchResponseById("match", as("user"), true),
+      ).rejects.toThrow(NotFoundException);
     },
   );
 
@@ -95,7 +131,7 @@ describe("MatchService.getMatchResponseById", () => {
       const { service } = setup(phase, false, false);
       const response = await service.getMatchResponseById(
         "match",
-        "user",
+        as("user"),
         false,
       );
       expect(response).toMatchObject({
@@ -113,7 +149,7 @@ describe("MatchService.getMatchResponseById", () => {
       findOne: jest.fn().mockResolvedValue(null),
     });
     await expect(
-      service.getMatchResponseById("missing", "user", false),
+      service.getMatchResponseById("missing", as("user"), false),
     ).rejects.toThrow(NotFoundException);
   });
 });

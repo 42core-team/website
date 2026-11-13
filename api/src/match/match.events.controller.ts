@@ -2,7 +2,11 @@ import { Controller, Logger } from "@nestjs/common";
 import { EventPattern, Payload } from "@nestjs/microservices";
 import { getMatchSides } from "./match-sides";
 import { MatchService } from "./match.service";
+import { Public } from "../authz";
 
+// Messages from our own services over RabbitMQ. The app's global guards
+// never run on this transport; this only records the decision.
+@Public()
 @Controller("match-events")
 export class MatchEventsController {
   constructor(private readonly matchService: MatchService) {}

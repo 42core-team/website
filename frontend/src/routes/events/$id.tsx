@@ -7,7 +7,6 @@ import {
   getEventById,
   getParticipantsCountForEvent,
   getTeamsCountForEvent,
-  isEventAdmin,
   isUserRegisteredForEvent,
 } from '@/app/actions/event'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
@@ -24,6 +23,7 @@ import {
   EVENT_REFETCH_INTERVAL_MS,
   repositoryRefetchInterval,
 } from '@/lib/query-intervals'
+import { useEventAbilities } from '@/hooks/use-event-abilities'
 import { useEventClock } from '@/hooks/use-event-clock'
 import {
   Card,
@@ -92,11 +92,7 @@ function EventRoute() {
     enabled: Boolean(userId),
   })
 
-  const isEventAdminQuery = useQuery({
-    queryKey: ['event', id, 'is-event-admin'],
-    queryFn: async () => isEventAdmin(id),
-    enabled: Boolean(userId),
-  })
+  const { abilities } = useEventAbilities(id)
 
   const myTeamQuery = useQuery({
     queryKey: myTeamQueryKey(id),
@@ -161,7 +157,8 @@ function EventRoute() {
     isRegistered: isUserRegistered,
     team: myTeam,
     viewerKnown,
-    isAdmin: isEventAdminQuery.data ?? false,
+    isAdmin: abilities.administer,
+    canViewUnrevealedResults: abilities.viewUnrevealedResults,
     formatTime: (iso) => formatEventTime(iso, now),
   })
   const eventShell = (children: ReactNode) => (

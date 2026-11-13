@@ -98,6 +98,9 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
       { href: '/wiki', label: 'Wiki' },
       { href: '/changelog', label: 'Changelog' },
       { href: '/about', label: 'About us' },
+      ...(currentSession?.user.abilities.admin
+        ? [{ href: '/admin/roles', label: 'Roles' }]
+        : []),
     ]
 
     const isActive = useCallback(

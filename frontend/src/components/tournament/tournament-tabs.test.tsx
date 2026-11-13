@@ -83,14 +83,18 @@ const matches: Match[] = [
   },
 ]
 
-function bracket(isAdminReveal: boolean, isEventAdmin = true) {
+const ADMIN = { administer: true, viewUnrevealedResults: true }
+const MODERATOR = { administer: false, viewUnrevealedResults: true }
+const VISITOR = { administer: false, viewUnrevealedResults: false }
+
+function bracket(isAdminReveal: boolean, abilities = ADMIN) {
   return (
     <BracketTabs
       eventId="event-1"
       matches={matches}
       teams={[]}
       teamCount={4}
-      isEventAdmin={isEventAdmin}
+      abilities={abilities}
       isAdminReveal={isAdminReveal}
     />
   )
@@ -157,19 +161,35 @@ describe('bracket admin view and reveal panel', () => {
 
   it('never opens reveal mode for visitors with the URL flag', () => {
     url.search = 'revealMode=true'
-    render(bracket(false, false))
+    render(bracket(false, VISITOR))
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('closes the panel when admin access is removed', () => {
     const { rerender } = render(bracket(false))
     fireEvent.click(screen.getByRole('button', { name: 'Open reveal mode' }))
-    rerender(bracket(false, false))
+    rerender(bracket(false, VISITOR))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('shows moderators unrevealed results but no reveal controls', () => {
+    url.search = 'revealMode=true'
+    const { rerender } = render(bracket(false, MODERATOR))
+    expect(screen.getByTestId('bracket-results').textContent).toBe('')
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    rerender(bracket(true, MODERATOR))
+    expect(screen.getByTestId('bracket-results').textContent).toBe(
+      'Unrevealed winner',
+    )
+    expect(
+      screen.queryByRole('button', { name: 'Open reveal mode' }),
+    ).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('keeps unrevealed results hidden for visitors with the admin URL flag', () => {
-    render(bracket(true, false))
+    render(bracket(true, VISITOR))
     expect(screen.getByTestId('bracket-results').textContent).toBe('')
     expect(
       screen.queryByRole('button', { name: 'Open reveal mode' }),

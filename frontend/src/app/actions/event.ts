@@ -73,8 +73,17 @@ export async function isUserRegisteredForEvent(
     .data
 }
 
-export async function isEventAdmin(eventId: string): Promise<boolean> {
-  return (await axiosInstance.get<boolean>(`event/${eventId}/isEventAdmin`))
+/** What the signed-in user may do in one event; the API enforces each. */
+export interface EventAbilities {
+  administer: boolean
+  viewUnrevealedResults: boolean
+  publish: boolean
+}
+
+export async function getEventAbilities(
+  eventId: string,
+): Promise<EventAbilities> {
+  return (await axiosInstance.get<EventAbilities>(`event/${eventId}/abilities`))
     .data
 }
 
@@ -207,14 +216,6 @@ export async function createEvent(
   eventData: EventCreateParams,
 ): Promise<Event> {
   return (await axiosInstance.post<Event>(`event`, eventData)).data
-}
-
-export async function canUserCreateEvent(): Promise<boolean> {
-  try {
-    return (await axiosInstance.get<boolean>('user/canCreateEvent')).data
-  } catch {
-    return false
-  }
 }
 
 export async function updateEventSettings(

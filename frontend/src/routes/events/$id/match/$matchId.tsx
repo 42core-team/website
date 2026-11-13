@@ -9,7 +9,7 @@ import {
 } from '@tanstack/react-router'
 import { ChevronLeft } from 'lucide-react'
 import { useRef } from 'react'
-import { getEventById, isEventAdmin } from '@/app/actions/event'
+import { getEventById } from '@/app/actions/event'
 import {
   getLogsOfMatch,
   getMatchById,
@@ -19,6 +19,7 @@ import { MatchPhase } from '@/app/actions/tournament-model'
 import MatchLogsDisplay from '@/components/match/MatchLogsDisplay'
 import { Spinner } from '@/components/ui/spinner'
 import { useHideSiteNav } from '@/contexts/NavbarContext'
+import { useEventAbilities } from '@/hooks/use-event-abilities'
 import Navbar from '@/layouts/basic-navbar'
 import { getS3ReplaysBucketUrl, getVisualizerUrl } from '@/lib/env'
 import { buildMatchVisualizerUrl } from '@/lib/visualizer-url'
@@ -38,17 +39,14 @@ function MatchRoute() {
   const router = useRouter()
   const canGoBack = useCanGoBack()
   const logsRef = useRef<HTMLDivElement>(null)
-  const eventAdminQuery = useQuery({
-    queryKey: ['event', id, 'is-event-admin'],
-    queryFn: () => isEventAdmin(id),
-  })
-  // Unrevealed tournament matches only exist for event admins; the header
+  const { abilities, isPending: abilitiesPending } = useEventAbilities(id)
+  // Unrevealed tournament matches only exist for event staff; the header
   // still waits for the reveal before it shows the result.
-  const adminReveal = eventAdminQuery.data === true
+  const adminReveal = abilities.viewUnrevealedResults
   const matchQuery = useQuery({
     queryKey: ['match', matchId, { adminReveal }],
     queryFn: async () => getMatchById(matchId, adminReveal),
-    enabled: !eventAdminQuery.isPending,
+    enabled: !abilitiesPending,
     // An unknown or hidden match answers 404, which a retry cannot change.
     retry: retryUnlessStatus(404),
   })
