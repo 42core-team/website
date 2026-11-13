@@ -348,6 +348,20 @@ export class TeamService {
   }
 
   /** Applies the access the current event phase requires to the current roster. */
+  /**
+   * Refuses changes that would leave GitHub behind the database, e.g. a member
+   * who left keeping repository access, while the event cannot reach GitHub.
+   */
+  private async assertGithubConnected(event: EventEntity, repository: string) {
+    try {
+      await this.githubAuthService.authFor(event, [repository]);
+    } catch (error) {
+      if (error instanceof GithubNotConnectedError)
+        throw new BadRequestException(error.message);
+      throw error;
+    }
+  }
+
   private syncRepositoryAccess(teamId: string) {
     return this.changeRepositoryAccess(teamId, false, true);
   }
@@ -412,7 +426,9 @@ export class TeamService {
         locked,
         repositoryName: team.repo,
         githubOrg: team.event.githubOrg,
-        githubAuth: await this.githubAuthService.authFor(team.event),
+        githubAuth: await this.githubAuthService.authFor(team.event, [
+          team.repo,
+        ]),
         githubUsers: team.users.map((user) => ({
           username: user.username,
           githubId: user.githubId,
@@ -820,7 +836,9 @@ export class TeamService {
     if (!team.repo) return;
     let githubAuth: GithubAuth;
     try {
-      githubAuth = await this.githubAuthService.authFor(team.event);
+      githubAuth = await this.githubAuthService.authFor(team.event, [
+        team.repo,
+      ]);
     } catch (error) {
       if (!(error instanceof GithubNotConnectedError)) throw error;
       // Without access the repository cannot be removed; deleting the team must still work.
@@ -869,6 +887,8 @@ export class TeamService {
             "You are not part of a team for this event.",
           );
         const lastMember = team.users.length === 1;
+        if (team.repo && !lastMember)
+          await this.assertGithubConnected(team.event, team.repo);
         await manager
           .createQueryBuilder()
           .relation(TeamEntity, "users")
@@ -984,6 +1004,7 @@ export class TeamService {
       const maxUsers = team.event.maxTeamSize;
       if (!maxUsers || team.users.length >= maxUsers)
         throw new BadRequestException("This team is full.");
+      if (team.repo) await this.assertGithubConnected(team.event, team.repo);
       if (team.repo)
         await manager.update(TeamEntity, teamId, {
           repositoryStatus: RepositoryStatus.UNLOCKING,
@@ -1175,6 +1196,8 @@ export class TeamService {
         throw new BadRequestException("Match making is disabled.");
       if (!isPlaying(event) || !isMatchmakingReady(team))
         throw new BadRequestException("Match making is not available.");
+      // Checked before any credit is spent on a match that could not start.
+      await this.assertGithubConnected(event, team.repo);
 
       const match = await this.createBestQueueMatch(team, entityManager);
       if (!match)
@@ -1219,7 +1242,7 @@ export class TeamService {
             this.githubApiService.getRepositoryActivity(
               missing,
               event.githubOrg,
-              await this.githubAuthService.authFor(event),
+              await this.githubAuthService.authFor(event, missing),
             ),
         );
       } catch (error) {
@@ -1379,6 +1402,7 @@ export class TeamService {
         throw new BadRequestException(
           "Match making requires playing teams with ready repositories.",
         );
+      await this.assertGithubConnected(event, challenger.repo);
       accrueQueueCredits(
         challenger,
         event.maxQueueCredits,

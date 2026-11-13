@@ -202,7 +202,6 @@ postgres("unrevealed match results (PostgreSQL)", () => {
     event = await database.getRepository(EventEntity).save({
       name: randomUUID().slice(0, 30),
       githubOrg: "org",
-      githubOrgSecret: "secret",
       minTeamSize: 1,
       maxTeamSize: 4,
       startDate: new Date("2020-01-01"),
@@ -556,7 +555,6 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       const otherEvent = await database.getRepository(EventEntity).save({
         name: randomUUID().slice(0, 30),
         githubOrg: "org",
-        githubOrgSecret: "secret",
         minTeamSize: 1,
         maxTeamSize: 4,
         startDate: new Date("2020-01-01"),

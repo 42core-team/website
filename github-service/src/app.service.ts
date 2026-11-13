@@ -206,13 +206,11 @@ export class AppService {
     }
   }
 
-  /** A token for the event's organization, from the App installation or the organizer's PAT. */
+  /** An installation token for the event's organization. */
   async resolveGithubToken(githubAuth: GithubAuth): Promise<string> {
-    if (githubAuth.kind === "token")
-      return this.decryptSecret(githubAuth.encryptedSecret);
     if (!this.githubAppAuth.isEnabled())
       throw new Error(
-        "This event uses the GitHub App, but the App is not configured.",
+        "The CORE GitHub App is not configured on this server.",
       );
     return this.githubAppAuth.getInstallationToken(githubAuth.installationId);
   }
