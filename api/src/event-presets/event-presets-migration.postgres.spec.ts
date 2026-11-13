@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
 import { DataSource } from "typeorm";
@@ -6,6 +6,7 @@ import { SharedGithubInstallations1793100000000 } from "../../db/migrations/1793
 import {
   DEFAULT_PRESET_SETTINGS,
   EventPresets1793200000000,
+  seedDefaultPreset,
 } from "../../db/migrations/1793200000000-event-presets";
 import { PresetSettingsDto } from "./dtos/preset-settings.dto";
 import { resolvePresetSettings } from "./preset-resolver";
@@ -79,6 +80,12 @@ postgres("EventPresets migrations (PostgreSQL)", () => {
         forbidNonWhitelisted: true,
       }),
     ).toEqual([]);
+    expect(createHash("sha256").update(settings.gameConfig).digest("hex")).toBe(
+      "af1e4d72a1c0f63baddb748293ef4f25c761f5d4e915109ceedec10966f01d6c",
+    );
+    expect(
+      createHash("sha256").update(settings.serverConfig).digest("hex"),
+    ).toBe("ff48996cf78efe8cab5eb0290e85c14cf1e3a1701dff6f8d5ccb6f54997b8c0c");
     expect(JSON.parse(settings.gameConfig)).toHaveProperty("gridSize");
     expect(JSON.parse(settings.serverConfig)).toHaveProperty("timeoutTicks");
     expect(resolvePresetSettings(settings)).toMatchObject({
@@ -86,6 +93,22 @@ postgres("EventPresets migrations (PostgreSQL)", () => {
       basePath: "bots/c/bot",
       monorepoVersion: "dev",
     });
+  });
+
+  it("seeds idempotently without overwriting admin changes", async () => {
+    await database.query(
+      `UPDATE event_presets SET description = 'Edited by an admin' WHERE name = 'Default'`,
+    );
+    const runner = database.createQueryRunner();
+    try {
+      await seedDefaultPreset(runner);
+      await seedDefaultPreset(runner);
+    } finally {
+      await runner.release();
+    }
+    expect(
+      await database.query(`SELECT name, description FROM event_presets`),
+    ).toEqual([{ name: "Default", description: "Edited by an admin" }]);
   });
 
   it("allows one default and no archived default", async () => {

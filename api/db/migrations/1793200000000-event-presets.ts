@@ -1,214 +1,11 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-/*
- * The default preset's configs: bots/configs/fake_demo of
- * 42core-team/monorepo at dev (c3aba67). The create form used to fetch
- * configs from the monorepo; presets store them instead.
- */
-const GAME_CONFIG = `{
-	"gridSize": 20,
-	"seed": "",
-	"idleIncome": 3,
-	"idleIncomeTimeOut": 100,
-	"maxUnitStandingCooldown": 50,
-	"depositHp": 50,
-	"depositIncome": 100,
-	"gemPileIncome": 35,
-	"coreHp": 99,
-	"initialGems": 300,
-	"wallHp": 77,
-	"worldGenerator": "sparse",
-	"worldGeneratorConfig": {
-		"depositCount": 20,
-		"gemPileCount": 10,
-		"wallCount": 30,
-		"coreBuffer": 3
-	},
-	"components": {
-		"maxComponentsPerUnit": 5,
-		"unitDefaultCost": 20,
-		"unitDefaultProperties": {
-			"hp": 5,
-			"baseActionCooldown": 3,
-			"gemsPerCooldownStep": 10,
-			"maxGems": 100,
-			"damageReductionPercent": 0, 
-			"damageCore": 0,
-			"damageUnit": 0,
-			"damageObject": 0,
-			"postSpawnCoreCooldown": 10
-		},
-		"components": [
-			{
-				"id": "health",
-				"properties": [
-					{
-						"name": "hp",
-						"modification": 3
-					}
-				],
-				"cost": 12,
-				"visualizer_asset_priority": 0,
-				"visualizer_asset_path": "heart"
-			},
-			{
-				"id": "speed",
-				"properties": [
-					{
-						"name": "baseActionCooldown",
-						"modification": -2
-					}
-				],
-				"cost": 12,
-				"visualizer_asset_priority": 0,
-				"visualizer_asset_path": "lightning"
-			},
-			{
-				"id": "armor",
-				"properties": [
-					{
-						"name": "damageReductionPercent",
-						"modification": 20
-					}
-				],
-				"cost": 30,
-				"visualizer_asset_priority": 1,
-				"visualizer_asset_path": "shield"
-			},
-			{
-				"id": "unit_attack",
-				"properties": [
-					{
-						"name": "damageUnit",
-						"modification": 3
-					}
-				],
-				"cost": 15,
-				"visualizer_asset_priority": 1,
-				"visualizer_asset_path": "sword"
-			},
-			{
-				"id": "core_attack",
-				"properties": [
-					{
-						"name": "damageCore",
-						"modification": 3
-					}
-				],
-				"cost": 15,
-				"visualizer_asset_priority": 1,
-				"visualizer_asset_path": "axe"
-			},
-			{
-				"id": "mining",
-				"properties": [
-					{
-						"name": "damageObject",
-						"modification": 3
-					}
-				],
-				"cost": 15,
-				"visualizer_asset_priority": 1,
-				"visualizer_asset_path": "pickaxe"
-			},
-			{
-				"id": "gem_carrying_efficiency",
-				"properties": [
-					{
-						"name": "gemsPerCooldownStep",
-						"modification": 10
-					}
-				],
-				"cost": 20,
-				"visualizer_asset_priority": 0,
-				"visualizer_asset_path": "feather"
-			},
-			{
-				"id": "gem_carrying_capacity",
-				"properties": [
-					{
-						"name": "maxGems",
-						"modification": 50
-					}
-				],
-				"cost": 20,
-				"visualizer_asset_priority": 0,
-				"visualizer_asset_path": "bag"
-			}
-		],
-		"invalidConditions": [
-			{
-				"message": "Your action cooldown may not be less than your total attacks added together",
-				"condition": {
-					"type": "less_than",
-					"1": {
-						"type": "property",
-						"property": "baseActionCooldown"
-					},
-					"2": {
-						"type": "sum",
-						"1": {
-							"type": "sum",
-							"1": {
-								"type": "property",
-								"property": "damageUnit"
-							},
-							"2": {
-								"type": "property",
-								"property": "damageCore"
-							}
-						},
-						"2": {
-							"type": "property",
-							"property": "damageObject"
-						}
-					}
-				}
-			},
-			{
-				"message": "You may not have more than 4 armor components",
-				"condition": {
-					"type": "greater_than",
-					"1": {
-						"type": "component_count",
-						"component": "armor"
-					},
-					"2": {
-						"type": "const",
-						"value": 4
-					}
-				}
-			}
-		]
-	},
-	"corePositions": [
-		{
-			"x": 0,
-			"y": 0
-		},
-		{
-			"x": 19,
-			"y": 19
-		}
-	]
-}
-`;
+// Official 42core-team/config defaults at 54f501a, embedded for offline migrations.
+const GAME_CONFIG =
+  '{\n    "gridSize": 20,\n    "seed": "",\n    "idleIncome": 1,\n    "idleIncomeTimeOut": 350,\n    "maxUnitStandingCooldown": 12,\n    "depositHp": 30,\n    "depositIncome": 100,\n    "gemPileIncome": 25,\n    "coreHp": 99,\n    "initialGems": 200,\n    "wallHp": 42,\n    "worldGenerator": "jigsaw",\n    "worldGeneratorConfig": {\n        "templatePlaceAttemptCount": 5000,\n        "additionalWallPlaceAttemptCount": 50,\n        "depositCount": 36,\n        "gemPileCount": 16,\n        "minTemplateSpacing": 1,\n        "minCoreDistance": 5,\n        "depositAdditionalIncomePerAdjacentWall": 6,\n        "depositMultiplierIfFullySurrounded": 1.3,\n        "randomDepositIncomeVariation": 20,\n        "randomGemPileIncomeVariation": 8\n    },\n    "corePositions": [\n        {\n            "x": 0,\n            "y": 0\n        },\n        {\n            "x": 19,\n            "y": 19\n        }\n    ],\n    "components": {\n        "maxComponentsPerUnit": 6,\n        "unitDefaultCost": 42,\n        "unitDefaultProperties": {\n            "hp": 4,\n            "baseActionCooldown": 4,\n            "gemsPerCooldownStep": 16,\n            "maxGems": 16,\n            "damageReductionPercent": 0,\n            "damageCore": 0,\n            "damageUnit": 0,\n            "damageObject": 0,\n            "postSpawnCoreCooldown": 16\n        },\n        "components": [\n            {\n                "id": "health",\n                "properties": [\n                    {\n                        "name": "hp",\n                        "modification": 6\n                    },\n                    {\n                        "name": "postSpawnCoreCooldown",\n                        "modification": 3\n                    }\n                ],\n                "cost": 40,\n                "visualizer_asset_priority": 0,\n                "visualizer_asset_path": "heart"\n            },\n            {\n                "id": "speed",\n                "properties": [\n                    {\n                        "name": "baseActionCooldown",\n                        "modification": -2\n                    },\n                    {\n                        "name": "postSpawnCoreCooldown",\n                        "modification": 12\n                    }\n                ],\n                "cost": 55,\n                "visualizer_asset_priority": 0,\n                "visualizer_asset_path": "lightning"\n            },\n            {\n                "id": "armor",\n                "properties": [\n                    {\n                        "name": "damageReductionPercent",\n                        "modification": 30\n                    },\n                    {\n                        "name": "baseActionCooldown",\n                        "modification": 2\n                    },\n                    {\n                        "name": "postSpawnCoreCooldown",\n                        "modification": 4\n                    }\n                ],\n                "cost": 35,\n                "visualizer_asset_priority": 1,\n                "visualizer_asset_path": "shield"\n            },\n            {\n                "id": "combat",\n                "properties": [\n                    {\n                        "name": "damageUnit",\n                        "modification": 3\n                    },\n                    {\n                        "name": "baseActionCooldown",\n                        "modification": 3\n                    },\n                    {\n                        "name": "postSpawnCoreCooldown",\n                        "modification": 4\n                    }\n                ],\n                "cost": 35,\n                "visualizer_asset_priority": 2,\n                "visualizer_asset_path": "sword"\n            },\n            {\n                "id": "siege",\n                "properties": [\n                    {\n                        "name": "damageCore",\n                        "modification": 3\n                    },\n                    {\n                        "name": "baseActionCooldown",\n                        "modification": 3\n                    },\n                    {\n                        "name": "postSpawnCoreCooldown",\n                        "modification": 4\n                    }\n                ],\n                "cost": 35,\n                "visualizer_asset_priority": 3,\n                "visualizer_asset_path": "axe"\n            },\n            {\n                "id": "demolition",\n                "properties": [\n                    {\n                        "name": "damageObject",\n                        "modification": 3\n                    },\n                    {\n                        "name": "baseActionCooldown",\n                        "modification": 3\n                    },\n                    {\n                        "name": "postSpawnCoreCooldown",\n                        "modification": 4\n                    }\n                ],\n                "cost": 35,\n                "visualizer_asset_priority": 2,\n                "visualizer_asset_path": "pickaxe"\n            },\n            {\n                "id": "gem_speed",\n                "properties": [\n                    {\n                        "name": "gemsPerCooldownStep",\n                        "modification": 111\n                    },\n                    {\n                        "name": "hp",\n                        "modification": -2\n                    },\n\t\t\t\t\t{\n\t\t\t\t\t\t"name": "postSpawnCoreCooldown",\n\t\t\t\t\t\t"modification": 2\n\t\t\t\t\t}\n                ],\n                "cost": 40,\n                "visualizer_asset_priority": 1,\n                "visualizer_asset_path": "feather"\n            },\n            {\n                "id": "max_gems",\n                "properties": [\n                    {\n                        "name": "maxGems",\n                        "modification": 150\n                    },\n                    {\n                        "name": "hp",\n                        "modification": -1\n                    },\n\t\t\t\t\t{\n\t\t\t\t\t\t"name": "postSpawnCoreCooldown",\n\t\t\t\t\t\t"modification": 2\n\t\t\t\t\t}\n                ],\n                "cost": 40,\n                "visualizer_asset_priority": 0,\n                "visualizer_asset_path": "bag"\n            }\n        ],\n        "invalidConditions": [\n            {\n                "message": "Your baseActionCooldown must be more than or equal to all your damage properties (unit, core, object) added together.",\n                "condition": {\n                    "type": "less_than",\n                    "1": {\n                        "type": "property",\n                        "property": "baseActionCooldown"\n                    },\n                    "2": {\n                        "type": "sum",\n                        "1": {\n                            "type": "sum",\n                            "1": {\n                                "type": "property",\n                                "property": "damageUnit"\n                            },\n                            "2": {\n                                "type": "property",\n                                "property": "damageCore"\n                            }\n                        },\n                        "2": {\n                            "type": "property",\n                            "property": "damageObject"\n                        }\n                    }\n                }\n            },\n            {\n                "message": "You must have 1 or more hp.",\n                "condition": {\n                    "type": "less_than",\n                    "1": {\n                        "type": "property",\n                        "property": "hp"\n                    },\n                    "2": {\n                        "type": "const",\n                        "value": 1\n                    }\n                }\n            },\n            {\n                "message": "Your unit shall not have more than 3 armor components.",\n                "condition": {\n                    "type": "greater_than",\n                    "1": {\n                        "type": "component_count",\n                        "component": "armor"\n                    },\n                    "2": {\n                        "type": "const",\n                        "value": 3\n                    }\n                }\n            }\n        ]\n    }\n}\n';
 
-const SERVER_CONFIG = `{
-    "replayFolderPaths": [
-        "/workspace/replays",
-        "/workspaces/monorepo",
-        "/workspaces/monorepo/visualizer/public/replays",
-        "./replays"
-    ],
-    "timeoutTicks": 30000,
-    "timeoutMs": 3000000,
-    "clientWaitTimeoutMs": 30000,
-    "clientConnectTimeoutMs": 30000,
-    "clientLoginTimeoutMs": 5000,
-    "clientPacketsMaxSizeKb": 16
-}
-`;
+const SERVER_CONFIG =
+  '{\n    "replayFolderPaths": [\n        "/workspace/replays",\n        "/workspaces/monorepo",\n        "/workspaces/monorepo/visualizer/public/replays",\n        "./replays"\n    ],\n    "timeoutTicks": 10000,\n    "timeoutMs": 6000000,\n    "clientWaitTimeoutMs": 3000,\n    "clientConnectTimeoutMs": 30000,\n    "clientPacketsMaxSizeKb": 16\n}\n';
 
 /** The create form's former defaults; the schedule keeps its 1h and 2h. */
 export const DEFAULT_PRESET_SETTINGS = {
@@ -267,14 +64,7 @@ export class EventPresets1793200000000 implements MigrationInterface {
       `ALTER TABLE "events" ADD CONSTRAINT "FK_events_preset" FOREIGN KEY ("presetId") REFERENCES "event_presets"("id") ON DELETE SET NULL ON UPDATE NO ACTION`,
     );
 
-    await queryRunner.query(
-      `INSERT INTO "event_presets" ("name", "description", "isDefault", "settings")
-       VALUES ('Default', $1, true, $2)`,
-      [
-        "The settings the create form used before presets.",
-        JSON.stringify(DEFAULT_PRESET_SETTINGS),
-      ],
-    );
+    await seedDefaultPreset(queryRunner);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -286,4 +76,18 @@ export class EventPresets1793200000000 implements MigrationInterface {
     await queryRunner.query(`ALTER TABLE "events" DROP COLUMN "presetId"`);
     await queryRunner.query(`DROP TABLE "event_presets"`);
   }
+}
+
+/** Idempotent: never replaces an edited preset or an existing default. */
+export async function seedDefaultPreset(
+  queryRunner: QueryRunner,
+): Promise<void> {
+  await queryRunner.query(
+    `INSERT INTO "event_presets" ("name", "description", "isDefault", "settings")
+       SELECT 'Default', $1, true, $2 WHERE NOT EXISTS (SELECT 1 FROM event_presets WHERE "isDefault") ON CONFLICT ("name") DO NOTHING`,
+    [
+      "Default event settings with the official game and server configs.",
+      JSON.stringify(DEFAULT_PRESET_SETTINGS),
+    ],
+  );
 }
