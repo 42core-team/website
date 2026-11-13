@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { useStore } from '@tanstack/react-store'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useBlocker } from '@tanstack/react-router'
 import { z } from 'zod'
 import {
   getAdminPresets,
@@ -10,6 +10,7 @@ import {
   getAdminInstallations,
   createPreset,
   updatePreset,
+  setDefaultPreset,
   duplicatePreset,
   archivePreset,
   unarchivePreset,
@@ -20,6 +21,9 @@ import type { PresetDetail, PresetInput, Schedule } from '@/app/actions/presets'
 import { AdminGuard } from '@/components/presets/admin-guard'
 import {
   SettingsFields,
+  SettingsSection,
+  numberValue,
+  numberInput,
   TemplatesFields,
   ValidationErrors,
   issueMessages,
@@ -29,10 +33,18 @@ import {
   presetSettingsSchema,
   templatesSchema,
   schedulePreview,
+  same,
 } from '@/components/presets/settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
 import { Spinner } from '@/components/ui/spinner'
 
 export const Route = createFileRoute('/admin/presets')({
@@ -45,6 +57,20 @@ export const Route = createFileRoute('/admin/presets')({
 export function PresetsPage() {
   const client = useQueryClient()
   const [archived, setArchived] = useState(false)
+  const [dirty, setDirty] = useState(false)
+  const discardEditor = () => {
+    setDirty(false)
+    setEditing(null)
+  }
+  const closeEditor = () => {
+    if (dirty && !window.confirm('Discard your unsaved preset edits?')) return
+    discardEditor()
+  }
+  useBlocker({
+    shouldBlockFn: () =>
+      dirty && !window.confirm('Discard your unsaved preset edits?'),
+    enableBeforeUnload: dirty,
+  })
   const [editing, setEditing] = useState<string | null>(null)
   const rows = useQuery({
     queryKey: ['admin', 'presets', archived],
@@ -71,16 +97,7 @@ export function PresetsPage() {
       if (operation === 'duplicate') return duplicatePreset(id)
       if (operation === 'archive') return archivePreset(id)
       if (operation === 'unarchive') return unarchivePreset(id)
-      const preset = await getAdminPreset(id)
-      return updatePreset(id, {
-        name: preset.name,
-        description: preset.description,
-        version: preset.version,
-        settings: preset.settings,
-        starterTemplates: preset.starterTemplates,
-        githubInstallationId: preset.githubInstallation?.id ?? null,
-        isDefault: true,
-      })
+      return setDefaultPreset(id)
     },
     onSuccess: refresh,
   })
@@ -89,14 +106,12 @@ export function PresetsPage() {
       <h1 className="text-3xl font-bold">Event presets</h1>
       <div className="flex gap-4">
         <Button onClick={() => setEditing('new')}>Create preset</Button>
-        <label>
-          <input
-            type="checkbox"
-            checked={archived}
-            onChange={(e) => setArchived(e.target.checked)}
-          />{' '}
-          Include archived
-        </label>
+        <label htmlFor="include-archived">Include archived</label>
+        <Switch
+          id="include-archived"
+          checked={archived}
+          onCheckedChange={setArchived}
+        />
       </div>
       {rows.isPending && <Spinner />}
       {rows.isError && (
@@ -160,38 +175,59 @@ export function PresetsPage() {
           )}
         </div>
       ))}
-      {editing && editing !== 'new' && detail.isPending && <Spinner />}
-      {editing && detail.isError && (
-        <p role="alert">
-          Could not load preset.{' '}
-          <Button onClick={() => void detail.refetch()}>Retry</Button>
-        </p>
-      )}
-      {editing === 'new' ? (
-        <PresetEditor
-          key="new"
-          onSaved={async () => {
-            setEditing(null)
-            await refresh()
-          }}
-          onCancel={() => setEditing(null)}
-        />
-      ) : (
-        editing &&
-        detail.data && (
-          <PresetEditor
-            key={`${detail.data.id}-${detail.data.version}`}
-            preset={detail.data}
-            onReload={() => void detail.refetch()}
-            onCancel={() => setEditing(null)}
-            onSaved={async () => {
-              setEditing(null)
-              await refresh()
-              await client.invalidateQueries({ queryKey: ['admin', 'preset'] })
-            }}
-          />
-        )
-      )}
+      <Dialog
+        open={Boolean(editing)}
+        onOpenChange={(open) => {
+          if (!open) closeEditor()
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogTitle>
+            {editing === 'new' ? 'Create preset' : 'Edit preset'}
+          </DialogTitle>
+          <DialogDescription>
+            Configure the settings organizers start with when creating an event.
+          </DialogDescription>
+          {editing && editing !== 'new' && detail.isPending && <Spinner />}
+          {editing && detail.isError && (
+            <p role="alert">
+              Could not load preset.{' '}
+              <Button onClick={() => void detail.refetch()}>Retry</Button>
+            </p>
+          )}
+          {editing === 'new' ? (
+            <PresetEditor
+              key="new"
+              onDirty={setDirty}
+              onSaved={async () => {
+                setDirty(false)
+                setEditing(null)
+                await refresh()
+              }}
+              onCancel={discardEditor}
+            />
+          ) : (
+            editing &&
+            detail.data && (
+              <PresetEditor
+                key={`${detail.data.id}-${detail.data.version}`}
+                preset={detail.data}
+                onReload={() => void detail.refetch()}
+                onCancel={discardEditor}
+                onDirty={setDirty}
+                onSaved={async () => {
+                  setDirty(false)
+                  setEditing(null)
+                  await refresh()
+                  await client.invalidateQueries({
+                    queryKey: ['admin', 'preset'],
+                  })
+                }}
+              />
+            )
+          )}
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }
@@ -200,10 +236,12 @@ export function PresetEditor({
   onSaved,
   onReload,
   onCancel,
+  onDirty,
 }: {
   preset?: PresetDetail
   onSaved: () => Promise<void>
   onReload?: () => void
+  onDirty?: (dirty: boolean) => void
   onCancel: () => void
 }) {
   const installations = useQuery({
@@ -218,16 +256,17 @@ export function PresetEditor({
         : createPreset(input),
     onSuccess: onSaved,
   })
+  const initialValues = {
+    name: preset?.name ?? '',
+    description: preset?.description ?? '',
+    isDefault: preset?.isDefault ?? false,
+    settings: preset?.settings ?? defaultSettings,
+    starterTemplates: preset?.starterTemplates ?? [],
+    githubInstallationId:
+      preset?.githubInstallation?.id ?? (null as string | null),
+  }
   const form = useForm({
-    defaultValues: {
-      name: preset?.name ?? '',
-      description: preset?.description ?? '',
-      isDefault: preset?.isDefault ?? false,
-      settings: preset?.settings ?? defaultSettings,
-      starterTemplates: preset?.starterTemplates ?? [],
-      githubInstallationId:
-        preset?.githubInstallation?.id ?? (null as string | null),
-    },
+    defaultValues: initialValues,
     onSubmit: async ({ value }) => {
       const result = z
         .object({
@@ -242,6 +281,10 @@ export function PresetEditor({
     },
   })
   const values = useStore(form.store, (state) => state.values)
+  const dirty = !same(values, initialValues)
+  useEffect(() => {
+    onDirty?.(dirty)
+  }, [dirty, onDirty])
   const schedule = values.settings.schedule
   const changeSchedule = (key: keyof Schedule, value: string) =>
     form.setFieldValue('settings', {
@@ -253,7 +296,7 @@ export function PresetEditor({
             ? value
             : value === '' && key !== 'startOffsetDays'
               ? undefined
-              : Number(value),
+              : numberValue(value),
       },
     })
   let preview = 'Enter a valid schedule'
@@ -286,101 +329,116 @@ export function PresetEditor({
           value={values.description}
           onChange={(e) => form.setFieldValue('description', e.target.value)}
         />
-        <label>
-          <input
-            type="checkbox"
-            checked={values.isDefault}
-            // Creation without a preset needs a default, so the default is
-            // only moved by marking another preset as default.
-            disabled={preset?.isDefault}
-            onChange={(e) => form.setFieldValue('isDefault', e.target.checked)}
-          />{' '}
-          Default preset
-        </label>
+        <label htmlFor="preset-default">Default preset</label>
+        <Switch
+          id="preset-default"
+          checked={values.isDefault}
+          // Creation without a preset needs a default, so the default is
+          // only moved by marking another preset as default.
+          disabled={preset?.isDefault}
+          onCheckedChange={(checked) =>
+            form.setFieldValue('isDefault', checked)
+          }
+        />
         <SettingsFields
           value={values.settings}
           onChange={(next) => form.setFieldValue('settings', next)}
-        />
-        <fieldset className="grid gap-4 md:grid-cols-2">
-          <legend>Schedule (Europe/Berlin)</legend>
-          {(
-            [
-              'startOffsetDays',
-              'startTime',
-              'submissionDeadlineAfterHours',
-              'scheduledEndAfterHours',
-              'endAfterHours',
-            ] as const
-          ).map((key) => (
-            <label key={key} htmlFor={`schedule-${key}`}>
-              {
-                {
-                  startOffsetDays: 'Days from today',
-                  startTime: 'Start time',
-                  submissionDeadlineAfterHours:
-                    'Submission deadline after hours',
-                  scheduledEndAfterHours: 'Scheduled end after hours',
-                  endAfterHours: 'End after hours',
-                }[key]
-              }
-              <Input
-                id={`schedule-${key}`}
-                {...(key === 'startTime'
-                  ? { type: 'time' }
-                  : {
-                      type: 'number',
-                      min: 0,
-                      step: key === 'startOffsetDays' ? 1 : 'any',
-                      max: key === 'startOffsetDays' ? 365 : undefined,
-                    })}
-                value={schedule[key] ?? ''}
-                onChange={(e) => changeSchedule(key, e.target.value)}
-              />
-            </label>
-          ))}
-        </fieldset>
-        <p aria-live="polite">
-          An event created today would start on {preview}.
-        </p>
-        <TemplatesFields
-          value={values.starterTemplates}
-          onChange={(next) => form.setFieldValue('starterTemplates', next)}
-        />
-        <label htmlFor="shared-installation">Shared GitHub installation</label>
-        <select
-          id="shared-installation"
-          className="w-full rounded border bg-background p-2"
-          value={values.githubInstallationId ?? ''}
-          onChange={(e) =>
-            form.setFieldValue('githubInstallationId', e.target.value || null)
+          scheduleFields={
+            <>
+              <fieldset className="grid gap-4 md:grid-cols-2">
+                <legend>Schedule (Europe/Berlin)</legend>
+                {(
+                  [
+                    'startOffsetDays',
+                    'startTime',
+                    'submissionDeadlineAfterHours',
+                    'scheduledEndAfterHours',
+                    'endAfterHours',
+                  ] as const
+                ).map((key) => (
+                  <label key={key} htmlFor={`schedule-${key}`}>
+                    {
+                      {
+                        startOffsetDays: 'Days from today',
+                        startTime: 'Start time',
+                        submissionDeadlineAfterHours:
+                          'Submission deadline after hours',
+                        scheduledEndAfterHours: 'Scheduled end after hours',
+                        endAfterHours: 'End after hours',
+                      }[key]
+                    }
+                    <Input
+                      id={`schedule-${key}`}
+                      {...(key === 'startTime'
+                        ? { type: 'time' }
+                        : {
+                            type: 'number',
+                            min: 0,
+                            step: key === 'startOffsetDays' ? 1 : 'any',
+                            max: key === 'startOffsetDays' ? 365 : undefined,
+                          })}
+                      value={
+                        key === 'startTime'
+                          ? schedule.startTime
+                          : numberInput(schedule[key])
+                      }
+                      onChange={(e) => changeSchedule(key, e.target.value)}
+                    />
+                  </label>
+                ))}
+              </fieldset>
+              <p aria-live="polite">
+                An event created today would start on {preview}.
+              </p>
+            </>
           }
-        >
-          <option value="">None</option>
-          {preset?.githubInstallation &&
-            !installations.data?.some(
-              (i) => i.id === preset.githubInstallation?.id && i.sharedAt,
-            ) && (
-              <option disabled value={preset.githubInstallation.id}>
-                {preset.githubInstallation.accountLogin} (no longer shared —
-                choose another)
-              </option>
-            )}
-          {installations.data
-            ?.filter((i) => i.sharedAt)
-            .map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.accountLogin}
-              </option>
-            ))}
-        </select>
-        {installations.isError && (
-          <p role="alert">
-            Could not load shared installations.{' '}
-            <Button type="button" onClick={() => void installations.refetch()}>
-              Retry
-            </Button>
-          </p>
-        )}
+        />
+        <SettingsSection title="GitHub Integration">
+          <TemplatesFields
+            value={values.starterTemplates}
+            onChange={(next) => form.setFieldValue('starterTemplates', next)}
+          />
+          <label htmlFor="shared-installation">
+            Shared GitHub installation
+          </label>
+          <select
+            id="shared-installation"
+            className="w-full rounded border bg-background p-2"
+            value={values.githubInstallationId ?? ''}
+            onChange={(e) =>
+              form.setFieldValue('githubInstallationId', e.target.value || null)
+            }
+          >
+            <option value="">None</option>
+            {preset?.githubInstallation &&
+              !installations.data?.some(
+                (i) => i.id === preset.githubInstallation?.id && i.sharedAt,
+              ) && (
+                <option disabled value={preset.githubInstallation.id}>
+                  {preset.githubInstallation.accountLogin} (no longer shared —
+                  choose another)
+                </option>
+              )}
+            {installations.data
+              ?.filter((i) => i.sharedAt)
+              .map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.accountLogin}
+                </option>
+              ))}
+          </select>
+          {installations.isError && (
+            <p role="alert">
+              Could not load shared installations.{' '}
+              <Button
+                type="button"
+                onClick={() => void installations.refetch()}
+              >
+                Retry
+              </Button>
+            </p>
+          )}
+        </SettingsSection>
         <ValidationErrors messages={errors} />
         {mutation.isError && (
           <p role="alert">
@@ -403,7 +461,14 @@ export function PresetEditor({
             type="button"
             variant="outline"
             disabled={mutation.isPending}
-            onClick={onCancel}
+            onClick={() => {
+              if (
+                !dirty ||
+                window.confirm('Discard your unsaved preset edits?')
+              ) {
+                onCancel()
+              }
+            }}
           >
             Cancel
           </Button>

@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { useStore } from '@tanstack/react-store'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  Navigate,
+  useNavigate,
+} from '@tanstack/react-router'
 import { toast } from 'sonner'
 import {
   getPresets,
@@ -18,6 +23,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import {
   SettingsFields,
+  SettingsSection,
   TemplatesFields,
   Reset,
   ValidationErrors,
@@ -184,6 +190,7 @@ function CreatePresetForm({
       <label htmlFor="event-name">Name</label>
       <Input
         id="event-name"
+        placeholder="Enter event name"
         value={values.name}
         onChange={(e) => {
           form.setFieldValue('name', e.target.value)
@@ -208,7 +215,7 @@ function CreatePresetForm({
               onDirty(changedValues({ ...values, settings: next }, baseline))
             }}
           />
-          <div>
+          <SettingsSection title="GitHub Integration">
             <label htmlFor="installation">GitHub installation</label>
             <Reset
               label="GitHub installation"
@@ -274,7 +281,7 @@ function CreatePresetForm({
                 </Button>
               </p>
             )}
-          </div>
+          </SettingsSection>
           <TemplatesFields
             value={values.starterTemplates}
             baseline={baseline.starterTemplates}
@@ -292,6 +299,9 @@ function CreatePresetForm({
       </p>
       <ValidationErrors messages={errors} />
       {mutation.isError && <p role="alert">{presetError(mutation.error)}</p>}
+      <Button asChild variant="outline">
+        <Link to="/events">Cancel</Link>
+      </Button>
       <Button
         type="submit"
         disabled={mutation.isPending || !values.name.trim()}
