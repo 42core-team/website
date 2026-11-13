@@ -16,11 +16,12 @@ import {
   UserEventPermissionEntity,
 } from "src/user/entities/user.entity";
 import { TeamEntity } from "src/team/entities/team.entity";
-import { Exclude } from "class-transformer";
+import { Exclude, Transform } from "class-transformer";
 import { EventStarterTemplateEntity } from "./event-starter-template.entity";
 import { EventWhitelistEntity } from "./event-whitelist.entity";
 import { EventState } from "../event-lifecycle";
 import { GithubInstallationEntity } from "../../github-api/entities/github-installation.entity";
+import { EventPresetEntity } from "../../event-presets/entities/event-preset.entity";
 
 @Entity("events")
 export class EventEntity {
@@ -153,6 +154,27 @@ export class EventEntity {
 
   @Column({ default: false })
   isPrivate: boolean;
+
+  /** The preset the event was created from, for provenance only. */
+  @Exclude()
+  @Column({ type: "uuid", nullable: true })
+  @Index("IDX_events_preset_id")
+  presetId: string | null;
+
+  /** Only its id and name are exposed. */
+  @Transform(({ value }: { value: EventPresetEntity | null | undefined }) =>
+    value ? { id: value.id, name: value.name } : value,
+  )
+  @ManyToOne(() => EventPresetEntity, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({
+    name: "presetId",
+    foreignKeyConstraintName: "FK_events_preset",
+  })
+  preset: EventPresetEntity | null;
+
+  /** The preset's version when the event was created. */
+  @Column({ type: "int", nullable: true })
+  presetVersion: number | null;
 
   @Exclude()
   @JoinTable({ name: "events_users" })

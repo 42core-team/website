@@ -110,6 +110,7 @@ describe("event lifecycle", () => {
       {} as never,
       teamService as never,
       dataSource as never,
+      {} as never,
     );
     return {
       stored,
@@ -512,6 +513,7 @@ describe("event lifecycle", () => {
       {} as never,
       userService as never,
       {} as never,
+      {} as never,
     );
     await expect(controller.joinEvent("event", "user")).rejects.toThrow(
       "Registration is closed",
@@ -555,6 +557,7 @@ describe("event lifecycle", () => {
         createQueryRunner: () => runner,
         query: jest.fn().mockResolvedValue([]),
       } as never,
+      {} as never,
     );
     const close = jest
       .spyOn(service, "lockEvent")

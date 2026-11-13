@@ -111,6 +111,7 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       {} as never,
       {} as never,
       database,
+      {} as never,
     );
     const matchService = Object.create(MatchService.prototype) as MatchService;
     const teamService = new TeamService(

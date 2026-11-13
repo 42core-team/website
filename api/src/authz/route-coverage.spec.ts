@@ -84,9 +84,22 @@ function httpRoutes(controllers: Type[]): Route[] {
 // EventPolicy.view hides private events from guests with 404; the public team routes and
 // the match routes by match or team id check it in the service.
 const DECISIONS: Record<string, string> = {
+  "DELETE /admin/github-installations/:id/share":
+    "PlatformPolicy.manageSharedInstallations",
   "DELETE /admin/roles/:id": "PlatformPolicy.manageRoles",
+  "GET /admin/event-presets": "PlatformPolicy.managePresets",
+  "GET /admin/event-presets/:id": "PlatformPolicy.managePresets",
+  "POST /admin/event-presets": "PlatformPolicy.managePresets",
+  "POST /admin/event-presets/:id/archive": "PlatformPolicy.managePresets",
+  "POST /admin/event-presets/:id/default": "PlatformPolicy.managePresets",
+  "POST /admin/event-presets/:id/duplicate": "PlatformPolicy.managePresets",
+  "POST /admin/event-presets/:id/unarchive": "PlatformPolicy.managePresets",
+  "PUT /admin/event-presets/:id": "PlatformPolicy.managePresets",
   "GET /admin/events": "PlatformPolicy.manageRoles",
+  "GET /admin/github-installations": "PlatformPolicy.manageSharedInstallations",
   "GET /admin/roles": "PlatformPolicy.manageRoles",
+  "POST /admin/github-installations/:id/share":
+    "PlatformPolicy.manageSharedInstallations",
   "POST /admin/roles": "PlatformPolicy.manageRoles",
   "DELETE /event/:id/admins/:adminId": "EventPolicy.administer",
   "DELETE /event/:id/templates/:templateId": "EventPolicy.administer",
@@ -122,8 +135,11 @@ const DECISIONS: Record<string, string> = {
   "GET /event/:id/whitelist": "EventPolicy.administer",
   "GET /event/event/currentLiveEvent": "public",
   "GET /event/overview": "SessionPolicy.signedIn",
+  "GET /event-presets": "PlatformPolicy.createEvent",
+  "GET /event-presets/:id/resolved": "PlatformPolicy.createEvent",
   "GET /gambling/event/:eventId": "SessionPolicy.signedIn+EventPolicy.view",
   "GET /github/app": "public",
+  "GET /github/installations": "PlatformPolicy.createEvent",
   "GET /health": "public",
   "GET /health/ready": "public",
   "GET /match/:matchId": "SessionPolicy.signedIn",

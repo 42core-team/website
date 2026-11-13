@@ -43,6 +43,7 @@ postgres("current live event (PostgreSQL)", () => {
       {} as never,
       {} as never,
       database,
+      {} as never,
     );
   });
 

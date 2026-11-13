@@ -42,6 +42,34 @@ import { MatchEntity, MatchPhase } from "../match/entites/match.entity";
 import { lockEvent } from "./event-lock";
 import { toPublicUsers } from "../user/dtos/public-user.dto";
 import { removeAdminGrant } from "../roles/admin-grants";
+import { EventSettingsDto } from "./dtos/eventSettingsDto";
+import { GithubInstallationEntity } from "../github-api/entities/github-installation.entity";
+import {
+  GithubAppAuth,
+  GithubAppInstallation,
+  GithubAppRequestError,
+} from "../github-api/github-app-auth";
+import {
+  GithubInstallationOwner,
+  missingPermissions,
+} from "../github-api/github-installation-owner";
+import { isSharedInstallation } from "../github-api/installation-sharing";
+
+/** Everything a new event is created from; see EventService.createEvent. */
+export interface CreateEventInput {
+  userId: string;
+  /** Merged onto the preset and validated. */
+  settings: EventSettingsDto;
+  presetId: string | null;
+  presetVersion: number | null;
+  starterTemplates: readonly {
+    name: string;
+    basePath: string;
+    myCoreBotDockerImage: string;
+  }[];
+  /** A shared or actively owned installation, checked at create time. */
+  githubInstallationId: string | null;
+}
 
 @Injectable()
 export class EventService {
@@ -58,6 +86,7 @@ export class EventService {
     @Inject(forwardRef(() => TeamService))
     private readonly teamService: TeamService,
     private readonly dataSource: DataSource,
+    private readonly githubAppAuth: GithubAppAuth,
   ) {}
 
   logger = new Logger("EventService");
@@ -309,87 +338,153 @@ export class EventService {
     return event.serverConfig;
   }
 
-  async createEvent(
-    userId: string,
-    name: string,
-    description: string,
-    location: string,
-    startDate: number,
-    endDate: number | undefined,
-    minTeamSize: number,
-    maxTeamSize: number,
-    gameServerDockerImage: string,
-    myCoreBotDockerImage: string,
-    visualizerDockerImage: string,
-    monorepoUrl: string,
-    monorepoVersion: string,
-    basePath: string,
-    gameConfig: string,
-    serverConfig: string,
-    isPrivate: boolean = false,
-    lifecycle: {
-      submissionDeadline?: number;
-      scheduledEndDate?: number;
-      introEnabled?: boolean;
-      introLeadMinutes?: number;
-      streamUrl?: string;
-      showtimeStreamUrl?: string;
-    } = {},
-  ) {
+  /**
+   * Creates the event, its starter templates and the creator's event ADMIN
+   * role, and links the installation, all in one transaction. The settings
+   * are already merged and validated; unshared installations need ownership.
+   */
+  async createEvent({
+    userId,
+    settings,
+    presetId,
+    presetVersion,
+    starterTemplates,
+    githubInstallationId,
+  }: CreateEventInput): Promise<EventEntity> {
     const dates = {
-      startDate: new Date(startDate),
-      submissionDeadline: new Date(
-        lifecycle.submissionDeadline ?? endDate ?? NaN,
-      ),
-      scheduledEndDate: new Date(lifecycle.scheduledEndDate ?? endDate ?? NaN),
-      introEnabled: lifecycle.introEnabled ?? false,
-      introLeadMinutes: lifecycle.introLeadMinutes ?? 15,
+      startDate: new Date(settings.startDate),
+      submissionDeadline: new Date(settings.submissionDeadline),
+      scheduledEndDate: new Date(settings.scheduledEndDate),
+      introEnabled: settings.introEnabled,
+      introLeadMinutes: settings.introLeadMinutes,
     };
     this.validateLifecycleDates(dates);
-    const streamUrl = normalizeStreamUrl(lifecycle.streamUrl);
+    const endDate = new Date(settings.endDate);
+    if (!Number.isFinite(endDate.getTime()))
+      throw new BadRequestException("A valid endDate is required");
+    const streamUrl = normalizeStreamUrl(settings.streamUrl);
     const showtimeStreamUrl = normalizeStreamUrl(
-      lifecycle.showtimeStreamUrl,
+      settings.showtimeStreamUrl,
       "showtimeStreamUrl",
     );
-    await Promise.all(
-      [gameServerDockerImage, myCoreBotDockerImage, visualizerDockerImage].map(
-        assertImageExists,
-      ),
-    );
+    const images = new Set([
+      settings.gameServerDockerImage,
+      settings.myCoreBotDockerImage,
+      settings.visualizerDockerImage,
+      ...starterTemplates.map((template) => template.myCoreBotDockerImage),
+    ]);
+    await Promise.all([...images].map(assertImageExists));
+
+    // GitHub calls run before the transaction, then local status/sharing are
+    // checked under a row lock. Never reuse the list endpoint's ownership cache.
+    let ownedInstallationId: string | null = null;
+    if (githubInstallationId) {
+      const installation = await this.dataSource
+        .getRepository(GithubInstallationEntity)
+        .findOneBy({ id: githubInstallationId });
+      if (!installation || installation.suspendedAt || installation.deletedAt)
+        throw new BadRequestException(
+          "The GitHub installation is unknown, suspended or uninstalled.",
+        );
+      if (!isSharedInstallation(installation)) {
+        let live: GithubAppInstallation;
+        try {
+          live = await this.githubAppAuth.getInstallation(
+            installation.installationId,
+          );
+        } catch (error) {
+          if (error instanceof GithubAppRequestError && error.status === 404)
+            throw new BadRequestException(
+              "The GitHub installation is uninstalled.",
+            );
+          throw error;
+        }
+        if (!live.account || live.suspended_at)
+          throw new BadRequestException(
+            "The GitHub installation is unavailable.",
+          );
+        // As when linking: the owner check below needs Members access.
+        const missing = missingPermissions(live.permissions);
+        if (missing.length)
+          throw new BadRequestException(
+            `The installation on ${live.account.login} lacks these permissions: ${missing.join(", ")}. An owner must accept the App's requested permissions on GitHub.`,
+          );
+        const user = await this.dataSource
+          .getRepository(UserEntity)
+          .findOneByOrFail({ id: userId });
+        await new GithubInstallationOwner(
+          this.githubAppAuth,
+        ).assertCanManageAccount(live, user.githubId);
+        ownedInstallationId = installation.id;
+      }
+    }
 
     return this.dataSource.transaction(async (manager) => {
-      const event = await manager.getRepository(EventEntity).save({
-        name,
-        description,
-        // Set when the GitHub App is connected.
-        githubOrg: "",
-        location,
-        minTeamSize,
-        maxTeamSize,
-        ...dates,
-        streamUrl,
-        showtimeStreamUrl,
-        state: getEventState(dates),
-        canCreateTeam: isRegistrationOpen(dates),
-        processQueue: isRegistrationOpen(dates),
-        gamblingEnabled: isRegistrationOpen(dates),
-        endDate: dates.scheduledEndDate,
-        repoLockDate: dates.submissionDeadline,
-        users: [
-          {
-            id: userId,
-          },
-        ],
-        gameServerDockerImage,
-        myCoreBotDockerImage,
-        visualizerDockerImage,
-        monorepoUrl,
-        monorepoVersion,
-        basePath,
-        gameConfig,
-        serverConfig,
-        isPrivate,
-      });
+      const installation = githubInstallationId
+        ? await manager.getRepository(GithubInstallationEntity).findOne({
+            where: { id: githubInstallationId },
+            lock: { mode: "pessimistic_read" },
+          })
+        : null;
+      if (
+        githubInstallationId &&
+        (!installation || installation.suspendedAt || installation.deletedAt)
+      )
+        throw new BadRequestException(
+          "The GitHub installation is unknown, suspended or uninstalled.",
+        );
+      if (
+        installation &&
+        !isSharedInstallation(installation) &&
+        ownedInstallationId !== installation.id
+      )
+        throw new ConflictException(
+          "This installation is no longer shared. Retry to check ownership.",
+        );
+
+      const events = manager.getRepository(EventEntity);
+      const event = await events.save(
+        events.create({
+          name: settings.name,
+          description: settings.description,
+          // Without an installation the organization is set when the GitHub App is connected.
+          githubOrg: installation?.accountLogin ?? "",
+          githubInstallationId: installation?.id ?? null,
+          location: settings.location,
+          minTeamSize: settings.minTeamSize,
+          maxTeamSize: settings.maxTeamSize,
+          ...dates,
+          streamUrl,
+          showtimeStreamUrl,
+          state: getEventState(dates),
+          canCreateTeam: isRegistrationOpen(dates),
+          processQueue: isRegistrationOpen(dates),
+          gamblingEnabled: isRegistrationOpen(dates),
+          endDate,
+          repoLockDate: dates.submissionDeadline,
+          users: [{ id: userId }],
+          gameServerDockerImage: settings.gameServerDockerImage,
+          myCoreBotDockerImage: settings.myCoreBotDockerImage,
+          visualizerDockerImage: settings.visualizerDockerImage,
+          monorepoUrl: settings.monorepoUrl,
+          monorepoVersion: settings.monorepoVersion,
+          basePath: settings.basePath,
+          gameConfig: settings.gameConfig,
+          serverConfig: settings.serverConfig,
+          isPrivate: settings.isPrivate,
+          presetId,
+          presetVersion,
+        }),
+      );
+      if (starterTemplates.length)
+        await manager.getRepository(EventStarterTemplateEntity).insert(
+          starterTemplates.map(({ name, basePath, myCoreBotDockerImage }) => ({
+            name,
+            basePath,
+            myCoreBotDockerImage,
+            event: { id: event.id },
+          })),
+        );
       await manager.getRepository(UserRoleEntity).insert({
         userId,
         role: UserRole.ADMIN,

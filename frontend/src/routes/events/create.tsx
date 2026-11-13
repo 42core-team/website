@@ -1,975 +1,337 @@
+import { useEffect, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useStore } from '@tanstack/react-store'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { isAxiosError } from 'axios'
-import { format } from 'date-fns'
-import { ArrowLeft, CalendarIcon } from 'lucide-react'
-import type { FormEvent, ReactNode } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  createFileRoute,
+  Link,
+  Navigate,
+  useNavigate,
+} from '@tanstack/react-router'
 import { toast } from 'sonner'
-import * as z from 'zod'
-import type { EventCreateParams } from '@/app/actions/event'
-import { createEvent, isGithubAppAvailable } from '@/app/actions/event'
-import Link from '@/components/app-link'
-import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
-import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import { Spinner } from '@/components/ui/spinner'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
+  getPresets,
+  resolvePreset,
+  getCreateInstallations,
+  presetError,
+} from '@/app/actions/presets'
+import type { ResolvedPreset } from '@/app/actions/presets'
+import { createEvent } from '@/app/actions/event'
 import { useSession } from '@/lib/auth'
-import { getEventNameError } from '@/lib/event-validation'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Spinner } from '@/components/ui/spinner'
 import {
-  getGithubConfigError,
-  githubConfigSchema,
-  normalizeGithubConfigValue,
-} from '@/lib/github-validation'
-import { cn } from '@/lib/utils'
+  SettingsFields,
+  SettingsSection,
+  TemplatesFields,
+  Reset,
+  PresetWarnings,
+  ValidationErrors,
+  issueMessages,
+} from '@/components/presets/settings-fields'
+import {
+  changedValues,
+  createPayload,
+  followStart,
+  moveWithStart,
+  resolvedValues,
+  nameSchema,
+  eventSettingsSchema,
+  templatesSchema,
+} from '@/components/presets/settings'
 
 export const Route = createFileRoute('/events/create')({
   component: CreateEventRoute,
 })
-
-const formSchema = z
-  .object({
-    // Sent trimmed, see onSubmit.
-    name: z.string().superRefine((value, ctx) => {
-      const message = getEventNameError(value.trim())
-      if (message) ctx.addIssue({ code: 'custom', message })
-    }),
-    description: z.string().optional(),
-    location: z.string().optional(),
-    startDate: z.date({ message: 'Start date is required' }),
-    submissionDeadline: z.date({ message: 'Submission deadline is required' }),
-    scheduledEndDate: z.date({ message: 'Scheduled end is required' }),
-    introEnabled: z.boolean(),
-    introLeadMinutes: z.number().int().min(0),
-    streamUrl: z.union([
-      z.literal(''),
-      z.url('Stream URL must be a valid URL'),
-    ]),
-    showtimeStreamUrl: z.union([
-      z.literal(''),
-      z.url('Showtime stream URL must be a valid URL'),
-    ]),
-    minTeamSize: z.number().min(1).max(10),
-    maxTeamSize: z.number().min(1).max(10),
-    monorepoUrl: githubConfigSchema('monorepoUrl'),
-    monorepoVersion: githubConfigSchema('monorepoVersion'),
-    gameServerDockerImage: z.string().min(1, 'Game server image is required'),
-    myCoreBotDockerImage: z.string().min(1, 'My Core Bot image is required'),
-    visualizerDockerImage: z.string().min(1, 'Visualizer image is required'),
-    gameServerImageTag: z.string().optional(),
-    myCoreBotImageTag: z.string().optional(),
-    visualizerImageTag: z.string().optional(),
-    basePath: githubConfigSchema('basePath'),
-    gameConfig: z.string().min(1, 'Game config is required'),
-    serverConfig: z.string().min(1, 'Server config is required'),
-  })
-  .refine((value) => value.maxTeamSize >= value.minTeamSize, {
-    message: 'Max team size must be at least the min team size',
-    path: ['maxTeamSize'],
-  })
-  .refine((value) => value.submissionDeadline > value.startDate, {
-    message: 'Submission deadline must be after play starts',
-    path: ['submissionDeadline'],
-  })
-
-type FormValues = z.infer<typeof formSchema>
-
-const defaultValues: FormValues = {
-  name: '',
-  description: '',
-  location: '',
-  startDate: new Date(),
-  submissionDeadline: new Date(Date.now() + 3600000),
-  scheduledEndDate: new Date(Date.now() + 7200000),
-  introEnabled: false,
-  introLeadMinutes: 15,
-  streamUrl: '',
-  showtimeStreamUrl: '',
-  minTeamSize: 1,
-  maxTeamSize: 4,
-  monorepoUrl: 'https://github.com/42core-team/monorepo',
-  monorepoVersion: '',
-  gameServerDockerImage: 'ghcr.io/42core-team/server',
-  myCoreBotDockerImage: 'ghcr.io/42core-team/my-core-bot',
-  visualizerDockerImage: 'ghcr.io/42core-team/visualizer',
-  gameServerImageTag: '',
-  myCoreBotImageTag: '',
-  visualizerImageTag: '',
-  basePath: 'bots/softcore',
-  gameConfig: '',
-  serverConfig: '',
-}
-
-function parseGitHubRepo(url: string): { owner: string; repo: string } | null {
-  try {
-    const parsedUrl = new URL(url.trim())
-    if (parsedUrl.hostname !== 'github.com') return null
-    const parts = parsedUrl.pathname.split('/').filter(Boolean)
-    if (parts.length < 2) return null
-    return { owner: parts[0], repo: parts[1].replace(/\.git$/, '') }
-  } catch {
-    return null
-  }
-}
-
-function combineImageAndTag(image: string, tag: string | undefined) {
-  if (!image.trim() || !tag?.trim()) return image.trim()
-  return `${image.trim()}:${tag.trim()}`
-}
-
-function getErrorMessage(error: unknown, fallback = 'Failed to create event.') {
-  if (isAxiosError(error)) {
-    const message = (
-      error.response?.data as { message?: string | string[] } | undefined
-    )?.message
-    if (Array.isArray(message)) return message.join(', ')
-    if (message) return message
-  }
-  if (error instanceof Error && error.message) return error.message
-  return fallback
-}
-
-function formatFieldErrors(errors: unknown[]) {
-  return errors
-    .map((error) =>
-      typeof error === 'object' && error && 'message' in error
-        ? String(error.message)
-        : String(error),
-    )
-    .join(', ')
-}
-
 function CreateEventRoute() {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const { data: session, status } = useSession()
-  const [error, setError] = useState<string | null>(null)
-
-  const canCreate = session?.user.abilities.createEvent === true
-  const githubAppQuery = useQuery({
-    queryKey: ['github', 'app-available'],
-    queryFn: isGithubAppAvailable,
+  if (status === 'loading') return <Spinner />
+  if (!session?.user.abilities.createEvent)
+    return <Navigate to="/events" replace />
+  return <CreateEventPage />
+}
+export function CreateEventPage() {
+  const presets = useQuery({ queryKey: ['event-presets'], queryFn: getPresets })
+  const [selected, setSelected] = useState('')
+  const [name, setName] = useState('')
+  const id =
+    selected ||
+    presets.data?.find((p) => p.isDefault)?.id ||
+    presets.data?.[0]?.id ||
+    ''
+  const resolved = useQuery({
+    queryKey: ['resolved-preset', id],
+    queryFn: () => resolvePreset(id),
+    enabled: Boolean(id),
+    staleTime: Infinity,
   })
-  const githubAppAvailable = githubAppQuery.data === true
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      void navigate({ to: '/events', replace: true })
-    }
-    if (status === 'authenticated' && !canCreate) {
-      void navigate({ to: '/events', replace: true })
-    }
-  }, [canCreate, navigate, status])
-
-  const createMutation = useMutation({
-    mutationFn: async (values: FormValues) => {
-      const gameServerDockerImage = combineImageAndTag(
-        values.gameServerDockerImage,
-        values.gameServerImageTag,
-      )
-      const myCoreBotDockerImage = combineImageAndTag(
-        values.myCoreBotDockerImage,
-        values.myCoreBotImageTag,
-      )
-      const visualizerDockerImage = combineImageAndTag(
-        values.visualizerDockerImage,
-        values.visualizerImageTag,
-      )
-
-      if (!gameServerDockerImage)
-        throw new Error('Game Server image is required')
-      if (!myCoreBotDockerImage)
-        throw new Error('My Core Bot image is required')
-      if (!visualizerDockerImage)
-        throw new Error('Visualizer image is required')
-
-      const payload: EventCreateParams = {
-        name: values.name.trim(),
-        description: values.description?.trim() || '',
-        location: values.location?.trim() || '',
-        startDate: values.startDate.getTime(),
-        submissionDeadline: values.submissionDeadline.getTime(),
-        scheduledEndDate: values.scheduledEndDate.getTime(),
-        introEnabled: values.introEnabled,
-        introLeadMinutes: values.introLeadMinutes,
-        streamUrl: values.streamUrl.trim() || undefined,
-        showtimeStreamUrl: values.showtimeStreamUrl.trim() || undefined,
-        minTeamSize: values.minTeamSize,
-        maxTeamSize: values.maxTeamSize,
-        monorepoUrl: normalizeGithubConfigValue(
-          'monorepoUrl',
-          values.monorepoUrl,
-        ),
-        monorepoVersion: normalizeGithubConfigValue(
-          'monorepoVersion',
-          values.monorepoVersion,
-        ),
-        gameServerDockerImage,
-        myCoreBotDockerImage,
-        visualizerDockerImage,
-        basePath: normalizeGithubConfigValue('basePath', values.basePath),
-        gameConfig: values.gameConfig,
-        serverConfig: values.serverConfig,
-        // The API always creates private events; publishing is a separate,
-        // permission-checked settings change.
-        isPrivate: true,
-      }
-
-      return createEvent(payload)
-    },
-    onSuccess: async (event) => {
-      toast.success('Event created.')
-      await queryClient.invalidateQueries({ queryKey: ['events'] })
-      // GitHub is connected from the dashboard once the event exists.
-      await navigate({ to: '/events/$id/dashboard', params: { id: event.id } })
-    },
-    onError: (mutationError) => {
-      setError(getErrorMessage(mutationError))
-    },
-  })
-
-  const form = useForm({
-    defaultValues,
-    validators: {
-      onChange: formSchema,
-    },
-    onSubmit: async ({ value }) => {
-      setError(null)
-      await createMutation.mutateAsync(value)
-    },
-  })
-
-  const formValues = useStore(form.store, (state) => state.values)
-
-  const parsedRepo = useMemo(
-    () => parseGitHubRepo(formValues.monorepoUrl),
-    [formValues.monorepoUrl],
-  )
-
-  const {
-    data: availableTags = [],
-    isLoading: isLoadingTags,
-    error: tagFetchError,
-  } = useQuery({
-    queryKey: ['github', 'tags', parsedRepo?.owner, parsedRepo?.repo],
-    queryFn: async () => {
-      if (!parsedRepo) return []
-      const response = await fetch(
-        `https://api.github.com/repos/${parsedRepo.owner}/${parsedRepo.repo}/tags?per_page=100`,
-        { headers: { Accept: 'application/vnd.github+json' } },
-      )
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as {
-          message?: string
-        }
-        throw new Error(
-          body.message || `Failed to fetch tags (${response.status})`,
-        )
-      }
-      const data = (await response.json()) as Array<{ name: string }>
-      return Array.from(new Set(data.map((tag) => tag.name)))
-    },
-    enabled: Boolean(parsedRepo),
-  })
-
-  // Only look up default configs once version and base path are valid.
-  const configVersion = getGithubConfigError(
-    'monorepoVersion',
-    formValues.monorepoVersion,
-  )
-    ? ''
-    : normalizeGithubConfigValue('monorepoVersion', formValues.monorepoVersion)
-  const configBasePath = getGithubConfigError('basePath', formValues.basePath)
-    ? ''
-    : normalizeGithubConfigValue('basePath', formValues.basePath).replace(
-        /\/$/,
-        '',
-      )
-
-  const { isLoading: isFetchingConfig } = useQuery({
-    queryKey: [
-      'github',
-      'config',
-      parsedRepo?.owner,
-      parsedRepo?.repo,
-      configVersion,
-      configBasePath,
-    ],
-    queryFn: async () => {
-      if (!parsedRepo || !configVersion || !configBasePath) {
-        return null
-      }
-
-      const [gameResponse, serverResponse] = await Promise.all([
-        fetch(
-          `https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${configVersion}/${configBasePath}/configs/game.config.json`,
-        ),
-        fetch(
-          `https://raw.githubusercontent.com/${parsedRepo.owner}/${parsedRepo.repo}/${configVersion}/${configBasePath}/configs/server.config.json`,
-        ),
-      ])
-
-      if (gameResponse.ok) {
-        form.setFieldValue('gameConfig', await gameResponse.text())
-      }
-      if (serverResponse.ok) {
-        form.setFieldValue('serverConfig', await serverResponse.text())
-      }
-
-      return true
-    },
-    enabled:
-      Boolean(parsedRepo) && Boolean(configVersion) && Boolean(configBasePath),
-  })
-
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    void form.handleSubmit()
-  }
-
-  function ImageFields({
-    imageLabel,
-    imageName,
-    imagePlaceholder,
-    tagName,
-  }: {
-    imageLabel: string
-    imageName: ImageFieldName
-    imagePlaceholder: string
-    tagName: ImageTagName
-  }) {
-    return (
-      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
-        <form.Field
-          name={imageName}
-          children={(field) => (
-            <TextField
-              className="md:col-span-2"
-              errors={field.state.meta.errors}
-              label={imageLabel}
-            >
-              <Input
-                id={field.name}
-                name={field.name}
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-                placeholder={imagePlaceholder}
-              />
-            </TextField>
-          )}
-        />
-        <form.Field
-          name={tagName}
-          children={(field) => (
-            <TextField errors={field.state.meta.errors} label="Tag">
-              <Input
-                id={field.name}
-                name={field.name}
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-                placeholder="e.g., dev, v0.0.0"
-                list="repo-tags"
-              />
-            </TextField>
-          )}
-        />
-      </div>
-    )
-  }
-
-  if (status === 'loading' || status === 'unauthenticated' || !canCreate) {
-    return (
-      <main className="flex min-h-[60vh] items-center justify-center">
-        <Spinner size="lg" />
-      </main>
-    )
-  }
-
+  const [dirty, setDirty] = useState(false)
   return (
-    <main className="container mx-auto min-h-lvh max-w-3xl py-3">
-      <div className="mb-8 flex flex-col items-center justify-center gap-4 py-8 md:py-6">
-        <h1 className="text-4xl font-bold">Create New Event</h1>
-        <Button asChild variant="outline">
-          <Link href="/events">
-            <ArrowLeft />
-            Events
-          </Link>
-        </Button>
-      </div>
-
-      <form
-        onSubmit={submit}
-        className="w-full items-center justify-center space-y-4"
+    <main className="container mx-auto max-w-4xl space-y-6 px-4 py-8">
+      <h1 className="text-3xl font-bold">Create event</h1>
+      <label htmlFor="preset">Preset</label>
+      <select
+        id="preset"
+        className="w-full rounded border bg-background p-2"
+        value={id}
+        onChange={(e) => {
+          if (
+            dirty &&
+            !window.confirm('Discard your settings edits and switch presets?')
+          )
+            return
+          setDirty(false)
+          setSelected(e.target.value)
+        }}
       >
-        {error && (
-          <div className="mb-6 rounded-md bg-red-100 p-3 text-red-800">
-            {error}
-          </div>
-        )}
-
-        <div className="mx-auto mb-16 flex w-full max-w-4xl flex-col gap-8 px-4 md:px-6">
-          <Card className="flex w-full flex-col gap-4 p-6">
-            <h2 className="mb-4 text-xl font-semibold">Event Details</h2>
-            <div className="flex flex-col gap-4">
-              <form.Field
-                name="name"
-                children={(field) => (
-                  <TextField
-                    errors={field.state.meta.errors}
-                    label="Event Name *"
-                  >
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                      placeholder="Enter event name"
-                    />
-                  </TextField>
-                )}
-              />
-
-              <form.Field
-                name="description"
-                children={(field) => (
-                  <TextField
-                    errors={field.state.meta.errors}
-                    label="Description"
-                  >
-                    <Textarea
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                      placeholder="Enter event description"
-                      className="min-h-24"
-                    />
-                  </TextField>
-                )}
-              />
-
-              <form.Field
-                name="location"
-                children={(field) => (
-                  <TextField errors={field.state.meta.errors} label="Location">
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                      placeholder="Enter event location"
-                    />
-                  </TextField>
-                )}
-              />
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <form.Field
-                  name="startDate"
-                  children={(field) => (
-                    <DateTimeField
-                      errors={field.state.meta.errors}
-                      label="Start Date *"
-                      value={field.state.value}
-                      onChange={field.handleChange}
-                    />
-                  )}
-                />
-
-                <form.Field
-                  name="submissionDeadline"
-                  children={(field) => (
-                    <DateTimeField
-                      errors={field.state.meta.errors}
-                      label="Submission Deadline *"
-                      value={field.state.value}
-                      onChange={field.handleChange}
-                    />
-                  )}
-                />
-              </div>
-
-              <form.Field
-                name="scheduledEndDate"
-                children={(field) => (
-                  <DateTimeField
-                    errors={field.state.meta.errors}
-                    label="Scheduled End (informational) *"
-                    value={field.state.value}
-                    onChange={field.handleChange}
-                  />
-                )}
-              />
-              <form.Field
-                name="introEnabled"
-                children={(field) => (
-                  <label className="flex items-center gap-3">
-                    Optional introduction
-                    <Switch
-                      checked={field.state.value}
-                      onCheckedChange={field.handleChange}
-                    />
-                  </label>
-                )}
-              />
-              <form.Field
-                name="introLeadMinutes"
-                children={(field) => (
-                  <label>
-                    Introduction lead (minutes)
-                    <Input
-                      type="number"
-                      min={0}
-                      value={field.state.value}
-                      onChange={(e) =>
-                        field.handleChange(Number(e.target.value))
-                      }
-                    />
-                  </label>
-                )}
-              />
-              <form.Field
-                name="streamUrl"
-                children={(field) => (
-                  <label>
-                    Stream URL (intro and Showtime)
-                    <Input
-                      type="url"
-                      placeholder="https://youtube.com/..."
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                    />
-                  </label>
-                )}
-              />
-              <form.Field
-                name="showtimeStreamUrl"
-                children={(field) => (
-                  <label>
-                    Showtime stream URL (optional, replaces the stream URL
-                    during Showtime)
-                    <Input
-                      type="url"
-                      placeholder="https://youtube.com/..."
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                    />
-                  </label>
-                )}
-              />
-              <p className="text-sm text-muted-foreground">
-                Events start private. You can publish them from the event
-                settings.
-              </p>
-            </div>
-          </Card>
-
-          <Card className="flex w-full flex-col gap-4 p-6">
-            <h2 className="text-xl font-semibold">Team Settings</h2>
-            <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-              <form.Field
-                name="minTeamSize"
-                children={(field) => (
-                  <TextField
-                    errors={field.state.meta.errors}
-                    label="Min Team Size *"
-                  >
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      type="number"
-                      min={1}
-                      max={10}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(Number.parseInt(event.target.value))
-                      }
-                    />
-                  </TextField>
-                )}
-              />
-
-              <form.Field
-                name="maxTeamSize"
-                children={(field) => (
-                  <TextField
-                    errors={field.state.meta.errors}
-                    label="Max Team Size *"
-                  >
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      type="number"
-                      min={formValues.minTeamSize}
-                      max={10}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(Number.parseInt(event.target.value))
-                      }
-                    />
-                  </TextField>
-                )}
-              />
-            </div>
-          </Card>
-
-          <Card className="w-full p-6">
-            <h2 className="mb-4 text-xl font-semibold">GitHub Integration</h2>
-            <p className="text-sm text-muted-foreground">
-              {githubAppQuery.isPending
-                ? 'Checking the GitHub App…'
-                : githubAppAvailable
-                  ? 'After creating the event, an owner of the GitHub organization that should hold the team repositories connects the CORE GitHub App from the event dashboard.'
-                  : 'The CORE GitHub App is not configured on this server, so teams of this event cannot get repositories.'}
-            </p>
-          </Card>
-
-          <Card className="w-full p-6">
-            <h2 className="mb-4 text-xl font-semibold">
-              Version Configuration
-            </h2>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
-                <form.Field
-                  name="monorepoUrl"
-                  children={(field) => (
-                    <TextField
-                      className="md:col-span-2"
-                      description="https://github.com/<owner>/<repo>, used to fetch available tags"
-                      errors={field.state.meta.errors}
-                      label="Monorepo URL *"
-                    >
-                      <Input
-                        id={field.name}
-                        name={field.name}
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(event) =>
-                          field.handleChange(event.target.value)
-                        }
-                        placeholder="https://github.com/42core-team/monorepo"
-                      />
-                    </TextField>
-                  )}
-                />
-
-                <form.Field
-                  name="monorepoVersion"
-                  children={(field) => (
-                    <TextField
-                      errors={field.state.meta.errors}
-                      label="Monorepo Version *"
-                    >
-                      <Input
-                        id={field.name}
-                        name={field.name}
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(event) =>
-                          field.handleChange(event.target.value)
-                        }
-                        placeholder="e.g., dev, v0.0.0.1"
-                        list="repo-tags"
-                      />
-                    </TextField>
-                  )}
-                />
-              </div>
-
-              <form.Field
-                name="basePath"
-                children={(field) => (
-                  <TextField
-                    description="Relative path in the monorepo where the game logic is located (e.g., bots/softcore)"
-                    errors={field.state.meta.errors}
-                    label="Base Path *"
-                  >
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                      placeholder="bots/softcore"
-                    />
-                  </TextField>
-                )}
-              />
-
-              <form.Field
-                name="gameConfig"
-                children={(field) => (
-                  <TextField
-                    description="Configuration for the game server. Will be auto-filled if found in the monorepo."
-                    errors={field.state.meta.errors}
-                    label="Game Configuration (JSON) *"
-                  >
-                    <ConfigTextarea
-                      isFetchingConfig={isFetchingConfig}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={field.handleChange}
-                      placeholder='{ "rounds": 100, ... }'
-                    />
-                  </TextField>
-                )}
-              />
-
-              <form.Field
-                name="serverConfig"
-                children={(field) => (
-                  <TextField
-                    description="ServerConfig. Will be auto-filled if found in the monorepo."
-                    errors={field.state.meta.errors}
-                    label="Server Configuration (JSON) *"
-                  >
-                    <ConfigTextarea
-                      isFetchingConfig={isFetchingConfig}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={field.handleChange}
-                      placeholder={`{
-  "replayFolderPaths": [
-    "/workspace/replays",
-    "/workspaces/monorepo",
-    "/workspaces/monorepo/visualizer/public/replays",
-    "./replays"
-  ],
-  "timeoutTicks": 30000,
-  ...`}
-                    />
-                  </TextField>
-                )}
-              />
-
-              {tagFetchError && (
-                <div className="text-sm text-red-600">
-                  {getErrorMessage(tagFetchError, 'Failed to fetch tags.')}
-                </div>
-              )}
-              {isLoadingTags && (
-                <div className="text-xs text-muted-foreground">
-                  Loading tags...
-                </div>
-              )}
-            </div>
-
-            <h3 className="my-4 text-lg font-semibold">
-              Docker Images Configuration
-            </h3>
-            <div className="space-y-4">
-              <ImageFields
-                imageName="gameServerDockerImage"
-                tagName="gameServerImageTag"
-                imageLabel="Game Server Image *"
-                imagePlaceholder="e.g., ghcr.io/42core-team/server"
-              />
-              <ImageFields
-                imageName="myCoreBotDockerImage"
-                tagName="myCoreBotImageTag"
-                imageLabel="My Core Bot Image *"
-                imagePlaceholder="e.g., ghcr.io/42core-team/my-core-bot"
-              />
-              <ImageFields
-                imageName="visualizerDockerImage"
-                tagName="visualizerImageTag"
-                imageLabel="Visualizer Image *"
-                imagePlaceholder="e.g., ghcr.io/42core-team/visualizer"
-              />
-
-              <datalist id="repo-tags">
-                {availableTags.map((tag) => (
-                  <option key={tag} value={tag} />
-                ))}
-              </datalist>
-            </div>
-          </Card>
-
-          <div className="flex justify-end space-x-4">
-            <Button
-              variant="destructive"
-              type="button"
-              onClick={() => void navigate({ to: '/events' })}
-            >
-              Cancel
-            </Button>
-            <form.Subscribe
-              selector={(state) => [state.canSubmit, state.isSubmitting]}
-              children={([canSubmit, isSubmitting]) => (
-                <Button
-                  type="submit"
-                  disabled={
-                    !canSubmit || isSubmitting || createMutation.isPending
-                  }
-                >
-                  {createMutation.isPending || isSubmitting
-                    ? 'Creating...'
-                    : 'Create Event'}
-                </Button>
-              )}
-            />
-          </div>
-        </div>
-      </form>
+        {presets.data?.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+            {p.isDefault ? ' (default)' : ''}
+          </option>
+        ))}
+      </select>
+      {presets.data?.find((p) => p.id === id)?.description && (
+        <p>{presets.data.find((p) => p.id === id)?.description}</p>
+      )}
+      {presets.isPending || (id && resolved.isPending) ? <Spinner /> : null}
+      {presets.isError || resolved.isError ? (
+        <p role="alert">
+          Could not load presets.{' '}
+          <Button
+            onClick={() => {
+              // refetch() ignores `enabled`, so only retry what failed.
+              if (presets.isError) void presets.refetch()
+              if (resolved.isError) void resolved.refetch()
+            }}
+          >
+            Retry
+          </Button>
+        </p>
+      ) : null}
+      {presets.data?.length === 0 && (
+        <p>No presets available. Ask an administrator to create one.</p>
+      )}
+      {resolved.data && (
+        <CreatePresetForm
+          // A refetch that returns a newer preset version must not leave the
+          // form comparing old values against the new baseline.
+          key={`${resolved.data.presetId}-${resolved.data.presetVersion}`}
+          preset={resolved.data}
+          name={name}
+          onName={setName}
+          onDirty={setDirty}
+        />
+      )}
     </main>
   )
 }
-
-function DateTimeField({
-  errors,
-  label,
-  onChange,
-  value,
+function CreatePresetForm({
+  preset,
+  onDirty,
+  name,
+  onName,
 }: {
-  errors: unknown[]
-  label: string
-  onChange: (value: Date) => void
-  value: Date
+  name: string
+  onName: (name: string) => void
+  preset: ResolvedPreset
+  onDirty: (dirty: boolean) => void
 }) {
+  const navigate = useNavigate()
+  const client = useQueryClient()
+  const baseline = resolvedValues(preset)
+  const [adjust, setAdjust] = useState(false)
+  const [errors, setErrors] = useState<string[]>([])
+  const installations = useQuery({
+    queryKey: ['create-installations'],
+    queryFn: getCreateInstallations,
+  })
+  const mutation = useMutation({
+    mutationFn: createEvent,
+    onSuccess: async (event) => {
+      toast.success('Event created.')
+      await client.invalidateQueries({ queryKey: ['events'] })
+      await navigate({ to: '/events/$id/dashboard', params: { id: event.id } })
+    },
+  })
+  const form = useForm({
+    defaultValues: { name, ...baseline },
+    onSubmit: async ({ value }) => {
+      const results = [
+        [nameSchema.safeParse(value.name), 'Name'],
+        [eventSettingsSchema.safeParse(value.settings), ''],
+        [
+          templatesSchema.safeParse(value.starterTemplates),
+          'Starter templates',
+        ],
+      ] as const
+      const messages = results.flatMap(([r, label]) =>
+        r.success ? [] : issueMessages(r.error.issues, label),
+      )
+      setErrors(messages)
+      // The failing field may be hidden behind "Adjust settings".
+      if (messages.length) setAdjust(true)
+      if (!messages.length)
+        await mutation
+          .mutateAsync(createPayload(value.name, preset, value))
+          .catch(() => undefined)
+    },
+  })
+  const values = useStore(form.store, (s) => s.values)
+  // A remount (new preset or version) starts from the preset again.
+  useEffect(() => () => onDirty(false), [onDirty])
   return (
-    <TextField errors={errors} label={label}>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full pl-3 text-left font-normal"
-          >
-            {format(value, 'PPP p')}
-            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={value}
-            onSelect={(date) => {
-              if (!date) return
-              const nextDate = new Date(date)
-              nextDate.setHours(value.getHours(), value.getMinutes())
-              onChange(nextDate)
+    <form
+      className="space-y-6"
+      onSubmit={(e) => {
+        e.preventDefault()
+        void form.handleSubmit()
+      }}
+      onChange={() => mutation.reset()}
+    >
+      <label htmlFor="event-name">Name</label>
+      <Input
+        id="event-name"
+        placeholder="Enter event name"
+        value={values.name}
+        onChange={(e) => {
+          form.setFieldValue('name', e.target.value)
+          onName(e.target.value)
+        }}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        aria-expanded={adjust}
+        onClick={() => setAdjust(!adjust)}
+      >
+        Adjust settings
+      </Button>
+      {!adjust && (
+        <PresetWarnings
+          warnings={
+            values.githubInstallationId === baseline.githubInstallationId
+              ? preset.warnings
+              : []
+          }
+        />
+      )}
+      {adjust && (
+        <div className="space-y-6 rounded border p-4">
+          <SettingsFields
+            value={values.settings}
+            baseline={followStart(baseline.settings, values.settings.startDate)}
+            onChange={(edited) => {
+              const next = moveWithStart(
+                values.settings,
+                edited,
+                baseline.settings,
+              )
+              form.setFieldValue('settings', next)
+              onDirty(changedValues({ ...values, settings: next }, baseline))
             }}
-            disabled={(date) =>
-              date < new Date(new Date().setHours(0, 0, 0, 0))
-            }
-            autoFocus
           />
-          <div className="border-t p-3">
-            <Input
-              type="time"
-              value={format(value, 'HH:mm')}
-              onChange={(event) => {
-                const [hours, minutes] = event.target.value.split(':')
-                const nextDate = new Date(value)
-                nextDate.setHours(Number(hours), Number(minutes))
-                onChange(nextDate)
+          <SettingsSection title="GitHub Integration">
+            <label htmlFor="installation">GitHub installation</label>
+            <Reset
+              label="GitHub installation"
+              changed={
+                values.githubInstallationId !== baseline.githubInstallationId
+              }
+              onReset={() => {
+                form.setFieldValue(
+                  'githubInstallationId',
+                  baseline.githubInstallationId,
+                )
+                onDirty(
+                  changedValues(
+                    {
+                      ...values,
+                      githubInstallationId: baseline.githubInstallationId,
+                    },
+                    baseline,
+                  ),
+                )
               }}
             />
-          </div>
-        </PopoverContent>
-      </Popover>
-    </TextField>
-  )
-}
-
-function ConfigTextarea({
-  isFetchingConfig,
-  name,
-  onBlur,
-  onChange,
-  placeholder,
-  value,
-}: {
-  isFetchingConfig: boolean
-  name: string
-  onBlur: () => void
-  onChange: (value: string) => void
-  placeholder: string
-  value: string
-}) {
-  return (
-    <div className="relative">
-      <Textarea
-        id={name}
-        name={name}
-        value={value}
-        onBlur={onBlur}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="min-h-50 font-mono text-sm"
-      />
-      {isFetchingConfig && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/50">
-          <span className="text-xs font-medium">
-            Fetching default configs...
-          </span>
+            <select
+              id="installation"
+              className="w-full rounded border bg-background p-2"
+              value={values.githubInstallationId ?? ''}
+              onChange={(e) => {
+                const id = e.target.value || null
+                form.setFieldValue('githubInstallationId', id)
+                onDirty(
+                  changedValues(
+                    { ...values, githubInstallationId: id },
+                    baseline,
+                  ),
+                )
+              }}
+            >
+              <option value="">Connect later</option>
+              {preset.githubInstallation &&
+                !installations.data?.some(
+                  (i) => i.id === preset.githubInstallation?.id,
+                ) && (
+                  <option value={preset.githubInstallation.id}>
+                    {preset.githubInstallation.accountLogin} (preset)
+                  </option>
+                )}
+              {installations.data?.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.accountLogin}
+                  {i.shared ? ' (shared)' : ''}
+                </option>
+              ))}
+            </select>
+            <PresetWarnings
+              warnings={
+                values.githubInstallationId === baseline.githubInstallationId
+                  ? preset.warnings
+                  : []
+              }
+            />
+            {installations.isError && (
+              <p role="alert">
+                Could not load installations.{' '}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void installations.refetch()}
+                >
+                  Retry
+                </Button>
+              </p>
+            )}
+          </SettingsSection>
+          <TemplatesFields
+            value={values.starterTemplates}
+            baseline={baseline.starterTemplates}
+            onChange={(next) => {
+              form.setFieldValue('starterTemplates', next)
+              onDirty(
+                changedValues({ ...values, starterTemplates: next }, baseline),
+              )
+            }}
+          />
         </div>
       )}
-    </div>
-  )
-}
-
-type ImageFieldName =
-  'gameServerDockerImage' | 'myCoreBotDockerImage' | 'visualizerDockerImage'
-type ImageTagName =
-  'gameServerImageTag' | 'myCoreBotImageTag' | 'visualizerImageTag'
-
-function TextField({
-  children,
-  className,
-  description,
-  errors,
-  label,
-}: {
-  children: ReactNode
-  className?: string
-  description?: string
-  errors: unknown[]
-  label: string
-}) {
-  const hasErrors = errors.length > 0
-
-  return (
-    <div className={cn('space-y-2', className)}>
-      <Label>{label}</Label>
-      {children}
-      {description && (
-        <p className="text-sm text-muted-foreground">{description}</p>
-      )}
-      {hasErrors && (
-        <p className="text-sm font-medium text-destructive">
-          {formatFieldErrors(errors)}
-        </p>
-      )}
-    </div>
+      <p className="text-sm text-muted-foreground">
+        Events start private. You can publish them from event settings.
+      </p>
+      <ValidationErrors messages={errors} />
+      {mutation.isError && <p role="alert">{presetError(mutation.error)}</p>}
+      <Button asChild variant="outline">
+        <Link to="/events">Cancel</Link>
+      </Button>
+      <Button
+        type="submit"
+        disabled={mutation.isPending || !values.name.trim()}
+      >
+        {mutation.isPending ? 'Creating…' : 'Create'}
+      </Button>
+    </form>
   )
 }

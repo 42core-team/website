@@ -99,7 +99,14 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
       { href: '/changelog', label: 'Changelog' },
       { href: '/about', label: 'About us' },
       ...(currentSession?.user.abilities.admin
-        ? [{ href: '/admin/roles', label: 'Roles' }]
+        ? [
+            { href: '/admin/roles', label: 'Roles' },
+            { href: '/admin/presets', label: 'Presets' },
+            {
+              href: '/admin/github-installations',
+              label: 'GitHub installations',
+            },
+          ]
         : []),
     ]
 

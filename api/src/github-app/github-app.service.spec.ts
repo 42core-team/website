@@ -10,7 +10,8 @@ import { GithubAppRequestError } from "../github-api/github-app-auth";
 import { TeamEntity } from "../team/entities/team.entity";
 import { UserEntity } from "../user/entities/user.entity";
 import { GithubInstallStateSigner } from "./github-app-state";
-import { GithubAppService, missingPermissions } from "./github-app.service";
+import { GithubAppService } from "./github-app.service";
+import { missingPermissions } from "../github-api/github-installation-owner";
 
 const JWT_SECRET = "jwt-secret";
 const PERMISSIONS = {
@@ -31,6 +32,7 @@ function setup(
     repositorySelection?: string;
     accessibleRepositories?: string[];
     existingInstallation?: Partial<GithubInstallationEntity> | null;
+    sharedInstallations?: Partial<GithubInstallationEntity>[];
     installationError?: Error;
     installations?: unknown[];
     memberships?: Record<string, { role: string; state: string }>;
@@ -70,9 +72,13 @@ function setup(
     [
       GithubInstallationEntity,
       {
+        findOne: jest
+          .fn()
+          .mockResolvedValue(options.existingInstallation ?? null),
         findOneBy: jest
           .fn()
           .mockResolvedValue(options.existingInstallation ?? null),
+        findBy: jest.fn().mockResolvedValue(options.sharedInstallations ?? []),
         save: jest.fn(async (row) => ({ id: "row", ...row })),
         update: jest.fn(),
       },
@@ -407,6 +413,36 @@ describe("GithubAppService", () => {
           installationId: 77,
           accountLogin: "Core-Org",
           accountType: "Organization",
+          shared: false,
+        },
+      ]);
+    });
+
+    it("adds shared installations and marks owned ones that are shared", async () => {
+      const shared = (installationId: number, accountLogin: string) => ({
+        installationId,
+        accountLogin,
+        accountType: "Organization",
+        sharedAt: new Date(),
+      });
+      const { service } = setup({
+        installations: [installation(77, "Core-Org")],
+        sharedInstallations: [shared(77, "Core-Org"), shared(90, "Arena-Org")],
+      });
+      await expect(
+        service.listLinkableInstallations("event", USER),
+      ).resolves.toEqual([
+        {
+          installationId: 90,
+          accountLogin: "Arena-Org",
+          accountType: "Organization",
+          shared: true,
+        },
+        {
+          installationId: 77,
+          accountLogin: "Core-Org",
+          accountType: "Organization",
+          shared: true,
         },
       ]);
     });
@@ -506,6 +542,73 @@ describe("GithubAppService", () => {
         "Only an owner of Core-Org",
       );
       expect(repositories.get(EventEntity)!.update).not.toHaveBeenCalled();
+    });
+
+    it("links a shared installation without the owner check", async () => {
+      const { service, repositories, appAuth } = setup({
+        membership: { role: "member", state: "active" },
+        existingInstallation: {
+          id: "row",
+          installationId: 77,
+          sharedAt: new Date(),
+          deletedAt: null,
+        },
+      });
+      await expect(
+        service.linkInstallation("event", USER, 77),
+      ).resolves.toEqual({ eventId: "event" });
+      expect(appAuth.getInstallationToken).not.toHaveBeenCalled();
+      expect(repositories.get(EventEntity)!.update).toHaveBeenCalledWith(
+        "event",
+        expect.objectContaining({ githubInstallationId: "row" }),
+      );
+    });
+
+    it("does not link without ownership if sharing was revoked before commit", async () => {
+      const { service, repositories } = setup({
+        membership: { role: "member", state: "active" },
+        existingInstallation: {
+          id: "row",
+          installationId: 77,
+          sharedAt: new Date(),
+          deletedAt: null,
+        },
+      });
+      repositories.get(GithubInstallationEntity)!.findOne.mockResolvedValue({
+        id: "row",
+        installationId: 77,
+        sharedAt: null,
+        deletedAt: null,
+      });
+      await expect(service.linkInstallation("event", USER, 77)).rejects.toThrow(
+        "no longer shared",
+      );
+      expect(repositories.get(EventEntity)!.update).not.toHaveBeenCalled();
+    });
+
+    it("checks the owner of a shared installation that was uninstalled", async () => {
+      const { service } = setup({
+        membership: { role: "member", state: "active" },
+        existingInstallation: {
+          id: "row",
+          installationId: 77,
+          sharedAt: new Date(),
+          deletedAt: new Date(),
+        },
+      });
+      await expect(service.linkInstallation("event", USER, 77)).rejects.toThrow(
+        "Only an owner of Core-Org",
+      );
+    });
+
+    it("still requires the permissions on a shared installation", async () => {
+      const { service } = setup({
+        permissions: { contents: "write" },
+        existingInstallation: { id: "row", sharedAt: new Date() },
+      });
+      await expect(service.linkInstallation("event", USER, 77)).rejects.toThrow(
+        "lacks these permissions",
+      );
     });
 
     it("refuses non-admins", async () => {
