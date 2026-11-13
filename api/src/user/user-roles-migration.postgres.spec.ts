@@ -25,6 +25,7 @@ postgres("UserRoles migration (PostgreSQL)", () => {
     database = new DataSource({
       type: "postgres",
       url: databaseUrl,
+      migrations: [UserRoles1793000000000],
       // public holds uuid_generate_v4().
       extra: { options: `-c search_path=${schema},public` },
     });
@@ -157,10 +158,18 @@ postgres("UserRoles migration (PostgreSQL)", () => {
       `SELECT to_regclass('user_roles') AS table, to_regtype('user_role') AS type`,
     );
     expect({ table, type }).toEqual({ table: null, type: null });
-    // The old data is untouched, so the previous release still works.
+    // Rollback retains the original legacy snapshot, not subsequent role changes.
     const [{ count }] = await database.query(
       `SELECT count(*)::int AS count FROM user_event_permissions`,
     );
     expect(count).toBe(5);
+  });
+
+  it("can apply again after down and skips an already recorded migration", async () => {
+    expect(await database.runMigrations()).toHaveLength(1);
+    expect(await database.runMigrations()).toHaveLength(0);
+    expect(await roles(admin)).toEqual([
+      { role: "ADMIN", eventId: event, grantedById: null },
+    ]);
   });
 });

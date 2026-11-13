@@ -342,6 +342,57 @@ describe("AuthController sessions", () => {
       .expect(200);
   });
 
+  it.each(["expired", "forged"])(
+    "refresh works with an %s access cookie and a valid refresh cookie",
+    async (kind) => {
+      const session = await login();
+      const access =
+        kind === "expired"
+          ? jwt.sign({ sub: USER.id, fid: "family" }, { expiresIn: -1 })
+          : new JwtService({ secret: "wrong-key" }).sign({
+              sub: USER.id,
+              fid: "family",
+            });
+      const result = await request(app.getHttpServer())
+        .post("/auth/refresh")
+        .set("Cookie", `token=${access}; refresh_token=${session.refreshToken}`)
+        .expect(204);
+      const cookies = parseSetCookies(result);
+      expect(cookies.get("refresh_token")!.value).not.toBe(
+        session.refreshToken,
+      );
+      await request(app.getHttpServer())
+        .get("/auth/me")
+        .set("Cookie", `token=${cookies.get("token")!.value}`)
+        .expect(200);
+    },
+  );
+
+  it.each(["expired", "forged"])(
+    "logout clears both cookies and revokes the session with an %s access cookie",
+    async (kind) => {
+      const session = await login();
+      const access =
+        kind === "expired"
+          ? jwt.sign({ sub: USER.id, fid: "family" }, { expiresIn: -1 })
+          : new JwtService({ secret: "wrong-key" }).sign({
+              sub: USER.id,
+              fid: "family",
+            });
+      const result = await request(app.getHttpServer())
+        .post("/auth/logout")
+        .set("Cookie", `token=${access}; refresh_token=${session.refreshToken}`)
+        .expect(204);
+      const cookies = parseSetCookies(result);
+      expect(isCleared(cookies.get("token"))).toBe(true);
+      expect(isCleared(cookies.get("refresh_token"))).toBe(true);
+      await request(app.getHttpServer())
+        .post("/auth/refresh")
+        .set("Cookie", `refresh_token=${session.refreshToken}`)
+        .expect(401);
+    },
+  );
+
   it("refresh with a just-rotated token (other tab) sets only a new access token", async () => {
     const session = await login();
     await request(app.getHttpServer())
