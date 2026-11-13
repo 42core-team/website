@@ -44,6 +44,37 @@ GET** and **308 for other methods**, including HEAD. There is no configurable
 redirect status code in this chart. See the version-pinned
 [redirect implementation](https://github.com/traefik/traefik/blob/v3.7.17/pkg/middlewares/redirect/redirect.go).
 
+## Asset archive
+
+Browsers that loaded an older `index.html` keep requesting that release's hashed
+`/assets/*` chunks after a rollout. nginx serves `/assets/*` from the image and,
+on a miss, proxies to the STACKIT Object Storage bucket in `env.ASSETS_ARCHIVE_URL`
+(`frontend/assets-archive.sh` writes that config at container start). Bucket
+403/404 responses become a plain 404. An empty URL turns the fallback off.
+
+Before `helm upgrade`, the deploy workflow uploads the assets of every image the
+running pods serve, plus the new image, to `s3://<bucket>/assets/`, then passes
+the bucket URL to the chart. It never deletes objects. It needs these settings in
+the GitHub environment:
+
+| Name | Kind | Value |
+| --- | --- | --- |
+| `FRONTEND_ASSETS_S3_ENDPOINT` | variable | `https://object.storage.eu01.onstackit.cloud` |
+| `FRONTEND_ASSETS_S3_BUCKET` | variable | `coregame-frontend-assets-dev` / `-prod` |
+| `FRONTEND_ASSETS_S3_ACCESS_KEY_ID` | secret | uploader key from Terraform |
+| `FRONTEND_ASSETS_S3_SECRET_ACCESS_KEY` | secret | uploader key from Terraform |
+
+Without the variables the workflow warns and deploys with the fallback off. The
+buckets, the anonymous read-only policy on `assets/*` and the 90-day expiry rule
+live in the `terraform` repository (`infrastucture/modules/assets-bucket`). Every
+deploy re-uploads the assets in use, which restarts their expiry clock.
+
+Pods only get the fallback from an image that includes it. During the first
+rollout to such an image, a pod without it can still answer a chunk request with
+404 until that rollout finishes. After a rollback to an image without the
+fallback, tabs opened on a newer release keep getting 404s for chunks they have
+not loaded yet, until they reload or an image with the fallback is deployed.
+
 ## Deploy and verify
 
 Run the existing frontend deployment workflow for the desired branch/environment.
@@ -64,10 +95,14 @@ kubectl get ingress,certificate -n production
 curl -I https://dev.coregame.sh/
 curl -I https://coregame.sh/
 curl -sS -D - -o /dev/null 'https://www.coregame.sh/a/path?test=1'
+bash ./frontend/scripts/test-assets-archive.sh
+curl -I https://dev.coregame.sh/assets/<chunk-of-an-older-release>.js
 ```
 
-The last command uses GET: expect **301** and `Location: https://coregame.sh`,
+The `www.coregame.sh` request uses GET: expect **301** and `Location: https://coregame.sh`,
 without the original path or query. `curl -I` uses HEAD and reports 308 instead.
+The asset archive smoke test needs Docker. The chunk from an older release
+should return **200** from the bucket; an unknown chunk name returns **404**.
 Validate browser login, OAuth callbacks, cookies and normal navigation. Do not
 bypass TLS verification. Render checks verify resource configuration; live
 routing and certificate issuance require the configured cluster and DNS.
