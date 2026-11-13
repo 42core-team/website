@@ -444,5 +444,28 @@ describe("GithubAppAuth", () => {
       expect(request.method).toBe("GET");
       expect(decodeJwt(request.headers.Authorization).verified).toBe(true);
     });
+
+    it("lists every installation across pages", async () => {
+      const page = (from: number, count: number) =>
+        Array.from({ length: count }, (_, index) => ({ id: from + index }));
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(200, page(1, 100)))
+        .mockResolvedValueOnce(jsonResponse(200, page(101, 2)));
+
+      const installations = await createAuth(fetchMock).listInstallations();
+
+      expect(installations.map(({ id }) => id)).toEqual([
+        ...page(1, 100).map(({ id }) => id),
+        101,
+        102,
+      ]);
+      expect(requestOf(fetchMock, 0).url).toBe(
+        "https://api.github.com/app/installations?per_page=100&page=1",
+      );
+      expect(requestOf(fetchMock, 1).url).toBe(
+        "https://api.github.com/app/installations?per_page=100&page=2",
+      );
+    });
   });
 });

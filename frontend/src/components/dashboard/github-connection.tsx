@@ -1,11 +1,13 @@
 import type { EventGithubStatus } from '@/app/actions/event'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { AlertCircle, GitBranch, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getEventGithubStatus,
   getGithubAppInstallUrl,
+  getLinkableGithubInstallations,
+  linkGithubInstallation,
 } from '@/app/actions/event'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -43,13 +45,31 @@ const STATUS_LABELS = {
 } as const
 
 export function GithubConnection({ eventId }: { eventId: string }) {
+  const queryClient = useQueryClient()
   const statusQuery = useEventGithubStatus(eventId)
+  const appAvailable = statusQuery.data?.appAvailable ?? false
+  // Installations made for other events, so the App need not be installed again.
+  const linkableQuery = useQuery({
+    queryKey: [...githubStatusQueryKey(eventId), 'installations'],
+    queryFn: () => getLinkableGithubInstallations(eventId),
+    enabled: appAvailable,
+    staleTime: 60 * 1000,
+  })
   const connectMutation = useMutation({
     mutationFn: () => getGithubAppInstallUrl(eventId),
     onSuccess: (url) => {
       window.location.assign(url)
     },
     onError: (error) => toast.error(getErrorMessage(error)),
+  })
+  const linkMutation = useMutation({
+    mutationFn: (installationId: number) =>
+      linkGithubInstallation(eventId, installationId),
+    onSuccess: () => {
+      toast.success('GitHub connected.')
+      void queryClient.invalidateQueries({ queryKey: ['event', eventId] })
+    },
+    onError: (error) => toast.error(getErrorMessage(error, 'link')),
   })
 
   if (statusQuery.isError)
@@ -73,6 +93,8 @@ export function GithubConnection({ eventId }: { eventId: string }) {
   if (!status) return null
   const installation = status.installation
   if (!status.appAvailable && !installation) return null
+  const linkable = linkableQuery.data ?? []
+  const busy = connectMutation.isPending || linkMutation.isPending
 
   return (
     <Card>
@@ -93,10 +115,41 @@ export function GithubConnection({ eventId }: { eventId: string }) {
         <CardDescription>{describe(status)}</CardDescription>
       </CardHeader>
       {status.appAvailable && (
-        <CardContent>
+        <CardContent className="space-y-4">
+          {linkable.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                The App is already installed on{' '}
+                {linkable.length === 1 ? 'an account' : 'accounts'} you own. Use
+                it for this event without installing it again:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {linkable.map((candidate) => (
+                  <Button
+                    key={candidate.installationId}
+                    variant={isGithubReady(status) ? 'outline' : 'default'}
+                    disabled={busy}
+                    onClick={() =>
+                      linkMutation.mutate(candidate.installationId)
+                    }
+                  >
+                    {linkMutation.isPending &&
+                      linkMutation.variables === candidate.installationId && (
+                        <Loader2 className="size-4 animate-spin" />
+                      )}
+                    Use {candidate.accountLogin}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
           <Button
-            variant={isGithubReady(status) ? 'outline' : 'default'}
-            disabled={connectMutation.isPending}
+            variant={
+              isGithubReady(status) || linkable.length > 0
+                ? 'outline'
+                : 'default'
+            }
+            disabled={busy}
             onClick={() => connectMutation.mutate()}
           >
             {connectMutation.isPending && (
@@ -106,7 +159,9 @@ export function GithubConnection({ eventId }: { eventId: string }) {
               ? 'Reconnect GitHub App'
               : status.usesOrganizerToken
                 ? 'Switch to the CORE GitHub App'
-                : 'Connect GitHub App'}
+                : linkable.length > 0
+                  ? 'Install on another organization'
+                  : 'Connect GitHub App'}
           </Button>
         </CardContent>
       )}
@@ -127,11 +182,16 @@ function describe(status: EventGithubStatus) {
   return 'GitHub is not connected yet. An owner of the organization that should hold the team repositories must install the CORE GitHub App before teams can get repositories.'
 }
 
-function getErrorMessage(error: unknown) {
+function getErrorMessage(
+  error: unknown,
+  action: 'connect' | 'link' = 'connect',
+) {
   if (isAxiosError<{ message?: string | string[] }>(error)) {
     const message = error.response?.data.message
     if (Array.isArray(message)) return message.join(', ')
     if (message) return message
   }
-  return 'Could not start the GitHub connection.'
+  return action === 'link'
+    ? 'Could not connect the installation.'
+    : 'Could not start the GitHub connection.'
 }

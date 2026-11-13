@@ -166,6 +166,35 @@ export async function getGithubAppInstallUrl(eventId: string): Promise<string> {
   ).data.url
 }
 
+/** An installation of the App on an account the user administers. */
+export interface LinkableGithubInstallation {
+  installationId: number
+  accountLogin: string
+  accountType: string
+}
+
+export async function getLinkableGithubInstallations(
+  eventId: string,
+): Promise<LinkableGithubInstallation[]> {
+  return (
+    await axiosInstance.get<LinkableGithubInstallation[]>(
+      `event/${eventId}/github/installations`,
+    )
+  ).data
+}
+
+export async function linkGithubInstallation(
+  eventId: string,
+  installationId: number,
+): Promise<{ eventId: string }> {
+  return (
+    await axiosInstance.post<{ eventId: string }>(
+      `event/${eventId}/github/installations`,
+      { installationId },
+    )
+  ).data
+}
+
 export async function completeGithubAppInstallation(
   installationId: number,
   state: string,

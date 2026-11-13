@@ -45,6 +45,13 @@ export interface EventGithubStatus {
   } | null;
 }
 
+/** An existing installation the user may link to an event. */
+export interface LinkableGithubInstallation {
+  installationId: number;
+  accountLogin: string;
+  accountType: string;
+}
+
 interface InstallationWebhook {
   action?: string;
   installation?: { id?: number; suspended_at?: string | null };
@@ -115,10 +122,70 @@ export class GithubAppService {
   }
 
   /**
-   * Finishes the installation GitHub redirected back from. The installation ID
-   * comes from the browser, so it is only trusted after GitHub confirms it
-   * belongs to this App and the user administers the account it is on.
+   * Installations of the App, e.g. made for another event, on accounts the user
+   * administers, so the event can use one without installing the App again.
    */
+  async listLinkableInstallations(
+    eventId: string,
+    userId: string,
+  ): Promise<LinkableGithubInstallation[]> {
+    await this.assertEventAdmin(eventId, userId);
+    if (!this.githubAppAuth.isEnabled()) return [];
+    const [event, user] = await Promise.all([
+      this.dataSource.getRepository(EventEntity).findOneOrFail({
+        where: { id: eventId },
+        relations: { githubInstallation: true },
+      }),
+      this.dataSource.getRepository(UserEntity).findOneByOrFail({ id: userId }),
+    ]);
+    const linked = event.githubInstallation?.deletedAt
+      ? null
+      : event.githubInstallation?.installationId;
+    let installations: GithubAppInstallation[];
+    try {
+      installations = await this.githubAppAuth.listInstallations();
+    } catch (error) {
+      this.logger.error("Failed to list the GitHub App installations", error);
+      throw new BadGatewayException(
+        "Could not load the installations from GitHub. Try again.",
+      );
+    }
+    const candidates = installations.filter(
+      (installation) =>
+        installation.account &&
+        installation.id !== linked &&
+        !installation.suspended_at &&
+        !missingPermissions(installation.permissions).length,
+    );
+    const manageable = await Promise.all(
+      candidates.map(async (installation) => {
+        try {
+          return await this.canManageAccount(installation, user.githubId);
+        } catch (error) {
+          this.logger.warn(
+            `Could not check access to installation ${installation.id}`,
+            error,
+          );
+          return false;
+        }
+      }),
+    );
+    return candidates
+      .filter((_, index) => manageable[index])
+      .map((installation) => ({
+        installationId: installation.id,
+        accountLogin: installation.account!.login,
+        accountType: installation.account!.type,
+      }))
+      .sort((a, b) => a.accountLogin.localeCompare(b.accountLogin));
+  }
+
+  /** Connects an installation that already exists, without the install redirect. */
+  linkInstallation(eventId: string, userId: string, installationId: number) {
+    return this.connectInstallation(eventId, userId, installationId);
+  }
+
+  /** Finishes the installation GitHub redirected back from. */
   async completeInstallation(
     userId: string,
     installationId: number,
@@ -129,7 +196,20 @@ export class GithubAppService {
       throw new BadRequestException(
         "This GitHub connection link is invalid or has expired. Start again from the event dashboard.",
       );
-    await this.assertEventAdmin(state.eventId, userId);
+    return this.connectInstallation(state.eventId, userId, installationId);
+  }
+
+  /**
+   * The installation ID comes from the browser, so it is only trusted after
+   * GitHub confirms it belongs to this App and the user administers the
+   * account it is on.
+   */
+  private async connectInstallation(
+    eventId: string,
+    userId: string,
+    installationId: number,
+  ) {
+    await this.assertEventAdmin(eventId, userId);
     if (!this.githubAppAuth.isEnabled())
       throw new ServiceUnavailableException(
         "The CORE GitHub App is not configured on this server.",
@@ -158,7 +238,7 @@ export class GithubAppService {
     const { event, failedTeamIds } = await this.dataSource.transaction(
       async (manager) => {
         const event = await manager.getRepository(EventEntity).findOneOrFail({
-          where: { id: state.eventId },
+          where: { id: eventId },
           lock: { mode: "pessimistic_write" },
         });
         // Provisioning locks the team row and then reads the event's
@@ -226,7 +306,7 @@ export class GithubAppService {
     );
     this.logger.log({
       action: "github_app_connected",
-      eventId: state.eventId,
+      eventId,
       userId,
       installationId,
       account: account.login,
@@ -243,7 +323,7 @@ export class GithubAppService {
           );
         }
       }
-    return { eventId: state.eventId };
+    return { eventId };
   }
 
   /** Keeps installation rows in sync with changes made on GitHub. */
@@ -323,14 +403,21 @@ export class GithubAppService {
     installation: GithubAppInstallation,
     githubId: string,
   ) {
+    if (await this.canManageAccount(installation, githubId)) return;
     const account = installation.account!;
-    if (account.type !== "Organization") {
-      if (String(account.id) !== githubId)
-        throw new ForbiddenException(
-          `Only ${account.login} can connect this installation.`,
-        );
-      return;
-    }
+    throw new ForbiddenException(
+      account.type === "Organization"
+        ? `Only an owner of ${account.login} can connect it to an event.`
+        : `Only ${account.login} can connect this installation.`,
+    );
+  }
+
+  private async canManageAccount(
+    installation: GithubAppInstallation,
+    githubId: string,
+  ) {
+    const account = installation.account!;
+    if (account.type !== "Organization") return String(account.id) === githubId;
     const token = await this.githubAppAuth.getInstallationToken(
       installation.id,
     );
@@ -345,10 +432,7 @@ export class GithubAppService {
           `/orgs/${encodeURIComponent(account.login)}/memberships/${encodeURIComponent(githubUser.login)}`,
         )
       : null;
-    if (membership?.role !== "admin" || membership.state !== "active")
-      throw new ForbiddenException(
-        `Only an owner of ${account.login} can connect it to an event.`,
-      );
+    return membership?.role === "admin" && membership.state === "active";
   }
 
   /** Lower-cased names of the repositories a "selected repositories" installation can access. */
