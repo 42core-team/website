@@ -10,7 +10,8 @@ import { GithubAppRequestError } from "../github-api/github-app-auth";
 import { TeamEntity } from "../team/entities/team.entity";
 import { UserEntity } from "../user/entities/user.entity";
 import { GithubInstallStateSigner } from "./github-app-state";
-import { GithubAppService, missingPermissions } from "./github-app.service";
+import { GithubAppService } from "./github-app.service";
+import { missingPermissions } from "../github-api/github-installation-owner";
 
 const JWT_SECRET = "jwt-secret";
 const PERMISSIONS = {
@@ -573,14 +574,12 @@ describe("GithubAppService", () => {
           deletedAt: null,
         },
       });
-      repositories
-        .get(GithubInstallationEntity)!
-        .findOne.mockResolvedValue({
-          id: "row",
-          installationId: 77,
-          sharedAt: null,
-          deletedAt: null,
-        });
+      repositories.get(GithubInstallationEntity)!.findOne.mockResolvedValue({
+        id: "row",
+        installationId: 77,
+        sharedAt: null,
+        deletedAt: null,
+      });
       await expect(service.linkInstallation("event", USER, 77)).rejects.toThrow(
         "no longer shared",
       );

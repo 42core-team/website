@@ -49,7 +49,10 @@ import {
   GithubAppInstallation,
   GithubAppRequestError,
 } from "../github-api/github-app-auth";
-import { GithubInstallationOwner } from "../github-api/github-installation-owner";
+import {
+  GithubInstallationOwner,
+  missingPermissions,
+} from "../github-api/github-installation-owner";
 import { isSharedInstallation } from "../github-api/installation-sharing";
 
 /** Everything a new event is created from; see EventService.createEvent. */
@@ -399,6 +402,12 @@ export class EventService {
         if (!live.account || live.suspended_at)
           throw new BadRequestException(
             "The GitHub installation is unavailable.",
+          );
+        // As when linking: the owner check below needs Members access.
+        const missing = missingPermissions(live.permissions);
+        if (missing.length)
+          throw new BadRequestException(
+            `The installation on ${live.account.login} lacks these permissions: ${missing.join(", ")}. An owner must accept the App's requested permissions on GitHub.`,
           );
         const user = await this.dataSource
           .getRepository(UserEntity)

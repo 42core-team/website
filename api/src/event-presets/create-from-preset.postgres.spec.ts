@@ -67,6 +67,11 @@ postgres("creating events from presets (PostgreSQL)", () => {
       id,
       account: { id: 7, login: "private-org", type: "Organization" },
       suspended_at: null,
+      permissions: {
+        administration: "write",
+        contents: "write",
+        members: "read",
+      } as Record<string, string>,
     })),
     getInstallationToken: jest.fn(async () => "installation-token"),
   };
@@ -386,6 +391,34 @@ postgres("creating events from presets (PostgreSQL)", () => {
       }
     },
   );
+
+  it("refuses an owned installation that lacks the App's permissions", async () => {
+    const row = await database.getRepository(GithubInstallationEntity).save({
+      installationId: 83,
+      accountId: 7,
+      accountLogin: "private-org",
+      accountType: "Organization",
+    });
+    appAuth.getInstallation.mockResolvedValueOnce({
+      id: 83,
+      account: { id: 7, login: "private-org", type: "Organization" },
+      suspended_at: null,
+      permissions: { contents: "read" },
+    });
+    owner = true;
+    try {
+      const before = await counts();
+      const { body } = await create({ githubInstallationId: row.id }).expect(
+        400,
+      );
+      expect(body.message).toContain(
+        "lacks these permissions: administration, contents, members",
+      );
+      expect(await counts()).toEqual(before);
+    } finally {
+      owner = false;
+    }
+  });
 
   it("returns 400 when GitHub reports an unshared installation was uninstalled", async () => {
     const row = await database.getRepository(GithubInstallationEntity).save({
