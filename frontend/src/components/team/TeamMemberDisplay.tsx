@@ -1,5 +1,6 @@
 import type { TeamMember } from '@/app/actions/team'
 import Image from '@/components/app-image'
+import Link from '@/components/app-link'
 import { GithubIcon } from '@/components/icons'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
@@ -40,7 +41,12 @@ export default function TeamMemberDisplay({
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold">{member.name}</p>
+          <Link
+            to={`/users/${encodeURIComponent(member.username)}`}
+            className="block truncate font-semibold hover:underline"
+          >
+            {member.name}
+          </Link>
           <LocationTags tags={member.tags} className="mt-1" />
         </div>
       </div>

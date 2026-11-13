@@ -19,8 +19,9 @@ export function getVisibleMatchResultScores(
 }
 
 export default function MatchesList(props: {
-  eventId: string
-  matches: QueueMatch[]
+  /** Event of the listed matches; a match's own `eventId` takes precedence. */
+  eventId?: string
+  matches: Array<QueueMatch & { eventId?: string }>
   isInsideCard?: boolean
   teamId?: string
   emptyMessage?: string
@@ -49,6 +50,7 @@ export default function MatchesList(props: {
   const listContent = (
     <div className={cn('flex flex-col', isInsideCard ? 'divide-y' : 'gap-4')}>
       {matches.map((match, index) => {
+        const matchEventId = match.eventId ?? eventId
         const resultScores = getVisibleMatchResultScores(match)
         const teams = [...match.teams]
         const viewedTeamIndex = teams.findIndex((team) => team.id === teamId)
@@ -177,7 +179,7 @@ export default function MatchesList(props: {
                               </div>
                             ) : (
                               <Link
-                                href={`/events/${eventId}/teams/${team.id}`}
+                                href={`/events/${matchEventId}/teams/${team.id}`}
                                 className={cn(
                                   nameClassName,
                                   'transition-colors hover:text-primary hover:underline',
@@ -222,7 +224,7 @@ export default function MatchesList(props: {
               )}
             >
               {match.id && match.state === MatchState.FINISHED && (
-                <Link href={`/events/${eventId}/match/${match.id}`}>
+                <Link href={`/events/${matchEventId}/match/${match.id}`}>
                   <Button
                     size="sm"
                     variant="secondary"

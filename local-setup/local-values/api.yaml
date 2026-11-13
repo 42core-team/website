@@ -26,7 +26,7 @@ env:
   AUTH_COOKIE_DOMAIN: localhost
   CALLBACK_GITHUB_URL: http://localhost:4000/auth/github/callback
   OAUTH_SUCCESS_REDIRECT_URL: http://localhost:3000
-  OAUTH_42_SUCCESS_REDIRECT_URL: http://localhost:3000/profile
+  OAUTH_42_SUCCESS_REDIRECT_URL: http://localhost:3000/settings
   FORTYTWO_CALLBACK_URL: http://localhost:4000/auth/42/callback
   RANDOM_GAME_RESULTS: true
   MEDIA_S3_ENDPOINT: "http://seaweedfs:8333"
