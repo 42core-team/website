@@ -10,7 +10,7 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { SignedIn } from "../authz";
 import { MyTeamGuards, Team } from "../guards/TeamGuard";
 import { EVENT_ID_PARAM } from "../guards/GuardConstants";
 import { TeamEntity } from "./entities/team.entity";
@@ -19,7 +19,8 @@ import { cropScale, imageKind, position } from "../media/image-params";
 import { TeamImageService } from "./team-image.service";
 
 @Controller(`team/event/:${EVENT_ID_PARAM}/my/images`)
-@UseGuards(JwtAuthGuard, MyTeamGuards)
+@SignedIn()
+@UseGuards(MyTeamGuards)
 export class TeamImageController {
   constructor(private readonly images: TeamImageService) {}
 

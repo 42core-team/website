@@ -7,15 +7,14 @@ import {
   ParseUUIDPipe,
   Post,
   Put,
-  UseGuards,
 } from "@nestjs/common";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { SignedIn } from "../authz";
 import { UserId } from "../guards/UserGuard";
 import { PlaceGamblingBetDto } from "./dtos/place-gambling-bet.dto";
 import { GamblingService } from "./gambling.service";
 
 @Controller("gambling")
-@UseGuards(JwtAuthGuard)
+@SignedIn()
 export class GamblingController {
   constructor(private readonly gamblingService: GamblingService) {}
 

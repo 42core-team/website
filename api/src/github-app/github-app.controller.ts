@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Headers,
   HttpCode,
@@ -12,13 +11,18 @@ import {
   RawBodyRequest,
   Req,
   UnauthorizedException,
-  UseGuards,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Request } from "express";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { EventService } from "../event/event.service";
-import { UserId } from "../guards/UserGuard";
+import {
+  Can,
+  CurrentUser,
+  EventPolicy,
+  param,
+  Public,
+  SignedIn,
+} from "../authz";
+import { UserEntity } from "../user/entities/user.entity";
 import { CompleteGithubInstallationDto } from "./dtos/complete-github-installation.dto";
 import { LinkGithubInstallationDto } from "./dtos/link-github-installation.dto";
 import { isValidWebhookSignature } from "./github-app-state";
@@ -28,73 +32,73 @@ import { GithubAppService } from "./github-app.service";
 export class GithubAppController {
   constructor(
     private readonly githubAppService: GithubAppService,
-    private readonly eventService: EventService,
     private readonly configService: ConfigService,
   ) {}
 
   /** Lets the event form offer the App only where it is configured. */
+  @Public()
   @Get("github/app")
   getAppAvailability() {
     return { available: this.githubAppService.isAvailable() };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Can(EventPolicy, "administer", param("id"))
   @Get("event/:id/github")
-  async getStatus(
-    @Param("id", new ParseUUIDPipe()) eventId: string,
-    @UserId() userId: string,
-  ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new ForbiddenException("You are not an admin of this event");
+  getStatus(@Param("id", new ParseUUIDPipe()) eventId: string) {
     return this.githubAppService.getStatus(eventId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Can(EventPolicy, "administer", param("id"))
   @Post("event/:id/github/connect")
   connect(
     @Param("id", new ParseUUIDPipe()) eventId: string,
-    @UserId() userId: string,
+    @CurrentUser() user: UserEntity,
   ) {
-    return this.githubAppService.createInstallUrl(eventId, userId);
+    return this.githubAppService.createInstallUrl(eventId, user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Can(EventPolicy, "administer", param("id"))
   @Get("event/:id/github/installations")
   listInstallations(
     @Param("id", new ParseUUIDPipe()) eventId: string,
-    @UserId() userId: string,
+    @CurrentUser() user: UserEntity,
   ) {
-    return this.githubAppService.listLinkableInstallations(eventId, userId);
+    return this.githubAppService.listLinkableInstallations(eventId, user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Can(EventPolicy, "administer", param("id"))
   @Post("event/:id/github/installations")
   linkInstallation(
     @Param("id", new ParseUUIDPipe()) eventId: string,
-    @UserId() userId: string,
+    @CurrentUser() user: UserEntity,
     @Body() body: LinkGithubInstallationDto,
   ) {
     return this.githubAppService.linkInstallation(
       eventId,
-      userId,
+      user,
       body.installationId,
     );
   }
 
-  /** Called by the frontend page that GitHub's Setup URL points to. */
-  @UseGuards(JwtAuthGuard)
+  /**
+   * Called by the frontend page that GitHub's Setup URL points to. The event
+   * comes from the signed state, so the service checks the admin rights.
+   */
+  @SignedIn()
   @Post("github/installations")
   completeInstallation(
-    @UserId() userId: string,
+    @CurrentUser() user: UserEntity,
     @Body() body: CompleteGithubInstallationDto,
   ) {
     return this.githubAppService.completeInstallation(
-      userId,
+      user,
       body.installationId,
       body.state,
     );
   }
 
+  /** Authenticated by its signature, not a session. */
+  @Public()
   @Post("github/webhook")
   @HttpCode(204)
   async webhook(

@@ -19,6 +19,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import cookieParser from "cookie-parser";
 import request from "supertest";
 import { UserService } from "../user/user.service";
+import { AuthzModule } from "../authz";
 import { SocialAccountService } from "../user/social-account.service";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
@@ -148,6 +149,7 @@ describe("AuthController sessions", () => {
       imports: [
         PassportModule.register({ session: false }),
         JwtModule.register({ secret: JWT_SECRET }),
+        AuthzModule,
       ],
       controllers: [AuthController],
       providers: [

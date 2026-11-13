@@ -30,7 +30,6 @@ export class UserService {
     profilePicture: string,
     githubId: string,
     githubAccessToken: string,
-    canCreateEvent?: boolean,
   ): Promise<UserEntity> {
     const encryptedToken = encryptSecret(
       githubAccessToken,
@@ -46,7 +45,6 @@ export class UserService {
       githubAccessToken: encryptedToken,
       // Login just fetched GET /user with this token (ADR 0003).
       githubCheckedAt: new Date(),
-      canCreateEvent,
     });
     return this.userRepository.save(newUser);
   }
@@ -128,13 +126,6 @@ export class UserService {
         .relation(UserEntity, "events")
         .of(userId)
         .add(eventId);
-    });
-  }
-
-  canCreateEvent(userId: string): Promise<boolean> {
-    return this.userRepository.existsBy({
-      id: userId,
-      canCreateEvent: true,
     });
   }
 

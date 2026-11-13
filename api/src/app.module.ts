@@ -17,6 +17,7 @@ import { LoggerModule } from "nestjs-pino";
 import { IncomingMessage } from "http";
 import { GamblingModule } from "./gambling/gambling.module";
 import { ProfileModule } from "./profile/profile.module";
+import { AuthzModule } from "./authz";
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { ProfileModule } from "./profile/profile.module";
       inject: [ConfigService],
     }),
     AuthModule,
+    AuthzModule,
     UserModule,
     EventModule,
     TeamModule,
