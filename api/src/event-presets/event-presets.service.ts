@@ -59,6 +59,7 @@ export interface ResolvedPreset {
   starterTemplates: PresetStarterTemplate[];
   /** Null when the preset has none, or it is no longer shared. */
   githubInstallation: InstallationSummary;
+  warnings: string[];
 }
 
 /** A preset as the admin list shows it. */
@@ -73,6 +74,7 @@ export interface AdminPresetRow {
   updatedBy: UserSummary;
   /** Events created from the preset. */
   eventCount: number;
+  warnings: string[];
 }
 
 /** A preset with everything the admin editor needs. */
@@ -86,8 +88,24 @@ export interface PresetDetail {
   settings: PresetSettingsDto;
   starterTemplates: PresetStarterTemplate[];
   githubInstallation: InstallationSummary;
+  warnings: string[];
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * What may surprise whoever uses the preset. Its installation is dropped on
+ * create once it is unshared, suspended or uninstalled.
+ */
+export function presetWarnings(
+  preset: Pick<EventPresetEntity, "githubInstallation">,
+): string[] {
+  const installation = preset.githubInstallation;
+  return installation && !isSharedInstallation(installation)
+    ? [
+        `This preset's GitHub installation ${installation.accountLogin} is no longer available; the event will be created without one.`,
+      ]
+    : [];
 }
 
 export function presetNotFound() {
@@ -217,13 +235,14 @@ export class EventPresetsService {
       githubInstallation: isSharedInstallation(installation)
         ? { id: installation.id, accountLogin: installation.accountLogin }
         : null,
+      warnings: presetWarnings(preset),
     };
   }
 
   async listForAdmin(includeArchived: boolean): Promise<AdminPresetRow[]> {
     const presets = await this.presets.find({
       where: includeArchived ? {} : { archivedAt: IsNull() },
-      relations: { updatedBy: true },
+      relations: { updatedBy: true, githubInstallation: true },
       order: { isDefault: "DESC", name: "ASC" },
     });
     const counts = presets.length
@@ -250,6 +269,7 @@ export class EventPresetsService {
         username: preset.updatedBy.username,
       },
       eventCount: eventCounts.get(preset.id) ?? 0,
+      warnings: presetWarnings(preset),
     }));
   }
 
@@ -272,6 +292,7 @@ export class EventPresetsService {
         id: preset.githubInstallation.id,
         accountLogin: preset.githubInstallation.accountLogin,
       },
+      warnings: presetWarnings(preset),
       createdAt: preset.createdAt,
       updatedAt: preset.updatedAt,
     };
@@ -325,7 +346,11 @@ export class EventPresetsService {
           throw new ConflictException(
             "An archived preset cannot be the default. Unarchive it first.",
           );
-        if (dto.githubInstallationId !== undefined)
+        // Keeping a link that stopped being usable only leaves its warning.
+        if (
+          dto.githubInstallationId !== undefined &&
+          dto.githubInstallationId !== current.githubInstallationId
+        )
           await this.assertLinkable(manager, dto.githubInstallationId);
         if (isDefault && !current.isDefault)
           await this.clearDefault(manager, userId, id);

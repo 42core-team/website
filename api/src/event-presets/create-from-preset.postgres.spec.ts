@@ -542,6 +542,7 @@ postgres("creating events from presets (PostgreSQL)", () => {
       },
       starterTemplates: [TEMPLATE],
       githubInstallation: { id: installation.id, accountLogin: "core-org" },
+      warnings: [],
     });
     expect(berlinTime(body.values.startDate)).toBe("10:00");
     expect(body.values.submissionDeadline - body.values.startDate).toBe(
@@ -549,22 +550,36 @@ postgres("creating events from presets (PostgreSQL)", () => {
     );
   });
 
-  it("drops a preset's installation once it is no longer shared", async () => {
-    const installations = database.getRepository(GithubInstallationEntity);
-    await installations.update(installation.id, { sharedAt: null });
-    try {
-      const { body } = await http()
-        .get(`/event-presets/${defaultPreset.id}/resolved`)
-        .set("x-test-user", creatorId)
-        .expect(200);
-      expect(body.githubInstallation).toBeNull();
-      const { body: created } = await create({}).expect(201);
-      expect(await load(created.id)).toMatchObject({
-        githubInstallationId: null,
-        githubOrg: "",
-      });
-    } finally {
-      await installations.update(installation.id, { sharedAt: new Date() });
-    }
-  });
+  it.each([
+    ["no longer shared", { sharedAt: null }],
+    ["suspended", { suspendedAt: new Date() }],
+    ["uninstalled", { deletedAt: new Date() }],
+  ])(
+    "drops and warns about a preset's installation once it is %s",
+    async (_state, change) => {
+      const installations = database.getRepository(GithubInstallationEntity);
+      await installations.update(installation.id, change);
+      try {
+        const { body } = await http()
+          .get(`/event-presets/${defaultPreset.id}/resolved`)
+          .set("x-test-user", creatorId)
+          .expect(200);
+        expect(body.githubInstallation).toBeNull();
+        expect(body.warnings).toEqual([
+          "This preset's GitHub installation core-org is no longer available; the event will be created without one.",
+        ]);
+        const { body: created } = await create({}).expect(201);
+        expect(await load(created.id)).toMatchObject({
+          githubInstallationId: null,
+          githubOrg: "",
+        });
+      } finally {
+        await installations.update(installation.id, {
+          sharedAt: new Date(),
+          suspendedAt: null,
+          deletedAt: null,
+        });
+      }
+    },
+  );
 });

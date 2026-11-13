@@ -194,6 +194,7 @@ postgres("admin event presets (PostgreSQL)", () => {
         },
       ],
       githubInstallation: null,
+      warnings: [],
       createdAt: expect.any(String),
       updatedAt: expect.any(String),
     });
@@ -496,6 +497,53 @@ postgres("admin event presets (PostgreSQL)", () => {
     expect(cleared.githubInstallation).toBeNull();
   });
 
+  it("warns about an installation that stopped being shared, and keeps it on save", async () => {
+    const shared = await shareableInstallation(true);
+    const preset = (
+      await create({ name: "Stale", githubInstallationId: shared.id }).expect(
+        201,
+      )
+    ).body;
+    expect(preset.warnings).toEqual([]);
+    await database
+      .getRepository(GithubInstallationEntity)
+      .update(shared.id, { sharedAt: null });
+    const warning =
+      "This preset's GitHub installation core-org is no longer available; the event will be created without one.";
+
+    const list = (await asAdmin(http().get("/admin/event-presets")).expect(200))
+      .body;
+    expect(
+      list.find((row: { id: string }) => row.id === preset.id),
+    ).toMatchObject({ warnings: [warning] });
+    const detail = (
+      await asAdmin(http().get(`/admin/event-presets/${preset.id}`)).expect(200)
+    ).body;
+    expect(detail).toMatchObject({
+      githubInstallation: { id: shared.id, accountLogin: "core-org" },
+      warnings: [warning],
+    });
+
+    // Other edits still save while the stale link is sent back unchanged.
+    const saved = (
+      await put(preset.id, {
+        version: 1,
+        name: "Stale renamed",
+        settings: PRESET_SETTINGS,
+        githubInstallationId: shared.id,
+      }).expect(200)
+    ).body;
+    expect(saved).toMatchObject({ name: "Stale renamed", warnings: [warning] });
+    // Switching to another unshared installation is still refused.
+    const other = await shareableInstallation(false);
+    await put(preset.id, {
+      version: 2,
+      name: "Stale renamed",
+      settings: PRESET_SETTINGS,
+      githubInstallationId: other.id,
+    }).expect(400);
+  });
+
   it("lists who updated a preset and how many events use it", async () => {
     const preset = (await create({ name: "Counted" }).expect(201)).body;
     await database.getRepository(EventEntity).save(
@@ -525,6 +573,7 @@ postgres("admin event presets (PostgreSQL)", () => {
         updatedAt: preset.updatedAt,
         updatedBy: { id: adminId, username: "preset-admin" },
         eventCount: 2,
+        warnings: [],
       },
     ]);
   });
