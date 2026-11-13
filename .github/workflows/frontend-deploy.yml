@@ -203,7 +203,8 @@ jobs:
           # upload date, so this restarts the clock for every release in use.
           upload_assets() {
             dir=$(mktemp -d) || return 1
-            container=$(docker create "$1") || return 1
+            # --pull always: a cached image for a branch tag may be an older build.
+            container=$(docker create --pull always "$1") || return 1
             docker cp "$container:/usr/share/nginx/html/assets" "$dir/assets" || return 1
             docker rm "$container" > /dev/null || return 1
             # docker cp keeps symlinks, which would resolve against this runner

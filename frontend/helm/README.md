@@ -70,9 +70,10 @@ live in the `terraform` repository (`infrastucture/modules/assets-bucket`). Ever
 deploy re-uploads the assets in use, which restarts their expiry clock.
 
 Pods only get the fallback from an image that includes it. During the first
-rollout to such an image, and after a rollback to an older one, a pod without it
-can still answer a chunk request with 404 while the rollout runs. The gap lasts
-only as long as that rollout.
+rollout to such an image, a pod without it can still answer a chunk request with
+404 until that rollout finishes. After a rollback to an image without the
+fallback, tabs opened on a newer release keep getting 404s for chunks they have
+not loaded yet, until they reload or an image with the fallback is deployed.
 
 ## Deploy and verify
 
