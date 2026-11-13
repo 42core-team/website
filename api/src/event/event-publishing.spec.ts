@@ -42,13 +42,16 @@ describe("event publishing", () => {
   } as UserEntity;
   const globalAdmin = principalWith("g", UserRole.ADMIN) as UserEntity;
 
-  it("refuses to make a private event public without the publish ability", async () => {
-    const { controller, eventService } = setup(true);
-    await expect(
-      controller.updateEventSettings(EVENT, eventAdmin, { isPrivate: false }),
-    ).rejects.toThrow(ForbiddenException);
-    expect(eventService.updateEventSettings).not.toHaveBeenCalled();
-  });
+  it.each([true, false])(
+    "requires publish whenever isPrivate=false (currently private: %s)",
+    async (isPrivate) => {
+      const { controller, eventService } = setup(isPrivate);
+      await expect(
+        controller.updateEventSettings(EVENT, eventAdmin, { isPrivate: false }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(eventService.updateEventSettings).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     ["a public event creator who administers it", publisher],
@@ -63,7 +66,6 @@ describe("event publishing", () => {
 
   it.each([
     ["makes the event private", true, { isPrivate: true }],
-    ["keeps a public event public", false, { isPrivate: false }],
     ["changes other settings", true, { name: "Renamed" }],
   ])(
     "lets an event admin who cannot publish %s",
