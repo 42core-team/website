@@ -302,8 +302,14 @@ function DashboardRoute() {
       setPendingSettings({})
       await queryClient.invalidateQueries({ queryKey: ['event', id] })
     },
-    onError: (error) =>
-      toast.error(getErrorMessage(error, 'Failed to update event settings.')),
+    onError: (error, settings) =>
+      toast.error(
+        settings.isPrivate === false &&
+          isAxiosError(error) &&
+          error.response?.status === 403
+          ? 'You do not have permission to publish this event. You can still make it private.'
+          : getErrorMessage(error, 'Failed to update event settings.'),
+      ),
   })
 
   const addAdminMutation = useMutation({
@@ -555,6 +561,10 @@ function DashboardRoute() {
             setIsServerConfigExpanded={setIsServerConfigExpanded}
             eventId={id}
             playClosed={!registrationOpen(event, now)}
+            canPublish={Boolean(
+              session.data?.user.abilities.createPublicEvent ||
+              session.data?.user.abilities.admin,
+            )}
             saved={event}
             onOpenOperation={() => onTabChange('operation')}
           />
@@ -837,7 +847,9 @@ function SettingsTab({
   playClosed,
   saved,
   onOpenOperation,
+  canPublish,
 }: {
+  canPublish: boolean
   pendingSettings: PendingEventSettings
   updatePendingSetting: <TKey extends keyof PendingEventSettings>(
     key: TKey,
@@ -854,8 +866,14 @@ function SettingsTab({
   eventId: string
   /** After coding, the deadline and playing capabilities only change by reopening play. */
   playClosed: boolean
-  /** Saved values: switches that were off when play closed stay off. */
-  saved: Pick<Event, 'canCreateTeam' | 'processQueue' | 'gamblingEnabled'>
+  /**
+   * Saved values: switches that were off when play closed stay off, and a
+   * private event stays private without the right to publish.
+   */
+  saved: Pick<
+    Event,
+    'canCreateTeam' | 'processQueue' | 'gamblingEnabled' | 'isPrivate'
+  >
   onOpenOperation: () => void
 }) {
   const githubStatusQuery = useEventGithubStatus(eventId)
@@ -1087,10 +1105,21 @@ function SettingsTab({
                 id="isPrivate"
                 label="Private Event"
                 checked={pendingSettings.isPrivate || false}
+                disabled={!canPublish && saved.isPrivate}
+                describedBy={canPublish ? undefined : 'isPrivate-hint'}
                 onCheckedChange={(value) =>
                   updatePendingSetting('isPrivate', value)
                 }
               />
+              {!canPublish && (
+                <p
+                  id="isPrivate-hint"
+                  className="text-sm text-muted-foreground"
+                >
+                  Publishing requires the Public event creator or global Admin
+                  role. You can still make a public event private.
+                </p>
+              )}
             </div>
           </div>
         </CardContent>
@@ -1692,12 +1721,14 @@ function SettingSwitch({
   label,
   checked,
   disabled,
+  describedBy,
   onCheckedChange,
 }: {
   id: string
   label: string
   checked: boolean
   disabled?: boolean
+  describedBy?: string
   onCheckedChange: (checked: boolean) => void
 }) {
   return (
@@ -1709,6 +1740,7 @@ function SettingSwitch({
         id={id}
         checked={checked}
         disabled={disabled}
+        aria-describedby={describedBy}
         onCheckedChange={onCheckedChange}
       />
     </div>

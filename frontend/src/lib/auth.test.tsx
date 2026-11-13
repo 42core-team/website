@@ -24,21 +24,29 @@ const user = {
   name: 'Ada Lovelace',
   email: 'ada@example.com',
   profilePicture: '',
+  abilities: {
+    admin: true,
+    moderator: true,
+    createEvent: true,
+    createPublicEvent: false,
+  },
 }
 
 let routes: Record<string, number>
 let calls: string[]
+let meData: Record<string, unknown>
 const originalAdapter = axiosInstance.defaults.adapter
 
 beforeEach(() => {
   routes = {}
   calls = []
+  meData = user
   const adapter: AxiosAdapter = async (config) => {
     const key = `${config.method?.toUpperCase()} ${config.url}`
     calls.push(key)
     const status = routes[key] ?? 404
     const response = {
-      data: status === 200 ? user : null,
+      data: status === 200 ? meData : null,
       status,
       statusText: String(status),
       headers: {},
@@ -70,6 +78,28 @@ function renderWithProviders<T>(hook: () => T) {
 }
 
 describe('useSession', () => {
+  it('shares abilities between session consumers without an extra request', async () => {
+    routes['GET /auth/me'] = 200
+    const { result } = renderWithProviders(() => [useSession(), useSession()])
+    await waitFor(() => expect(result.current[0].status).toBe('authenticated'))
+    expect(result.current[0].data?.user.abilities).toEqual(user.abilities)
+    expect(result.current[1].data?.user.abilities.createPublicEvent).toBe(false)
+    expect(calls).toEqual(['GET /auth/me'])
+  })
+
+  it('treats missing abilities as none instead of crashing consumers', async () => {
+    routes['GET /auth/me'] = 200
+    meData = { ...user, abilities: undefined }
+    const { result } = renderWithProviders(() => useSession())
+    await waitFor(() => expect(result.current.status).toBe('authenticated'))
+    expect(result.current.data?.user.abilities).toEqual({
+      admin: false,
+      moderator: false,
+      createEvent: false,
+      createPublicEvent: false,
+    })
+  })
+
   it('is unauthenticated when /auth/me is 401 and the refresh fails', async () => {
     routes['GET /auth/me'] = 401
     routes['POST /auth/refresh'] = 401
