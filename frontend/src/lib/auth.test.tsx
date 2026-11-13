@@ -245,3 +245,33 @@ describe('useSignOutEverywhere', () => {
     expect(calls).toContain('POST /auth/logout-all')
   })
 })
+
+describe('the refresh interceptor on a 404', () => {
+  it('refreshes and replays an event request while a session is cached', async () => {
+    routes['GET /auth/me'] = 200
+    routes['POST /auth/refresh'] = 204
+    const { result } = renderWithProviders(() => useSession())
+    await waitFor(() => expect(result.current.status).toBe('authenticated'))
+    calls = []
+
+    await expect(axiosInstance.get('event/private-id')).rejects.toMatchObject({
+      response: { status: 404 },
+    })
+    expect(calls).toEqual([
+      'GET event/private-id',
+      'POST /auth/refresh',
+      'GET event/private-id',
+    ])
+  })
+
+  it('leaves a guest alone', async () => {
+    routes['GET /auth/me'] = 401
+    routes['POST /auth/refresh'] = 401
+    const { result } = renderWithProviders(() => useSession())
+    await waitFor(() => expect(result.current.status).toBe('unauthenticated'))
+    calls = []
+
+    await expect(axiosInstance.get('event/private-id')).rejects.toBeDefined()
+    expect(calls).toEqual(['GET event/private-id'])
+  })
+})
