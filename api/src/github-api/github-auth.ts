@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { GithubAppAuth } from "./github-app-auth";
 import { GithubInstallationEntity } from "./entities/github-installation.entity";
+import { isSimulatedRepository } from "./simulated-repository";
 
 /**
  * How github-service authenticates against an event's GitHub organization: as
@@ -10,6 +11,12 @@ import { GithubInstallationEntity } from "./entities/github-installation.entity"
  * github-service/src/github-auth.ts.
  */
 export type GithubAuth = { installationId: number };
+
+/**
+ * Sent for seeded repositories, which github-service simulates without
+ * credentials. 0 is never a valid installation, so it can never be used.
+ */
+const SIMULATED_AUTH: GithubAuth = { installationId: 0 };
 
 /** The event has no usable GitHub credentials; the message is shown to admins. */
 export class GithubNotConnectedError extends Error {}
@@ -24,8 +31,19 @@ export class GithubAuthService {
     private readonly githubAppAuth: GithubAppAuth,
   ) {}
 
-  /** The credentials to send to github-service. */
-  async authFor(event: EventGithubCredentials): Promise<GithubAuth> {
+  /**
+   * The credentials to send to github-service for operations on the given
+   * repositories. Seeded test repositories need none in development.
+   */
+  async authFor(
+    event: EventGithubCredentials,
+    repositoryNames: (string | null | undefined)[] = [],
+  ): Promise<GithubAuth> {
+    if (
+      repositoryNames.length &&
+      repositoryNames.every((name) => isSimulatedRepository(name))
+    )
+      return SIMULATED_AUTH;
     if (!event.githubInstallationId)
       throw new GithubNotConnectedError(
         "GitHub is not connected for this event. Connect the CORE GitHub App in the event settings.",

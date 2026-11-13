@@ -3,13 +3,13 @@ jest.mock("../main", () => ({ getRabbitmqConfig: jest.fn() }));
 import { MatchService } from "./match.service";
 import { MatchState } from "./entites/match.entity";
 
-const TOKEN = "ghp_secretOrgToken";
+const TOKEN = "ghs_scopedInstallationToken";
 
 function setup(
   overrides: {
     githubOrg?: string;
     repos?: string[];
-    decryptError?: Error;
+    tokenError?: Error;
   } = {},
 ) {
   const event = {
@@ -49,7 +49,7 @@ function setup(
     configService: { get: jest.fn().mockReturnValue(undefined) },
     githubAuthService: {
       cloneTokenFor: jest.fn().mockImplementation(async (_event, repo) => {
-        if (overrides.decryptError) throw overrides.decryptError;
+        if (overrides.tokenError) throw overrides.tokenError;
         return `${TOKEN}-${repo}`;
       }),
     },
@@ -124,9 +124,11 @@ describe("new_match message", () => {
 
   it("puts the match back to PLANNED when no clone token can be issued", async () => {
     const { service, emit, queryBuilder } = setup({
-      decryptError: new Error("bad ciphertext"),
+      tokenError: new Error("installation suspended"),
     });
-    await expect(service.startMatch("match")).rejects.toThrow("bad ciphertext");
+    await expect(service.startMatch("match")).rejects.toThrow(
+      "installation suspended",
+    );
     expect(emit).not.toHaveBeenCalled();
     expect(stateUpdates(queryBuilder)).toEqual([
       MatchState.IN_PROGRESS,

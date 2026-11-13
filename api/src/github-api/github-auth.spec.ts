@@ -58,6 +58,28 @@ describe("GithubAuthService", () => {
     ).rejects.toThrow("not configured");
   });
 
+  it("needs no installation for seeded repositories in development", async () => {
+    const nodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    try {
+      const { service, repository } = setup();
+      const seeded = "sim-0b7e2f4c-3d1a-4e6b-9c8d-2a5f7e1b3c9d";
+      await expect(
+        service.authFor({ githubInstallationId: null }, [seeded]),
+      ).resolves.toEqual({ installationId: 0 });
+      expect(repository.findOneBy).not.toHaveBeenCalled();
+      await expect(
+        service.authFor({ githubInstallationId: null }, [seeded, "real-repo"]),
+      ).rejects.toBeInstanceOf(GithubNotConnectedError);
+      process.env.NODE_ENV = "production";
+      await expect(
+        service.authFor({ githubInstallationId: null }, [seeded]),
+      ).rejects.toBeInstanceOf(GithubNotConnectedError);
+    } finally {
+      process.env.NODE_ENV = nodeEnv;
+    }
+  });
+
   it("mints a read-only clone token for one repository", async () => {
     const { service, appAuth } = setup();
     await expect(
