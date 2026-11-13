@@ -22,6 +22,7 @@ import {
   SettingsFields,
   TemplatesFields,
   ValidationErrors,
+  issueMessages,
 } from '@/components/presets/settings-fields'
 import {
   defaultSettings,
@@ -57,6 +58,7 @@ export function PresetsPage() {
   const refresh = async () => {
     await client.invalidateQueries({ queryKey: ['admin', 'presets'] })
     await client.invalidateQueries({ queryKey: ['event-presets'] })
+    await client.invalidateQueries({ queryKey: ['resolved-preset'] })
   }
   const action = useMutation({
     mutationFn: async ({
@@ -234,11 +236,7 @@ export function PresetEditor({
           starterTemplates: templatesSchema,
         })
         .safeParse(value)
-      setErrors(
-        result.success
-          ? []
-          : result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
-      )
+      setErrors(result.success ? [] : issueMessages(result.error.issues))
       if (result.success)
         await mutation.mutateAsync(value).catch(() => undefined)
     },
@@ -292,6 +290,9 @@ export function PresetEditor({
           <input
             type="checkbox"
             checked={values.isDefault}
+            // Creation without a preset needs a default, so the default is
+            // only moved by marking another preset as default.
+            disabled={preset?.isDefault}
             onChange={(e) => form.setFieldValue('isDefault', e.target.checked)}
           />{' '}
           Default preset
@@ -324,10 +325,14 @@ export function PresetEditor({
               }
               <Input
                 id={`schedule-${key}`}
-                type={key === 'startTime' ? 'time' : 'number'}
-                min={0}
-                step={key === 'startOffsetDays' ? 1 : 'any'}
-                max={key === 'startOffsetDays' ? 365 : undefined}
+                {...(key === 'startTime'
+                  ? { type: 'time' }
+                  : {
+                      type: 'number',
+                      min: 0,
+                      step: key === 'startOffsetDays' ? 1 : 'any',
+                      max: key === 'startOffsetDays' ? 365 : undefined,
+                    })}
                 value={schedule[key] ?? ''}
                 onChange={(e) => changeSchedule(key, e.target.value)}
               />
