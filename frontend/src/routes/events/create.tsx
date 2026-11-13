@@ -33,6 +33,8 @@ import {
 import {
   changedValues,
   createPayload,
+  followStart,
+  moveWithStart,
   resolvedValues,
   nameSchema,
   eventSettingsSchema,
@@ -211,8 +213,13 @@ function CreatePresetForm({
         <div className="space-y-6 rounded border p-4">
           <SettingsFields
             value={values.settings}
-            baseline={baseline.settings}
-            onChange={(next) => {
+            baseline={followStart(baseline.settings, values.settings.startDate)}
+            onChange={(edited) => {
+              const next = moveWithStart(
+                values.settings,
+                edited,
+                baseline.settings,
+              )
               form.setFieldValue('settings', next)
               onDirty(changedValues({ ...values, settings: next }, baseline))
             }}

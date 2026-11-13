@@ -119,16 +119,53 @@ export function changedValues(current: CreateValues, baseline: CreateValues) {
     current.githubInstallationId !== baseline.githubInstallationId
   )
 }
+const FOLLOWING_DATES = [
+  'submissionDeadline',
+  'scheduledEndDate',
+  'endDate',
+] as const
+/**
+ * The preset's values with its later dates moved as far as `startDate`
+ * moved from the preset's start, as the API moves dates a request omits.
+ */
+export function followStart(
+  baseline: EventSettings,
+  startDate: number,
+): EventSettings {
+  const delta = startDate - baseline.startDate
+  if (!Number.isFinite(delta) || delta === 0) return baseline
+  const moved = { ...baseline }
+  for (const key of FOLLOWING_DATES) {
+    const date = baseline[key]
+    if (date != null) moved[key] = date + delta
+  }
+  return moved
+}
+/** Applies a settings edit; dates that still follow the start move with it. */
+export function moveWithStart(
+  previous: EventSettings,
+  next: EventSettings,
+  baseline: EventSettings,
+): EventSettings {
+  if (same(previous.startDate, next.startDate)) return next
+  const before = followStart(baseline, previous.startDate)
+  const after = followStart(baseline, next.startDate)
+  const moved = { ...next }
+  for (const key of FOLLOWING_DATES)
+    if (same(next[key], before[key])) moved[key] = after[key]
+  return moved
+}
 export function createPayload(
   name: string,
   preset: ResolvedPreset,
   current: CreateValues,
 ): EventCreateParams {
   const baseline = resolvedValues(preset)
+  // Dates that only followed a moved start are left to the API to move.
+  const settings = followStart(baseline.settings, current.settings.startDate)
   const overrides = Object.fromEntries(
     Object.entries(current.settings).filter(
-      ([key, value]) =>
-        !same(value, baseline.settings[key as keyof EventSettings]),
+      ([key, value]) => !same(value, settings[key as keyof EventSettings]),
     ),
   )
   return {
