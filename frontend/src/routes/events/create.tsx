@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { useStore } from '@tanstack/react-store'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import {
   getPresets,
   resolvePreset,
@@ -20,6 +21,7 @@ import {
   TemplatesFields,
   Reset,
   ValidationErrors,
+  issueMessages,
 } from '@/components/presets/settings-fields'
 import {
   changedValues,
@@ -90,8 +92,9 @@ export function CreateEventPage() {
           Could not load presets.{' '}
           <Button
             onClick={() => {
-              void presets.refetch()
-              void resolved.refetch()
+              // refetch() ignores `enabled`, so only retry what failed.
+              if (presets.isError) void presets.refetch()
+              if (resolved.isError) void resolved.refetch()
             }}
           >
             Retry
@@ -103,7 +106,9 @@ export function CreateEventPage() {
       )}
       {resolved.data && (
         <CreatePresetForm
-          key={resolved.data.presetId}
+          // A refetch that returns a newer preset version must not leave the
+          // form comparing old values against the new baseline.
+          key={`${resolved.data.presetId}-${resolved.data.presetVersion}`}
           preset={resolved.data}
           name={name}
           onName={setName}
@@ -136,6 +141,7 @@ function CreatePresetForm({
   const mutation = useMutation({
     mutationFn: createEvent,
     onSuccess: async (event) => {
+      toast.success('Event created.')
       await client.invalidateQueries({ queryKey: ['events'] })
       await navigate({ to: '/events/$id/dashboard', params: { id: event.id } })
     },
@@ -144,16 +150,19 @@ function CreatePresetForm({
     defaultValues: { name, ...baseline },
     onSubmit: async ({ value }) => {
       const results = [
-        nameSchema.safeParse(value.name),
-        eventSettingsSchema.safeParse(value.settings),
-        templatesSchema.safeParse(value.starterTemplates),
-      ]
-      const messages = results.flatMap((r) =>
-        r.success
-          ? []
-          : r.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
+        [nameSchema.safeParse(value.name), 'Name'],
+        [eventSettingsSchema.safeParse(value.settings), ''],
+        [
+          templatesSchema.safeParse(value.starterTemplates),
+          'Starter templates',
+        ],
+      ] as const
+      const messages = results.flatMap(([r, label]) =>
+        r.success ? [] : issueMessages(r.error.issues, label),
       )
       setErrors(messages)
+      // The failing field may be hidden behind "Adjust settings".
+      if (messages.length) setAdjust(true)
       if (!messages.length)
         await mutation
           .mutateAsync(createPayload(value.name, preset, value))
@@ -161,6 +170,8 @@ function CreatePresetForm({
     },
   })
   const values = useStore(form.store, (s) => s.values)
+  // A remount (new preset or version) starts from the preset again.
+  useEffect(() => () => onDirty(false), [onDirty])
   return (
     <form
       className="space-y-6"
@@ -200,6 +211,7 @@ function CreatePresetForm({
           <div>
             <label htmlFor="installation">GitHub installation</label>
             <Reset
+              label="GitHub installation"
               changed={
                 values.githubInstallationId !== baseline.githubInstallationId
               }

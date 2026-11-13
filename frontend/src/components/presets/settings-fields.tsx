@@ -33,14 +33,22 @@ export const labels: Record<string, string> = {
 export function Reset({
   changed,
   onReset,
+  label,
 }: {
   changed: boolean
   onReset: () => void
+  label: string
 }) {
   return changed ? (
     <span className="ml-3 text-sm text-muted-foreground">
       Changed{' '}
-      <Button type="button" variant="ghost" size="sm" onClick={onReset}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        aria-label={`Reset ${label} to preset`}
+        onClick={onReset}
+      >
         Reset to preset
       </Button>
     </span>
@@ -82,9 +90,18 @@ export function SettingsFields<T extends EventSettings | PresetSettings>({
             key={key}
             className={key.endsWith('Config') ? 'md:col-span-2' : ''}
           >
-            <label htmlFor={`setting-${key}`}>{labels[key] || key}</label>
+            <label htmlFor={`setting-${key}`}>
+              {labels[key] || key}
+              {date && (
+                <span className="text-sm text-muted-foreground">
+                  {' '}
+                  (your local time)
+                </span>
+              )}
+            </label>
             {baseline && (
               <Reset
+                label={labels[key] || key}
                 changed={!same(current, baseline[key])}
                 onReset={() => change(baseline[key])}
               />
@@ -136,6 +153,11 @@ function localDate(epoch: number) {
     .toISOString()
     .slice(0, 16)
 }
+const templateLabels = {
+  name: 'Name',
+  basePath: 'Base path',
+  myCoreBotDockerImage: 'My Core Bot Docker image',
+}
 export function TemplatesFields({
   value,
   onChange,
@@ -151,6 +173,7 @@ export function TemplatesFields({
         Starter templates{' '}
         {baseline && (
           <Reset
+            label="starter templates"
             changed={!same(value, baseline)}
             onReset={() => onChange(baseline)}
           />
@@ -161,7 +184,7 @@ export function TemplatesFields({
           {(['name', 'basePath', 'myCoreBotDockerImage'] as const).map(
             (key) => (
               <label key={key}>
-                {key}
+                {templateLabels[key]}
                 <Input
                   aria-label={`Template ${index + 1} ${key}`}
                   value={template[key]}
@@ -199,6 +222,21 @@ export function TemplatesFields({
       </Button>
     </fieldset>
   )
+}
+/** Prefixes zod issues with the field label, or `prefix` (e.g. "Name") when given. */
+export function issueMessages(
+  issues: readonly { path: readonly PropertyKey[]; message: string }[],
+  prefix = '',
+) {
+  return issues.map((issue) => {
+    const path = issue.path.map(String)
+    // Template rows keep their index path, settings show their label.
+    const field = path.some((p) => /^\d+$/.test(p))
+      ? undefined
+      : labels[path[path.length - 1]]
+    const label = [prefix, field ?? path.join('.')].filter(Boolean).join(' ')
+    return label ? `${label}: ${issue.message}` : issue.message
+  })
 }
 export function ValidationErrors({ messages }: { messages: string[] }) {
   return messages.length ? (
