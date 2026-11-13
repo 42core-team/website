@@ -14,7 +14,10 @@ import { EventEntity } from "../event/entities/event.entity";
 import { isPlaying } from "../event/event-lifecycle";
 import { EventService } from "../event/event.service";
 import { GithubInstallationEntity } from "../github-api/entities/github-installation.entity";
-import { GithubInstallationOwner } from "../github-api/github-installation-owner";
+import {
+  GithubInstallationOwner,
+  missingPermissions,
+} from "../github-api/github-installation-owner";
 import { isSharedInstallation } from "../github-api/installation-sharing";
 import {
   GithubAppAuth,
@@ -28,13 +31,6 @@ import { AuthorizationService, EventPolicy, type Principal } from "../authz";
 
 const OWNED_INSTALLATIONS_CACHE_MS = 60 * 1000;
 const OWNERSHIP_CHECK_CONCURRENCY = 4;
-
-/** What repository provisioning and match cloning need from an installation. */
-const REQUIRED_PERMISSIONS: Record<string, readonly string[]> = {
-  administration: ["write"],
-  contents: ["write"],
-  members: ["read", "write"],
-};
 
 export type GithubConnectionStatus = "active" | "suspended" | "uninstalled";
 
@@ -701,10 +697,4 @@ export class GithubAppService {
       if (repositories.length < 100) return names;
     }
   }
-}
-
-export function missingPermissions(granted: Record<string, string>) {
-  return Object.entries(REQUIRED_PERMISSIONS)
-    .filter(([name, levels]) => !levels.includes(granted[name]))
-    .map(([name]) => name);
 }
