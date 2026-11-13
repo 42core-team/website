@@ -87,13 +87,13 @@ export function getMyRoundResult(
 
 interface GroupPhaseGraphViewProps {
   matches: Match[]
-  isEventAdmin: boolean
+  canViewUnrevealedResults: boolean
   myTeamId?: string
 }
 
 export function GroupPhaseGraphView({
   matches,
-  isEventAdmin,
+  canViewUnrevealedResults,
   myTeamId,
 }: GroupPhaseGraphViewProps) {
   const rounds = groupMatchesByRound(matches)
@@ -110,7 +110,10 @@ export function GroupPhaseGraphView({
   }
 
   const openMatch = (match: Match) => {
-    if (match.id && (match.state === MatchState.FINISHED || isEventAdmin)) {
+    if (
+      match.id &&
+      (match.state === MatchState.FINISHED || canViewUnrevealedResults)
+    ) {
       router.push(`/events/${eventId}/match/${match.id}`)
     }
   }
@@ -123,7 +126,7 @@ export function GroupPhaseGraphView({
     <UnifiedRounds
       key={eventId}
       rounds={rounds}
-      isEventAdmin={isEventAdmin}
+      canViewUnrevealedResults={canViewUnrevealedResults}
       openMatch={openMatch}
       openTeam={openTeam}
       myTeamId={myTeamId}
@@ -134,7 +137,7 @@ export function GroupPhaseGraphView({
 
 interface RoundRendererProps {
   rounds: MatchRound[]
-  isEventAdmin: boolean
+  canViewUnrevealedResults: boolean
   openMatch: (match: Match) => void
   openTeam: (teamId: string) => void
   myTeamId?: string
@@ -143,7 +146,7 @@ interface RoundRendererProps {
 
 function UnifiedRounds({
   rounds,
-  isEventAdmin,
+  canViewUnrevealedResults,
   openMatch,
   openTeam,
   myTeamId,
@@ -207,7 +210,7 @@ function UnifiedRounds({
             <AccordionContent className="pb-0">
               <RoundMatchTable
                 round={round}
-                isEventAdmin={isEventAdmin}
+                canViewUnrevealedResults={canViewUnrevealedResults}
                 openMatch={openMatch}
                 openTeam={openTeam}
                 myTeamId={myTeamId}
@@ -252,7 +255,7 @@ function RoundHeading({
 
 function RoundMatchTable({
   round,
-  isEventAdmin,
+  canViewUnrevealedResults,
   openMatch,
   openTeam,
   myTeamId,
@@ -273,7 +276,7 @@ function RoundMatchTable({
           <MatchRow
             key={match.id ?? `${round.round}-${matchIndex}`}
             match={match}
-            isEventAdmin={isEventAdmin}
+            canViewUnrevealedResults={canViewUnrevealedResults}
             openMatch={openMatch}
             openTeam={openTeam}
             myTeamId={myTeamId}
@@ -286,7 +289,7 @@ function RoundMatchTable({
 
 interface MatchRowProps {
   match: Match
-  isEventAdmin: boolean
+  canViewUnrevealedResults: boolean
   openMatch: (match: Match) => void
   openTeam: (teamId: string) => void
   myTeamId?: string
@@ -294,13 +297,14 @@ interface MatchRowProps {
 
 function MatchRow({
   match,
-  isEventAdmin,
+  canViewUnrevealedResults,
   openMatch,
   openTeam,
   myTeamId,
 }: MatchRowProps) {
   const canOpen = Boolean(
-    match.id && (match.state === MatchState.FINISHED || isEventAdmin),
+    match.id &&
+    (match.state === MatchState.FINISHED || canViewUnrevealedResults),
   )
   const isOwnMatch = Boolean(
     hasVisibleCompetitors(match) &&

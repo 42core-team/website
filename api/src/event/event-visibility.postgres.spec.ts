@@ -60,6 +60,7 @@ const PERSONAS = [
   "whitelisted 42 user",
   "event moderator",
   "event admin",
+  "public event creator",
   "global moderator",
   "global admin",
 ] as const;
@@ -188,7 +189,6 @@ postgres("private event visibility (PostgreSQL)", () => {
     return database.getRepository(EventEntity).save({
       name: randomUUID().slice(0, 30),
       githubOrg: "org",
-      githubOrgSecret: "secret",
       isPrivate,
       gameServerDockerImage: "server:1",
       myCoreBotDockerImage: "bot:1",
@@ -284,6 +284,11 @@ postgres("private event visibility (PostgreSQL)", () => {
       platformUserId: randomUUID(),
     });
     await grant(users["global moderator"], UserRole.MODERATOR, null);
+    await grant(
+      users["public event creator"],
+      UserRole.PUBLIC_EVENT_CREATOR,
+      null,
+    );
     await grant(users["global admin"], UserRole.ADMIN, null);
     const otherEvent = await createEvent(true);
     await grant(
@@ -325,6 +330,7 @@ postgres("private event visibility (PostgreSQL)", () => {
     { path: ({ team }) => `/team/${team.id}` },
     { path: ({ team }) => `/team/${team.id}/members` },
     { path: ({ event }) => `/event/${event.id}/templates`, signedIn: true },
+    { path: ({ event }) => `/event/${event.id}/abilities`, signedIn: true },
     { path: ({ event }) => `/team/event/${event.id}`, signedIn: true },
     { path: ({ event }) => `/match/swiss/${event.id}`, signedIn: true },
     { path: ({ event }) => `/match/tournament/${event.id}`, signedIn: true },
@@ -357,6 +363,78 @@ postgres("private event visibility (PostgreSQL)", () => {
           );
         }
       expect(answers).toEqual(expected);
+    },
+  );
+
+  const NO_ABILITIES = {
+    administer: false,
+    viewUnrevealedResults: false,
+    publish: false,
+  };
+  const ABILITIES: Record<Exclude<Persona, "guest">, typeof NO_ABILITIES> = {
+    "unrelated user": NO_ABILITIES,
+    "moderator of another event": NO_ABILITIES,
+    participant: NO_ABILITIES,
+    "team member": NO_ABILITIES,
+    "whitelisted GitHub user": NO_ABILITIES,
+    "whitelisted 42 user": NO_ABILITIES,
+    "event moderator": { ...NO_ABILITIES, viewUnrevealedResults: true },
+    "event admin": {
+      administer: true,
+      viewUnrevealedResults: true,
+      publish: false,
+    },
+    "public event creator": NO_ABILITIES,
+    "global moderator": { ...NO_ABILITIES, viewUnrevealedResults: true },
+    "global admin": {
+      administer: true,
+      viewUnrevealedResults: true,
+      publish: true,
+    },
+  };
+
+  it.each(Object.entries(ABILITIES))(
+    "reports the event abilities of a %s",
+    async (persona, abilities) => {
+      for (const { event } of [privateEvent, publicEvent]) {
+        const response = await get(
+          `/event/${event.id}/abilities`,
+          persona as Persona,
+        ).expect(200);
+        expect(response.body).toEqual(abilities);
+      }
+    },
+  );
+
+  it("lets an event admin publish only with the public event creator role", async () => {
+    const event = await createEvent(true);
+    const admin = await createUser();
+    await grant(admin, UserRole.ADMIN, event.id);
+    await grant(admin, UserRole.PUBLIC_EVENT_CREATOR, null);
+    const abilities = (eventId: string) =>
+      request(app.getHttpServer())
+        .get(`/event/${eventId}/abilities`)
+        .set("x-test-user", admin.id)
+        .expect(200);
+
+    expect((await abilities(event.id)).body).toEqual({
+      administer: true,
+      viewUnrevealedResults: true,
+      publish: true,
+    });
+    // The global role alone grants nothing in other events.
+    expect((await abilities(privateEvent.event.id)).body).toEqual(NO_ABILITIES);
+  });
+
+  it("asks a guest to sign in before reporting event abilities", async () => {
+    for (const { event } of [privateEvent, publicEvent])
+      await get(`/event/${event.id}/abilities`, "guest").expect(401);
+  });
+
+  it.each(PERSONAS.filter((persona) => persona !== "guest"))(
+    "answers 404 for an unknown event's abilities for a %s",
+    async (persona) => {
+      await get(`/event/${randomUUID()}/abilities`, persona).expect(404);
     },
   );
 

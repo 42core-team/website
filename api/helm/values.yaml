@@ -82,7 +82,7 @@ env:
   MEDIA_S3_ENDPOINT: ""
   MEDIA_S3_BUCKET: ""
   MEDIA_S3_REGION: "eu01"
-  # CORE GitHub App; leave empty to keep using per-event organization tokens.
+  # CORE GitHub App; without it events cannot create team repositories.
   GITHUB_APP_ID: ""
   GITHUB_APP_SLUG: ""
 
