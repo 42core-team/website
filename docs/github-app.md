@@ -1,8 +1,8 @@
 # GitHub App: local setup
 
-Events can create team repositories through the CORE GitHub App instead of an organization token ([#798](https://github.com/42core-team/website/issues/798)). To work on this locally, register your own development App, add it to `.env.tilt`, and install it on a test organization you own.
+Events create team repositories through the CORE GitHub App ([#798](https://github.com/42core-team/website/issues/798)). To work on this locally, register your own development App, add it to `.env.tilt`, and install it on a test organization you own.
 
-The App is optional. Without it, the event form only offers the organization token.
+Without an App, the rest of the platform works, but events cannot create team repositories.
 
 Local URLs used below (see the [README](../README.md#start-the-development-environment)):
 
@@ -70,7 +70,7 @@ Tilt watches `.env.tilt` and redeploys the api and github-service when it change
 You need a GitHub organization you own; [create a free one](https://github.com/account/organizations/new) for testing. GitHub login must be set up as described in the [README](../README.md#oauth-setup).
 
 1. Sign in at `http://localhost:3000` with the GitHub account that owns the test organization.
-2. Create an event. With the App configured, the **GitHub Integration** section shows **Use the CORE GitHub App**, switched on by default. Leave it on.
+2. Create an event. With the App configured, the **GitHub Integration** section says that GitHub is connected from the event dashboard, and creating the event opens that dashboard.
 3. On the event dashboard, click **Connect GitHub App** in the **GitHub Connection** card.
 4. On GitHub, pick the test organization and install the App, on all repositories or a selection.
 5. GitHub redirects to `/github/setup`, which connects the installation and returns to the dashboard. The card shows **Connected**.
@@ -87,7 +87,7 @@ Things to know:
 
 | Symptom | Cause |
 | --- | --- |
-| No toggle on the event form and no GitHub Connection card | The App is not configured: `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY` or `GITHUB_APP_SLUG` is empty. Connecting returns "The CORE GitHub App is not configured on this server." |
+| The event form says the App is not configured, and there is no GitHub Connection card | The App is not configured: `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY` or `GITHUB_APP_SLUG` is empty. Connecting returns "The CORE GitHub App is not configured on this server." |
 | api or github-service does not start | `GITHUB_APP_ID` and `GITHUB_APP_PRIVATE_KEY` are not both set, or the key is not a base64-encoded PEM RSA key. |
 | GitHub shows no organization to install on | The App is private. Set "Where can this GitHub App be installed?" to **Any account**. |
 | GitHub does not redirect back after installing | The Setup URL is missing, or "Request user authorization (OAuth) during installation" is checked. |
@@ -100,4 +100,4 @@ Things to know:
 
 ## Deployed environments
 
-Deployed environments use the `CORE_APP_*` GitHub environment variables and secrets instead of `.env.tilt`; see [GitHub App setup](../README.md#github-app-setup-optional) in the README.
+Deployed environments use the `CORE_APP_*` GitHub environment variables and secrets instead of `.env.tilt`; see [GitHub App setup](../README.md#github-app-setup) in the README.

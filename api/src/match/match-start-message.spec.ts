@@ -15,7 +15,6 @@ function setup(
   const event = {
     id: "event",
     githubOrg: overrides.githubOrg ?? "core-org",
-    githubOrgSecret: "encrypted",
     gameServerDockerImage: "ghcr.io/42core-team/game-server:v1",
     myCoreBotDockerImage: "ghcr.io/42core-team/my-core-bot:v1",
     gameConfig: "{}",

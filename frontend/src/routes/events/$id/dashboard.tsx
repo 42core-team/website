@@ -88,10 +88,7 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  GithubConnection,
-  useEventGithubStatus,
-} from '@/components/dashboard/github-connection'
+import { GithubConnection } from '@/components/dashboard/github-connection'
 import { useTabParam } from '@/hooks/useTabParam'
 import { useEventClock } from '@/hooks/use-event-clock'
 import { useSession } from '@/lib/auth'
@@ -159,8 +156,6 @@ const SETTINGS_FIELDS = [
   'basePath',
   'gameConfig',
   'serverConfig',
-  'githubOrg',
-  'githubOrgSecret',
   'startDate',
   'submissionDeadline',
   'scheduledEndDate',
@@ -858,7 +853,6 @@ function SettingsTab({
   saved: Pick<Event, 'canCreateTeam' | 'processQueue' | 'gamblingEnabled'>
   onOpenOperation: () => void
 }) {
-  const githubStatusQuery = useEventGithubStatus(eventId)
   const reopenNotice = playClosed && (
     <Alert role="status" className="md:col-span-2 lg:col-span-4">
       <Lock className="size-4" aria-hidden="true" />
@@ -1157,32 +1151,10 @@ function SettingsTab({
 
       <Card>
         <CardHeader>
-          <CardTitle>Advanced / Secrets</CardTitle>
-          <CardDescription>
-            Sensitive configuration and JSON configs.
-          </CardDescription>
+          <CardTitle>Advanced</CardTitle>
+          <CardDescription>Game and server JSON configs.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* With the App, the organization and access come from the installation. */}
-          {!githubStatusQuery.data?.installation && (
-            <>
-              <DashboardInput
-                label="GitHub Organization"
-                value={pendingSettings.githubOrg || ''}
-                error={githubConfigErrors.githubOrg}
-                onChange={(value) => updatePendingSetting('githubOrg', value)}
-              />
-              <DashboardInput
-                label="GitHub Organization Secret (Token)"
-                type="password"
-                placeholder="Enter new token to update (leave blank to keep current)"
-                value={pendingSettings.githubOrgSecret || ''}
-                onChange={(value) =>
-                  updatePendingSetting('githubOrgSecret', value)
-                }
-              />
-            </>
-          )}
           <ExpandableJsonTextarea
             label="Game Config (JSON)"
             value={pendingSettings.gameConfig || ''}

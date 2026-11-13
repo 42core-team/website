@@ -75,15 +75,12 @@ function setup(status = "PROVISIONING", closed = false) {
     createTeamRepository: jest.fn(),
   };
   Reflect.set(service, "githubApiService", github);
-  Reflect.set(service, "githubAuthService", tokenAuthService);
+  Reflect.set(service, "githubAuthService", githubAuthService);
   return { service, team, event, repository, manager, github };
 }
 
-const tokenAuthService = {
-  authFor: jest.fn(async (event: { githubOrgSecret: string }) => ({
-    kind: "token",
-    encryptedSecret: event.githubOrgSecret,
-  })),
+const githubAuthService = {
+  authFor: jest.fn(async () => ({ installationId: 42 })),
 };
 
 describe("repository lifecycle", () => {

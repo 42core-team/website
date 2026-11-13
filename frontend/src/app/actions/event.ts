@@ -42,7 +42,6 @@ export interface Event {
   gameConfig?: string
   serverConfig?: string
   isPrivate: boolean
-  githubOrgSecret?: string
   starterTemplates?: EventStarterTemplate[]
 }
 
@@ -113,9 +112,6 @@ export async function joinEvent(eventId: string): Promise<boolean> {
 export interface EventCreateParams {
   name: string
   description?: string
-  /** Omit both to connect the CORE GitHub App after creating the event. */
-  githubOrg?: string
-  githubOrgSecret?: string
   location?: string
   startDate: number
   submissionDeadline: number
@@ -140,7 +136,6 @@ export interface EventCreateParams {
 export interface EventGithubStatus {
   appAvailable: boolean
   githubOrg: string
-  usesOrganizerToken: boolean
   installation: {
     accountLogin: string
     status: 'active' | 'suspended' | 'uninstalled'
@@ -234,8 +229,6 @@ export async function updateEventSettings(
     isPrivate?: boolean
     name?: string
     description?: string
-    githubOrg?: string
-    githubOrgSecret?: string
     location?: string
     startDate?: number
     endDate?: number

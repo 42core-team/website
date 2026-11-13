@@ -74,7 +74,6 @@ postgres("current live event (PostgreSQL)", () => {
     return database.getRepository(EventEntity).save({
       name: randomUUID().slice(0, 30),
       githubOrg: "org",
-      githubOrgSecret: "secret",
       minTeamSize: 1,
       maxTeamSize: 4,
       isPrivate,

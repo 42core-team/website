@@ -8,7 +8,7 @@ jest.mock("../main", () => ({
   getRabbitmqConfig: jest.fn().mockReturnValue({}),
 }));
 
-describe("GitHub organization secret transport", () => {
+describe("GitHub credentials transport", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
@@ -19,10 +19,7 @@ describe("GitHub organization secret transport", () => {
     const service = new GithubApiService({
       getOrThrow: jest.fn().mockReturnValue("https://api.example.com"),
     } as never);
-    const githubAuth = {
-      kind: "token" as const,
-      encryptedSecret: "v2:encrypted-event-token",
-    };
+    const githubAuth = { installationId: 42 };
 
     await service.createTeamRepository(
       "repository-name",

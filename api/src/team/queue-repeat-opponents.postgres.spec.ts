@@ -53,7 +53,6 @@ postgres("queue repeat opponents (PostgreSQL)", () => {
     const event = await database.getRepository(EventEntity).save({
       name: randomUUID().slice(0, 30),
       githubOrg: "org",
-      githubOrgSecret: "secret",
       minTeamSize: 1,
       maxTeamSize: 4,
       maxQueueCredits: JOINS,

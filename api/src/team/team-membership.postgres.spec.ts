@@ -90,7 +90,6 @@ postgres("team membership concurrency (PostgreSQL)", () => {
     return database.getRepository(EventEntity).save({
       name: randomUUID(),
       githubOrg: "org",
-      githubOrgSecret: "secret",
       minTeamSize: 1,
       maxTeamSize,
       startDate: new Date("2099-01-01"),
