@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import type { ProfileMatch, UserProfile } from '@/app/actions/profile'
+import type { ProfileSummary, UserProfile } from '@/app/actions/profile'
 import { format } from 'date-fns'
 import {
   Activity,
@@ -21,14 +21,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import {
+  PHASE_LABELS,
   formatCompact,
   formatPercent,
-  getActivity,
-  getForm,
+  formatUtcDay,
+  getActivityWeeks,
   getFrequentTeammate,
-  getPhaseRecords,
-  getRecord,
-  getRivals,
+  totalMatches,
+  winRate,
 } from './profile-stats'
 import { ResultPill } from './ResultPill'
 
@@ -84,8 +84,8 @@ function Fact({
 }
 
 export function ProfileOverview({ profile }: { profile: UserProfile }) {
-  const { matches } = profile
-  if (matches.length === 0) {
+  const { summary } = profile
+  if (totalMatches(summary.record) === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border bg-muted/10 py-12 text-center">
         <p className="font-medium text-muted-foreground">
@@ -100,15 +100,15 @@ export function ProfileOverview({ profile }: { profile: UserProfile }) {
         <Panel
           icon={Activity}
           title="Form"
-          aside="Last 20 matches, oldest first"
+          aside={`Last ${summary.form.length} matches, oldest first`}
           className="lg:col-span-2"
         >
-          <FormStrip matches={matches} />
+          <FormStrip form={summary.form} />
           <WinRateByEvent profile={profile} />
         </Panel>
-        <RecordPanel matches={matches} />
+        <RecordPanel summary={summary} />
       </div>
-      <ActivityPanel matches={matches} />
+      <ActivityPanel activity={summary.activity} />
       <div className="grid gap-6 lg:grid-cols-3">
         <RivalsPanel profile={profile} />
         <CombatPanel profile={profile} />
@@ -117,15 +117,14 @@ export function ProfileOverview({ profile }: { profile: UserProfile }) {
   )
 }
 
-function FormStrip({ matches }: { matches: ProfileMatch[] }) {
-  const form = getForm(matches, 20)
+function FormStrip({ form }: { form: ProfileSummary['form'] }) {
   return (
     <ol className="flex flex-wrap gap-1.5" aria-label="Recent results">
       {form.map((match, index) => (
         <li key={`${match.createdAt}-${index}`}>
           <ResultPill
             result={match.result}
-            title={`${match.opponent ? `against ${match.opponent.name}, ` : ''}${format(new Date(match.createdAt), 'MMM d, yyyy')}`}
+            title={`${match.opponent ? `against ${match.opponent}, ` : ''}${format(new Date(match.createdAt), 'MMM d, yyyy')}`}
           />
         </li>
       ))}
@@ -136,13 +135,7 @@ function FormStrip({ matches }: { matches: ProfileMatch[] }) {
 function WinRateByEvent({ profile }: { profile: UserProfile }) {
   const rows = [...profile.teams]
     .reverse()
-    .map((team) => ({
-      team,
-      record: getRecord(
-        profile.matches.filter((match) => match.teamId === team.id),
-      ),
-    }))
-    .filter((row) => row.record.total > 0)
+    .filter((team) => totalMatches(team.record) > 0)
     .slice(-8)
   if (rows.length < 2) return null
   const columns = {
@@ -153,30 +146,31 @@ function WinRateByEvent({ profile }: { profile: UserProfile }) {
     <div className="mt-6 border-t pt-5">
       <p className="mb-4 text-sm text-muted-foreground">Win rate by event</p>
       <div className="grid h-40 items-end gap-3 border-b" style={columns}>
-        {rows.map(({ team, record }) => (
-          <div
-            key={team.id}
-            className="flex h-full flex-col items-center justify-end gap-1.5"
-          >
-            <span className="text-sm font-medium tabular-nums">
-              {formatPercent(record.winRate)}
-            </span>
+        {rows.map((team) => {
+          const rate = winRate(team.record)
+          return (
             <div
-              className="w-full max-w-14 rounded-t-md bg-primary/80"
-              style={{
-                height: `${Math.max(4, (record.winRate ?? 0) * 120)}px`,
-              }}
-              aria-hidden
-            />
-          </div>
-        ))}
+              key={team.id}
+              className="flex h-full flex-col items-center justify-end gap-1.5"
+            >
+              <span className="text-sm font-medium tabular-nums">
+                {formatPercent(rate)}
+              </span>
+              <div
+                className="w-full max-w-14 rounded-t-md bg-primary/80"
+                style={{ height: `${Math.max(4, (rate ?? 0) * 120)}px` }}
+                aria-hidden
+              />
+            </div>
+          )
+        })}
       </div>
       <div className="mt-2 grid gap-3" style={columns}>
-        {rows.map(({ team, record }) => (
+        {rows.map((team) => (
           <div key={team.id} className="min-w-0 text-center">
             <p className="truncate text-xs font-medium">{team.event.name}</p>
             <p className="text-xs text-muted-foreground tabular-nums">
-              {record.wins}–{record.losses}
+              {team.record.wins}–{team.record.losses}
             </p>
           </div>
         ))}
@@ -185,9 +179,9 @@ function WinRateByEvent({ profile }: { profile: UserProfile }) {
   )
 }
 
-function RecordPanel({ matches }: { matches: ProfileMatch[] }) {
-  const record = getRecord(matches)
-  const phases = getPhaseRecords(matches)
+function RecordPanel({ summary }: { summary: ProfileSummary }) {
+  const { record } = summary
+  const rate = winRate(record) ?? 0
   const radius = 42
   const circumference = 2 * Math.PI * radius
 
@@ -199,7 +193,7 @@ function RecordPanel({ matches }: { matches: ProfileMatch[] }) {
             viewBox="0 0 100 100"
             className="size-full -rotate-90"
             role="img"
-            aria-label={`${formatPercent(record.winRate)} of matches won`}
+            aria-label={`${formatPercent(rate)} of matches won`}
           >
             <circle
               cx="50"
@@ -215,12 +209,12 @@ function RecordPanel({ matches }: { matches: ProfileMatch[] }) {
               r={radius}
               fill="none"
               strokeWidth="10"
-              strokeDasharray={`${(record.winRate ?? 0) * circumference} ${circumference}`}
+              strokeDasharray={`${rate * circumference} ${circumference}`}
               className="stroke-emerald-500"
             />
           </svg>
           <span className="absolute inset-0 flex items-center justify-center text-xl font-bold tabular-nums">
-            {Math.round((record.winRate ?? 0) * 100)}%
+            {Math.round(rate * 100)}%
           </span>
         </div>
         <div className="space-y-1 text-sm">
@@ -241,15 +235,15 @@ function RecordPanel({ matches }: { matches: ProfileMatch[] }) {
         </div>
       </div>
       <dl className="divide-y border-t pt-3">
-        {phases.map((phase) => (
+        {summary.phases.map((phase) => (
           <Fact
             key={phase.phase}
-            label={phase.label}
+            label={PHASE_LABELS[phase.phase]}
             value={
               <>
                 {phase.wins}–{phase.losses}
                 <span className="ml-2 text-muted-foreground">
-                  {formatPercent(phase.winRate)}
+                  {formatPercent(winRate(phase))}
                 </span>
               </>
             }
@@ -273,22 +267,25 @@ function heatLevel(count: number, max: number) {
   return Math.min(4, Math.max(1, Math.ceil((count / max) * 4)))
 }
 
-function ActivityPanel({ matches }: { matches: ProfileMatch[] }) {
-  const weeks = getActivity(matches, 53)
-  const days = weeks.flat()
-  const total = days.reduce((sum, day) => sum + day.count, 0)
-  const busiest = days.reduce(
-    (best, day) => (day.count > best.count ? day : best),
-    days[0],
-  )
-  const max = Math.max(1, busiest.count)
+function ActivityPanel({ activity }: { activity: ProfileSummary['activity'] }) {
+  const weeks = getActivityWeeks(activity)
+  const total = activity.days.reduce((sum, day) => sum + day.count, 0)
+  const busiest = activity.days.reduce<
+    ProfileSummary['activity']['days'][number] | null
+  >((best, day) => (!best || day.count > best.count ? day : best), null)
+  const max = Math.max(1, busiest?.count ?? 0)
+  // Days are UTC days, so their labels are written in UTC too.
   const monthLabels = weeks.map((week, index) => {
     const month = week[0].date.getUTCMonth()
     const previous = index > 0 ? weeks[index - 1][0].date.getUTCMonth() : -1
     return month !== previous && index < weeks.length - 2
-      ? format(week[0].date, 'MMM')
+      ? formatUtcDay(week[0].date, { month: 'short' })
       : ''
   })
+  const description =
+    total === 0
+      ? 'No matches in the last 12 months.'
+      : `${total} ${total === 1 ? 'match' : 'matches'} on ${activity.days.length} ${activity.days.length === 1 ? 'day' : 'days'} in the last 12 months. Busiest day: ${formatUtcDay(new Date(`${busiest!.day}T00:00:00Z`))} with ${busiest!.count} ${busiest!.count === 1 ? 'match' : 'matches'}.`
 
   return (
     <Panel
@@ -302,8 +299,10 @@ function ActivityPanel({ matches }: { matches: ProfileMatch[] }) {
     >
       {/* rtl keeps the scroll position at the newest weeks on narrow screens. */}
       <div dir="rtl" className="overflow-x-auto pb-1">
+        {/* The text below describes the grid; hovering a day shows its count. */}
         <div
           dir="ltr"
+          aria-hidden
           className="grid min-w-[44rem] grid-flow-col gap-[3px]"
           style={{
             gridTemplateColumns: `2rem repeat(${weeks.length}, minmax(0, 1fr))`,
@@ -325,29 +324,29 @@ function ActivityPanel({ matches }: { matches: ProfileMatch[] }) {
             >
               {monthLabels[index]}
             </span>,
-            ...week.map((day) => {
-              const label = `${day.count === 0 ? 'No' : day.count} ${day.count === 1 ? 'match' : 'matches'} on ${format(day.date, 'MMM d, yyyy')}`
-              return (
+            ...week.map((day) =>
+              day.inRange ? (
                 <span
                   key={day.date.toISOString()}
-                  title={label}
-                  aria-label={label}
+                  title={`${day.count === 0 ? 'No' : day.count} ${day.count === 1 ? 'match' : 'matches'} on ${formatUtcDay(day.date)}`}
                   className={cn(
                     'aspect-square w-full max-w-5 rounded-[3px]',
                     HEAT_LEVELS[heatLevel(day.count, max)],
                   )}
                 />
-              )
-            }),
+              ) : (
+                <span
+                  key={day.date.toISOString()}
+                  className="aspect-square w-full max-w-5"
+                />
+              ),
+            ),
           ])}
         </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span>
-          {total > 0 &&
-            `Busiest day: ${format(busiest.date, 'MMM d, yyyy')} with ${busiest.count} matches`}
-        </span>
-        <span className="flex items-center gap-1.5">
+        <p>{description}</p>
+        <span className="flex items-center gap-1.5" aria-hidden>
           Less
           {HEAT_LEVELS.map((level) => (
             <span key={level} className={cn('size-3 rounded-[3px]', level)} />
@@ -389,7 +388,7 @@ function CombatPanel({ profile }: { profile: UserProfile }) {
 }
 
 function RivalsPanel({ profile }: { profile: UserProfile }) {
-  const rivals = getRivals(profile.matches)
+  const { rivals } = profile.summary
   const teammate = getFrequentTeammate(profile.teams, profile.user.id)
   const rows = [
     rivals.nemesis && {

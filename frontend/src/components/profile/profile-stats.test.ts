@@ -1,40 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import type { ProfileMatch, ProfileTeam } from '@/app/actions/profile'
+import type { ProfileTeam } from '@/app/actions/profile'
 import {
   finishLabel,
-  getActivity,
+  formatUtcDay,
+  getActivityWeeks,
   getBestFinish,
-  getForm,
   getFrequentTeammate,
-  getPhaseRecords,
-  getRecord,
-  getRivals,
-  getStreaks,
+  winRate,
 } from './profile-stats'
-
-let day = 0
-function match(
-  result: ProfileMatch['result'],
-  overrides: Partial<ProfileMatch> = {},
-): ProfileMatch {
-  day++
-  return {
-    id: null,
-    teamId: 't1',
-    eventId: 'e1',
-    phase: 'QUEUE',
-    round: 0,
-    createdAt: new Date(Date.UTC(2026, 0, day)).toISOString(),
-    result,
-    opponent: null,
-    stats: null,
-    ...overrides,
-  }
-}
-
-function opponent(id: string) {
-  return { id, name: id, deletedAt: null, picture: null, background: null }
-}
 
 function team(overrides: Partial<ProfileTeam>): ProfileTeam {
   return {
@@ -51,99 +24,63 @@ function team(overrides: Partial<ProfileTeam>): ProfileTeam {
       state: 'COMPLETED',
       startDate: '2026-01-01T00:00:00Z',
       scheduledEndDate: '2026-01-02T00:00:00Z',
-      bracketSize: null,
     },
     members: [],
+    record: { wins: 0, losses: 0, draws: 0 },
+    swissRecord: { wins: 0, losses: 0, draws: 0 },
     finish: null,
     ...overrides,
   }
 }
 
-describe('getRecord', () => {
-  it('counts results and the win rate', () => {
-    expect(
-      getRecord([match('WIN'), match('LOSS'), match('WIN'), match('DRAW')]),
-    ).toEqual({
-      wins: 2,
-      losses: 1,
-      draws: 1,
-      total: 4,
-      winRate: 0.5,
-    })
-    expect(getRecord([]).winRate).toBeNull()
+describe('winRate', () => {
+  it('is the share of matches won, and null without matches', () => {
+    expect(winRate({ wins: 2, losses: 1, draws: 1 })).toBe(0.5)
+    expect(winRate({ wins: 0, losses: 0, draws: 0 })).toBeNull()
   })
 })
 
-describe('getForm and getStreaks', () => {
-  it('orders form oldest first and finds streaks regardless of input order', () => {
-    const matches = [
-      match('WIN'),
-      match('WIN'),
-      match('WIN'),
-      match('LOSS'),
-      match('WIN'),
-      match('WIN'),
-    ].reverse()
-    expect(getForm(matches, 3).map((m) => m.result)).toEqual([
-      'LOSS',
-      'WIN',
-      'WIN',
-    ])
-    expect(getStreaks(matches)).toEqual({
-      longestWin: 3,
-      current: { result: 'WIN', length: 2 },
-    })
-  })
-})
+describe('getActivityWeeks', () => {
+  const now = new Date(Date.UTC(2026, 10, 13, 12)) // Friday
 
-describe('getPhaseRecords', () => {
-  it('lists only phases with matches, in a fixed order', () => {
-    const rows = getPhaseRecords([
-      match('WIN', { phase: 'SWISS' }),
-      match('LOSS', { phase: 'QUEUE' }),
-    ])
-    expect(rows.map((row) => [row.label, row.wins, row.losses])).toEqual([
-      ['Match Making', 0, 1],
-      ['Swiss', 1, 0],
-    ])
-  })
-})
-
-describe('getActivity', () => {
-  it('buckets matches by UTC day into whole weeks ending this week', () => {
-    const now = new Date(Date.UTC(2026, 10, 13, 12)) // Friday
-    const weeks = getActivity(
-      [
-        match('WIN', { createdAt: '2026-11-13T08:00:00Z' }),
-        match('LOSS', { createdAt: '2026-11-13T20:00:00Z' }),
-        match('WIN', { createdAt: '2025-01-01T00:00:00Z' }),
-      ],
-      2,
+  it('lays the window out in whole UTC weeks ending this week', () => {
+    const weeks = getActivityWeeks(
+      {
+        since: '2026-11-03', // Tuesday
+        days: [
+          { day: '2026-11-03', count: 1 },
+          { day: '2026-11-13', count: 2 },
+        ],
+      },
       now,
     )
     expect(weeks).toHaveLength(2)
+    expect(weeks[0][0].date.toISOString()).toBe('2026-11-01T00:00:00.000Z')
     expect(weeks[1][6].date.toISOString()).toBe('2026-11-14T00:00:00.000Z')
-    expect(weeks[1][5]).toMatchObject({ count: 2 })
-    expect(weeks.flat().reduce((sum, d) => sum + d.count, 0)).toBe(2)
+    expect(weeks[1][5]).toMatchObject({ count: 2, inRange: true })
+    expect(weeks.flat().reduce((sum, day) => sum + day.count, 0)).toBe(3)
+  })
+
+  it('leaves the padding before the window and after today empty', () => {
+    const weeks = getActivityWeeks(
+      { since: '2026-11-03', days: [{ day: '2026-11-02', count: 5 }] },
+      now,
+    )
+    // Sunday and Monday come before the window, Saturday after today.
+    expect(weeks[0][0].inRange).toBe(false)
+    expect(weeks[0][1]).toMatchObject({ inRange: false, count: 0 })
+    expect(weeks[0][2].inRange).toBe(true)
+    expect(weeks[1][6].inRange).toBe(false)
   })
 })
 
-describe('getRivals', () => {
-  it('needs two meetings and breaks ties by total matches', () => {
-    const a = opponent('a')
-    const b = opponent('b')
-    const rivals = getRivals([
-      match('LOSS', { opponent: a }),
-      match('LOSS', { opponent: a }),
-      match('WIN', { opponent: a }),
-      match('WIN', { opponent: b }),
-      match('WIN', { opponent: b }),
-      match('WIN', { opponent: b }),
-    ])
-    expect(rivals.nemesis?.team.id).toBe('a')
-    expect(rivals.favourite?.team.id).toBe('b')
-    expect(rivals.mostPlayed?.total).toBe(3)
-    expect(getRivals([match('LOSS', { opponent: a })]).nemesis).toBeNull()
+describe('formatUtcDay', () => {
+  it('names the UTC day in every time zone', () => {
+    // Midnight UTC is still the evening before west of UTC.
+    expect(formatUtcDay(new Date('2026-11-01T00:00:00Z'))).toBe('Nov 1, 2026')
+    expect(
+      formatUtcDay(new Date('2026-11-01T00:00:00Z'), { month: 'short' }),
+    ).toBe('Nov')
   })
 })
 
@@ -162,6 +99,15 @@ describe('finishes', () => {
     ])
     expect(best?.team.id).toBe('third')
     expect(getBestFinish([team({})])).toBeNull()
+  })
+
+  it('ranks an open semifinal below a decided third place', () => {
+    // Newest team first, as the API sends them.
+    const best = getBestFinish([
+      team({ id: 'open-semi', finish: { kind: 'ELIMINATED', roundOf: 4 } }),
+      team({ id: 'third', finish: { kind: 'THIRD', roundOf: 4 } }),
+    ])
+    expect(best?.team.id).toBe('third')
   })
 })
 

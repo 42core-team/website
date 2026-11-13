@@ -17,6 +17,12 @@ export interface BracketFinish {
   roundOf: number | null
 }
 
+export interface MatchRecord {
+  wins: number
+  losses: number
+  draws: number
+}
+
 export interface ProfileUser {
   id: string
   username: string
@@ -39,6 +45,7 @@ export interface ProfileTeam {
   name: string
   picture: TeamImage | null
   background: TeamBackground | null
+  /** Only for teams the viewer is on. */
   repo: { name: string; url: string } | null
   starterTemplate: string | null
   createdAt: string
@@ -48,14 +55,14 @@ export interface ProfileTeam {
     state: EventStateValue
     startDate: string
     scheduledEndDate: string
-    /** Teams in the elimination bracket; null before it is drawn. */
-    bracketSize: number | null
   }
   members: ProfileTeamMember[]
+  record: MatchRecord
+  swissRecord: MatchRecord
   finish: BracketFinish | null
 }
 
-export interface ProfileMatchOpponent {
+export interface ProfileMatchTeam {
   id: string
   name: string
   deletedAt: string | null
@@ -63,20 +70,40 @@ export interface ProfileMatchOpponent {
   background: TeamBackground | null
 }
 
-export interface ProfileMatch {
-  id: string | null
-  teamId: string
+export interface ProfileRival {
+  team: ProfileMatchTeam
   eventId: string
-  phase: ProfileMatchPhase
-  round: number
-  createdAt: string
-  result: ProfileMatchResult
-  opponent: ProfileMatchOpponent | null
-  stats: {
-    unitsSpawned: number
-    coresDestroyed: number
-    damageTotal: number
-  } | null
+  wins: number
+  losses: number
+  total: number
+}
+
+export interface ProfileActivity {
+  /** First UTC day (YYYY-MM-DD) of the window, which ends today. */
+  since: string
+  /** Days with matches only. */
+  days: Array<{ day: string; count: number }>
+}
+
+export interface ProfileSummary {
+  record: MatchRecord
+  /** The latest 20 results, oldest first. */
+  form: Array<{
+    result: ProfileMatchResult
+    createdAt: string
+    opponent: string | null
+  }>
+  streaks: {
+    longestWin: number
+    current: { result: ProfileMatchResult; length: number } | null
+  }
+  phases: Array<{ phase: ProfileMatchPhase } & MatchRecord>
+  activity: ProfileActivity
+  rivals: {
+    nemesis: ProfileRival | null
+    favourite: ProfileRival | null
+    mostPlayed: ProfileRival | null
+  }
 }
 
 export interface ProfileCombat {
@@ -93,14 +120,61 @@ export interface ProfileCombat {
 export interface UserProfile {
   user: ProfileUser
   teams: ProfileTeam[]
-  matches: ProfileMatch[]
+  summary: ProfileSummary
   combat: ProfileCombat
+}
+
+export interface ProfileMatch {
+  /** Only for viewers on one of the match's teams. */
+  id: string | null
+  teamId: string
+  eventId: string
+  phase: ProfileMatchPhase
+  round: number
+  createdAt: string
+  result: ProfileMatchResult
+  opponent: ProfileMatchTeam | null
+  stats: {
+    unitsSpawned: number
+    coresDestroyed: number
+    damageTotal: number
+  } | null
+}
+
+export interface ProfileMatchesPage {
+  total: number
+  matches: ProfileMatch[]
+}
+
+export interface ProfileMatchesQuery {
+  offset: number
+  limit: number
+  phase?: ProfileMatchPhase
+  eventId?: string
+}
+
+export const profileQueryKeys = {
+  profile: (username: string) => ['profile', username.toLowerCase()] as const,
+  matches: (username: string, filters: Omit<ProfileMatchesQuery, 'offset'>) =>
+    ['profile', username.toLowerCase(), 'matches', filters] as const,
 }
 
 export async function getUserProfile(username: string): Promise<UserProfile> {
   return (
     await axiosInstance.get<UserProfile>(
       `profile/${encodeURIComponent(username)}`,
+    )
+  ).data
+}
+
+export async function getUserProfileMatches(
+  username: string,
+  query: ProfileMatchesQuery,
+): Promise<ProfileMatchesPage> {
+  return (
+    await axiosInstance.get<ProfileMatchesPage>(
+      `profile/${encodeURIComponent(username)}/matches`,
+      { params: query },
     )
   ).data
 }

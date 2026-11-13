@@ -14,9 +14,8 @@ import {
   finishLabel,
   formatPercent,
   getBestFinish,
-  getForm,
-  getRecord,
-  getStreaks,
+  totalMatches,
+  winRate,
 } from './profile-stats'
 
 function placeLabel(finish: BracketFinish) {
@@ -36,11 +35,10 @@ function placeLabel(finish: BracketFinish) {
 
 /** Identity and career numbers, laid out like a team's public profile. */
 export function ProfileHeader({ profile }: { profile: UserProfile }) {
-  const { user, teams, matches } = profile
+  const { user, teams, summary } = profile
   const coverTeam = teams.find((team) => team.background)
-  const record = getRecord(matches)
-  const form = getRecord(getForm(matches, 20))
-  const streaks = getStreaks(matches)
+  const { record, streaks } = summary
+  const formWins = summary.form.filter((match) => match.result === 'WIN').length
   const best = getBestFinish(teams)
   const onPodium =
     !!best && ['CHAMPION', 'RUNNER_UP', 'THIRD'].includes(best.finish.kind)
@@ -132,15 +130,15 @@ export function ProfileHeader({ profile }: { profile: UserProfile }) {
             />
             <Stat
               label="Matches"
-              value={record.total}
+              value={totalMatches(record)}
               detail={`${record.wins} won · ${record.losses} lost`}
             />
             <Stat
               label="Win rate"
-              value={formatPercent(record.winRate)}
+              value={formatPercent(winRate(record))}
               detail={
-                form.total >= 5
-                  ? `${formatPercent(form.winRate)} in the last ${form.total}`
+                summary.form.length >= 5
+                  ? `${formatPercent(formWins / summary.form.length)} in the last ${summary.form.length}`
                   : 'Too few matches yet'
               }
             />

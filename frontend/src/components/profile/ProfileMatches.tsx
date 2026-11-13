@@ -1,7 +1,15 @@
 import type { MatchPhase, QueueMatch } from '@/app/actions/tournament-model'
-import type { ProfileMatchPhase, UserProfile } from '@/app/actions/profile'
+import type {
+  ProfileMatch,
+  ProfileMatchPhase,
+  ProfileTeam,
+  UserProfile,
+} from '@/app/actions/profile'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { History } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
+import { getUserProfileMatches, profileQueryKeys } from '@/app/actions/profile'
+import { MatchState } from '@/app/actions/tournament-model'
 import MatchesList from '@/components/MatchesList'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader } from '@/components/ui/card'
@@ -12,8 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { MatchState } from '@/app/actions/tournament-model'
+import { Spinner } from '@/components/ui/spinner'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const PAGE_SIZE = 25
 const ALL = 'all'
@@ -26,54 +34,104 @@ const TABS: Array<{ label: string; value: ProfileMatchPhase | typeof ALL }> = [
   { label: 'Tournament', value: 'ELIMINATION' },
 ]
 
-type ListedMatch = QueueMatch & { eventId: string }
+/** A profile match in the shape of a team's match history. */
+function toListedMatch(
+  match: ProfileMatch,
+  teams: Map<string, ProfileTeam>,
+): QueueMatch & { eventId: string } {
+  const own = teams.get(match.teamId)
+  const ownTeam = {
+    id: match.teamId,
+    name: own?.name ?? 'Unknown',
+    picture: own?.picture,
+    background: own?.background,
+  }
+  const opponent = match.opponent
+  return {
+    // Without a replay id the list shows no replay button, as on team pages.
+    id: match.id ?? undefined,
+    eventId: match.eventId,
+    state: MatchState.FINISHED,
+    phase: match.phase as MatchPhase,
+    createdAt: match.createdAt,
+    teams: opponent ? [ownTeam, opponent] : [ownTeam],
+    winner:
+      match.result === 'WIN'
+        ? ownTeam
+        : match.result === 'LOSS'
+          ? opponent
+          : null,
+  }
+}
 
-/** Every listed match in the shape of a team's match history. */
-function toListedMatches(profile: UserProfile): ListedMatch[] {
-  const teams = new Map(profile.teams.map((team) => [team.id, team]))
-  return [...profile.matches]
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+function MatchPage({
+  username,
+  teams,
+  phase,
+  eventId,
+}: {
+  username: string
+  teams: ProfileTeam[]
+  phase?: ProfileMatchPhase
+  eventId?: string
+}) {
+  const filters = { limit: PAGE_SIZE, phase, eventId }
+  const query = useInfiniteQuery({
+    queryKey: profileQueryKeys.matches(username, filters),
+    queryFn: ({ pageParam }) =>
+      getUserProfileMatches(username, { ...filters, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => {
+      const loaded = pages.reduce((sum, page) => sum + page.matches.length, 0)
+      return loaded < last.total ? loaded : undefined
+    },
+  })
+
+  if (query.isPending)
+    return (
+      <div className="flex min-h-40 items-center justify-center">
+        <Spinner />
+      </div>
     )
-    .map((match) => {
-      const own = teams.get(match.teamId)
-      const ownTeam = {
-        id: match.teamId,
-        name: own?.name ?? 'Unknown',
-        picture: own?.picture,
-        background: own?.background,
-      }
-      const opponent = match.opponent
-      return {
-        // Unlisted replays keep the team page's behavior: no button.
-        id: match.id ?? undefined,
-        eventId: match.eventId,
-        state: MatchState.FINISHED,
-        phase: match.phase as MatchPhase,
-        createdAt: match.createdAt,
-        teams: opponent ? [ownTeam, opponent] : [ownTeam],
-        winner:
-          match.result === 'WIN'
-            ? ownTeam
-            : match.result === 'LOSS'
-              ? opponent
-              : null,
-      }
-    })
+  if (query.isError)
+    return (
+      <div className="flex min-h-40 items-center justify-center px-4 text-center text-sm text-destructive">
+        Failed to load match history.
+      </div>
+    )
+
+  const byId = new Map(teams.map((team) => [team.id, team]))
+  const pages = query.data.pages
+  const loaded = pages.flatMap((page) => page.matches)
+  const remaining = pages[pages.length - 1].total - loaded.length
+
+  return (
+    <>
+      <MatchesList
+        matches={loaded.map((match) => toListedMatch(match, byId))}
+        isInsideCard
+        emptyMessage="No matches found"
+      />
+      {remaining > 0 && (
+        <div className="flex justify-center border-t p-4">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={query.isFetchingNextPage}
+            onClick={() => void query.fetchNextPage()}
+          >
+            {query.isFetchingNextPage && <Spinner />}
+            Show {Math.min(PAGE_SIZE, remaining)} older matches
+          </Button>
+        </div>
+      )}
+    </>
+  )
 }
 
 export function ProfileMatches({ profile }: { profile: UserProfile }) {
   const [phase, setPhase] = useState<string>(ALL)
   const [eventId, setEventId] = useState<string>(ALL)
-  const [shown, setShown] = useState(PAGE_SIZE)
-
-  const all = useMemo(() => toListedMatches(profile), [profile])
-  const filtered = all.filter(
-    (match) =>
-      (eventId === ALL || match.eventId === eventId) &&
-      (phase === ALL || match.phase === phase),
-  )
 
   return (
     <Card className="overflow-hidden border shadow-sm">
@@ -85,13 +143,7 @@ export function ProfileMatches({ profile }: { profile: UserProfile }) {
           </h3>
         </div>
         {profile.teams.length > 1 && (
-          <Select
-            value={eventId}
-            onValueChange={(value) => {
-              setEventId(value)
-              setShown(PAGE_SIZE)
-            }}
-          >
+          <Select value={eventId} onValueChange={setEventId}>
             <SelectTrigger
               className="w-full sm:w-56"
               aria-label="Filter by event"
@@ -110,14 +162,7 @@ export function ProfileMatches({ profile }: { profile: UserProfile }) {
         )}
       </CardHeader>
 
-      <Tabs
-        value={phase}
-        onValueChange={(value) => {
-          setPhase(value)
-          setShown(PAGE_SIZE)
-        }}
-        className="w-full"
-      >
+      <Tabs value={phase} onValueChange={setPhase} className="w-full">
         <div className="border-b px-4 py-3">
           <TabsList>
             {TABS.map((tab) => (
@@ -127,25 +172,17 @@ export function ProfileMatches({ profile }: { profile: UserProfile }) {
             ))}
           </TabsList>
         </div>
+        {TABS.map((tab) => (
+          <TabsContent key={tab.value} value={tab.value} className="mt-0">
+            <MatchPage
+              username={profile.user.username}
+              teams={profile.teams}
+              phase={tab.value === ALL ? undefined : tab.value}
+              eventId={eventId === ALL ? undefined : eventId}
+            />
+          </TabsContent>
+        ))}
       </Tabs>
-
-      <MatchesList
-        matches={filtered.slice(0, shown)}
-        isInsideCard
-        emptyMessage="No matches found"
-      />
-
-      {filtered.length > shown && (
-        <div className="flex justify-center border-t p-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShown(shown + PAGE_SIZE)}
-          >
-            Show {Math.min(PAGE_SIZE, filtered.length - shown)} older matches
-          </Button>
-        </div>
-      )}
     </Card>
   )
 }

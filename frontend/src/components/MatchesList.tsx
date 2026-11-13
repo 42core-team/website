@@ -18,21 +18,36 @@ export function getVisibleMatchResultScores(
   )
 }
 
-export default function MatchesList(props: {
-  /** Event of the listed matches; a match's own `eventId` takes precedence. */
-  eventId?: string
-  matches: Array<QueueMatch & { eventId?: string }>
+type ListedMatch = QueueMatch & { eventId: string }
+
+type MatchesListProps = {
   isInsideCard?: boolean
   teamId?: string
   emptyMessage?: string
-}) {
+} & (
+  | {
+      /** The event all listed matches belong to. */
+      eventId: string
+      matches: QueueMatch[]
+    }
+  | {
+      /** Matches of several events each name their own. */
+      eventId?: undefined
+      matches: ListedMatch[]
+    }
+)
+
+export default function MatchesList(props: MatchesListProps) {
   const {
-    eventId,
-    matches,
     isInsideCard,
     teamId,
     emptyMessage = 'No match making matches found',
   } = props
+  const listEventId = props.eventId
+  const matches: ListedMatch[] =
+    listEventId === undefined
+      ? props.matches
+      : props.matches.map((match) => ({ ...match, eventId: listEventId }))
 
   if (matches.length === 0) {
     return (
@@ -50,7 +65,7 @@ export default function MatchesList(props: {
   const listContent = (
     <div className={cn('flex flex-col', isInsideCard ? 'divide-y' : 'gap-4')}>
       {matches.map((match, index) => {
-        const matchEventId = match.eventId ?? eventId
+        const matchEventId = match.eventId
         const resultScores = getVisibleMatchResultScores(match)
         const teams = [...match.teams]
         const viewedTeamIndex = teams.findIndex((team) => team.id === teamId)

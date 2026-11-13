@@ -21,7 +21,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { lifecycleLabels } from '@/lib/event-lifecycle'
-import { finishLabel, formatPercent, getRecord } from './profile-stats'
+import {
+  finishLabel,
+  formatPercent,
+  totalMatches,
+  winRate,
+} from './profile-stats'
 
 const PODIUM = new Set(['CHAMPION', 'RUNNER_UP', 'THIRD'])
 
@@ -38,16 +43,8 @@ function FinishBadge({ team }: { team: ProfileTeam }) {
   return <Badge variant="secondary">{lifecycleLabels[team.event.state]}</Badge>
 }
 
-function TeamCard({
-  team,
-  profile,
-}: {
-  team: ProfileTeam
-  profile: UserProfile
-}) {
-  const matches = profile.matches.filter((match) => match.teamId === team.id)
-  const record = getRecord(matches)
-  const swiss = getRecord(matches.filter((match) => match.phase === 'SWISS'))
+function TeamCard({ team }: { team: ProfileTeam }) {
+  const { record, swissRecord: swiss } = team
   const teamPath = `/events/${team.event.id}/teams/${team.id}`
 
   return (
@@ -84,13 +81,13 @@ function TeamCard({
       <CardContent className="space-y-4">
         <dl className="divide-y rounded-xl border p-4">
           <Row icon={Swords} label="Record">
-            {record.total ? `${record.wins}–${record.losses}` : '–'}
+            {totalMatches(record) ? `${record.wins}–${record.losses}` : '–'}
           </Row>
           <Row icon={BarChart3} label="Swiss">
-            {swiss.total ? `${swiss.wins}–${swiss.losses}` : '–'}
+            {totalMatches(swiss) ? `${swiss.wins}–${swiss.losses}` : '–'}
           </Row>
           <Row icon={Percent} label="Win rate">
-            {formatPercent(record.winRate)}
+            {formatPercent(winRate(record))}
           </Row>
           {team.starterTemplate && (
             <Row icon={Bot} label="Bot template">
@@ -185,7 +182,7 @@ export function ProfileTeams({ profile }: { profile: UserProfile }) {
   return (
     <div className="grid gap-6 md:grid-cols-2">
       {profile.teams.map((team) => (
-        <TeamCard key={team.id} team={team} profile={profile} />
+        <TeamCard key={team.id} team={team} />
       ))}
     </div>
   )

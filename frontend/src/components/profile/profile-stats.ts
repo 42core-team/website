@@ -1,64 +1,11 @@
 import type {
   BracketFinish,
-  ProfileMatch,
+  MatchRecord,
+  ProfileActivity,
   ProfileMatchPhase,
-  ProfileMatchResult,
   ProfileTeam,
   ProfileTeamMember,
 } from '@/app/actions/profile'
-
-export interface MatchRecord {
-  wins: number
-  losses: number
-  draws: number
-  total: number
-  /** Share of matches won, 0–1; null without matches. */
-  winRate: number | null
-}
-
-export function getRecord(matches: ProfileMatch[]): MatchRecord {
-  let wins = 0
-  let losses = 0
-  let draws = 0
-  for (const match of matches) {
-    if (match.result === 'WIN') wins++
-    else if (match.result === 'LOSS') losses++
-    else draws++
-  }
-  const total = wins + losses + draws
-  return { wins, losses, draws, total, winRate: total ? wins / total : null }
-}
-
-function oldestFirst(matches: ProfileMatch[]) {
-  return [...matches].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-  )
-}
-
-/** The latest `count` matches, oldest first. */
-export function getForm(matches: ProfileMatch[], count = 20): ProfileMatch[] {
-  return oldestFirst(matches).slice(-count)
-}
-
-export interface Streaks {
-  longestWin: number
-  current: { result: ProfileMatchResult; length: number } | null
-}
-
-export function getStreaks(matches: ProfileMatch[]): Streaks {
-  let longestWin = 0
-  let run = 0
-  let current = null as Streaks['current']
-  for (const match of oldestFirst(matches)) {
-    run = match.result === 'WIN' ? run + 1 : 0
-    longestWin = Math.max(longestWin, run)
-    current =
-      current?.result === match.result
-        ? { result: match.result, length: current.length + 1 }
-        : { result: match.result, length: 1 }
-  }
-  return { longestWin, current }
-}
 
 // The names the team page's match history uses.
 export const PHASE_LABELS: { [phase in ProfileMatchPhase]: string } = {
@@ -69,131 +16,90 @@ export const PHASE_LABELS: { [phase in ProfileMatchPhase]: string } = {
   MANUAL: 'Manual',
 }
 
-const PHASE_ORDER: ProfileMatchPhase[] = [
-  'QUEUE',
-  'SWISS',
-  'ELIMINATION',
-  'GAMBLING',
-  'MANUAL',
-]
-
-export function getPhaseRecords(
-  matches: ProfileMatch[],
-): Array<{ phase: ProfileMatchPhase; label: string } & MatchRecord> {
-  return PHASE_ORDER.map((phase) => ({
-    phase,
-    label: PHASE_LABELS[phase],
-    ...getRecord(matches.filter((match) => match.phase === phase)),
-  })).filter((row) => row.total > 0)
+export function totalMatches(record: MatchRecord): number {
+  return record.wins + record.losses + record.draws
 }
 
-export interface ActivityDay {
-  date: Date
-  count: number
-}
-
-function startOfDayUtc(date: Date) {
-  return new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-  )
+/** Share of matches won, 0–1; null without matches. */
+export function winRate(record: MatchRecord): number | null {
+  const total = totalMatches(record)
+  return total ? record.wins / total : null
 }
 
 const DAY_MS = 86_400_000
 
+export interface ActivityDay {
+  date: Date
+  count: number
+  /** False for the padding before the window, which stays empty. */
+  inRange: boolean
+}
+
+function startOfDayUtc(date: Date) {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+}
+
 /**
- * Matches per day for the last `weeks` weeks, in columns of seven days
- * (Sunday to Saturday, UTC) ending with the week of `now`.
+ * The activity window in columns of seven days (Sunday to Saturday, UTC),
+ * from the week of `since` through the week of `now`.
  */
-export function getActivity(
-  matches: ProfileMatch[],
-  weeks: number,
+export function getActivityWeeks(
+  activity: ProfileActivity,
   now = new Date(),
 ): ActivityDay[][] {
+  const counts = new Map(activity.days.map((day) => [day.day, day.count]))
+  const since = Date.parse(`${activity.since}T00:00:00Z`)
   const today = startOfDayUtc(now)
-  const end = new Date(today.getTime() + (6 - today.getUTCDay()) * DAY_MS)
-  const start = new Date(end.getTime() - (weeks * 7 - 1) * DAY_MS)
-  const counts = new Map<number, number>()
-  for (const match of matches) {
-    const day = startOfDayUtc(new Date(match.createdAt)).getTime()
-    if (day < start.getTime() || day > end.getTime()) continue
-    counts.set(day, (counts.get(day) ?? 0) + 1)
-  }
+  const start = since - new Date(since).getUTCDay() * DAY_MS
+  const end = today + (6 - new Date(today).getUTCDay()) * DAY_MS
+  const weeks = Math.round((end - start) / DAY_MS + 1) / 7
   return Array.from({ length: weeks }, (_, week) =>
     Array.from({ length: 7 }, (__, weekday) => {
-      const date = new Date(start.getTime() + (week * 7 + weekday) * DAY_MS)
-      return { date, count: counts.get(date.getTime()) ?? 0 }
+      const time = start + (week * 7 + weekday) * DAY_MS
+      const date = new Date(time)
+      const inRange = time >= since && time <= today
+      return {
+        date,
+        inRange,
+        count: inRange ? (counts.get(date.toISOString().slice(0, 10)) ?? 0) : 0,
+      }
     }),
   )
 }
 
-export interface Rival {
-  team: NonNullable<ProfileMatch['opponent']>
-  eventId: string
-  wins: number
-  losses: number
-  total: number
+/** Formats a UTC day as UTC, so it reads the same in every time zone. */
+export function formatUtcDay(
+  date: Date,
+  options: Intl.DateTimeFormatOptions = {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  },
+): string {
+  return date.toLocaleDateString('en-US', { ...options, timeZone: 'UTC' })
 }
 
-export interface Rivals {
-  /** Beat the player most often. */
-  nemesis: Rival | null
-  /** Lost to the player most often. */
-  favourite: Rival | null
-  mostPlayed: Rival | null
-}
-
-export function getRivals(matches: ProfileMatch[]): Rivals {
-  const byOpponent = new Map<string, Rival>()
-  for (const match of matches) {
-    if (!match.opponent) continue
-    const rival = byOpponent.get(match.opponent.id) ?? {
-      team: match.opponent,
-      eventId: match.eventId,
-      wins: 0,
-      losses: 0,
-      total: 0,
-    }
-    rival.total++
-    if (match.result === 'WIN') rival.wins++
-    if (match.result === 'LOSS') rival.losses++
-    byOpponent.set(match.opponent.id, rival)
-  }
-  const rivals = [...byOpponent.values()]
-  const top = (score: (rival: Rival) => number, minimum: number) => {
-    let best: Rival | null = null
-    for (const rival of rivals) {
-      if (score(rival) < minimum) continue
-      if (
-        !best ||
-        score(rival) > score(best) ||
-        (score(rival) === score(best) && rival.total > best.total)
-      )
-        best = rival
-    }
-    return best
-  }
-  return {
-    nemesis: top((rival) => rival.losses, 2),
-    favourite: top((rival) => rival.wins, 2),
-    mostPlayed: top((rival) => rival.total, 2),
-  }
-}
-
-const FINISH_RANK: { [kind in BracketFinish['kind']]: number } = {
-  CHAMPION: 1,
-  RUNNER_UP: 2,
-  THIRD: 3,
-  FOURTH: 4,
-  ELIMINATED: 5,
-  IN_BRACKET: 99,
-}
-
-/** A comparable place: 1 for the champion, 5 for a quarterfinal exit. */
+/**
+ * A comparable place: 1 for the champion, 5 for a quarterfinal exit. A lost
+ * semifinal whose match for third place is still open ranks below a decided
+ * third or fourth place.
+ */
 export function finishPlace(finish: BracketFinish): number | null {
-  if (finish.kind === 'IN_BRACKET') return null
-  if (finish.kind === 'ELIMINATED')
-    return finish.roundOf ? finish.roundOf / 2 + 1 : null
-  return FINISH_RANK[finish.kind]
+  switch (finish.kind) {
+    case 'CHAMPION':
+      return 1
+    case 'RUNNER_UP':
+      return 2
+    case 'THIRD':
+      return 3
+    case 'FOURTH':
+      return 4
+    case 'IN_BRACKET':
+      return null
+    case 'ELIMINATED':
+      if (!finish.roundOf) return null
+      return finish.roundOf === 4 ? 4.5 : finish.roundOf / 2 + 1
+  }
 }
 
 export function finishLabel(finish: BracketFinish): string {

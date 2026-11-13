@@ -2,23 +2,20 @@ import type { AxiosError } from 'axios'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { getUserProfile } from '@/app/actions/profile'
+import { getUserProfile, profileQueryKeys } from '@/app/actions/profile'
 import { useTabParam } from '@/hooks/useTabParam'
 import { ProfileHeader } from './ProfileHeader'
 import { ProfileMatches } from './ProfileMatches'
 import { ProfileOverview } from './ProfileOverview'
 import { ProfileTeams } from './ProfileTeams'
-
-export function profileQueryKey(username: string) {
-  return ['profile', username.toLowerCase()] as const
-}
+import { totalMatches } from './profile-stats'
 
 const TABS = ['overview', 'teams', 'matches'] as const
 
 export function ProfileView({ username }: { username: string }) {
   const { currentTab, onTabChange } = useTabParam('overview')
   const query = useQuery({
-    queryKey: profileQueryKey(username),
+    queryKey: profileQueryKeys.profile(username),
     queryFn: () => getUserProfile(username),
     retry: (count, error) =>
       (error as AxiosError).response?.status !== 404 && count < 2,
@@ -57,7 +54,7 @@ export function ProfileView({ username }: { username: string }) {
               Teams ({profile.teams.length})
             </TabsTrigger>
             <TabsTrigger value="matches">
-              Match History ({profile.matches.length})
+              Match History ({totalMatches(profile.summary.record)})
             </TabsTrigger>
           </TabsList>
           <TabsContent value="overview" className="mt-6">
