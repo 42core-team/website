@@ -92,6 +92,16 @@ export function PresetsPage() {
     queryKey: ['admin', 'presets', archived],
     queryFn: () => getAdminPresets(archived),
   })
+  const defaultId = rows.data?.find((row) => row.isDefault)?.id
+  const defaults = useQuery({
+    queryKey: ['admin', 'preset', defaultId],
+    queryFn: () => getAdminPreset(defaultId!),
+    enabled: editing === 'new' && Boolean(defaultId) && !dirty,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    // A new editor starts with the current default, even if it was edited elsewhere.
+    staleTime: 0,
+  })
   const detail = useQuery({
     queryKey: ['admin', 'preset', editing],
     queryFn: () => getAdminPreset(editing!),
@@ -220,37 +230,53 @@ export function PresetsPage() {
               <Button onClick={() => void detail.refetch()}>Retry</Button>
             </p>
           )}
-          {editing === 'new' ? (
-            <PresetEditor
-              key="new"
-              onDirty={setDirty}
-              onSaved={async () => {
-                setDirty(false)
-                setEditing(null)
-                await refresh()
-              }}
-              onCancel={discardEditor}
-            />
-          ) : (
-            editing &&
-            detail.data && (
-              <PresetEditor
-                key={`${detail.data.id}-${detail.data.version}`}
-                preset={detail.data}
-                onReload={() => void detail.refetch()}
-                onCancel={discardEditor}
-                onDirty={setDirty}
-                onSaved={async () => {
-                  setDirty(false)
-                  setEditing(null)
-                  await refresh()
-                  await client.invalidateQueries({
-                    queryKey: ['admin', 'preset'],
-                  })
-                }}
-              />
-            )
+          {editing === 'new' &&
+            (rows.isPending || (defaultId && defaults.isFetching)) && (
+              <Spinner />
+            )}
+          {editing === 'new' && defaults.isError && (
+            <p role="alert">
+              Could not load default preset.{' '}
+              <Button onClick={() => void defaults.refetch()}>Retry</Button>
+            </p>
           )}
+          {editing === 'new'
+            ? !rows.isPending &&
+              !rows.isError &&
+              (!defaultId ||
+                (defaults.data &&
+                  !defaults.isFetching &&
+                  !defaults.isError)) && (
+                <PresetEditor
+                  key="new"
+                  defaults={defaultId ? defaults.data : undefined}
+                  onDirty={setDirty}
+                  onSaved={async () => {
+                    setDirty(false)
+                    setEditing(null)
+                    await refresh()
+                  }}
+                  onCancel={discardEditor}
+                />
+              )
+            : editing &&
+              detail.data && (
+                <PresetEditor
+                  key={`${detail.data.id}-${detail.data.version}`}
+                  preset={detail.data}
+                  onReload={() => void detail.refetch()}
+                  onCancel={discardEditor}
+                  onDirty={setDirty}
+                  onSaved={async () => {
+                    setDirty(false)
+                    setEditing(null)
+                    await refresh()
+                    await client.invalidateQueries({
+                      queryKey: ['admin', 'preset'],
+                    })
+                  }}
+                />
+              )}
         </DialogContent>
       </Dialog>
     </main>
@@ -258,12 +284,14 @@ export function PresetsPage() {
 }
 export function PresetEditor({
   preset,
+  defaults,
   onSaved,
   onReload,
   onCancel,
   onDirty,
 }: {
   preset?: PresetDetail
+  defaults?: PresetDetail
   onSaved: () => Promise<void>
   onReload?: () => void
   onDirty?: (dirty: boolean) => void
@@ -285,14 +313,15 @@ export function PresetEditor({
         : createPreset(input),
     onSuccess: onSaved,
   })
+  const source = preset ?? defaults
   const initialValues = {
     name: preset?.name ?? '',
     description: preset?.description ?? '',
     isDefault: preset?.isDefault ?? false,
-    settings: preset?.settings ?? defaultSettings,
-    starterTemplates: preset?.starterTemplates ?? [],
+    settings: source?.settings ?? defaultSettings,
+    starterTemplates: source?.starterTemplates ?? [],
     githubInstallationId:
-      preset?.githubInstallation?.id ?? (null as string | null),
+      source?.githubInstallation?.id ?? (null as string | null),
   }
   const form = useForm({
     defaultValues: initialValues,
@@ -431,15 +460,15 @@ export function PresetEditor({
             }
           >
             <option value="">None</option>
-            {preset?.githubInstallation &&
+            {source?.githubInstallation &&
               !linkable?.some(
-                (i) => i.id === preset.githubInstallation?.id,
+                (i) => i.id === source.githubInstallation?.id,
               ) && (
                 <option
                   disabled={Boolean(linkable)}
-                  value={preset.githubInstallation.id}
+                  value={source.githubInstallation.id}
                 >
-                  {preset.githubInstallation.accountLogin}
+                  {source.githubInstallation.accountLogin}
                   {linkable ? ' (unavailable)' : ''}
                 </option>
               )}
@@ -449,9 +478,9 @@ export function PresetEditor({
               </option>
             ))}
           </select>
-          {preset &&
-            values.githubInstallationId === preset.githubInstallation?.id && (
-              <PresetWarnings warnings={preset.warnings} />
+          {source &&
+            values.githubInstallationId === source.githubInstallation?.id && (
+              <PresetWarnings warnings={source.warnings} />
             )}
           {installations.isError && (
             <p role="alert">
