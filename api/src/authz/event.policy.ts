@@ -12,9 +12,8 @@ function isStaff(user: Principal | null, eventId: string) {
 
 /**
  * Abilities within one event. The event id comes straight from the route,
- * before any pipe validates it, so abilities compare it with the user's
- * grants and only `view` looks it up: a malformed id matches nothing and is
- * denied.
+ * before any pipe validates it. Role checks compare it with the user's
+ * grants; `view` only looks up public visibility for guests.
  */
 @Policy()
 export class EventPolicy implements PolicyBefore<Principal> {
@@ -25,16 +24,9 @@ export class EventPolicy implements PolicyBefore<Principal> {
     if (hasGlobal(user, UserRole.ADMIN)) return true;
   }
 
-  /**
-   * Seeing the event and everything in it. A private event is hidden from
-   * everyone outside its staff, participants and whitelist; the guard
-   * answers a denial with 404, so it looks like an unknown id.
-   */
+  /** Private events are unlisted, but any signed-in user may follow a link. */
   async view(user: Principal | null, eventId: string) {
-    return (
-      isStaff(user, eventId) ||
-      (await this.audience.includes(eventId, user?.id ?? null))
-    );
+    return user !== null || this.audience.isPublic(eventId);
   }
 
   administer(user: Principal | null, eventId: string) {

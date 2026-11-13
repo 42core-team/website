@@ -260,8 +260,8 @@ export function WhitelistManagement({ eventId }: WhitelistManagementProps) {
                           <div className="flex flex-col items-center justify-center gap-3 py-10 text-muted-foreground">
                             <Users className="h-8 w-8 opacity-40" />
                             <p className="text-sm">
-                              No users whitelisted. Only participants, admins
-                              and moderators can see a private event.
+                              No users whitelisted. Anyone with the link can
+                              join.
                             </p>
                           </div>
                         </TableCell>

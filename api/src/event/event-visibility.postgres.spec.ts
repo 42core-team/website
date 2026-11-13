@@ -64,22 +64,12 @@ const PERSONAS = [
   "global admin",
 ] as const;
 type Persona = (typeof PERSONAS)[number];
-// Who sees the private event; everyone sees the public one.
-const SEES_PRIVATE_EVENT: Persona[] = [
-  "participant",
-  "team member",
-  "whitelisted GitHub user",
-  "whitelisted 42 user",
-  "event moderator",
-  "event admin",
-  "global moderator",
-  "global admin",
-];
 
 interface Fixture {
   event: EventEntity;
   team: TeamEntity;
   match: MatchEntity;
+  template: EventStarterTemplateEntity;
 }
 
 postgres("private event visibility (PostgreSQL)", () => {
@@ -267,7 +257,15 @@ postgres("private event visibility (PostgreSQL)", () => {
       winner: { id: team.id },
       stats: new MatchStatsEntity(),
     });
-    return { event, team, match };
+    const template = await database
+      .getRepository(EventStarterTemplateEntity)
+      .save({
+        event,
+        name: "Starter",
+        basePath: "bot",
+        myCoreBotDockerImage: "starter:1",
+      });
+    return { event, team, match, template };
   }
 
   async function seed() {
@@ -308,20 +306,29 @@ postgres("private event visibility (PostgreSQL)", () => {
   const ROUTES: {
     path: (fixture: Fixture) => string;
     signedIn?: boolean;
+    public?: boolean;
   }[] = [
     { path: ({ event }) => `/event/${event.id}` },
-    { path: ({ event }) => `/event/${event.id}/version` },
+    { path: ({ event }) => `/event/${event.id}/version`, public: true },
+    {
+      path: ({ event, template }) =>
+        `/event/${event.id}/templates/${template.id}/version`,
+      public: true,
+    },
     { path: ({ event }) => `/event/${event.id}/game-config` },
+    { path: ({ event }) => `/event/${event.id}/server-config` },
     { path: ({ event }) => `/event/${event.id}/github-org` },
     { path: ({ event }) => `/event/${event.id}/teamsCount` },
     { path: ({ event }) => `/event/${event.id}/participantsCount` },
-    { path: ({ event }) => `/check/${event.id}` },
+    { path: ({ event }) => `/check/${event.id}`, public: true },
     { path: ({ event }) => `/match/tournament/${event.id}/teamCount` },
     { path: ({ team }) => `/team/${team.id}` },
     { path: ({ team }) => `/team/${team.id}/members` },
     { path: ({ event }) => `/event/${event.id}/templates`, signedIn: true },
     { path: ({ event }) => `/team/event/${event.id}`, signedIn: true },
     { path: ({ event }) => `/match/swiss/${event.id}`, signedIn: true },
+    { path: ({ event }) => `/match/tournament/${event.id}`, signedIn: true },
+    { path: ({ event }) => `/match/queue/${event.id}`, signedIn: true },
     { path: ({ match }) => `/match/${match.id}`, signedIn: true },
     { path: ({ team }) => `/match/team/${team.id}`, signedIn: true },
   ];
@@ -343,7 +350,7 @@ postgres("private event visibility (PostgreSQL)", () => {
             `${kind} ${path} ${
               route.signedIn && persona === "guest"
                 ? 401
-                : !isPrivate || SEES_PRIVATE_EVENT.includes(persona)
+                : route.public || !isPrivate || persona !== "guest"
                   ? 200
                   : 404
             }`,
@@ -360,31 +367,21 @@ postgres("private event visibility (PostgreSQL)", () => {
     message: body.message,
   });
 
-  it.each(["guest", "unrelated user"] as const)(
-    "answers a %s about a hidden event, team or match exactly like an unknown id",
-    async (persona) => {
-      const { event, team, match } = privateEvent;
-      for (const [hidden, unknown] of [
-        [`/event/${event.id}`, `/event/${randomUUID()}`],
-        [`/event/${event.id}/version`, `/event/${randomUUID()}/version`],
-        [`/team/${team.id}`, `/team/${randomUUID()}`],
-        [`/team/${team.id}/members`, `/team/${randomUUID()}/members`],
-        ...(persona === "guest"
-          ? []
-          : [
-              [`/match/${match.id}`, `/match/${randomUUID()}`],
-              [`/match/team/${team.id}`, `/match/team/${randomUUID()}`],
-            ]),
-      ]) {
-        const [a, b] = [
-          await get(hidden, persona),
-          await get(unknown, persona),
-        ];
-        expect(a.status).toBe(404);
-        expect(shape(a.body)).toEqual(shape(b.body));
-      }
-    },
-  );
+  it("answers a guest about a hidden event or team exactly like an unknown id", async () => {
+    const unknown: Fixture = {
+      event: { id: randomUUID() } as EventEntity,
+      team: { id: randomUUID() } as TeamEntity,
+      match: { id: randomUUID() } as MatchEntity,
+      template: { id: randomUUID() } as EventStarterTemplateEntity,
+    };
+    for (const route of ROUTES.filter((route) => !route.public)) {
+      const hidden = await get(route.path(privateEvent), "guest");
+      const missing = await get(route.path(unknown), "guest");
+      expect(hidden.status).toBe(route.signedIn ? 401 : 404);
+      expect(hidden.status).toBe(missing.status);
+      expect(shape(hidden.body)).toEqual(shape(missing.body));
+    }
+  });
 
   it("lets a whitelisted user join a private event and nobody else", async () => {
     const event = await createEvent(true);
@@ -395,7 +392,7 @@ postgres("private event visibility (PostgreSQL)", () => {
         .put(`/event/${event.id}/join`)
         .set("x-test-user", user.id);
 
-    await join(outsider).expect(404);
+    await join(outsider).expect(401, /not whitelisted/);
     await join(invited).expect(200);
     await join(invited).expect(400, /already registered/);
     expect(
@@ -406,7 +403,44 @@ postgres("private event visibility (PostgreSQL)", () => {
     ).toBe(true);
   });
 
-  it("no longer shows a private event to the members of a deleted team", async () => {
+  it("lets any signed-in user join a private event with an empty whitelist", async () => {
+    const event = await createEvent(true);
+    const user = await createUser();
+    await request(app.getHttpServer())
+      .put(`/event/${event.id}/join`)
+      .set("x-test-user", user.id)
+      .expect(200);
+    expect(
+      await database.getRepository(UserEntity).existsBy({
+        id: user.id,
+        events: { id: event.id },
+      }),
+    ).toBe(true);
+    await request(app.getHttpServer())
+      .put(`/event/${event.id}/join`)
+      .expect(401);
+  });
+
+  it("considers public users already registered even with a populated whitelist", async () => {
+    const event = await createEvent(false);
+    const [invited, outsider] = [await createUser(), await createUser()];
+    await whitelist(event, invited.username, WhitelistPlatform.GITHUB);
+    await request(app.getHttpServer())
+      .put(`/event/${event.id}/join`)
+      .set("x-test-user", outsider.id)
+      .expect(400, /already registered/);
+  });
+
+  it("lets a linked 42 account satisfy a private event's whitelist", async () => {
+    const event = await createEvent(true);
+    await whitelist(event, "forty-two", WhitelistPlatform.FORTYTWO);
+    await request(app.getHttpServer())
+      .put(`/event/${event.id}/join`)
+      .set("x-test-user", users["whitelisted 42 user"].id)
+      .expect(200);
+  });
+
+  it("still shows the event after a viewer's team is deleted, but hides the deleted team", async () => {
     const event = await createEvent(true);
     const member = await createUser();
     const team = await database.getRepository(TeamEntity).save({
@@ -418,7 +452,8 @@ postgres("private event visibility (PostgreSQL)", () => {
       request(app.getHttpServer()).get(path).set("x-test-user", member.id);
     await asMember(`/event/${event.id}`).expect(200);
     await database.getRepository(TeamEntity).softDelete(team.id);
-    await asMember(`/event/${event.id}`).expect(404);
+    await asMember(`/event/${event.id}`).expect(200);
+    await asMember(`/team/${team.id}`).expect(404);
   });
 
   it("lists private events only in the overview of those taking part", async () => {

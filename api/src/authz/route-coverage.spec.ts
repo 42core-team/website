@@ -81,7 +81,7 @@ function httpRoutes(controllers: Type[]): Route[] {
 // The reviewed decision of every route: "public" lets guests in,
 // SessionPolicy.signedIn needs any signed-in user, the rest need the ability.
 // Changing an entry here is a deliberate authorization change.
-// EventPolicy.view hides private events with 404; the public team routes and
+// EventPolicy.view hides private events from guests with 404; the public team routes and
 // the match routes by match or team id check it in the service.
 const DECISIONS: Record<string, string> = {
   "DELETE /admin/roles/:id": "PlatformPolicy.manageRoles",
@@ -102,7 +102,7 @@ const DECISIONS: Record<string, string> = {
   "GET /auth/42/getUrl": "SessionPolicy.signedIn",
   "GET /auth/github/callback": "public",
   "GET /auth/me": "SessionPolicy.signedIn",
-  "GET /check/:id": "EventPolicy.view",
+  "GET /check/:id": "public",
   "GET /event": "public",
   "GET /event/:id": "EventPolicy.view",
   "GET /event/:id/admins": "EventPolicy.administer",
@@ -117,8 +117,8 @@ const DECISIONS: Record<string, string> = {
   "GET /event/:id/server-config": "EventPolicy.view",
   "GET /event/:id/teamsCount": "EventPolicy.view",
   "GET /event/:id/templates": "SessionPolicy.signedIn+EventPolicy.view",
-  "GET /event/:id/templates/:templateId/version": "EventPolicy.view",
-  "GET /event/:id/version": "EventPolicy.view",
+  "GET /event/:id/templates/:templateId/version": "public",
+  "GET /event/:id/version": "public",
   "GET /event/:id/whitelist": "EventPolicy.administer",
   "GET /event/event/currentLiveEvent": "public",
   "GET /event/overview": "SessionPolicy.signedIn",

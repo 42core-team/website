@@ -7,6 +7,7 @@ import {
   Controller,
   Get,
   INestApplication,
+  Logger,
   Param,
   ParseUUIDPipe,
 } from "@nestjs/common";
@@ -99,10 +100,11 @@ const users: Record<string, Principal> = {
 describe("global authentication and authorization guards", () => {
   let app: INestApplication;
   let jwt: JwtService;
+  let startupErrors: unknown[][];
   const getUserWithRoles = jest.fn(async (id: string) => users[id] ?? null);
-  // Only OTHER_EVENT is public; nobody takes part in EVENT.
+  // Only OTHER_EVENT is public.
   const audience = {
-    includes: jest.fn(async (eventId: string) => eventId === OTHER_EVENT),
+    isPublic: jest.fn(async (eventId: string) => eventId === OTHER_EVENT),
   };
 
   beforeAll(async () => {
@@ -127,7 +129,15 @@ describe("global authentication and authorization guards", () => {
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
     app.use(cookieParser());
-    await app.init();
+    const logError = jest
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => {});
+    try {
+      await app.init();
+      startupErrors = [...logError.mock.calls];
+    } finally {
+      logError.mockRestore();
+    }
     jwt = moduleRef.get(JwtService);
   });
   afterAll(async () => app?.close());
@@ -175,6 +185,20 @@ describe("global authentication and authorization guards", () => {
     );
   });
 
+  it("passes the package's guard verification with the custom subclass", () => {
+    // This deliberate undecided probe proves the package's startup scan ran.
+    expect(startupErrors).toEqual(
+      expect.arrayContaining([
+        expect.arrayContaining([
+          expect.stringContaining("ProbeController.undecided"),
+        ]),
+      ]),
+    );
+    const errors = startupErrors.flat().join("\n");
+    expect(errors).not.toContain("@Can() is not enforced");
+    expect(errors).not.toContain("AuthorizationGuard runs before");
+  });
+
   it("attaches a signed-in user with their roles", async () => {
     await get("public", token("plain")).expect(200, { user: "plain" });
     await get("me", token("eventAdmin")).expect(200, {
@@ -207,19 +231,19 @@ describe("global authentication and authorization guards", () => {
     await get(`events/${EVENT}/in-service`, token("eventAdmin")).expect(200);
   });
 
-  it("answers a hidden event with 404 for guests and signed-in users alike", async () => {
+  it("hides private events from guests and admits any signed-in viewer", async () => {
     await get(`events/${EVENT}/view`).expect(404, /Event not found/);
-    await get(`events/${EVENT}/view`, token("plain")).expect(404);
+    await get(`events/${EVENT}/view`, token("plain")).expect(200);
     await get(`events/${EVENT}/view`, token("eventAdmin")).expect(200);
     await get(`events/${OTHER_EVENT}/view`).expect(200);
     await get(`events/${OTHER_EVENT}/view`, token("plain")).expect(200);
-    await get("events/not-a-uuid/view", token("plain")).expect(404);
+    await get("events/not-a-uuid/view", token("plain")).expect(400);
   });
 
   it("asks a guest to sign in before checking the event", async () => {
     await get(`events/${EVENT}/view-signed-in`).expect(401);
     await get(`events/${OTHER_EVENT}/view-signed-in`).expect(401);
-    await get(`events/${EVENT}/view-signed-in`, token("plain")).expect(404);
+    await get(`events/${EVENT}/view-signed-in`, token("plain")).expect(200);
     await get(`events/${OTHER_EVENT}/view-signed-in`, token("plain")).expect(
       200,
     );
