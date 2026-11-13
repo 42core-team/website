@@ -1,3 +1,6 @@
+// event.service reaches the application bootstrap through match.service.
+jest.mock("../main", () => ({ getRabbitmqConfig: jest.fn() }));
+
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
@@ -7,6 +10,7 @@ import request from "supertest";
 import { DataSource, EntityManager, IsNull } from "typeorm";
 import { authzTestingModule } from "../authz/testing";
 import { EventEntity } from "../event/entities/event.entity";
+import { EventService } from "../event/event.service";
 import { UserRole, UserRoleEntity } from "../user/entities/user-role.entity";
 import { UserEntity } from "../user/entities/user.entity";
 import { RolesController } from "./roles.controller";
@@ -286,6 +290,96 @@ postgres("role admin API (PostgreSQL)", () => {
         role: UserRole.ADMIN,
         eventId: IsNull(),
       }),
+    ).toBe(1);
+  });
+
+  it("revokes event admins but never the last admin of an event", async () => {
+    const otherEvent = await database.getRepository(EventEntity).save({
+      name: "Other",
+      githubOrg: "org",
+      minTeamSize: 1,
+      maxTeamSize: 4,
+      startDate: new Date("2020-01-01"),
+      submissionDeadline: new Date("2099-01-01"),
+      scheduledEndDate: new Date("2099-01-01"),
+      endDate: new Date("2099-01-01"),
+    });
+    const [first, second] = [await createUser(), await createUser()];
+    // Earlier tests revoke the admin's own grant; act as a fresh global admin.
+    const actor = await createUser();
+    await database
+      .getRepository(UserRoleEntity)
+      .insert({ userId: actor.id, role: UserRole.ADMIN, eventId: null });
+    const grantAdmin = (user: UserEntity) =>
+      as(actor)
+        .post("/admin/roles", {
+          userId: user.id,
+          role: UserRole.ADMIN,
+          eventId: otherEvent.id,
+        })
+        .expect(201);
+    const firstGrant = (await grantAdmin(first)).body;
+    // A moderator of the event does not count as one of its admins.
+    await as(actor)
+      .post("/admin/roles", {
+        userId: second.id,
+        role: UserRole.MODERATOR,
+        eventId: otherEvent.id,
+      })
+      .expect(201);
+
+    await as(actor)
+      .delete(`/admin/roles/${firstGrant.id}`)
+      .expect(409, /last admin of an event/);
+    const secondGrant = (await grantAdmin(second)).body;
+    await as(actor).delete(`/admin/roles/${firstGrant.id}`).expect(204);
+    await as(actor).delete(`/admin/roles/${secondGrant.id}`).expect(409);
+  });
+
+  it("keeps an event admin when the role API and the event remove the last two at once", async () => {
+    const otherEvent = await database.getRepository(EventEntity).save({
+      name: "Raced",
+      githubOrg: "org",
+      minTeamSize: 1,
+      maxTeamSize: 4,
+      startDate: new Date("2020-01-01"),
+      submissionDeadline: new Date("2099-01-01"),
+      scheduledEndDate: new Date("2099-01-01"),
+      endDate: new Date("2099-01-01"),
+    });
+    const [first, second] = [await createUser(), await createUser()];
+    const roles = database.getRepository(UserRoleEntity);
+    const {
+      identifiers: [firstGrant],
+    } = await roles.insert({
+      userId: first.id,
+      role: UserRole.ADMIN,
+      eventId: otherEvent.id,
+    });
+    await roles.insert({
+      userId: second.id,
+      role: UserRole.ADMIN,
+      eventId: otherEvent.id,
+    });
+    const events = new EventService(
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      database,
+    );
+
+    const results = await Promise.allSettled([
+      app.get(RolesService).revoke(firstGrant.id),
+      events.removeEventAdmin(otherEvent.id, second.id),
+    ]);
+    expect(
+      results.filter((result) => result.status === "fulfilled"),
+    ).toHaveLength(1);
+    expect(
+      await roles.countBy({ role: UserRole.ADMIN, eventId: otherEvent.id }),
     ).toBe(1);
   });
 });

@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, IsNull, QueryFailedError, Repository } from "typeorm";
+import { DataSource, QueryFailedError, Repository } from "typeorm";
 import {
   EVENT_SCOPED_ROLES,
   UserRole,
@@ -16,6 +16,7 @@ import { EventEntity } from "../event/entities/event.entity";
 import { GrantRoleDto } from "./dtos/grant-role.dto";
 import { ListRolesQueryDto } from "./dtos/list-roles-query.dto";
 import { RoleResponse, toRoleResponse } from "./role-response";
+import { removeAdminGrant } from "./admin-grants";
 
 const POSTGRES_UNIQUE_VIOLATION_CODE = "23505";
 const RELATIONS = { user: true, event: true, grantedBy: true } as const;
@@ -94,18 +95,22 @@ export class RolesService {
       });
       if (!row) throw new NotFoundException("Role not found.");
 
-      if (row.role === UserRole.ADMIN && row.eventId === null) {
-        // Acquire all admin locks in the same order, before locking a target:
-        // locking different target rows first deadlocks concurrent revocations.
-        const admins = await roles.find({
-          where: { role: UserRole.ADMIN, eventId: IsNull() },
-          order: { id: "ASC" },
-          lock: { mode: "pessimistic_write" },
-        });
-        if (!admins.some((admin) => admin.id === id))
+      if (row.role === UserRole.ADMIN) {
+        // The same rule and lock order as removing an event's admin.
+        const outcome = await removeAdminGrant(
+          manager,
+          row.eventId,
+          (admin) => admin.id === id,
+        );
+        if (outcome === "not-found")
           throw new NotFoundException("Role not found.");
-        if (admins.length <= 1)
-          throw new ConflictException("Cannot remove the last global admin.");
+        if (outcome === "last-admin")
+          throw new ConflictException(
+            row.eventId
+              ? "Cannot remove the last admin of an event."
+              : "Cannot remove the last global admin.",
+          );
+        return;
       }
       const result = await roles.delete(row.id);
       if (!result.affected) throw new NotFoundException("Role not found.");

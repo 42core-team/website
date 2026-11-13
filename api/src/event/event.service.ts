@@ -42,6 +42,7 @@ import { TeamEntity } from "../team/entities/team.entity";
 import { MatchEntity, MatchPhase } from "../match/entites/match.entity";
 import { lockEvent } from "./event-lock";
 import { toPublicUsers } from "../user/dtos/public-user.dto";
+import { removeAdminGrant } from "../roles/admin-grants";
 
 @Injectable()
 export class EventService {
@@ -1044,31 +1045,13 @@ export class EventService {
   }
 
   async removeEventAdmin(eventId: string, userId: string) {
-    await this.dataSource.transaction(async (manager) => {
-      // Lock every admin row of the event (FOR UPDATE), so two concurrent
-      // removals cannot each see another admin left and remove both.
-      const admins = await manager
-        .createQueryBuilder(UserRoleEntity, "role")
-        .where("role.eventId = :eventId", { eventId })
-        .andWhere("role.role = :role", { role: UserRole.ADMIN })
-        .orderBy("role.id", "ASC")
-        .setLock("pessimistic_write")
-        .getMany();
-
-      const roleToRemove = admins.find((admin) => admin.userId === userId);
-
-      if (!roleToRemove) {
-        throw new NotFoundException("Admin permission not found");
-      }
-
-      if (admins.length <= 1) {
-        throw new BadRequestException(
-          "Cannot remove the last admin of an event",
-        );
-      }
-
-      await manager.delete(UserRoleEntity, roleToRemove.id);
-    });
+    const outcome = await this.dataSource.transaction((manager) =>
+      removeAdminGrant(manager, eventId, (admin) => admin.userId === userId),
+    );
+    if (outcome === "not-found")
+      throw new NotFoundException("Admin permission not found");
+    if (outcome === "last-admin")
+      throw new BadRequestException("Cannot remove the last admin of an event");
   }
 
   async getCurrentLiveEvent() {
