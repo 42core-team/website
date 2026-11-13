@@ -75,10 +75,12 @@ You need a GitHub organization you own; [create a free one](https://github.com/a
 4. On GitHub, pick the test organization and install the App, on all repositories or a selection.
 5. GitHub redirects to `/github/setup`, which connects the installation and returns to the dashboard. The card shows **Connected**.
 
+To try linking an existing installation, create a second event. Its **GitHub Connection** card shows **Use \<org\>** for the test organization; click it to connect the event without going through GitHub. The card offers this for every organization you are an active owner of that already has the App installed. Personal accounts, suspended installations and installations missing permissions are not offered, and once teams have repositories only the event's own organization is. The list is cached for a minute per user, so a fresh installation can take that long to appear.
+
 Things to know:
 
 - The connect link carries a signed state that expires after 30 minutes and only works for the user who clicked the button. Start again from the dashboard if it expired.
-- Only the dashboard button links an installation to an event. Installing the App from its public page (`https://github.com/apps/<slug>`) or from the organization's settings has no state, so `/github/setup` cannot connect anything. Click **Connect GitHub App** (or **Reconnect GitHub App**) afterwards to link the existing installation.
+- Installing the App from its public page (`https://github.com/apps/<slug>`) or from the organization's settings has no state, so `/github/setup` cannot connect anything. Open the event dashboard afterwards and click **Use \<org\>** to link the existing installation.
 - The person connecting must be an owner of the organization. A member who is not an owner can only request the installation; GitHub then asks the owners to approve it, and an owner has to connect it from the dashboard afterwards.
 
 ## Troubleshooting
@@ -92,6 +94,8 @@ Things to know:
 | "This GitHub connection link is invalid or has expired" | The state is older than 30 minutes, or a different user is signed in than the one who clicked the button. |
 | "The installation on … lacks these permissions" | The installation does not have the permissions above. After changing the App's permissions, an organization owner must accept the new permissions under the organization's **Settings → GitHub Apps**. |
 | "Only an owner of … can connect it to an event" | The signed-in user is not an owner of the organization. |
+| No **Use \<org\>** button although the App is installed | You are not an active owner of the organization, the installation is suspended or lacks permissions, teams already have repositories in another organization, or the list is still cached (wait a minute and reload). |
+| "Could not check for existing installations of the App" | GitHub could not be reached while checking ownership; click **Try again**. |
 | Dashboard shows Connected after uninstalling | Webhooks are not delivered; see [step 2](#2-webhooks). |
 
 ## Deployed environments

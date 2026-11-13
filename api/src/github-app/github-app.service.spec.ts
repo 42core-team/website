@@ -32,6 +32,8 @@ function setup(
     accessibleRepositories?: string[];
     existingInstallation?: Partial<GithubInstallationEntity> | null;
     installationError?: Error;
+    installations?: unknown[];
+    memberships?: Record<string, { role: string; state: string }>;
   } = {},
 ) {
   const event = {
@@ -101,6 +103,7 @@ function setup(
           suspended_at: null,
         }),
     getInstallationToken: jest.fn().mockResolvedValue("installation-token"),
+    listInstallations: jest.fn().mockResolvedValue(options.installations ?? []),
   };
   const eventService = {
     isEventAdmin: jest.fn().mockResolvedValue(options.admin ?? true),
@@ -137,6 +140,13 @@ function setup(
       return membership
         ? new Response(JSON.stringify(membership))
         : new Response("{}", { status: 404 });
+    const org = /^\/orgs\/([^/]+)\/memberships\/organizer$/.exec(path)?.[1];
+    if (org && options.memberships?.[org])
+      return new Response(JSON.stringify(options.memberships[org]));
+    if (path === "/orgs/broken-org/memberships/organizer")
+      return new Response("{}", { status: 500 });
+    if (path.endsWith("/memberships/organizer"))
+      return new Response("{}", { status: 404 });
     throw new Error(`unexpected ${path}`);
   }) as never;
   const state = new GithubInstallStateSigner(JWT_SECRET).sign({
@@ -360,6 +370,150 @@ describe("GithubAppService", () => {
       });
       await service.completeInstallation("user", 77, state);
       expect(repositories.get(EventEntity)!.update).toHaveBeenCalled();
+    });
+  });
+
+  describe("listLinkableInstallations", () => {
+    const installation = (
+      id: number,
+      login: string,
+      overrides: Record<string, unknown> = {},
+    ) => ({
+      id,
+      account: { id: id + 1000, login, type: "Organization" },
+      repository_selection: "all",
+      permissions: PERMISSIONS,
+      suspended_at: null,
+      ...overrides,
+    });
+
+    it("lists installations on organizations the user owns", async () => {
+      const { service } = setup({
+        installations: [
+          installation(1, "other-org"),
+          installation(77, "Core-Org"),
+          installation(2, "broken-org"),
+          installation(3, "Core-Org", { suspended_at: "2026-01-01" }),
+          installation(4, "Core-Org", { permissions: { contents: "write" } }),
+          {
+            ...installation(5, "organizer", { account: null }),
+          },
+        ],
+      });
+      await expect(
+        service.listLinkableInstallations("event", "user"),
+      ).resolves.toEqual([
+        {
+          installationId: 77,
+          accountLogin: "Core-Org",
+          accountType: "Organization",
+        },
+      ]);
+    });
+
+    it("leaves out personal accounts", async () => {
+      const { service } = setup({
+        installations: [
+          installation(6, "organizer", {
+            account: { id: 1001, login: "organizer", type: "User" },
+          }),
+        ],
+      });
+      await expect(
+        service.listLinkableInstallations("event", "user"),
+      ).resolves.toEqual([]);
+    });
+
+    it("offers only the event's organization once teams have repositories", async () => {
+      const { service } = setup({
+        event: { githubOrg: "core-org", githubOrgSecret: "enc" },
+        teams: [{ repo: "team-repo" }],
+        installations: [
+          installation(77, "Core-Org"),
+          installation(78, "Other-Org"),
+        ],
+        memberships: { "Other-Org": { role: "admin", state: "active" } },
+      });
+      const result = await service.listLinkableInstallations("event", "user");
+      expect(result.map(({ installationId }) => installationId)).toEqual([77]);
+    });
+
+    it("caches the ownership checks per user", async () => {
+      const { service, appAuth } = setup({
+        installations: [installation(77, "Core-Org")],
+      });
+      await service.listLinkableInstallations("event", "user");
+      await service.listLinkableInstallations("event", "user");
+      expect(appAuth.listInstallations).toHaveBeenCalledTimes(1);
+    });
+
+    it("reports a bad gateway when no ownership check succeeds", async () => {
+      const { service } = setup({
+        installations: [installation(2, "broken-org")],
+      });
+      await expect(
+        service.listLinkableInstallations("event", "user"),
+      ).rejects.toThrow("Could not check the installations");
+    });
+
+    it("leaves out the installation the event already uses", async () => {
+      const { service, repositories } = setup({
+        installations: [installation(77, "Core-Org")],
+      });
+      repositories.get(EventEntity)!.findOneOrFail.mockResolvedValue({
+        id: "event",
+        githubInstallation: { installationId: 77, deletedAt: null },
+      });
+      await expect(
+        service.listLinkableInstallations("event", "user"),
+      ).resolves.toEqual([]);
+    });
+
+    it("refuses non-admins", async () => {
+      const { service, appAuth } = setup({ admin: false });
+      await expect(
+        service.listLinkableInstallations("event", "user"),
+      ).rejects.toThrow("not an admin");
+      expect(appAuth.listInstallations).not.toHaveBeenCalled();
+    });
+
+    it("reports GitHub failures as a bad gateway", async () => {
+      const { service, appAuth } = setup();
+      appAuth.listInstallations.mockRejectedValue(new Error("down"));
+      await expect(
+        service.listLinkableInstallations("event", "user"),
+      ).rejects.toThrow("Could not load the installations");
+    });
+  });
+
+  describe("linkInstallation", () => {
+    it("connects an existing installation without a state", async () => {
+      const { service, repositories } = setup();
+      await expect(
+        service.linkInstallation("event", "user", 77),
+      ).resolves.toEqual({ eventId: "event" });
+      expect(repositories.get(EventEntity)!.update).toHaveBeenCalledWith(
+        "event",
+        expect.objectContaining({ githubOrg: "Core-Org" }),
+      );
+    });
+
+    it("rejects users who do not own the organization", async () => {
+      const { service, repositories } = setup({
+        membership: { role: "member", state: "active" },
+      });
+      await expect(
+        service.linkInstallation("event", "user", 77),
+      ).rejects.toThrow("Only an owner of Core-Org");
+      expect(repositories.get(EventEntity)!.update).not.toHaveBeenCalled();
+    });
+
+    it("refuses non-admins", async () => {
+      const { service, appAuth } = setup({ admin: false });
+      await expect(
+        service.linkInstallation("event", "user", 77),
+      ).rejects.toThrow("not an admin");
+      expect(appAuth.getInstallation).not.toHaveBeenCalled();
     });
   });
 

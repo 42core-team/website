@@ -176,6 +176,19 @@ export class GithubAppAuth {
     );
   }
 
+  /** Every installation of the App, across all accounts. */
+  async listInstallations(): Promise<GithubAppInstallation[]> {
+    const installations: GithubAppInstallation[] = [];
+    for (let page = 1; ; page++) {
+      const result = await this.request<GithubAppInstallation[]>(
+        "GET",
+        `/app/installations?per_page=100&page=${page}`,
+      );
+      installations.push(...result);
+      if (result.length < 100) return installations;
+    }
+  }
+
   private isFresh(token: GithubAppToken): boolean {
     return token.expiresAt.getTime() - this.now() > TOKEN_REFRESH_MARGIN_MS;
   }

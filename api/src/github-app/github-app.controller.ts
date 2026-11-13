@@ -20,6 +20,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { EventService } from "../event/event.service";
 import { UserId } from "../guards/UserGuard";
 import { CompleteGithubInstallationDto } from "./dtos/complete-github-installation.dto";
+import { LinkGithubInstallationDto } from "./dtos/link-github-installation.dto";
 import { isValidWebhookSignature } from "./github-app-state";
 import { GithubAppService } from "./github-app.service";
 
@@ -55,6 +56,29 @@ export class GithubAppController {
     @UserId() userId: string,
   ) {
     return this.githubAppService.createInstallUrl(eventId, userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get("event/:id/github/installations")
+  listInstallations(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+  ) {
+    return this.githubAppService.listLinkableInstallations(eventId, userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("event/:id/github/installations")
+  linkInstallation(
+    @Param("id", new ParseUUIDPipe()) eventId: string,
+    @UserId() userId: string,
+    @Body() body: LinkGithubInstallationDto,
+  ) {
+    return this.githubAppService.linkInstallation(
+      eventId,
+      userId,
+      body.installationId,
+    );
   }
 
   /** Called by the frontend page that GitHub's Setup URL points to. */
