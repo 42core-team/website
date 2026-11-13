@@ -18,6 +18,7 @@ import {
   Can,
   CurrentUser,
   EventPolicy,
+  PlatformPolicy,
   param,
   Public,
   SignedIn,
@@ -80,7 +81,7 @@ export class GithubAppController {
     );
   }
 
-  @SignedIn()
+  @Can(PlatformPolicy, "createEvent")
   @Get("github/installations")
   listForCreate(@CurrentUser() user: UserEntity) {
     return this.githubAppService.listInstallations(user);
