@@ -35,6 +35,8 @@ import { UserEntity } from "../user/entities/user.entity";
 import { SocialPlatform } from "src/user/entities/social-account.entity";
 import { isRegistrationOpen } from "./event-lifecycle";
 import { NormalizeGithubConfigPipe } from "../common/github-config-normalization";
+import { strictBody } from "../common/strict-body";
+import { EventPresetsService } from "../event-presets/event-presets.service";
 import {
   EventLifecycleDto,
   EventTeamExclusionDto,
@@ -57,6 +59,7 @@ export class EventController {
     private readonly teamService: TeamService,
     private readonly userService: UserService,
     private readonly authorization: AuthorizationService,
+    private readonly presets: EventPresetsService,
   ) {}
 
   @SignedIn()
@@ -74,7 +77,7 @@ export class EventController {
   @Can(EventPolicy, "view", param("id"))
   @Get(":id")
   async getEventById(@Param("id", new ParseUUIDPipe()) id: string) {
-    return await this.eventService.getEventById(id);
+    return await this.eventService.getEventById(id, { preset: true });
   }
 
   @Public()
@@ -117,39 +120,22 @@ export class EventController {
     return await this.eventService.getCurrentLiveEvent();
   }
 
+  /** Creates a private event from a preset; see CreateEventDto. */
   @Can(PlatformPolicy, "createEvent")
   @Post()
   async createEvent(
     @UserId() userId: string,
-    @Body(NormalizeGithubConfigPipe) createEventDto: CreateEventDto,
+    @Body(strictBody()) createEventDto: CreateEventDto,
   ) {
     this.logger.log({
       action: "attempt_create_event",
       userId,
       eventName: createEventDto.name,
+      presetId: createEventDto.presetId,
     });
 
-    return this.eventService.createEvent(
-      userId,
-      createEventDto.name,
-      createEventDto.description,
-      createEventDto.location,
-      createEventDto.startDate,
-      createEventDto.endDate,
-      createEventDto.minTeamSize,
-      createEventDto.maxTeamSize,
-      createEventDto.gameServerDockerImage,
-      createEventDto.myCoreBotDockerImage,
-      createEventDto.visualizerDockerImage,
-      createEventDto.monorepoUrl,
-      createEventDto.monorepoVersion,
-      createEventDto.basePath,
-      createEventDto.gameConfig,
-      createEventDto.serverConfig,
-      // Every event starts private; publishing it needs EventPolicy.publish.
-      true,
-      createEventDto,
-    );
+    const input = await this.presets.prepareEvent(createEventDto);
+    return this.eventService.createEvent({ userId, ...input });
   }
 
   @Can(EventPolicy, "view", param("id"))

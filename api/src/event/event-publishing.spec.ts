@@ -7,6 +7,9 @@ import { AuthorizationService, UserRole } from "../authz";
 import { createAuthorizationService, principalWith } from "../authz/testing";
 import { UserEntity } from "../user/entities/user.entity";
 import { CreateEventDto } from "./dtos/createEventDto";
+import { mergeEventSettings } from "../event-presets/preset-merge";
+import { resolvePresetSettings } from "../event-presets/preset-resolver";
+import { NO_PRESET, PRESET_SETTINGS } from "../event-presets/testing";
 import { EventController } from "./event.controller";
 
 const EVENT = "11111111-1111-4111-8111-111111111111";
@@ -23,11 +26,21 @@ describe("event publishing", () => {
       updateEventSettings: jest.fn().mockResolvedValue({ affected: 1 }),
       createEvent: jest.fn().mockResolvedValue({ id: EVENT }),
     };
+    const presets = {
+      prepareEvent: async (dto: CreateEventDto) => ({
+        settings: await mergeEventSettings(
+          resolvePresetSettings(PRESET_SETTINGS),
+          dto,
+        ),
+        ...NO_PRESET,
+      }),
+    };
     const controller = new EventController(
       eventService as never,
       {} as never,
       {} as never,
       authorization,
+      presets as never,
     );
     return { controller, eventService };
   }
@@ -85,9 +98,11 @@ describe("event publishing", () => {
       name: "Event",
       isPrivate: false,
     } as CreateEventDto);
-    const args = eventService.createEvent.mock.calls[0];
-    // createEvent(userId, ..., serverConfig, isPrivate, lifecycle)
-    expect(args[0]).toBe("creator");
-    expect(args[args.length - 2]).toBe(true);
+    expect(eventService.createEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "creator",
+        settings: expect.objectContaining({ isPrivate: true }),
+      }),
+    );
   });
 });
