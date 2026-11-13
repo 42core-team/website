@@ -12,6 +12,7 @@ import {
   IsNull,
   QueryFailedError,
 } from "typeorm";
+import { LockKeys } from "../constants";
 import { CreateEventDto } from "../event/dtos/createEventDto";
 import { EventEntity } from "../event/entities/event.entity";
 import { CreateEventInput, normalizeStreamUrl } from "../event/event.service";
@@ -281,7 +282,10 @@ export class EventPresetsService {
     const id = await this.dataSource
       .transaction(async (manager) => {
         await this.assertLinkable(manager, dto.githubInstallationId ?? null);
-        if (dto.isDefault) await this.clearDefault(manager, userId);
+        if (dto.isDefault) {
+          await this.lockDefault(manager);
+          await this.clearDefault(manager, userId);
+        }
         const { identifiers } = await manager
           .getRepository(EventPresetEntity)
           .insert({
@@ -310,9 +314,12 @@ export class EventPresetsService {
     await this.assertUsable(dto);
     await this.dataSource
       .transaction(async (manager) => {
+        // Take the shared default lock before any preset row lock to avoid
+        // deadlocks when simultaneous requests switch defaults in opposite directions.
+        await this.lockDefault(manager);
         const current = await this.lockPreset(manager, id);
         if (current.version !== dto.version)
-          throw new ConflictException(PRESET_CHANGED_MESSAGE);
+          throw new ConflictException({ message: PRESET_CHANGED_MESSAGE });
         const isDefault = dto.isDefault ?? current.isDefault;
         if (isDefault && current.archivedAt)
           throw new ConflictException(
@@ -344,6 +351,32 @@ export class EventPresetsService {
       .catch(presetConflict);
     this.logger.log({ action: "update_event_preset", userId, presetId: id });
     return this.getDetail(id);
+  }
+
+  /** Moves the default in one transaction, serializing concurrent switches. */
+  async setDefault(id: string, userId: string): Promise<PresetDetail> {
+    await this.dataSource.transaction(async (manager) => {
+      await this.lockDefault(manager);
+      const current = await this.lockPreset(manager, id);
+      if (current.archivedAt)
+        throw new ConflictException(
+          "An archived preset cannot be the default. Unarchive it first.",
+        );
+      if (current.isDefault) return;
+      await this.clearDefault(manager, userId, id);
+      await manager.getRepository(EventPresetEntity).update(id, {
+        isDefault: true,
+        version: current.version + 1,
+        updatedById: userId,
+      });
+    });
+    return this.getDetail(id);
+  }
+
+  private async lockDefault(manager: EntityManager) {
+    await manager.query("SELECT pg_advisory_xact_lock($1)", [
+      LockKeys.EVENT_PRESET_DEFAULT,
+    ]);
   }
 
   /** A copy that is not the default, named after the original. */

@@ -12,6 +12,7 @@ import {
   IsOptional,
   IsUUID,
   ValidateNested,
+  ValidateIf,
 } from "class-validator";
 import { CreateEventStarterTemplateDto } from "./createEventStarterTemplateDto";
 import { EventSettingsDto } from "./eventSettingsDto";
@@ -28,16 +29,18 @@ export const EVENT_MAX_STARTER_TEMPLATES = 20;
  */
 export class CreateEventDto extends IntersectionType(
   PickType(EventSettingsDto, ["name"] as const),
-  PartialType(OmitType(EventSettingsDto, ["name"] as const)),
+  PartialType(OmitType(EventSettingsDto, ["name"] as const), {
+    skipNullProperties: false,
+  }),
 ) {
   /** Defaults to the default preset. */
   @ApiPropertyOptional({ format: "uuid" })
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsUUID()
   presetId?: string;
 
   /**
-   * A shared installation to link instead of the preset's; null links
+   * A shared or actively owned installation to link instead of the preset's; null links
    * none. Our id, not GitHub's.
    */
   @ApiPropertyOptional({ format: "uuid", nullable: true })
@@ -47,7 +50,7 @@ export class CreateEventDto extends IntersectionType(
 
   /** Replaces the preset's starter templates. */
   @ApiPropertyOptional({ type: [CreateEventStarterTemplateDto] })
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsArray()
   @ArrayMaxSize(EVENT_MAX_STARTER_TEMPLATES)
   @ValidateNested({ each: true })

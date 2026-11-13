@@ -47,7 +47,7 @@ export class EventSettingsDto {
   @IsNumber()
   startDate: number;
 
-  /** Older clients' end date; an event's end is its scheduledEndDate. */
+  /** Legacy end date; scheduledEndDate controls the event lifecycle. */
   @ApiProperty()
   @IsNumber()
   endDate: number;

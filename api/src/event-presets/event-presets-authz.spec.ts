@@ -73,6 +73,12 @@ const ROUTES: {
   },
   {
     method: "post",
+    path: `/admin/event-presets/${ID}/default`,
+    status: 200,
+    allowed: ["admin"],
+  },
+  {
+    method: "post",
     path: `/admin/event-presets/${ID}/duplicate`,
     status: 201,
     allowed: ["admin"],
@@ -102,6 +108,7 @@ describe("event preset route authorization", () => {
     create: answer,
     update: answer,
     duplicate: answer,
+    setDefault: answer,
     archive: answer,
     unarchive: answer,
   };
