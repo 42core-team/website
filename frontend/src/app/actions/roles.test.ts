@@ -41,4 +41,11 @@ describe('roles API contract', () => {
     error.response = { status } as AxiosError['response']
     expect(roleErrorMessage(error, operation)).toContain(message)
   })
+  it('names the event when its last admin cannot be removed', () => {
+    const error = new AxiosError('request failed')
+    error.response = { status: 409 } as AxiosError['response']
+    expect(roleErrorMessage(error, 'remove', true)).toBe(
+      "Can't remove the last admin of this event.",
+    )
+  })
 })

@@ -49,15 +49,18 @@ export async function grantRole(params: GrantRoleParams) {
 export async function removeRole(id: string) {
   await axiosInstance.delete(`/admin/roles/${encodeURIComponent(id)}`)
 }
+/** `eventScoped` tells a removal's two 409s apart: global or event admin. */
 export function roleErrorMessage(
   error: unknown,
   operation: 'grant' | 'remove',
+  eventScoped = false,
 ) {
   if (isAxiosError(error)) {
     switch (error.response?.status) {
       case 409:
-        return operation === 'grant'
-          ? 'This user already has that role.'
+        if (operation === 'grant') return 'This user already has that role.'
+        return eventScoped
+          ? "Can't remove the last admin of this event."
           : "Can't remove the last global admin."
       case 400:
         return 'Invalid role or event scope. Only Admin and Moderator can be scoped to an event.'

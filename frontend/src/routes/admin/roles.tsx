@@ -365,7 +365,11 @@ function RolesPage() {
           </DialogHeader>
           {remove.isError && (
             <p role="alert" className="text-destructive">
-              {roleErrorMessage(remove.error, 'remove')}
+              {roleErrorMessage(
+                remove.error,
+                'remove',
+                Boolean(removal?.eventId),
+              )}
             </p>
           )}
           <DialogFooter>
