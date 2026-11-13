@@ -4,11 +4,12 @@ import {
   ForbiddenException,
   Injectable,
   Logger,
+  NotFoundException,
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectDataSource } from "@nestjs/typeorm";
-import { DataSource } from "typeorm";
+import { DataSource, In, IsNull, Not } from "typeorm";
 import { EventEntity } from "../event/entities/event.entity";
 import { isPlaying } from "../event/event-lifecycle";
 import { EventService } from "../event/event.service";
@@ -53,6 +54,37 @@ export interface LinkableGithubInstallation {
   installationId: number;
   accountLogin: string;
   accountType: string;
+  /** Shared by a global admin, so linking it skips the owner check. */
+  shared: boolean;
+}
+
+/** An installation as global admins manage its sharing. */
+export interface AdminGithubInstallation {
+  id: string;
+  accountLogin: string;
+  accountType: string;
+  status: GithubConnectionStatus;
+  sharedAt: Date | null;
+  sharedBy: { id: string; username: string } | null;
+  /** Events linked to the installation. */
+  eventCount: number;
+}
+
+/** Whether any event creator may link the installation without the owner check. */
+export function isSharedInstallation(
+  installation: Pick<GithubInstallationEntity, "sharedAt" | "deletedAt"> | null,
+): installation is GithubInstallationEntity {
+  return !!installation?.sharedAt && !installation.deletedAt;
+}
+
+function connectionStatus(
+  installation: Pick<GithubInstallationEntity, "suspendedAt" | "deletedAt">,
+): GithubConnectionStatus {
+  return installation.deletedAt
+    ? "uninstalled"
+    : installation.suspendedAt
+      ? "suspended"
+      : "active";
 }
 
 interface InstallationWebhook {
@@ -106,11 +138,7 @@ export class GithubAppService {
       usesOrganizerToken: !installation && !!event.githubOrgSecret,
       installation: installation && {
         accountLogin: installation.accountLogin,
-        status: installation.deletedAt
-          ? "uninstalled"
-          : installation.suspendedAt
-            ? "suspended"
-            : "active",
+        status: connectionStatus(installation),
       },
     };
   }
@@ -134,7 +162,8 @@ export class GithubAppService {
 
   /**
    * Installations of the App, e.g. made for another event, on organizations
-   * the user owns, so the event can use one without installing the App again.
+   * the user owns, so the event can use one without installing the App again,
+   * and the installations a global admin shared.
    */
   async listLinkableInstallations(
     eventId: string,
@@ -156,19 +185,40 @@ export class GithubAppService {
       event.githubOrg && (await this.hasRepositories(event.id))
         ? event.githubOrg.toLowerCase()
         : null;
-    const owned = await this.ownedInstallations(user.id);
-    return owned
-      .filter(
-        (installation) =>
-          installation.id !== linked &&
-          (!requiredOrg ||
-            installation.account!.login.toLowerCase() === requiredOrg),
-      )
-      .map((installation) => ({
+    const [owned, shared] = await Promise.all([
+      this.ownedInstallations(user.id),
+      this.dataSource.getRepository(GithubInstallationEntity).findBy({
+        sharedAt: Not(IsNull()),
+        suspendedAt: IsNull(),
+        deletedAt: IsNull(),
+      }),
+    ]);
+    const sharedIds = new Set(shared.map((row) => row.installationId));
+    const ownedIds = new Set(owned.map((installation) => installation.id));
+    const linkable: LinkableGithubInstallation[] = [
+      ...owned.map((installation) => ({
         installationId: installation.id,
         accountLogin: installation.account!.login,
         accountType: installation.account!.type,
-      }));
+        shared: sharedIds.has(installation.id),
+      })),
+      ...shared
+        .filter((row) => !ownedIds.has(row.installationId))
+        .map((row) => ({
+          installationId: row.installationId,
+          accountLogin: row.accountLogin,
+          accountType: row.accountType,
+          shared: true,
+        })),
+    ];
+    return linkable
+      .filter(
+        (installation) =>
+          installation.installationId !== linked &&
+          (!requiredOrg ||
+            installation.accountLogin.toLowerCase() === requiredOrg),
+      )
+      .sort((a, b) => a.accountLogin.localeCompare(b.accountLogin));
   }
 
   /** Connects an installation that already exists, without the install redirect. */
@@ -193,7 +243,8 @@ export class GithubAppService {
   /**
    * The installation ID comes from the browser, so it is only trusted after
    * GitHub confirms it belongs to this App and the user administers the
-   * account it is on.
+   * account it is on. A shared installation skips the owner check: the admin
+   * who shared it passed it.
    */
   private async connectInstallation(
     eventId: string,
@@ -217,10 +268,15 @@ export class GithubAppService {
       throw new BadRequestException(
         `The installation on ${account.login} lacks these permissions: ${missing.join(", ")}. An owner must accept the App's requested permissions on GitHub.`,
       );
-    const user = await this.dataSource
-      .getRepository(UserEntity)
-      .findOneByOrFail({ id: userId });
-    await this.assertCanManageAccount(installation, user.githubId);
+    const known = await this.dataSource
+      .getRepository(GithubInstallationEntity)
+      .findOneBy({ installationId });
+    if (!isSharedInstallation(known)) {
+      const user = await this.dataSource
+        .getRepository(UserEntity)
+        .findOneByOrFail({ id: userId });
+      await this.assertCanManageAccount(installation, user.githubId);
+    }
     // Fetched before the transaction so no GitHub call runs under its locks.
     const accessibleRepositories =
       installation.repository_selection === "selected"
@@ -316,6 +372,105 @@ export class GithubAppService {
         }
       }
     return { eventId };
+  }
+
+  /** Every installation the App knows, for global admins. */
+  async listForAdmin(): Promise<AdminGithubInstallation[]> {
+    const rows = await this.dataSource
+      .getRepository(GithubInstallationEntity)
+      .find({ relations: { sharedBy: true }, order: { accountLogin: "ASC" } });
+    return this.toAdminRows(rows);
+  }
+
+  /**
+   * Lets every event creator link the installation. The sharing admin must
+   * pass the owner check that linking then skips.
+   */
+  async share(id: string, admin: Principal): Promise<AdminGithubInstallation> {
+    const installations = this.dataSource.getRepository(
+      GithubInstallationEntity,
+    );
+    const row = await installations.findOneBy({ id });
+    if (!row) throw new NotFoundException("Installation not found");
+    if (row.deletedAt)
+      throw new BadRequestException(
+        `The App was uninstalled from ${row.accountLogin}, so it cannot be shared.`,
+      );
+    if (!this.githubAppAuth.isEnabled())
+      throw new ServiceUnavailableException(
+        "The CORE GitHub App is not configured on this server.",
+      );
+    const installation = await this.fetchInstallation(row.installationId);
+    if (!installation.account)
+      throw new BadRequestException("The installation has no GitHub account.");
+    const missing = missingPermissions(installation.permissions);
+    if (missing.length)
+      throw new BadRequestException(
+        `The installation on ${installation.account.login} lacks these permissions: ${missing.join(", ")}. An owner must accept the App's requested permissions on GitHub.`,
+      );
+    const user = await this.dataSource
+      .getRepository(UserEntity)
+      .findOneByOrFail({ id: admin.id });
+    await this.assertCanManageAccount(installation, user.githubId);
+    // Sharing again keeps who shared it first.
+    await installations.update(
+      { id, sharedAt: IsNull() },
+      { sharedAt: new Date(), sharedById: admin.id },
+    );
+    this.logger.log({
+      action: "github_installation_shared",
+      userId: admin.id,
+      installationId: row.installationId,
+      account: row.accountLogin,
+    });
+    const [shared] = await this.toAdminRows([
+      await installations.findOneOrFail({
+        where: { id },
+        relations: { sharedBy: true },
+      }),
+    ]);
+    return shared;
+  }
+
+  /** Stops new links; events that already use the installation keep it. */
+  async unshare(id: string, admin: Principal): Promise<void> {
+    const result = await this.dataSource
+      .getRepository(GithubInstallationEntity)
+      .update(id, { sharedAt: null, sharedById: null });
+    if (!result.affected) throw new NotFoundException("Installation not found");
+    this.logger.log({
+      action: "github_installation_unshared",
+      userId: admin.id,
+      id,
+    });
+  }
+
+  private async toAdminRows(
+    rows: GithubInstallationEntity[],
+  ): Promise<AdminGithubInstallation[]> {
+    const counts = rows.length
+      ? await this.dataSource
+          .getRepository(EventEntity)
+          .createQueryBuilder("event")
+          .select('event."githubInstallationId"', "id")
+          .addSelect("COUNT(*)::int", "count")
+          .where({ githubInstallationId: In(rows.map((row) => row.id)) })
+          .groupBy('event."githubInstallationId"')
+          .getRawMany<{ id: string; count: number }>()
+      : [];
+    const eventCounts = new Map(counts.map(({ id, count }) => [id, count]));
+    return rows.map((row) => ({
+      id: row.id,
+      accountLogin: row.accountLogin,
+      accountType: row.accountType,
+      status: connectionStatus(row),
+      sharedAt: row.sharedAt,
+      sharedBy: row.sharedBy && {
+        id: row.sharedBy.id,
+        username: row.sharedBy.username,
+      },
+      eventCount: eventCounts.get(row.id) ?? 0,
+    }));
   }
 
   /** Keeps installation rows in sync with changes made on GitHub. */

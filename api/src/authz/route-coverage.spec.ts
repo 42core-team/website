@@ -84,9 +84,14 @@ function httpRoutes(controllers: Type[]): Route[] {
 // EventPolicy.view hides private events from guests with 404; the public team routes and
 // the match routes by match or team id check it in the service.
 const DECISIONS: Record<string, string> = {
+  "DELETE /admin/github-installations/:id/share":
+    "PlatformPolicy.manageSharedInstallations",
   "DELETE /admin/roles/:id": "PlatformPolicy.manageRoles",
   "GET /admin/events": "PlatformPolicy.manageRoles",
+  "GET /admin/github-installations": "PlatformPolicy.manageSharedInstallations",
   "GET /admin/roles": "PlatformPolicy.manageRoles",
+  "POST /admin/github-installations/:id/share":
+    "PlatformPolicy.manageSharedInstallations",
   "POST /admin/roles": "PlatformPolicy.manageRoles",
   "DELETE /event/:id/admins/:adminId": "EventPolicy.administer",
   "DELETE /event/:id/templates/:templateId": "EventPolicy.administer",
