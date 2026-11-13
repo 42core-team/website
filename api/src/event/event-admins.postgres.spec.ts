@@ -212,7 +212,10 @@ postgres("event admins in user_roles (PostgreSQL)", () => {
         event.id,
         (await service.getEventAdmins(event.id))[0].id,
       ),
-    ).rejects.toThrow("Cannot remove the last admin");
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "Cannot remove the last admin of an event",
+    });
   });
 
   it("answers 404 for a user who is not an admin of the event", async () => {

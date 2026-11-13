@@ -361,6 +361,27 @@ postgres("role admin API (PostgreSQL)", () => {
       role: UserRole.ADMIN,
       eventId: otherEvent.id,
     });
+    let arrivals = 0;
+    let release!: () => void;
+    const bothRemoving = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const concurrentDatabase = {
+      transaction: (work: (manager: EntityManager) => Promise<unknown>) =>
+        database.transaction(async (manager) => {
+          const repository = manager.getRepository(UserRoleEntity);
+          const find = repository.find.bind(repository);
+          jest.spyOn(repository, "find").mockImplementation(async (options) => {
+            // Both endpoints must reach the real locking query before either
+            // can complete, so this test cannot pass with sequential requests.
+            if (++arrivals === 2) release();
+            await bothRemoving;
+            return find(options);
+          });
+          return work(manager);
+        }),
+    } as DataSource;
+    const concurrentRoles = new RolesService(roles, concurrentDatabase);
     const events = new EventService(
       {} as never,
       {} as never,
@@ -368,16 +389,21 @@ postgres("role admin API (PostgreSQL)", () => {
       {} as never,
       {} as never,
       {} as never,
-      database,
+      concurrentDatabase,
     );
 
     const results = await Promise.allSettled([
-      app.get(RolesService).revoke(firstGrant.id),
+      concurrentRoles.revoke(firstGrant.id),
       events.removeEventAdmin(otherEvent.id, second.id),
     ]);
     expect(
       results.filter((result) => result.status === "fulfilled"),
     ).toHaveLength(1);
+    expect(
+      results.find((result) => result.status === "rejected"),
+    ).toMatchObject({
+      reason: { status: 409 },
+    });
     expect(
       await roles.countBy({ role: UserRole.ADMIN, eventId: otherEvent.id }),
     ).toBe(1);
