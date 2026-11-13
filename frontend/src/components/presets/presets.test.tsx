@@ -10,6 +10,7 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useBlocker } from '@tanstack/react-router'
 import { AxiosError } from 'axios'
+import { format } from 'date-fns'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type * as Router from '@tanstack/react-router'
 import type {
@@ -28,6 +29,7 @@ import {
   defaultSettings,
   schedulePreview,
   createPayload,
+  moveWithStart,
   resolvedValues,
 } from './settings'
 
@@ -292,6 +294,59 @@ describe('preset event creation', () => {
         expect.anything(),
       ),
     )
+  })
+  it('moves dates that follow the start and leaves them to the API', async () => {
+    await createPage()
+    fireEvent.click(screen.getByText('Adjust settings'))
+    fireEvent.click(screen.getByLabelText(/^Start date/))
+    // A week later, past the preset's submission deadline.
+    fireEvent.click(screen.getByRole('button', { name: /January 22nd, 2027/ }))
+    fireEvent.keyDown(screen.getByRole('grid'), { key: 'Escape' })
+    const start = new Date(resolved.values.startDate)
+    start.setDate(22)
+    const deadline = new Date(start.getTime() + 3600000)
+    expect(screen.getByLabelText(/^Submission deadline/).textContent).toContain(
+      format(deadline, 'PPP HH:mm'),
+    )
+    expect(
+      screen.queryByRole('button', {
+        name: 'Reset Submission deadline to preset',
+      }),
+    ).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() =>
+      expect(createEvent).toHaveBeenCalledWith(
+        { name: 'Winter Cup', presetId: 'one', startDate: start.getTime() },
+        expect.anything(),
+      ),
+    )
+  })
+  it('keeps an edited date when the start moves later', () => {
+    const base = resolved.values
+    const edited = { ...base, submissionDeadline: base.startDate + 7200000 }
+    const moved = moveWithStart(
+      edited,
+      { ...edited, startDate: base.startDate + 1000 },
+      base,
+    )
+    expect(moved.submissionDeadline).toBe(base.startDate + 7200000)
+    const following = moveWithStart(
+      base,
+      { ...base, startDate: base.startDate + 1000 },
+      base,
+    )
+    expect(following.submissionDeadline).toBe(base.submissionDeadline! + 1000)
+    expect(
+      createPayload('Cup', resolved, {
+        ...resolvedValues(resolved),
+        settings: moved,
+      }),
+    ).toEqual({
+      name: 'Cup',
+      presetId: 'one',
+      startDate: base.startDate + 1000,
+      submissionDeadline: base.startDate + 7200000,
+    })
   })
   it("warns that the preset's installation is unavailable", async () => {
     vi.mocked(api.resolvePreset).mockResolvedValue({
