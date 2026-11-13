@@ -73,7 +73,6 @@ const formSchema = z
     basePath: githubConfigSchema('basePath'),
     gameConfig: z.string().min(1, 'Game config is required'),
     serverConfig: z.string().min(1, 'Server config is required'),
-    isPrivate: z.boolean(),
   })
   .refine((value) => value.maxTeamSize >= value.minTeamSize, {
     message: 'Max team size must be at least the min team size',
@@ -110,7 +109,6 @@ const defaultValues: FormValues = {
   basePath: 'bots/softcore',
   gameConfig: '',
   serverConfig: '',
-  isPrivate: true,
 }
 
 function parseGitHubRepo(url: string): { owner: string; repo: string } | null {
@@ -223,6 +221,8 @@ function CreateEventRoute() {
         basePath: normalizeGithubConfigValue('basePath', values.basePath),
         gameConfig: values.gameConfig,
         serverConfig: values.serverConfig,
+        // The API always creates private events; publishing is a separate,
+        // permission-checked settings change.
         isPrivate: true,
       }
 
@@ -581,7 +581,7 @@ function CreateEventRoute() {
                 )}
               />
               <p className="text-sm text-muted-foreground">
-                Events start private. You can publish it from the event
+                Events start private. You can publish them from the event
                 settings.
               </p>
             </div>

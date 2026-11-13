@@ -34,17 +34,19 @@ const user = {
 
 let routes: Record<string, number>
 let calls: string[]
+let meData: Record<string, unknown>
 const originalAdapter = axiosInstance.defaults.adapter
 
 beforeEach(() => {
   routes = {}
   calls = []
+  meData = user
   const adapter: AxiosAdapter = async (config) => {
     const key = `${config.method?.toUpperCase()} ${config.url}`
     calls.push(key)
     const status = routes[key] ?? 404
     const response = {
-      data: status === 200 ? user : null,
+      data: status === 200 ? meData : null,
       status,
       statusText: String(status),
       headers: {},
@@ -83,6 +85,19 @@ describe('useSession', () => {
     expect(result.current[0].data?.user.abilities).toEqual(user.abilities)
     expect(result.current[1].data?.user.abilities.createPublicEvent).toBe(false)
     expect(calls).toEqual(['GET /auth/me'])
+  })
+
+  it('treats missing abilities as none instead of crashing consumers', async () => {
+    routes['GET /auth/me'] = 200
+    meData = { ...user, abilities: undefined }
+    const { result } = renderWithProviders(() => useSession())
+    await waitFor(() => expect(result.current.status).toBe('authenticated'))
+    expect(result.current.data?.user.abilities).toEqual({
+      admin: false,
+      moderator: false,
+      createEvent: false,
+      createPublicEvent: false,
+    })
   })
 
   it('is unauthenticated when /auth/me is 401 and the refresh fails', async () => {

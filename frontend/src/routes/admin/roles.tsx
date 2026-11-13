@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Navigate } from '@tanstack/react-router'
+import { isAxiosError } from 'axios'
 import { z } from 'zod'
 import { getEventsOverview } from '@/app/actions/event'
 import {
@@ -69,7 +70,9 @@ function RolesPage() {
   const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(
     null,
   )
-  const [confirmRemove, setConfirmRemove] = useState<RoleGrant | null>(null)
+  // Kept after closing so the dialog text does not blank out while it animates.
+  const [removal, setRemoval] = useState<RoleGrant | null>(null)
+  const [removalOpen, setRemovalOpen] = useState(false)
   const debouncedSearch = useDebouncedValue(search.trim())
   const roles = useQuery({
     queryKey: ['admin', 'roles'],
@@ -98,6 +101,15 @@ function RolesPage() {
       queryClient.invalidateQueries({ queryKey: ['event'] }),
     ])
   }
+  // A 403 means this admin lost the role, so reload the session to leave the
+  // page; a 404 means a user, event or grant is gone, so reload the lists.
+  const onRoleError = (error: Error) => {
+    const status = isAxiosError(error) ? error.response?.status : undefined
+    if (status === 403)
+      void queryClient.invalidateQueries({ queryKey: ['auth', 'session'] })
+    if (status === 404)
+      void queryClient.invalidateQueries({ queryKey: ['admin'] })
+  }
   const grant = useMutation({
     mutationFn: (params: GrantRoleParams) => grantRole(params),
     onSuccess: async () => {
@@ -106,13 +118,15 @@ function RolesPage() {
       setSearch('')
       await refresh()
     },
+    onError: onRoleError,
   })
   const remove = useMutation({
     mutationFn: removeRole,
     onSuccess: async () => {
-      setConfirmRemove(null)
+      setRemovalOpen(false)
       await refresh()
     },
+    onError: onRoleError,
   })
   const form = useForm({
     defaultValues: { userId: '', role: 'ADMIN' as Role, eventId: '' },
@@ -350,7 +364,8 @@ function RolesPage() {
                       variant="destructive"
                       onClick={() => {
                         remove.reset()
-                        setConfirmRemove(row)
+                        setRemoval(row)
+                        setRemovalOpen(true)
                       }}
                     >
                       Remove
@@ -361,19 +376,19 @@ function RolesPage() {
           </Card>
         ))}
       <Dialog
-        open={Boolean(confirmRemove)}
+        open={removalOpen}
         onOpenChange={(open) => {
-          if (!open && !remove.isPending) setConfirmRemove(null)
+          if (!open && !remove.isPending) setRemovalOpen(false)
         }}
       >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remove role?</DialogTitle>
             <DialogDescription>
-              Remove {confirmRemove && ROLE_LABELS[confirmRemove.role]} from{' '}
-              {confirmRemove?.user.username}
-              {confirmRemove?.eventId
-                ? ` for ${confirmRemove.event?.name || confirmRemove.eventId}`
+              Remove {removal && ROLE_LABELS[removal.role]} from @
+              {removal?.user.username}
+              {removal?.eventId
+                ? ` for ${removal.event?.name || removal.eventId}`
                 : ' globally'}
               ?
             </DialogDescription>
@@ -387,7 +402,7 @@ function RolesPage() {
             <Button
               variant="outline"
               disabled={remove.isPending}
-              onClick={() => setConfirmRemove(null)}
+              onClick={() => setRemovalOpen(false)}
             >
               Cancel
             </Button>
@@ -395,7 +410,7 @@ function RolesPage() {
               variant="destructive"
               disabled={remove.isPending}
               onClick={() => {
-                if (confirmRemove) remove.mutate(confirmRemove.id)
+                if (removal) remove.mutate(removal.id)
               }}
             >
               {remove.isPending ? 'Removing…' : 'Remove role'}
