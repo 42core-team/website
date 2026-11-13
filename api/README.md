@@ -200,7 +200,8 @@ without owning its organization. Unshared installations require a fresh owner
 check when linked, including on create; suspended or uninstalled installations
 are rejected with 400. Unsharing leaves linked events alone.
 
-The create picker uses signed-in `GET /github/installations`, returning
+The create picker requires `PlatformPolicy.createEvent` for
+`GET /github/installations`, returning
 `[{ id, accountLogin, accountType, shared }]`. `id` is our UUID; owned and shared
 installations are deduplicated. The existing event dashboard routes still use
 GitHub's numeric `installationId`, and their list now includes `shared`.

@@ -5,6 +5,7 @@ import { ConfigService } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { authzTestingModule, principalWith } from "../authz/testing";
+import { UserRole } from "../authz";
 import { GithubAppController } from "./github-app.controller";
 import { GithubAppService } from "./github-app.service";
 
@@ -23,7 +24,11 @@ describe("GET /github/installations", () => {
     const module = await Test.createTestingModule({
       imports: [
         authzTestingModule(async (id) =>
-          id === "member" ? principalWith(id) : null,
+          id === "member"
+            ? principalWith(id)
+            : id === "creator"
+              ? principalWith(id, UserRole.PRIVATE_EVENT_CREATOR)
+              : null,
         ),
       ],
       controllers: [GithubAppController],
@@ -40,13 +45,20 @@ describe("GET /github/installations", () => {
     await request(app.getHttpServer()).get("/github/installations").expect(401);
     expect(listInstallations).not.toHaveBeenCalled();
   });
-  it("lets any signed-in member load the UUID create picker", async () => {
+  it("rejects members without createEvent", async () => {
     await request(app.getHttpServer())
       .get("/github/installations")
       .set("x-test-user", "member")
+      .expect(403);
+    expect(listInstallations).not.toHaveBeenCalled();
+  });
+  it("lets event creators load the UUID create picker", async () => {
+    await request(app.getHttpServer())
+      .get("/github/installations")
+      .set("x-test-user", "creator")
       .expect(200, rows);
     expect(listInstallations).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "member" }),
+      expect.objectContaining({ id: "creator" }),
     );
   });
 });
