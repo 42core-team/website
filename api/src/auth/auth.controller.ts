@@ -22,7 +22,15 @@ import {
   REFRESH_COOKIE_PATH,
   REFRESH_TOKEN_IDLE_TTL_MS,
 } from "./session.constants";
-import { Public, SignedIn } from "../authz";
+import {
+  AuthorizationService,
+  CurrentUser,
+  hasGlobal,
+  PlatformPolicy,
+  Public,
+  SignedIn,
+  UserRole,
+} from "../authz";
 import { ConfigService } from "@nestjs/config";
 import { UserService } from "../user/user.service";
 import { UserId } from "../guards/UserGuard";
@@ -50,6 +58,7 @@ export class AuthController {
     private readonly socialAccountService: SocialAccountService,
     private readonly oauthStates: OAuthStateService,
     private readonly githubOAuth: GithubOAuthClient,
+    private readonly authorization: AuthorizationService,
   ) {}
 
   @Public()
@@ -186,9 +195,24 @@ export class AuthController {
 
   @Get("/me")
   @SignedIn()
-  me(@Req() req: Request) {
-    const user = req.user as UserEntity;
-    return this.userService.getUserWithSocialAccounts(user.id);
+  async me(@CurrentUser() user: UserEntity) {
+    const profile = await this.userService.getUserWithSocialAccounts(user.id);
+    // Global abilities only, so the frontend can decide what to offer.
+    const abilities = {
+      admin: hasGlobal(user, UserRole.ADMIN),
+      moderator: hasGlobal(user, UserRole.ADMIN, UserRole.MODERATOR),
+      createEvent: await this.authorization.can(
+        PlatformPolicy,
+        "createEvent",
+        user,
+      ),
+      createPublicEvent: await this.authorization.can(
+        PlatformPolicy,
+        "createPublicEvent",
+        user,
+      ),
+    };
+    return Object.assign(profile, { abilities });
   }
 
   @Public()

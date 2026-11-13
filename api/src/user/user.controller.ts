@@ -7,29 +7,14 @@ import {
 } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { UserId } from "../guards/UserGuard";
-import {
-  AuthorizationService,
-  CurrentUser,
-  PlatformPolicy,
-  SignedIn,
-} from "../authz";
-import { UserEntity } from "./entities/user.entity";
+import { SignedIn } from "../authz";
 import { PublicUserDto, toPublicUsers } from "./dtos/public-user.dto";
 
 @Controller("user")
 export class UserController {
   private readonly logger = new Logger(UserController.name);
 
-  constructor(
-    private readonly userService: UserService,
-    private readonly authorization: AuthorizationService,
-  ) {}
-
-  @SignedIn()
-  @Get("canCreateEvent")
-  canCreateEvent(@CurrentUser() user: UserEntity) {
-    return this.authorization.can(PlatformPolicy, "createEvent", user);
-  }
+  constructor(private readonly userService: UserService) {}
 
   @SignedIn()
   @Get("search")

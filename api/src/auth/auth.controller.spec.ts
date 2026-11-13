@@ -19,7 +19,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import cookieParser from "cookie-parser";
 import request from "supertest";
 import { UserService } from "../user/user.service";
-import { AuthzModule } from "../authz";
+import { AuthzModule, type RoleGrant, UserRole } from "../authz";
 import { SocialAccountService } from "../user/social-account.service";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
@@ -113,9 +113,11 @@ describe("AuthController sessions", () => {
   let backgroundTasks: BackgroundTasks;
   let fetchMock: jest.SpyInstance;
   let recordGithubCheck: jest.Mock;
+  let roles: RoleGrant[];
 
   beforeEach(async () => {
     users = new Map([[USER.id, createUser()]]);
+    roles = [];
     fetchMock = jest
       .spyOn(global, "fetch")
       .mockImplementation(async () => githubResponse(200));
@@ -139,7 +141,7 @@ describe("AuthController sessions", () => {
       }),
       getUserWithRoles: jest.fn(async (id: string) => {
         const user = users.get(id);
-        return user ? { ...user, roles: [] } : null;
+        return user ? { ...user, roles } : null;
       }),
       getUserWithSocialAccounts: jest.fn(async (id: string) => users.get(id)),
       recordGithubCheck,
@@ -245,6 +247,74 @@ describe("AuthController sessions", () => {
       .set("Cookie", `token=${access.value}`)
       .expect(200);
   });
+
+  it.each<[string, RoleGrant[], Record<string, boolean>]>([
+    [
+      "no role",
+      [],
+      {
+        admin: false,
+        moderator: false,
+        createEvent: false,
+        createPublicEvent: false,
+      },
+    ],
+    [
+      "a private event creator",
+      [{ role: UserRole.PRIVATE_EVENT_CREATOR, eventId: null }],
+      {
+        admin: false,
+        moderator: false,
+        createEvent: true,
+        createPublicEvent: false,
+      },
+    ],
+    [
+      "a global moderator and public event creator",
+      [
+        { role: UserRole.MODERATOR, eventId: null },
+        { role: UserRole.PUBLIC_EVENT_CREATOR, eventId: null },
+      ],
+      {
+        admin: false,
+        moderator: true,
+        createEvent: true,
+        createPublicEvent: true,
+      },
+    ],
+    [
+      "a global admin",
+      [{ role: UserRole.ADMIN, eventId: null }],
+      {
+        admin: true,
+        moderator: true,
+        createEvent: true,
+        createPublicEvent: true,
+      },
+    ],
+    [
+      "only event-scoped roles",
+      [{ role: UserRole.ADMIN, eventId: "event" }],
+      {
+        admin: false,
+        moderator: false,
+        createEvent: false,
+        createPublicEvent: false,
+      },
+    ],
+  ])(
+    "/auth/me reports the global abilities of %s",
+    async (_, granted, abilities) => {
+      roles = granted;
+      const { token } = await login();
+      const response = await request(app.getHttpServer())
+        .get("/auth/me")
+        .set("Cookie", `token=${token}`)
+        .expect(200);
+      expect(response.body).toMatchObject({ id: USER.id, abilities });
+      expect(response.body.roles).toBeUndefined();
+    },
+  );
 
   it("refresh rotates the refresh token and issues a new access token", async () => {
     const session = await login();

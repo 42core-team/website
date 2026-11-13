@@ -53,7 +53,7 @@ describe("UserController", () => {
         Reflect.getMetadata(PATH_METADATA, UserController.prototype[name]),
       )
       .filter((path) => path !== undefined);
-    expect(paths.sort()).toEqual(["canCreateEvent", "search"]);
+    expect(paths.sort()).toEqual(["search"]);
 
     await request(app.getHttpServer()).get("/user/github/12345").expect(404);
     await request(app.getHttpServer())
