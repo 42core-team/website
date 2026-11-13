@@ -103,28 +103,9 @@ To change the credentials later, edit `.env.tilt`, or delete it and run `make de
 
 Events can use the CORE GitHub App instead of an organization token ([#798](https://github.com/42core-team/website/issues/798)). An organization owner installs the App from the event dashboard; team repositories are then created through the installation, and each match pod gets a short-lived token that can only read its own team's repository. Events created with an organization token keep working, and can switch to the App from the dashboard; the stored token is deleted when they do. Teams whose repository could not be created before GitHub was connected are retried once it is. Without an App configured, the event form only offers the token.
 
-To try it locally, [register your own GitHub App](https://github.com/settings/apps/new) with:
+To try it locally, register your own development App and add it to `.env.tilt`; see [GitHub App: local setup](docs/github-app.md).
 
-- Repository permissions: Administration (read & write), Contents (read & write), Metadata (read)
-- Organization permissions: Members (read), used to check that the person connecting an organization owns it
-- Setup URL: `http://localhost:3000/github/setup`, with "Redirect on update" enabled
-- Webhook URL: `https://<your-api>/github/webhook`, with a secret, subscribed to "Installation target" (installation events are always sent). GitHub cannot reach `localhost`, so forward deliveries with [smee.io](https://smee.io) or leave the webhook inactive. Without webhook deliveries the dashboard keeps showing an uninstalled or suspended App as connected; repository operations then fail with GitHub's error until it is reconnected.
-- "Where can this GitHub App be installed?": Any account, so it can be installed on a test organization
-
-Then generate a private key and add the App to `.env.tilt`. The key must be on a single line, so encode it with base64:
-
-```bash
-base64 < your-app.private-key.pem | tr -d '\n'
-```
-
-```dotenv
-GITHUB_APP_ID=123456
-GITHUB_APP_SLUG=your-app-slug
-GITHUB_APP_PRIVATE_KEY=LS0tLS1CRUdJTi...
-GITHUB_APP_WEBHOOK_SECRET=the-webhook-secret
-```
-
-Deployed environments read `CORE_APP_ID` and `CORE_APP_SLUG` from GitHub environment variables, and `CORE_APP_PRIVATE_KEY` (base64, as above) and `CORE_APP_WEBHOOK_SECRET` from GitHub environment secrets; GitHub reserves the `GITHUB_` prefix there. The deploy workflows pass them to the services as `GITHUB_APP_*`. Their Setup URL is the frontend's `/github/setup` and their webhook URL the api's `/github/webhook`.
+Deployed environments read `CORE_APP_ID` and `CORE_APP_SLUG` from GitHub environment variables, and `CORE_APP_PRIVATE_KEY` (single-line base64 of the PEM) and `CORE_APP_WEBHOOK_SECRET` from GitHub environment secrets; GitHub reserves the `GITHUB_` prefix there. The deploy workflows pass them to the services as `GITHUB_APP_*`. Their Setup URL is the frontend's `/github/setup` and their webhook URL the api's `/github/webhook`.
 
 ### Other commands
 
