@@ -27,7 +27,6 @@ import {
   getParticipantsCountForEvent,
   getStarterTemplates,
   getTeamsCountForEvent,
-  isEventAdmin,
   removeEventAdmin,
   updateEventSettings,
 } from '@/app/actions/event'
@@ -90,8 +89,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { GithubConnection } from '@/components/dashboard/github-connection'
 import { useTabParam } from '@/hooks/useTabParam'
+import { useEventAbilities } from '@/hooks/use-event-abilities'
 import { useEventClock } from '@/hooks/use-event-clock'
-import { useSession } from '@/lib/auth'
 import { getEventNameError } from '@/lib/event-validation'
 import {
   GITHUB_CONFIG_FIELDS,
@@ -204,7 +203,6 @@ function getGithubConfigErrors(
 
 function DashboardRoute() {
   const { id } = Route.useParams()
-  const session = useSession()
   const queryClient = useQueryClient()
   const { currentTab, onTabChange } = useTabParam('overview')
   const now = useEventClock()
@@ -233,17 +231,12 @@ function DashboardRoute() {
     queryFn: () => getParticipantsCountForEvent(id),
   })
 
-  const isAdminQuery = useQuery({
-    queryKey: ['event', id, 'is-admin'],
-    queryFn: isEventAdmin.bind(null, id),
-    enabled: session.status !== 'loading',
-    retry: false,
-  })
+  const { abilities, isPending: abilitiesPending } = useEventAbilities(id)
 
   const adminsQuery = useQuery<EventAdmin[]>({
     queryKey: ['event', id, 'admins'],
     queryFn: () => getEventAdmins(id),
-    enabled: isAdminQuery.data === true,
+    enabled: abilities.administer,
   })
 
   const starterTemplatesQuery = useQuery({
@@ -356,7 +349,7 @@ function DashboardRoute() {
     eventQuery.isPending ||
     teamsCountQuery.isPending ||
     participantsCountQuery.isPending ||
-    isAdminQuery.isPending
+    abilitiesPending
 
   if (isLoading || !event) {
     return (
@@ -376,7 +369,7 @@ function DashboardRoute() {
     )
   }
 
-  if (!isAdminQuery.data) {
+  if (!abilities.administer) {
     return (
       <main className="flex min-h-[45vh] items-center justify-center px-4 text-center text-muted-foreground">
         You are not authorized to access this dashboard.
@@ -556,10 +549,7 @@ function DashboardRoute() {
             setIsServerConfigExpanded={setIsServerConfigExpanded}
             eventId={id}
             playClosed={!registrationOpen(event, now)}
-            canPublish={Boolean(
-              session.data?.user.abilities.createPublicEvent ||
-              session.data?.user.abilities.admin,
-            )}
+            canPublish={abilities.publish}
             saved={event}
             onOpenOperation={() => onTabChange('operation')}
           />

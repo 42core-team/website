@@ -1,5 +1,6 @@
 'use client'
 
+import type { EventAbilities } from '@/app/actions/event'
 import type { Team } from '@/app/actions/team'
 import type { Match } from '@/app/actions/tournament-model'
 import { useQuery } from '@tanstack/react-query'
@@ -36,7 +37,7 @@ interface GroupPhaseTabsProps {
   eventId: string
   matches: Match[]
   teams: Team[]
-  isEventAdmin: boolean
+  canViewUnrevealedResults: boolean
   advancementCount: number
 }
 
@@ -44,7 +45,7 @@ export function GroupPhaseTabs({
   eventId,
   matches,
   teams,
-  isEventAdmin,
+  canViewUnrevealedResults,
   advancementCount,
 }: GroupPhaseTabsProps) {
   const { currentTab, onTabChange } = useTabParam('graph')
@@ -82,7 +83,7 @@ export function GroupPhaseTabs({
       <TabsContent value="graph" className="mt-0">
         <GroupPhaseGraphView
           matches={matches}
-          isEventAdmin={isEventAdmin}
+          canViewUnrevealedResults={canViewUnrevealedResults}
           myTeamId={myTeamQuery.data?.id}
         />
       </TabsContent>
@@ -104,7 +105,8 @@ interface BracketTabsProps {
   eventId: string
   matches: Match[]
   teams: Team[]
-  isEventAdmin: boolean
+  /** Staff see unrevealed results; only admins get the reveal controls. */
+  abilities: Pick<EventAbilities, 'administer' | 'viewUnrevealedResults'>
   teamCount: number
   isAdminReveal: boolean
 }
@@ -113,7 +115,7 @@ export function BracketTabs({
   eventId,
   matches,
   teams,
-  isEventAdmin,
+  abilities,
   teamCount,
   isAdminReveal,
 }: BracketTabsProps) {
@@ -121,7 +123,7 @@ export function BracketTabs({
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [selectedMatchId, setSelectedMatchId] = useState<string>()
   const { isRevealModeOpen, setRevealModeOpen } = useRevealModeParam()
-  const isAdminView = isEventAdmin && isAdminReveal
+  const isAdminView = abilities.viewUnrevealedResults && isAdminReveal
   const streamVisibleMatches = useMemo(
     () => getStreamVisibleMatches(matches),
     [matches],
@@ -167,7 +169,7 @@ export function BracketTabs({
                 onSelectedTagChange={setSelectedTag}
               />
             )}
-            {isEventAdmin && (
+            {abilities.administer && (
               <Button onClick={() => setRevealModeOpen(true)}>
                 <Expand />
                 Open reveal mode
@@ -181,7 +183,7 @@ export function BracketTabs({
             <BracketGraphView
               matches={visibleMatches}
               teamCount={teamCount}
-              isEventAdmin={isEventAdmin}
+              canViewUnrevealedResults={abilities.viewUnrevealedResults}
             />
           </div>
         </TabsContent>
@@ -197,7 +199,7 @@ export function BracketTabs({
         </TabsContent>
       </Tabs>
 
-      {isEventAdmin && (
+      {abilities.administer && (
         <Dialog open={isRevealModeOpen} onOpenChange={setRevealModeOpen}>
           <DialogContent className="flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[96rem] grid-rows-none flex-col gap-4 overflow-hidden border-primary/20 bg-background/95 p-4 shadow-2xl backdrop-blur-xl duration-500 data-[state=closed]:slide-out-to-bottom-8 data-[state=closed]:zoom-out-90 data-[state=open]:slide-in-from-bottom-8 data-[state=open]:zoom-in-90 sm:p-6">
             <motion.div
@@ -237,7 +239,7 @@ export function BracketTabs({
               <BracketGraphView
                 matches={streamVisibleMatches}
                 teamCount={teamCount}
-                isEventAdmin={isEventAdmin}
+                canViewUnrevealedResults={abilities.viewUnrevealedResults}
                 highlightedMatchId={selectedMatchId}
               />
             </motion.div>

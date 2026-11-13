@@ -111,7 +111,6 @@ const DECISIONS: Record<string, string> = {
   "GET /event/:id/github": "EventPolicy.administer",
   "GET /event/:id/github-org": "EventPolicy.view",
   "GET /event/:id/github/installations": "EventPolicy.administer",
-  "GET /event/:id/isEventAdmin": "SessionPolicy.signedIn",
   "GET /event/:id/isUserRegistered": "SessionPolicy.signedIn",
   "GET /event/:id/participantsCount": "EventPolicy.view",
   "GET /event/:id/repository-activity": "EventPolicy.administer",

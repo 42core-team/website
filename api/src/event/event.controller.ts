@@ -175,15 +175,6 @@ export class EventController {
     return this.eventService.isUserRegisteredForEvent(eventId, userId);
   }
 
-  @SignedIn()
-  @Get(":id/isEventAdmin")
-  isEventAdmin(
-    @Param("id", new ParseUUIDPipe()) eventId: string,
-    @CurrentUser() user: UserEntity,
-  ) {
-    return this.authorization.can(EventPolicy, "administer", user, eventId);
-  }
-
   /**
    * What the caller may do in this event, so the frontend can decide what to
    * offer. Every route still enforces its own ability.
