@@ -21,6 +21,7 @@ import {
 import { RepositoryStatus, TeamEntity } from "../team/entities/team.entity";
 import { UserEntity } from "../user/entities/user.entity";
 import { GithubInstallStateSigner } from "./github-app-state";
+import { AuthorizationService, EventPolicy, type Principal } from "../authz";
 
 const GITHUB_API_URL = "https://api.github.com";
 const REQUEST_TIMEOUT_MS = 10 * 1000;
@@ -76,6 +77,7 @@ export class GithubAppService {
     private readonly eventService: EventService,
     private readonly configService: ConfigService,
     @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly authorization: AuthorizationService,
   ) {
     this.stateSigner = new GithubInstallStateSigner(
       configService.getOrThrow<string>("JWT_SECRET"),
@@ -114,8 +116,8 @@ export class GithubAppService {
   }
 
   /** Where to send an event admin to install the App on their organization. */
-  async createInstallUrl(eventId: string, userId: string) {
-    await this.assertEventAdmin(eventId, userId);
+  async createInstallUrl(eventId: string, user: Principal) {
+    await this.assertEventAdmin(eventId, user);
     if (!this.isAvailable())
       throw new ServiceUnavailableException(
         "The CORE GitHub App is not configured on this server.",
@@ -123,7 +125,10 @@ export class GithubAppService {
     const url = new URL(
       `https://github.com/apps/${encodeURIComponent(this.appSlug!)}/installations/new`,
     );
-    url.searchParams.set("state", this.stateSigner.sign({ eventId, userId }));
+    url.searchParams.set(
+      "state",
+      this.stateSigner.sign({ eventId, userId: user.id }),
+    );
     return { url: url.toString() };
   }
 
@@ -133,9 +138,9 @@ export class GithubAppService {
    */
   async listLinkableInstallations(
     eventId: string,
-    userId: string,
+    user: Principal,
   ): Promise<LinkableGithubInstallation[]> {
-    await this.assertEventAdmin(eventId, userId);
+    await this.assertEventAdmin(eventId, user);
     if (!this.githubAppAuth.isEnabled()) return [];
     const event = await this.dataSource
       .getRepository(EventEntity)
@@ -151,7 +156,7 @@ export class GithubAppService {
       event.githubOrg && (await this.hasRepositories(event.id))
         ? event.githubOrg.toLowerCase()
         : null;
-    const owned = await this.ownedInstallations(userId);
+    const owned = await this.ownedInstallations(user.id);
     return owned
       .filter(
         (installation) =>
@@ -167,22 +172,22 @@ export class GithubAppService {
   }
 
   /** Connects an installation that already exists, without the install redirect. */
-  linkInstallation(eventId: string, userId: string, installationId: number) {
-    return this.connectInstallation(eventId, userId, installationId);
+  linkInstallation(eventId: string, user: Principal, installationId: number) {
+    return this.connectInstallation(eventId, user, installationId);
   }
 
   /** Finishes the installation GitHub redirected back from. */
   async completeInstallation(
-    userId: string,
+    user: Principal,
     installationId: number,
     stateValue: string,
   ) {
     const state = this.stateSigner.verify(stateValue);
-    if (!state || state.userId !== userId)
+    if (!state || state.userId !== user.id)
       throw new BadRequestException(
         "This GitHub connection link is invalid or has expired. Start again from the event dashboard.",
       );
-    return this.connectInstallation(state.eventId, userId, installationId);
+    return this.connectInstallation(state.eventId, user, installationId);
   }
 
   /**
@@ -192,10 +197,11 @@ export class GithubAppService {
    */
   private async connectInstallation(
     eventId: string,
-    userId: string,
+    principal: Principal,
     installationId: number,
   ) {
-    await this.assertEventAdmin(eventId, userId);
+    await this.assertEventAdmin(eventId, principal);
+    const userId = principal.id;
     if (!this.githubAppAuth.isEnabled())
       throw new ServiceUnavailableException(
         "The CORE GitHub App is not configured on this server.",
@@ -457,8 +463,10 @@ export class GithubAppService {
     );
   }
 
-  private async assertEventAdmin(eventId: string, userId: string) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
+  private async assertEventAdmin(eventId: string, user: Principal) {
+    if (
+      !(await this.authorization.can(EventPolicy, "administer", user, eventId))
+    )
       throw new ForbiddenException("You are not an admin of this event");
   }
 

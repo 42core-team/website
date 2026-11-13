@@ -22,11 +22,8 @@ import {
   type FindOptionsRelations,
   UpdateResult,
 } from "typeorm";
-import {
-  PermissionRole,
-  UserEntity,
-  UserEventPermissionEntity,
-} from "../user/entities/user.entity";
+import { UserEntity } from "../user/entities/user.entity";
+import { UserRole, UserRoleEntity } from "../user/entities/user-role.entity";
 import { SocialPlatform } from "../user/entities/social-account.entity";
 import { ConfigService } from "@nestjs/config";
 import { TeamService } from "../team/team.service";
@@ -51,8 +48,8 @@ export class EventService {
   constructor(
     @InjectRepository(EventEntity)
     private readonly eventRepository: Repository<EventEntity>,
-    @InjectRepository(UserEventPermissionEntity)
-    private readonly permissionRepository: Repository<UserEventPermissionEntity>,
+    @InjectRepository(UserRoleEntity)
+    private readonly roleRepository: Repository<UserRoleEntity>,
     @InjectRepository(EventStarterTemplateEntity)
     private readonly templateRepository: Repository<EventStarterTemplateEntity>,
     @InjectRepository(EventWhitelistEntity)
@@ -343,51 +340,52 @@ export class EventService {
       ),
     );
 
-    return this.eventRepository.save({
-      name,
-      description,
-      // Without a token the organization is set when the GitHub App is connected.
-      githubOrg: githubOrgSecret ? githubOrg : "",
-      githubOrgSecret: githubOrgSecret
-        ? encryptSecret(
-            githubOrgSecret,
-            this.configService.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
-          )
-        : null,
-      location,
-      minTeamSize,
-      maxTeamSize,
-      ...dates,
-      streamUrl,
-      showtimeStreamUrl,
-      state: getEventState(dates),
-      canCreateTeam: isRegistrationOpen(dates),
-      processQueue: isRegistrationOpen(dates),
-      gamblingEnabled: isRegistrationOpen(dates),
-      endDate: dates.scheduledEndDate,
-      repoLockDate: dates.submissionDeadline,
-      permissions: [
-        {
-          user: {
+    return this.dataSource.transaction(async (manager) => {
+      const event = await manager.getRepository(EventEntity).save({
+        name,
+        description,
+        // Without a token the organization is set when the GitHub App is connected.
+        githubOrg: githubOrgSecret ? githubOrg : "",
+        githubOrgSecret: githubOrgSecret
+          ? encryptSecret(
+              githubOrgSecret,
+              this.configService.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
+            )
+          : null,
+        location,
+        minTeamSize,
+        maxTeamSize,
+        ...dates,
+        streamUrl,
+        showtimeStreamUrl,
+        state: getEventState(dates),
+        canCreateTeam: isRegistrationOpen(dates),
+        processQueue: isRegistrationOpen(dates),
+        gamblingEnabled: isRegistrationOpen(dates),
+        endDate: dates.scheduledEndDate,
+        repoLockDate: dates.submissionDeadline,
+        users: [
+          {
             id: userId,
           },
-          role: PermissionRole.ADMIN,
-        },
-      ],
-      users: [
-        {
-          id: userId,
-        },
-      ],
-      gameServerDockerImage,
-      myCoreBotDockerImage,
-      visualizerDockerImage,
-      monorepoUrl,
-      monorepoVersion,
-      basePath,
-      gameConfig,
-      serverConfig,
-      isPrivate,
+        ],
+        gameServerDockerImage,
+        myCoreBotDockerImage,
+        visualizerDockerImage,
+        monorepoUrl,
+        monorepoVersion,
+        basePath,
+        gameConfig,
+        serverConfig,
+        isPrivate,
+      });
+      await manager.getRepository(UserRoleEntity).insert({
+        userId,
+        role: UserRole.ADMIN,
+        eventId: event.id,
+        grantedById: userId,
+      });
+      return event;
     });
   }
 
@@ -508,18 +506,6 @@ export class EventService {
       fortyTwoAccount?.username ?? null,
       manager,
     );
-  }
-
-  isEventAdmin(eventId: string, userId: string): Promise<boolean> {
-    return this.eventRepository.existsBy({
-      id: eventId,
-      permissions: {
-        user: {
-          id: userId,
-        },
-        role: PermissionRole.ADMIN,
-      },
-    });
   }
 
   async lockEvent(eventId: string, scheduled = false): Promise<UpdateResult> {
@@ -1021,56 +1007,37 @@ export class EventService {
   }
 
   async getEventAdmins(eventId: string) {
-    const permissions = await this.permissionRepository.find({
-      where: {
-        event: { id: eventId },
-        role: PermissionRole.ADMIN,
-      },
-      relations: {
-        user: true,
-      },
+    const admins = await this.roleRepository.find({
+      where: { eventId, role: UserRole.ADMIN },
+      relations: { user: true },
+      order: { createdAt: "ASC" },
     });
-    return toPublicUsers(permissions.map((p) => p.user));
+    return toPublicUsers(admins.map((admin) => admin.user));
   }
 
-  async addEventAdmin(eventId: string, userId: string) {
-    const existing = await this.permissionRepository.findOne({
-      where: {
-        event: { id: eventId },
-        user: { id: userId },
-      },
-    });
-
-    if (existing) {
-      if (existing.role === PermissionRole.ADMIN) return;
-      existing.role = PermissionRole.ADMIN;
-      await this.permissionRepository.save(existing);
-      return;
-    }
-
-    await this.permissionRepository.save({
-      event: { id: eventId },
-      user: { id: userId },
-      role: PermissionRole.ADMIN,
-    });
+  async addEventAdmin(eventId: string, userId: string, grantedById: string) {
+    await this.roleRepository
+      .createQueryBuilder()
+      .insert()
+      .values({ userId, role: UserRole.ADMIN, eventId, grantedById })
+      .orIgnore()
+      .execute();
   }
 
   async removeEventAdmin(eventId: string, userId: string) {
     await this.dataSource.transaction(async (manager) => {
-      // Re-query admin permissions with a row-level lock (FOR UPDATE).
-      // manager.find() with relations produces a LEFT JOIN which PostgreSQL
-      // rejects with FOR UPDATE, so use a query builder with INNER JOIN instead.
+      // Lock every admin row of the event (FOR UPDATE), so two concurrent
+      // removals cannot each see another admin left and remove both.
       const admins = await manager
-        .createQueryBuilder(UserEventPermissionEntity, "perm")
-        .innerJoinAndSelect("perm.user", "user")
-        .where("perm.eventId = :eventId", { eventId })
-        .andWhere("perm.role = :role", { role: PermissionRole.ADMIN })
+        .createQueryBuilder(UserRoleEntity, "role")
+        .where("role.eventId = :eventId", { eventId })
+        .andWhere("role.role = :role", { role: UserRole.ADMIN })
         .setLock("pessimistic_write")
         .getMany();
 
-      const permissionToRemove = admins.find((p) => p.user.id === userId);
+      const roleToRemove = admins.find((admin) => admin.userId === userId);
 
-      if (!permissionToRemove) {
+      if (!roleToRemove) {
         throw new NotFoundException("Admin permission not found");
       }
 
@@ -1080,7 +1047,7 @@ export class EventService {
         );
       }
 
-      await manager.remove(permissionToRemove);
+      await manager.delete(UserRoleEntity, roleToRemove.id);
     });
   }
 

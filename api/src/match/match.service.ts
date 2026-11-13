@@ -55,6 +55,7 @@ import {
 } from "./match-response";
 import type { CoreSides } from "./match-sides";
 import { QueueMatchesQueryDto } from "./dtos/queueMatchesQueryDto";
+import { AuthorizationService, EventPolicy, type Principal } from "../authz";
 
 const QUEUE_MATCH_SELECT: FindOptionsSelect<MatchEntity> = {
   id: true,
@@ -97,6 +98,7 @@ export class MatchService {
     private readonly githubAuthService: GithubAuthService,
     @Inject(forwardRef(() => GamblingService))
     private readonly gamblingService: GamblingService,
+    private readonly authorization: AuthorizationService,
   ) {
     this.k8sServiceUrl = configService.getOrThrow<string>("K8S_SERVICE_URL");
     this.gameResultsQueue = ClientProxyFactory.create(
@@ -939,7 +941,7 @@ export class MatchService {
 
   async getSwissMatches(
     eventId: string,
-    userId: string,
+    viewer: Principal | null,
     adminReveal: boolean,
   ): Promise<MatchResponse[]> {
     const swissMatches = await this.matchRepository.find({
@@ -965,21 +967,26 @@ export class MatchService {
       },
     });
 
-    const revealAll = await this.canRevealAll(eventId, userId, adminReveal);
+    const revealAll = await this.canRevealAll(eventId, viewer, adminReveal);
     return swissMatches.map((match) => toMatchResponse(match, revealAll));
   }
 
-  // Real results of unrevealed matches go out only to a verified event admin
-  // who asked for reveal mode. The query parameter alone is never enough.
+  // Real results of unrevealed matches go out only to a user the policy lets
+  // see them who asked for reveal mode. The query parameter alone is never enough.
   private async canRevealAll(
     eventId: string,
-    userId: string | undefined,
+    viewer: Principal | null,
     adminReveal: boolean | undefined,
   ): Promise<boolean> {
     return Boolean(
       adminReveal &&
-      userId &&
-      (await this.eventService.isEventAdmin(eventId, userId)),
+      viewer &&
+      (await this.authorization.can(
+        EventPolicy,
+        "viewUnrevealedResults",
+        viewer,
+        eventId,
+      )),
     );
   }
 
@@ -1080,7 +1087,7 @@ export class MatchService {
 
   async getTournamentMatches(
     eventId: string,
-    userId: string,
+    viewer: Principal | null,
     adminReveal: boolean,
   ): Promise<MatchResponse[]> {
     const tournamentMatches = await this.matchRepository.find({
@@ -1102,7 +1109,7 @@ export class MatchService {
     });
 
     const matchesWithPlacement = addPlacementMatchFlags(tournamentMatches);
-    const revealAll = await this.canRevealAll(eventId, userId, adminReveal);
+    const revealAll = await this.canRevealAll(eventId, viewer, adminReveal);
     return matchesWithPlacement.map((match) =>
       toMatchResponse(match, revealAll),
     );
@@ -1314,7 +1321,7 @@ export class MatchService {
 
   async getMatchLogs(
     matchId: string,
-    userId: string,
+    viewer: Principal | null,
   ): Promise<
     {
       container: string;
@@ -1339,10 +1346,16 @@ export class MatchService {
     if (!event)
       this.logger.error(`Event for match with id ${matchId} not found.`);
 
-    const isEventAdmin =
-      !!userId &&
+    const userId = viewer?.id;
+    // Every container's logs reveal as much as the unrevealed results do.
+    const seesAllLogs =
       !!event &&
-      (await this.eventService.isEventAdmin(event.id, userId));
+      (await this.authorization.can(
+        EventPolicy,
+        "viewUnrevealedResults",
+        viewer,
+        event.id,
+      ));
 
     // The k8s-service names each bot container "bot-<id>", where <id> is the
     // bot id sent in the new_match message, i.e. the team id.
@@ -1361,7 +1374,7 @@ export class MatchService {
         .map(([container]) => container),
     );
 
-    if (!isEventAdmin && ownContainers.size === 0) throw matchNotFound();
+    if (!seesAllLogs && ownContainers.size === 0) throw matchNotFound();
 
     const containers: {
       id: string;
@@ -1383,10 +1396,10 @@ export class MatchService {
       return [];
     }
 
-    // Admins see the game server and every bot. Team members only see the
+    // Admins and moderators see the game server and every bot. Team members only see the
     // containers that map to their own team; anything unmapped is left out.
     const visibleContainers = containers.containers.filter(
-      (container) => isEventAdmin || ownContainers.has(container),
+      (container) => seesAllLogs || ownContainers.has(container),
     );
 
     return Promise.all(
@@ -1416,7 +1429,7 @@ export class MatchService {
 
   async getMatchResponseById(
     matchId: string,
-    userId: string | undefined,
+    viewer: Principal | null,
     adminReveal: boolean,
   ): Promise<MatchResponse | (HiddenMatchResponse & { id: string })> {
     const match = await this.matchRepository.findOne({
@@ -1439,7 +1452,7 @@ export class MatchService {
       match.teams?.find((team) => team.event)?.event.id ??
       (await this.getEventIdOfMatch(match.id));
     const revealAll = eventId
-      ? await this.canRevealAll(eventId, userId, adminReveal)
+      ? await this.canRevealAll(eventId, viewer, adminReveal)
       : false;
     if (match.isRevealed || revealAll)
       return toVisibleMatchResponse(

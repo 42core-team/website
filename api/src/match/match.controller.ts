@@ -10,15 +10,22 @@ import {
   Post,
   Put,
   Query,
-  UnauthorizedException,
-  UseGuards,
   ValidationPipe,
 } from "@nestjs/common";
 import { MatchService } from "./match.service";
 import { EventService } from "../event/event.service";
 import { UserId } from "../guards/UserGuard";
 import { MatchPhase } from "./entites/match.entity";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import {
+  AuthorizationService,
+  Can,
+  CurrentUser,
+  EventPolicy,
+  param,
+  Public,
+  SignedIn,
+} from "../authz";
+import { UserEntity } from "../user/entities/user.entity";
 import { CreateManualMatchDto } from "./dtos/createManualMatchDto";
 import { QueueMatchesQueryDto } from "./dtos/queueMatchesQueryDto";
 import { matchNotFound } from "./match-response";
@@ -28,35 +35,32 @@ export class MatchController {
   constructor(
     private readonly matchService: MatchService,
     private readonly eventService: EventService,
+    private readonly authorization: AuthorizationService,
   ) {}
 
   private readonly logger = new Logger(MatchController.name);
 
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Get("swiss/:eventId")
   getSwissMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
-    @UserId() userId: string,
+    @CurrentUser() user: UserEntity,
     @Query("adminRevealQuery", new ParseBoolPipe({ optional: true }))
     adminRevealQuery: boolean | undefined,
   ) {
     return this.matchService.getSwissMatches(
       eventId,
-      userId,
+      user,
       adminRevealQuery ?? false,
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Can(EventPolicy, "administer", param("eventId"))
   @Put("swiss/:eventId")
   async startSwissMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
     @UserId() userId: string,
   ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to lock this event.",
-      );
     const event = await this.eventService.getEventById(eventId);
     if (event.currentRound != 0) {
       // A round that finished while submissions were reopened is resumed here.
@@ -78,17 +82,12 @@ export class MatchController {
     return await this.matchService.startSwissMatches(eventId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Can(EventPolicy, "administer", param("eventId"))
   @Put("tournament/:eventId")
   async startTournamentMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
     @UserId() userId: string,
   ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to lock this event.",
-      );
-
     this.logger.log({
       action: "attempt_start_tournament_matches",
       userId,
@@ -98,27 +97,28 @@ export class MatchController {
     return this.matchService.startTournamentMatches(eventId);
   }
 
+  @Public()
   @Get("tournament/:eventId/teamCount")
   getTournamentTeamCount(@Param("eventId", ParseUUIDPipe) eventId: string) {
     return this.matchService.getTournamentTeamCount(eventId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Get("tournament/:eventId")
   getTournamentMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
-    @UserId() userId: string,
+    @CurrentUser() user: UserEntity,
     @Query("adminRevealQuery", new ParseBoolPipe({ optional: true }))
     adminRevealQuery: boolean | undefined,
   ) {
     return this.matchService.getTournamentMatches(
       eventId,
-      userId,
+      user,
       adminRevealQuery ?? false,
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Get("queue/:eventId")
   async getQueueMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
@@ -127,45 +127,28 @@ export class MatchController {
     return await this.matchService.getQueueMatches(eventId, userId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Can(EventPolicy, "administer", param("eventId"))
   @Get("queue/:eventId/admin")
   async getAllQueueMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
-    @UserId() userId: string,
     @Query(new ValidationPipe({ transform: true })) query: QueueMatchesQueryDto,
   ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to view all match making matches.",
-      );
     return await this.matchService.getAllQueueMatches(eventId, query);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Can(EventPolicy, "administer", param("eventId"))
   @Get("manual/:eventId")
-  async getManualMatches(
-    @Param("eventId", ParseUUIDPipe) eventId: string,
-    @UserId() userId: string,
-  ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to view manual matches.",
-      );
+  async getManualMatches(@Param("eventId", ParseUUIDPipe) eventId: string) {
     return await this.matchService.getManualMatches(eventId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Can(EventPolicy, "administer", param("eventId"))
   @Post("manual/:eventId")
   async createManualMatch(
     @Param("eventId", ParseUUIDPipe) eventId: string,
     @UserId() userId: string,
     @Body() body: CreateManualMatchDto,
   ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to start manual matches.",
-      );
-
     this.logger.log({
       action: "attempt_create_manual_match",
       userId,
@@ -181,7 +164,7 @@ export class MatchController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Get("team/:teamId")
   async getMatchesForTeam(
     @Param("teamId", ParseUUIDPipe) teamId: string,
@@ -190,13 +173,13 @@ export class MatchController {
     return await this.matchService.getMatchesForTeam(teamId, userId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Get("logs/:matchId")
   async getMatchLogs(
     @Param("matchId", ParseUUIDPipe) matchId: string,
-    @UserId() userId: string,
+    @CurrentUser() user: UserEntity,
   ) {
-    const logs = await this.matchService.getMatchLogs(matchId, userId);
+    const logs = await this.matchService.getMatchLogs(matchId, user);
     if (!logs)
       throw new BadRequestException(
         "No logs found for match with id " + matchId,
@@ -204,33 +187,35 @@ export class MatchController {
     return logs;
   }
 
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Put("reveal/:matchId")
   async revealMatch(
     @Param("matchId", ParseUUIDPipe) matchId: string,
-    @UserId() userId: string,
+    @CurrentUser() user: UserEntity,
   ) {
     const eventId = await this.matchService.getEventIdOfMatch(matchId);
-    if (!eventId || !(await this.eventService.isEventAdmin(eventId, userId)))
+    if (
+      !eventId ||
+      !(await this.authorization.can(EventPolicy, "administer", user, eventId))
+    )
       throw matchNotFound();
 
-    this.logger.log({ action: "attempt_reveal_match", userId, matchId });
+    this.logger.log({
+      action: "attempt_reveal_match",
+      userId: user.id,
+      matchId,
+    });
 
     return this.matchService.revealMatch(matchId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Can(EventPolicy, "administer", param("eventId"))
   @Put("reveal-all/:eventId/:phase")
   async revealAllMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
     @Param("phase") phase: string,
     @UserId() userId: string,
   ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to reveal matches for this event.",
-      );
-
     this.logger.log({
       action: "attempt_reveal_all_matches",
       userId,
@@ -244,18 +229,13 @@ export class MatchController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Can(EventPolicy, "administer", param("eventId"))
   @Put("cleanup-all/:eventId/:phase")
   async cleanupMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
     @Param("phase") phase: string,
     @UserId() userId: string,
   ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to cleanup matches for this event.",
-      );
-
     this.logger.log({
       action: "attempt_cleanup_matches",
       userId,
@@ -269,21 +249,15 @@ export class MatchController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Can(EventPolicy, "administer", param("eventId"))
   @Get("event/:eventId/timeseries")
   async getMatchesTimeSeries(
     @Param("eventId", ParseUUIDPipe) eventId: string,
-    @UserId() userId: string,
     @Query("interval") interval?: "minute" | "hour" | "day",
     @Query("start") startStr?: string,
     @Query("end") endStr?: string,
     @Query("phases") phasesStr?: string,
   ) {
-    if (!(await this.eventService.isEventAdmin(eventId, userId)))
-      throw new UnauthorizedException(
-        "You are not authorized to view match statistics.",
-      );
-
     const start = this.parseOptionalDate(startStr, "start");
     const end = this.parseOptionalDate(endStr, "end");
 
@@ -315,17 +289,17 @@ export class MatchController {
     });
   }
 
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Get(":matchId")
   async getMatchById(
     @Param("matchId", ParseUUIDPipe) matchId: string,
-    @UserId() userId: string,
+    @CurrentUser() user: UserEntity,
     @Query("adminRevealQuery", new ParseBoolPipe({ optional: true }))
     adminRevealQuery: boolean | undefined,
   ) {
     const match = await this.matchService.getMatchResponseById(
       matchId,
-      userId,
+      user,
       adminRevealQuery ?? false,
     );
     // QUEUE result scores contain private matchmaking ratings, not public scores.

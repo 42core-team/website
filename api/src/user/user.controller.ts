@@ -3,27 +3,35 @@ import {
   Controller,
   Get,
   Query,
-  UseGuards,
   Logger,
 } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { UserId } from "../guards/UserGuard";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import {
+  AuthorizationService,
+  CurrentUser,
+  PlatformPolicy,
+  SignedIn,
+} from "../authz";
+import { UserEntity } from "./entities/user.entity";
 import { PublicUserDto, toPublicUsers } from "./dtos/public-user.dto";
 
 @Controller("user")
 export class UserController {
   private readonly logger = new Logger(UserController.name);
 
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly authorization: AuthorizationService,
+  ) {}
 
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Get("canCreateEvent")
-  async canCreateEvent(@UserId() id: string) {
-    return this.userService.canCreateEvent(id);
+  canCreateEvent(@CurrentUser() user: UserEntity) {
+    return this.authorization.can(PlatformPolicy, "createEvent", user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @SignedIn()
   @Get("search")
   async searchUsers(
     @UserId() userId: string,

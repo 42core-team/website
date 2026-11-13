@@ -67,6 +67,7 @@ import {
   type TeamStanding,
 } from "./team-response";
 import { RepositoryActivityCache } from "./repository-activity-cache";
+import { AuthorizationService, EventPolicy, type Principal } from "../authz";
 
 const DIRECT_MATCH_COST = 2;
 const DIRECT_MATCH_STAKE = 1;
@@ -90,6 +91,7 @@ export class TeamService {
     private readonly matchService: MatchService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly authorization: AuthorizationService,
   ) {}
 
   logger = new Logger("TeamService");
@@ -1016,13 +1018,23 @@ export class TeamService {
     searchName?: string,
     searchDir?: string,
     sortBy?: string,
-    userId?: string,
+    viewer: Principal | null = null,
     adminReveal?: boolean,
   ): Promise<Array<EventTeamResponse | AdminEventTeamResponse>> {
-    const isAdmin = userId
-      ? await this.eventService.isEventAdmin(eventId, userId)
-      : false;
-    const revealAll = isAdmin && adminReveal;
+    const isAdmin = await this.authorization.can(
+      EventPolicy,
+      "administer",
+      viewer,
+      eventId,
+    );
+    const revealAll =
+      !!adminReveal &&
+      (await this.authorization.can(
+        EventPolicy,
+        "viewUnrevealedResults",
+        viewer,
+        eventId,
+      ));
 
     const query = this.teamRepository
       .createQueryBuilder("team")

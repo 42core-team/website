@@ -58,9 +58,10 @@ postgres("GitHub App connection (PostgreSQL)", () => {
         }),
         getInstallationToken: async () => "installation-token",
       } as never,
-      { isEventAdmin: async () => true } as never,
+      {} as never,
       { getOrThrow: () => "jwt-secret", get: () => undefined } as never,
       database,
+      { can: async () => true } as never,
     );
     service.fetch = (async (url: string | URL | Request) =>
       new Response(
@@ -107,7 +108,7 @@ postgres("GitHub App connection (PostgreSQL)", () => {
       event: { id: event.id },
     });
 
-    await service.completeInstallation(userId, 77, stateFor(event.id));
+    await service.completeInstallation({ id: userId }, 77, stateFor(event.id));
 
     const saved = await database.getRepository(EventEntity).findOneOrFail({
       where: { id: event.id },
@@ -132,7 +133,7 @@ postgres("GitHub App connection (PostgreSQL)", () => {
     });
 
     await expect(
-      service.completeInstallation(userId, 78, stateFor(event.id)),
+      service.completeInstallation({ id: userId }, 78, stateFor(event.id)),
     ).rejects.toThrow("already have repositories in old-org");
     expect(
       (

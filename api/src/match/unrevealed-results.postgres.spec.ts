@@ -5,16 +5,17 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import {
   ClassSerializerInterceptor,
-  ExecutionContext,
   INestApplication,
-  UnauthorizedException,
   ValidationPipe,
 } from "@nestjs/common";
 import { HttpAdapterHost, Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { DataSource } from "typeorm";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import {
+  authzTestingModule,
+  createAuthorizationService,
+} from "../authz/testing";
 import { AllExceptionsFilter } from "../common/AllExceptionsFilter";
 import { TypeormExceptionFilter } from "../common/TypeormExceptionFilter";
 import { EventEntity } from "../event/entities/event.entity";
@@ -22,17 +23,14 @@ import { EventService } from "../event/event.service";
 import { TeamEntity } from "../team/entities/team.entity";
 import { TeamController } from "../team/team.controller";
 import { TeamService } from "../team/team.service";
-import {
-  PermissionRole,
-  UserEntity,
-  UserEventPermissionEntity,
-} from "../user/entities/user.entity";
+import { UserEntity } from "../user/entities/user.entity";
 import { UserService } from "../user/user.service";
 import { MatchEntity, MatchPhase, MatchState } from "./entites/match.entity";
 import { MatchStatsEntity } from "./entites/matchStats.entity";
 import { MatchController } from "./match.controller";
 import { MatchService } from "./match.service";
 import { StatsController } from "../stats/stats.controller";
+import { UserRole, UserRoleEntity } from "../user/entities/user-role.entity";
 
 // A dedicated test database is required; each run owns only its random schema.
 const databaseUrl = process.env.SESSION_TEST_DATABASE_URL;
@@ -107,7 +105,7 @@ postgres("unrevealed match results (PostgreSQL)", () => {
 
     const eventService = new EventService(
       database.getRepository(EventEntity),
-      database.getRepository(UserEventPermissionEntity),
+      database.getRepository(UserRoleEntity),
       {} as never,
       {} as never,
       {} as never,
@@ -122,11 +120,13 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       eventService,
       matchService,
       database,
+      await createAuthorizationService(),
     );
     // The constructor opens queue clients; the read paths never use them.
     Object.assign(matchService, {
       teamService,
       eventService,
+      authorization: await createAuthorizationService(),
       matchRepository: database.getRepository(MatchEntity),
       matchStatsRepository: database.getRepository(MatchStatsEntity),
       dataSource: database,
@@ -136,6 +136,14 @@ postgres("unrevealed match results (PostgreSQL)", () => {
     });
 
     const moduleRef = await Test.createTestingModule({
+      imports: [
+        authzTestingModule((id) =>
+          database.getRepository(UserEntity).findOne({
+            where: { id },
+            relations: { roles: true },
+          }),
+        ),
+      ],
       controllers: [MatchController, TeamController, StatsController],
       providers: [
         { provide: MatchService, useValue: matchService },
@@ -143,18 +151,7 @@ postgres("unrevealed match results (PostgreSQL)", () => {
         { provide: EventService, useValue: eventService },
         { provide: UserService, useValue: {} },
       ],
-    })
-      .overrideGuard(JwtAuthGuard)
-      .useValue({
-        canActivate: (context: ExecutionContext) => {
-          const req = context.switchToHttp().getRequest();
-          const userId = req.headers["x-test-user"];
-          if (!userId) throw new UnauthorizedException();
-          req.user = { id: userId };
-          return true;
-        },
-      })
-      .compile();
+    }).compile();
     app = moduleRef.createNestApplication();
     // Same global setup as main.ts.
     app.useGlobalPipes(new ValidationPipe());
@@ -211,10 +208,10 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       endDate: new Date("2099-01-01"),
       currentRound: 2,
     });
-    await database.getRepository(UserEventPermissionEntity).save({
-      user: { id: users.admin.id },
-      event: { id: event.id },
-      role: PermissionRole.ADMIN,
+    await database.getRepository(UserRoleEntity).save({
+      userId: users.admin.id,
+      eventId: event.id,
+      role: UserRole.ADMIN,
     });
 
     // Stored scores already include the unrevealed m3 win of A.
@@ -564,10 +561,10 @@ postgres("unrevealed match results (PostgreSQL)", () => {
         scheduledEndDate: new Date("2099-01-01"),
         endDate: new Date("2099-01-01"),
       });
-      await database.getRepository(UserEventPermissionEntity).save({
-        user: { id: users.admin.id },
-        event: { id: otherEvent.id },
-        role: PermissionRole.ADMIN,
+      await database.getRepository(UserRoleEntity).save({
+        userId: users.admin.id,
+        eventId: otherEvent.id,
+        role: UserRole.ADMIN,
       });
       const saveTeam = (name: string) =>
         database.getRepository(TeamEntity).save({
@@ -648,7 +645,8 @@ postgres("unrevealed match results (PostgreSQL)", () => {
         `/match/queue/${otherEvent.id}/admin`,
         users.outsider.id,
       );
-      expect(outsider.status).toBe(401);
+      // Signed in but not an admin of this event: forbidden, not unauthenticated.
+      expect(outsider.status).toBe(403);
     });
 
     it("gives queue match ids to members of the teams that played only", async () => {

@@ -1,12 +1,5 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Query,
-  UseGuards,
-  ValidationPipe,
-} from "@nestjs/common";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { Controller, Get, Param, Query, ValidationPipe } from "@nestjs/common";
+import { SignedIn } from "../authz";
 import { UserId } from "../guards/UserGuard";
 import { ProfileService } from "./profile.service";
 import { ProfileMatchesQueryDto } from "./profile-matches-query.dto";
@@ -16,7 +9,7 @@ import type {
 } from "./profile-response";
 
 // Signed in only, like the match histories the profile lists.
-@UseGuards(JwtAuthGuard)
+@SignedIn()
 @Controller("profile")
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}

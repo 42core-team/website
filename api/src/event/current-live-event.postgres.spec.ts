@@ -11,12 +11,10 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { instanceToPlain } from "class-transformer";
 import { DataSource } from "typeorm";
-import {
-  UserEntity,
-  UserEventPermissionEntity,
-} from "../user/entities/user.entity";
+import { UserEntity } from "../user/entities/user.entity";
 import { EventEntity } from "./entities/event.entity";
 import { EventService } from "./event.service";
+import { UserRoleEntity } from "../user/entities/user-role.entity";
 
 // A dedicated test database is required; each run owns only its random schema.
 const databaseUrl = process.env.SESSION_TEST_DATABASE_URL;
@@ -39,7 +37,7 @@ postgres("current live event (PostgreSQL)", () => {
     await database.synchronize();
     service = new EventService(
       database.getRepository(EventEntity),
-      database.getRepository(UserEventPermissionEntity),
+      database.getRepository(UserRoleEntity),
       {} as never,
       {} as never,
       {} as never,

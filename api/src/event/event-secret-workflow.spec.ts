@@ -17,6 +17,14 @@ describe("event organization secret storage", () => {
       save: jest.fn().mockImplementation((event) => Promise.resolve(event)),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
+    const roleRepository = { insert: jest.fn() };
+    const dataSource = {
+      transaction: (work: (manager: unknown) => unknown) =>
+        work({
+          getRepository: (entity: unknown) =>
+            entity === EventEntity ? eventRepository : roleRepository,
+        }),
+    };
     const service = new EventService(
       eventRepository as never,
       {} as never,
@@ -24,14 +32,14 @@ describe("event organization secret storage", () => {
       {} as never,
       { getOrThrow: jest.fn().mockReturnValue(encryptionKey) } as never,
       {} as never,
-      {} as never,
+      dataSource as never,
     );
 
-    return { eventRepository, service };
+    return { eventRepository, roleRepository, service };
   }
 
   it("encrypts the organization token when creating an event", async () => {
-    const { eventRepository, service } = createService();
+    const { eventRepository, roleRepository, service } = createService();
 
     await service.createEvent(
       "user-id",
@@ -61,6 +69,10 @@ describe("event organization secret storage", () => {
     expect(storedEvent.githubOrgSecret).not.toContain("plaintext-token");
     expect(decryptSecret(storedEvent.githubOrgSecret, encryptionKey)).toBe(
       "plaintext-token",
+    );
+    // The creator administers the event, granted in the same transaction.
+    expect(roleRepository.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "user-id", role: "ADMIN" }),
     );
   });
 

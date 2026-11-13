@@ -3,12 +3,18 @@ jest.mock("../event/event.service", () => ({
   EventService: class EventService {},
 }));
 
-import { NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { NotFoundException } from "@nestjs/common";
 import { EventService } from "../event/event.service";
+import { UserEntity } from "../user/entities/user.entity";
+import { AuthorizationService, UserRole } from "../authz";
+import { createAuthorizationService, principalWith } from "../authz/testing";
 import { MatchEntity, MatchPhase, MatchState } from "./entites/match.entity";
 import { MatchController } from "./match.controller";
 import { MatchService } from "./match.service";
 import { toVisibleMatchResponse } from "./match-response";
+
+const user = principalWith("user") as UserEntity;
+const admin = principalWith("admin", UserRole.ADMIN, "event") as UserEntity;
 
 describe("match detail results", () => {
   function setup(phase: MatchPhase) {
@@ -25,6 +31,7 @@ describe("match detail results", () => {
     const controller = new MatchController(
       { getMatchResponseById } as unknown as MatchService,
       {} as EventService,
+      {} as AuthorizationService,
     );
     return { controller, match, getMatchResponseById };
   }
@@ -37,7 +44,7 @@ describe("match detail results", () => {
       );
       const response = await controller.getMatchById(
         "match",
-        "user",
+        user,
         adminReveal,
       );
 
@@ -48,7 +55,7 @@ describe("match detail results", () => {
       expect(match.results[0].score).toBe(1234);
       expect(getMatchResponseById).toHaveBeenCalledWith(
         "match",
-        "user",
+        user,
         adminReveal,
       );
     },
@@ -58,28 +65,23 @@ describe("match detail results", () => {
     "preserves %s results",
     async (phase) => {
       const { controller, match } = setup(phase);
-      const response = await controller.getMatchById("match", "user", false);
+      const response = await controller.getMatchById("match", user, false);
       expect(response).toBe(match);
       expect("results" in response && response.results[0].score).toBe(1234);
     },
   );
 });
 
+// Only event admins reach the manual match routes: see the decision table
+// in authz/route-coverage.spec.ts.
 describe("manual matches", () => {
-  function setup(isAdmin: boolean) {
+  it("starts a manual match", async () => {
     const createManualMatch = jest.fn().mockResolvedValue({ id: "match" });
-    const getManualMatches = jest.fn().mockResolvedValue([]);
     const controller = new MatchController(
-      { createManualMatch, getManualMatches } as unknown as MatchService,
-      {
-        isEventAdmin: jest.fn().mockResolvedValue(isAdmin),
-      } as unknown as EventService,
+      { createManualMatch } as unknown as MatchService,
+      {} as EventService,
+      {} as AuthorizationService,
     );
-    return { controller, createManualMatch, getManualMatches };
-  }
-
-  it("lets event admins start a manual match", async () => {
-    const { controller, createManualMatch } = setup(true);
     await expect(
       controller.createManualMatch("event", "admin", {
         teamOneId: "a",
@@ -88,47 +90,37 @@ describe("manual matches", () => {
     ).resolves.toEqual({ id: "match" });
     expect(createManualMatch).toHaveBeenCalledWith("event", "a", "b");
   });
-
-  it("rejects non-admins", async () => {
-    const { controller, createManualMatch, getManualMatches } = setup(false);
-    await expect(
-      controller.createManualMatch("event", "user", {
-        teamOneId: "a",
-        teamTwoId: "b",
-      }),
-    ).rejects.toThrow(UnauthorizedException);
-    await expect(controller.getManualMatches("event", "user")).rejects.toThrow(
-      UnauthorizedException,
-    );
-    expect(createManualMatch).not.toHaveBeenCalled();
-    expect(getManualMatches).not.toHaveBeenCalled();
-  });
 });
 
 describe("match reveal", () => {
-  function setup(eventId: string | undefined, isAdmin: boolean) {
+  let authorization: AuthorizationService;
+  beforeAll(async () => {
+    authorization = await createAuthorizationService();
+  });
+
+  function setup(eventId: string | undefined) {
     const getEventIdOfMatch = jest.fn().mockResolvedValue(eventId);
     const revealMatch = jest.fn().mockResolvedValue(undefined);
-    const isEventAdmin = jest.fn().mockResolvedValue(isAdmin);
     const controller = new MatchController(
       { getEventIdOfMatch, revealMatch } as unknown as MatchService,
-      { isEventAdmin } as unknown as EventService,
+      {} as EventService,
+      authorization,
     );
-    return { controller, revealMatch, isEventAdmin };
+    return { controller, revealMatch };
   }
 
-  async function revealError(eventId: string | undefined, isAdmin: boolean) {
-    const { controller, revealMatch } = setup(eventId, isAdmin);
+  async function revealError(eventId: string | undefined, viewer: UserEntity) {
+    const { controller, revealMatch } = setup(eventId);
     const error = await controller
-      .revealMatch("match", "user")
+      .revealMatch("match", viewer)
       .catch((caught: unknown) => caught);
     expect(revealMatch).not.toHaveBeenCalled();
     return error;
   }
 
   it("answers a non-admin exactly like an unknown match", async () => {
-    const hidden = await revealError("event", false);
-    const unknown = await revealError(undefined, false);
+    const hidden = await revealError("event", user);
+    const unknown = await revealError(undefined, user);
     expect(hidden).toBeInstanceOf(NotFoundException);
     expect(unknown).toBeInstanceOf(NotFoundException);
     expect((hidden as NotFoundException).getResponse()).toEqual(
@@ -137,9 +129,8 @@ describe("match reveal", () => {
   });
 
   it("lets an event admin reveal the match", async () => {
-    const { controller, revealMatch, isEventAdmin } = setup("event", true);
-    await controller.revealMatch("match", "admin");
-    expect(isEventAdmin).toHaveBeenCalledWith("event", "admin");
+    const { controller, revealMatch } = setup("event");
+    await controller.revealMatch("match", admin);
     expect(revealMatch).toHaveBeenCalledWith("match");
   });
 });

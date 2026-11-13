@@ -20,6 +20,8 @@ jest.mock("../user/user.service", () => ({
 
 import type { TeamEntity } from "./entities/team.entity";
 import { TeamService } from "./team.service";
+import { AuthorizationService, UserRole } from "../authz";
+import { createAuthorizationService, principalWith } from "../authz/testing";
 
 describe("TeamService.getQueueOpponents", () => {
   it.each([{ small: "small.webp", large: "large.webp" }, null])(
@@ -61,6 +63,13 @@ describe("TeamService.getQueueOpponents", () => {
 });
 
 describe("TeamService.getSearchedTeamsForEvent", () => {
+  const user = principalWith("user-1");
+  const admin = principalWith("admin-1", UserRole.ADMIN, "event-1");
+  let authorization: AuthorizationService;
+  beforeAll(async () => {
+    authorization = await createAuthorizationService();
+  });
+
   it("searches team names without regard to case", async () => {
     const queryBuilder = {
       innerJoin: jest.fn().mockReturnThis(),
@@ -81,9 +90,7 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
       manager: { find: jest.fn().mockResolvedValue([]) },
     });
-    Reflect.set(service, "eventService", {
-      isEventAdmin: jest.fn().mockResolvedValue(false),
-    });
+    Reflect.set(service, "authorization", authorization);
     Reflect.set(service, "matchService", {
       calculateBuchholzPointsForTeams: jest.fn().mockResolvedValue(new Map()),
     });
@@ -94,7 +101,7 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
       "tEaM oNe",
       undefined,
       undefined,
-      "user-1",
+      user,
     );
 
     expect(queryBuilder.andWhere).toHaveBeenCalledWith(
@@ -152,9 +159,7 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
         ]),
       },
     });
-    Reflect.set(service, "eventService", {
-      isEventAdmin: jest.fn().mockResolvedValue(true),
-    });
+    Reflect.set(service, "authorization", authorization);
     Reflect.set(service, "matchService", {
       calculateBuchholzPointsForTeams,
     });
@@ -167,7 +172,7 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
       undefined,
       undefined,
       undefined,
-      "admin-1",
+      admin,
       true,
     );
 
@@ -216,9 +221,7 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
       manager: { find: jest.fn().mockResolvedValue([]) },
     });
-    Reflect.set(service, "eventService", {
-      isEventAdmin: jest.fn().mockResolvedValue(false),
-    });
+    Reflect.set(service, "authorization", authorization);
     jest
       .spyOn(service, "getPublicStandings")
       .mockResolvedValue(
@@ -235,7 +238,7 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
       undefined,
       undefined,
       undefined,
-      "user-1",
+      user,
       true,
     );
     expect(Object.keys(team).sort()).toEqual(
@@ -263,7 +266,7 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
         undefined,
         "desc",
         sortBy,
-        "user-1",
+        user,
       );
       expect(queryBuilder.orderBy).not.toHaveBeenCalled();
     },
@@ -277,7 +280,7 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
         undefined,
         "desc",
         "queueScore",
-        "user-1",
+        user,
         true,
       ),
     ).rejects.toThrow("Queue scores are hidden");
@@ -286,15 +289,13 @@ describe("TeamService.getSearchedTeamsForEvent", () => {
 
   it("sorts by queue score with the name as tie-break for an admin", async () => {
     const { service, queryBuilder } = publicListSetup();
-    Reflect.set(service, "eventService", {
-      isEventAdmin: jest.fn().mockResolvedValue(true),
-    });
+    Reflect.set(service, "authorization", authorization);
     await service.getSearchedTeamsForEvent(
       "event-1",
       undefined,
       "desc",
       "queueScore",
-      "admin-1",
+      admin,
     );
     expect(queryBuilder.orderBy).toHaveBeenCalledWith(
       "team.queueScore",
