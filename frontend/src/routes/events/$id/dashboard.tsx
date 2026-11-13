@@ -302,9 +302,11 @@ function DashboardRoute() {
       setPendingSettings({})
       await queryClient.invalidateQueries({ queryKey: ['event', id] })
     },
-    onError: (error) =>
+    onError: (error, settings) =>
       toast.error(
-        isAxiosError(error) && error.response?.status === 403
+        settings.isPrivate === false &&
+          isAxiosError(error) &&
+          error.response?.status === 403
           ? 'You do not have permission to publish this event. You can still make it private.'
           : getErrorMessage(error, 'Failed to update event settings.'),
       ),
@@ -864,8 +866,14 @@ function SettingsTab({
   eventId: string
   /** After coding, the deadline and playing capabilities only change by reopening play. */
   playClosed: boolean
-  /** Saved values: switches that were off when play closed stay off. */
-  saved: Pick<Event, 'canCreateTeam' | 'processQueue' | 'gamblingEnabled'>
+  /**
+   * Saved values: switches that were off when play closed stay off, and a
+   * private event stays private without the right to publish.
+   */
+  saved: Pick<
+    Event,
+    'canCreateTeam' | 'processQueue' | 'gamblingEnabled' | 'isPrivate'
+  >
   onOpenOperation: () => void
 }) {
   const githubStatusQuery = useEventGithubStatus(eventId)
@@ -1096,14 +1104,18 @@ function SettingsTab({
               <SettingSwitch
                 id="isPrivate"
                 label="Private Event"
-                disabled={Boolean(pendingSettings.isPrivate) && !canPublish}
                 checked={pendingSettings.isPrivate || false}
+                disabled={!canPublish && saved.isPrivate}
+                describedBy={canPublish ? undefined : 'isPrivate-hint'}
                 onCheckedChange={(value) =>
                   updatePendingSetting('isPrivate', value)
                 }
               />
               {!canPublish && (
-                <p className="text-sm text-muted-foreground">
+                <p
+                  id="isPrivate-hint"
+                  className="text-sm text-muted-foreground"
+                >
                   Publishing requires the Public event creator or global Admin
                   role. You can still make a public event private.
                 </p>
@@ -1709,12 +1721,14 @@ function SettingSwitch({
   label,
   checked,
   disabled,
+  describedBy,
   onCheckedChange,
 }: {
   id: string
   label: string
   checked: boolean
   disabled?: boolean
+  describedBy?: string
   onCheckedChange: (checked: boolean) => void
 }) {
   return (
@@ -1726,6 +1740,7 @@ function SettingSwitch({
         id={id}
         checked={checked}
         disabled={disabled}
+        aria-describedby={describedBy}
         onCheckedChange={onCheckedChange}
       />
     </div>

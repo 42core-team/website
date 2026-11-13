@@ -131,6 +131,32 @@ describe('roles administration', () => {
     await screen.findByText("Can't remove the last global admin.")
     expect(removeRole).toHaveBeenCalledWith('global', expect.anything())
   })
+  it('reloads the roles when the grant to remove no longer exists', async () => {
+    const error = new AxiosError('Not Found')
+    error.response = { status: 404 } as AxiosError['response']
+    vi.mocked(removeRole).mockRejectedValue(error)
+    await setup()
+    await screen.findByText('Winter Cup', { exact: false })
+    expect(getRoles).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Remove' })[1])
+    fireEvent.click(screen.getByRole('button', { name: 'Remove role' }))
+    await screen.findByText(/no longer exists/)
+    await waitFor(() => expect(getRoles).toHaveBeenCalledTimes(2))
+  })
+  it('hides results of an outdated search term while the next one is pending', async () => {
+    const grace = { ...user, id: 'grace', username: 'grace', name: 'Grace' }
+    vi.mocked(searchUsers).mockImplementation(async (query) =>
+      query === 'gr' ? [grace] : [user],
+    )
+    await setup()
+    const input = screen.getByLabelText('User')
+    fireEvent.change(input, { target: { value: 'gr' } })
+    await screen.findByRole('button', { name: 'Grace (@grace)' })
+    fireEvent.change(input, { target: { value: 'ada' } })
+    expect(screen.queryByRole('button', { name: 'Grace (@grace)' })).toBeNull()
+    await screen.findByRole('button', { name: 'Ada (@ada)' })
+    expect(searchUsers).toHaveBeenCalledTimes(2)
+  })
   it('searches users after debounce and grants a global role without eventId', async () => {
     await setup()
     fireEvent.change(screen.getByLabelText('User'), {
