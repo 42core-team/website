@@ -116,12 +116,24 @@ export function GithubConnection({ eventId }: { eventId: string }) {
       </CardHeader>
       {status.appAvailable && (
         <CardContent className="space-y-4">
+          {linkableQuery.isError && (
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
+              Could not check for existing installations of the App.
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void linkableQuery.refetch()}
+              >
+                Try again
+              </Button>
+            </p>
+          )}
           {linkable.length > 0 && (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
                 The App is already installed on{' '}
-                {linkable.length === 1 ? 'an account' : 'accounts'} you own. Use
-                it for this event without installing it again:
+                {linkable.length === 1 ? 'an organization' : 'organizations'}{' '}
+                you own. Use it for this event without installing it again:
               </p>
               <div className="flex flex-wrap gap-2">
                 {linkable.map((candidate) => (
@@ -179,7 +191,7 @@ function describe(status: EventGithubStatus) {
     return `The CORE GitHub App was uninstalled from ${installation.accountLogin}. Reconnect it to create repositories and run matches.`
   if (status.usesOrganizerToken)
     return `Repositories are created in ${status.githubOrg} with the organization token. An owner of ${status.githubOrg} can switch this event to the CORE GitHub App, so no token has to be stored.`
-  return 'GitHub is not connected yet. An owner of the organization that should hold the team repositories must install the CORE GitHub App before teams can get repositories.'
+  return 'GitHub is not connected yet. An owner of the organization that should hold the team repositories must connect the CORE GitHub App before teams can get repositories.'
 }
 
 function getErrorMessage(

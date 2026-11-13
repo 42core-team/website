@@ -78,6 +78,27 @@ describe('GithubConnection', () => {
     expect(linkGithubInstallation).toHaveBeenCalledWith('event', 77)
   })
 
+  it('offers to retry a failed search for existing installations', async () => {
+    vi.mocked(getEventGithubStatus).mockResolvedValue(notConnected)
+    vi.mocked(getLinkableGithubInstallations)
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce([
+        {
+          installationId: 77,
+          accountLogin: 'core-org',
+          accountType: 'Organization',
+        },
+      ])
+    renderConnection()
+    expect(
+      await screen.findByText(/Could not check for existing installations/),
+    ).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(
+      await screen.findByRole('button', { name: 'Use core-org' }),
+    ).toBeTruthy()
+  })
+
   it('shows the installation status', async () => {
     vi.mocked(getEventGithubStatus).mockResolvedValue({
       ...notConnected,

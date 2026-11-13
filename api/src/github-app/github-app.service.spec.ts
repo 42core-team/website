@@ -33,6 +33,7 @@ function setup(
     existingInstallation?: Partial<GithubInstallationEntity> | null;
     installationError?: Error;
     installations?: unknown[];
+    memberships?: Record<string, { role: string; state: string }>;
   } = {},
 ) {
   const event = {
@@ -139,6 +140,9 @@ function setup(
       return membership
         ? new Response(JSON.stringify(membership))
         : new Response("{}", { status: 404 });
+    const org = /^\/orgs\/([^/]+)\/memberships\/organizer$/.exec(path)?.[1];
+    if (org && options.memberships?.[org])
+      return new Response(JSON.stringify(options.memberships[org]));
     if (path === "/orgs/broken-org/memberships/organizer")
       return new Response("{}", { status: 500 });
     if (path.endsWith("/memberships/organizer"))
@@ -407,19 +411,49 @@ describe("GithubAppService", () => {
       ]);
     });
 
-    it("lists the user's own personal installation", async () => {
+    it("leaves out personal accounts", async () => {
       const { service } = setup({
         installations: [
           installation(6, "organizer", {
             account: { id: 1001, login: "organizer", type: "User" },
           }),
-          installation(7, "someone", {
-            account: { id: 2002, login: "someone", type: "User" },
-          }),
         ],
       });
+      await expect(
+        service.listLinkableInstallations("event", "user"),
+      ).resolves.toEqual([]);
+    });
+
+    it("offers only the event's organization once teams have repositories", async () => {
+      const { service } = setup({
+        event: { githubOrg: "core-org", githubOrgSecret: "enc" },
+        teams: [{ repo: "team-repo" }],
+        installations: [
+          installation(77, "Core-Org"),
+          installation(78, "Other-Org"),
+        ],
+        memberships: { "Other-Org": { role: "admin", state: "active" } },
+      });
       const result = await service.listLinkableInstallations("event", "user");
-      expect(result.map(({ installationId }) => installationId)).toEqual([6]);
+      expect(result.map(({ installationId }) => installationId)).toEqual([77]);
+    });
+
+    it("caches the ownership checks per user", async () => {
+      const { service, appAuth } = setup({
+        installations: [installation(77, "Core-Org")],
+      });
+      await service.listLinkableInstallations("event", "user");
+      await service.listLinkableInstallations("event", "user");
+      expect(appAuth.listInstallations).toHaveBeenCalledTimes(1);
+    });
+
+    it("reports a bad gateway when no ownership check succeeds", async () => {
+      const { service } = setup({
+        installations: [installation(2, "broken-org")],
+      });
+      await expect(
+        service.listLinkableInstallations("event", "user"),
+      ).rejects.toThrow("Could not check the installations");
     });
 
     it("leaves out the installation the event already uses", async () => {
