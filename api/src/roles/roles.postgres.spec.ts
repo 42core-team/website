@@ -390,6 +390,7 @@ postgres("role admin API (PostgreSQL)", () => {
       {} as never,
       {} as never,
       concurrentDatabase,
+      {} as never,
     );
 
     const results = await Promise.allSettled([

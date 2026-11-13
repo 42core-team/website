@@ -110,6 +110,7 @@ describe("event lifecycle", () => {
       {} as never,
       teamService as never,
       dataSource as never,
+      {} as never,
     );
     return {
       stored,
@@ -556,6 +557,7 @@ describe("event lifecycle", () => {
         createQueryRunner: () => runner,
         query: jest.fn().mockResolvedValue([]),
       } as never,
+      {} as never,
     );
     const close = jest
       .spyOn(service, "lockEvent")

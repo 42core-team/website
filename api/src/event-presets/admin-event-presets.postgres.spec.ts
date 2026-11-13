@@ -116,6 +116,56 @@ postgres("admin event presets (PostgreSQL)", () => {
     });
   }
 
+  const makeDefault = (id: string) =>
+    asAdmin(http().post(`/admin/event-presets/${id}/default`));
+
+  it("moves the default and bumps both versions, returning the detail", async () => {
+    const previous = (await create({ isDefault: true }).expect(201)).body;
+    const next = (await create().expect(201)).body;
+    const { body } = await makeDefault(next.id).expect(200);
+    expect(body).toMatchObject({
+      ...next,
+      isDefault: true,
+      version: 2,
+      updatedAt: expect.any(String),
+    });
+    await asAdmin(http().get(`/admin/event-presets/${previous.id}`))
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({ isDefault: false, version: 2 });
+      });
+    await makeDefault(next.id)
+      .expect(200)
+      .expect(({ body }) => expect(body.version).toBe(2));
+  });
+
+  it("refuses to default an archived preset", async () => {
+    const previous = (await create({ isDefault: true }).expect(201)).body;
+    const archived = (await create().expect(201)).body;
+    await asAdmin(
+      http().post(`/admin/event-presets/${archived.id}/archive`),
+    ).expect(200);
+    await makeDefault(archived.id).expect(409);
+    await asAdmin(http().get(`/admin/event-presets/${previous.id}`))
+      .expect(200)
+      .expect(({ body }) => expect(body.version).toBe(1));
+  });
+
+  it("serializes simultaneous default switches without unique violations or deadlocks", async () => {
+    const original = (await create({ isDefault: true }).expect(201)).body;
+    const next = (await create().expect(201)).body;
+    const third = (await create().expect(201)).body;
+    const responses = await Promise.all([
+      makeDefault(next.id),
+      makeDefault(third.id),
+    ]);
+    expect(responses.map(({ status }) => status)).toEqual([200, 200]);
+    const rows = await database.getRepository(EventPresetEntity).find();
+    expect(rows.filter(({ isDefault }) => isDefault)).toHaveLength(1);
+    expect(rows.find(({ id }) => id === original.id)?.version).toBe(2);
+    expect(rows.map(({ version }) => version).sort()).toEqual([2, 2, 3]);
+  });
+
   it("creates a preset and returns its detail", async () => {
     const { body } = await create({
       name: "  Spring Cup  ",
@@ -178,6 +228,21 @@ postgres("admin event presets (PostgreSQL)", () => {
       { settings: { ...PRESET_SETTINGS, githubOrgSecret: "x" } },
     ],
     ["an unknown field", { isPrivate: false }],
+    ["null templates", { starterTemplates: null }],
+    ["null default flag", { isDefault: null }],
+    [
+      "a null optional setting",
+      { settings: { ...PRESET_SETTINGS, description: null } },
+    ],
+    [
+      "null hours",
+      {
+        settings: {
+          ...PRESET_SETTINGS,
+          schedule: { ...PRESET_SETTINGS.schedule, endAfterHours: null },
+        },
+      },
+    ],
     ["no schedule", { settings: { ...PRESET_SETTINGS, schedule: undefined } }],
     [
       "a bad start time",
@@ -292,11 +357,36 @@ postgres("admin event presets (PostgreSQL)", () => {
       name: "Lost update",
       settings: PRESET_SETTINGS,
     }).expect(409);
-    expect(body.message).toBe("Preset was changed by someone else");
+    expect(body).toEqual({ message: "Preset was changed by someone else" });
     const current = await database
       .getRepository(EventPresetEntity)
       .findOneByOrFail({ id: preset.id });
     expect(current).toMatchObject({ name: preset.name, version: 2 });
+  });
+
+  it("allows exactly one concurrent update with the same expected version", async () => {
+    const preset = (await create().expect(201)).body;
+    const responses = await Promise.all([
+      put(preset.id, {
+        version: 1,
+        name: "Concurrent A",
+        settings: PRESET_SETTINGS,
+      }),
+      put(preset.id, {
+        version: 1,
+        name: "Concurrent B",
+        settings: PRESET_SETTINGS,
+      }),
+    ]);
+    expect(responses.map(({ status }) => status).sort()).toEqual([200, 409]);
+    expect(responses.find(({ status }) => status === 409)?.body).toEqual({
+      message: "Preset was changed by someone else",
+    });
+    const current = await database
+      .getRepository(EventPresetEntity)
+      .findOneByOrFail({ id: preset.id });
+    expect(current.version).toBe(2);
+    expect(["Concurrent A", "Concurrent B"]).toContain(current.name);
   });
 
   it("answers 409 when an update takes a used name", async () => {
@@ -447,7 +537,7 @@ postgres("admin event presets (PostgreSQL)", () => {
       name: "Nope",
       settings: PRESET_SETTINGS,
     }).expect(404);
-    for (const action of ["duplicate", "archive", "unarchive"])
+    for (const action of ["duplicate", "archive", "unarchive", "default"])
       await asAdmin(http().post(`/admin/event-presets/${id}/${action}`)).expect(
         404,
       );
