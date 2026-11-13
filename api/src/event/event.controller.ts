@@ -302,7 +302,6 @@ export class EventController {
   ) {
     if (
       body.isPrivate === false &&
-      (await this.eventService.getEventById(eventId)).isPrivate &&
       !(await this.authorization.can(EventPolicy, "publish", user, eventId))
     )
       throw new ForbiddenException(
