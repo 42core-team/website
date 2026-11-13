@@ -8,6 +8,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useBlocker } from '@tanstack/react-router'
 import { AxiosError } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type * as Router from '@tanstack/react-router'
@@ -34,7 +35,17 @@ const navigate = vi.fn()
 vi.mock('@tanstack/react-router', async (original) => ({
   ...(await original<typeof Router>()),
   useNavigate: () => navigate,
+  useBlocker: vi.fn(),
   Navigate: () => <p>Redirected</p>,
+  Link: ({
+    to,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
 }))
 vi.mock('@/app/actions/presets', async (original) => ({
   ...(await original<typeof api>()),
@@ -44,6 +55,7 @@ vi.mock('@/app/actions/presets', async (original) => ({
   getAdminInstallations: vi.fn(),
   createPreset: vi.fn(),
   updatePreset: vi.fn(),
+  setDefaultPreset: vi.fn(),
   getAdminPresets: vi.fn(),
   getAdminPreset: vi.fn(),
   archivePreset: vi.fn(),
@@ -95,6 +107,22 @@ function conflict(message: string) {
   } as never)
 }
 beforeEach(() => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  )
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation(async (url: string) => ({
+      ok: true,
+      json: async () =>
+        url.includes('/tags?') ? [{ name: 'v1.2.3' }] : [{ name: 'dev' }],
+    })),
+  )
   vi.mocked(api.getPresets).mockResolvedValue([
     { ...preset },
     { ...preset, id: 'two', name: 'Second', isDefault: false },
@@ -122,6 +150,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  vi.unstubAllGlobals()
   vi.resetAllMocks()
   vi.restoreAllMocks()
 })
@@ -144,6 +173,9 @@ async function createPage() {
 describe('preset event creation', () => {
   it('sends only name and preset when settings are unchanged', async () => {
     await createPage()
+    expect(
+      screen.getByRole('link', { name: 'Cancel' }).getAttribute('href'),
+    ).toBe('/events')
     fireEvent.click(screen.getByRole('button', { name: 'Create' }))
     await waitFor(() =>
       expect(createEvent).toHaveBeenCalledWith(
@@ -232,17 +264,68 @@ describe('preset event creation', () => {
   it('sends edited dates as epoch ms of the entered local time', async () => {
     await createPage()
     fireEvent.click(screen.getByText('Adjust settings'))
-    fireEvent.change(screen.getByLabelText(/^Start date/), {
-      target: { value: '2027-01-14T12:30' },
+    fireEvent.click(screen.getByLabelText(/^Start date/))
+    expect(screen.getByRole('grid')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /January 14th, 2027/ }))
+    fireEvent.change(screen.getByLabelText('Time (your local time)'), {
+      target: { value: '12:30' },
     })
+    fireEvent.keyDown(screen.getByLabelText('Time (your local time)'), {
+      key: 'Escape',
+    })
+    const expected = new Date(resolved.values.startDate)
+    expected.setDate(14)
+    expected.setHours(12, 30, 0, 0)
     fireEvent.click(screen.getByRole('button', { name: 'Create' }))
     await waitFor(() =>
       expect(createEvent).toHaveBeenCalledWith(
         {
           name: 'Winter Cup',
           presetId: 'one',
-          startDate: new Date(2027, 0, 14, 12, 30).getTime(),
+          startDate: expected.getTime(),
         },
+        expect.anything(),
+      ),
+    )
+  })
+  it('uses switches, preserves cleared numbers, and resets fields accessibly', async () => {
+    await createPage()
+    fireEvent.click(screen.getByText('Adjust settings'))
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Optional introduction' }),
+    )
+    expect(
+      screen.getByRole('button', {
+        name: 'Reset Optional introduction to preset',
+      }),
+    ).toBeTruthy()
+    const number = screen.getByLabelText<HTMLInputElement>('Min team size')
+    fireEvent.change(number, { target: { value: '' } })
+    expect(number.value).toBe('')
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+    await screen.findByRole('alert')
+    expect(createEvent).not.toHaveBeenCalled()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reset Min team size to preset' }),
+    )
+    expect(number.value).toBe('1')
+  })
+  it('suggests repository tags and branches while accepting a custom version', async () => {
+    await createPage()
+    fireEvent.click(screen.getByText('Adjust settings'))
+    await waitFor(() =>
+      expect(
+        document.querySelector('datalist option[value="v1.2.3"]'),
+      ).toBeTruthy(),
+    )
+    expect(document.querySelector('datalist option[value="dev"]')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Monorepo version'), {
+      target: { value: 'custom-tag' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() =>
+      expect(createEvent).toHaveBeenCalledWith(
+        { name: 'Winter Cup', presetId: 'one', monorepoVersion: 'custom-tag' },
         expect.anything(),
       ),
     )
@@ -295,7 +378,7 @@ describe('preset administration', () => {
     expect(screen.queryByText('Event presets')).toBeNull()
     expect(api.getAdminPresets).not.toHaveBeenCalled()
   })
-  it('sets the default with a versioned update of the current preset', async () => {
+  it('sets the default using the dedicated action', async () => {
     vi.mocked(api.getAdminPresets).mockResolvedValue([
       {
         ...preset,
@@ -311,15 +394,79 @@ describe('preset administration', () => {
       isDefault: false,
       version: 7,
     })
-    vi.mocked(api.updatePreset).mockResolvedValue(preset)
+    vi.mocked(api.setDefaultPreset).mockResolvedValue(preset)
     await mount(<PresetsPage />)
     fireEvent.click(await screen.findByText('Set default'))
     await waitFor(() =>
-      expect(api.updatePreset).toHaveBeenCalledWith(
-        'two',
-        expect.objectContaining({ version: 7, isDefault: true }),
-      ),
+      expect(api.setDefaultPreset).toHaveBeenCalledWith('two'),
     )
+    expect(api.updatePreset).not.toHaveBeenCalled()
+    expect(api.getAdminPreset).not.toHaveBeenCalled()
+  })
+  it('opens a dialog and preserves unsaved edits when dismissal is rejected', async () => {
+    await mount(<PresetsPage />)
+    fireEvent.click(screen.getByText('Create preset'))
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Preset name'), {
+      target: { value: 'Unsaved' },
+    })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(confirm).toHaveBeenCalledOnce()
+    expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
+      'Unsaved',
+    )
+    const blocker = vi.mocked(useBlocker).mock.calls.at(-1)?.[0] as unknown as {
+      shouldBlockFn: () => boolean
+      enableBeforeUnload: boolean
+    }
+    expect(blocker.enableBeforeUnload).toBe(true)
+    expect(blocker.shouldBlockFn()).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    confirm.mockReturnValue(true)
+    fireEvent.click(screen.getByText('Cancel'))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+  it('closes a clean editor without confirmation and saves edits without a discard prompt', async () => {
+    const confirm = vi.spyOn(window, 'confirm')
+    await mount(<PresetsPage />)
+    fireEvent.click(screen.getByText('Create preset'))
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(confirm).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Create preset'))
+    fireEvent.change(screen.getByLabelText('Preset name'), {
+      target: { value: 'New preset' },
+    })
+    vi.mocked(api.createPreset).mockResolvedValue({
+      ...preset,
+      name: 'New preset',
+    })
+    fireEvent.click(screen.getByText('Save preset'))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(api.createPreset).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'New preset' }),
+    )
+    expect(confirm).not.toHaveBeenCalled()
+  })
+  it('keeps a cleared required schedule offset invalid and suppresses the preview', async () => {
+    await mount(
+      <PresetEditor preset={preset} onSaved={vi.fn()} onCancel={vi.fn()} />,
+    )
+    fireEvent.change(screen.getByLabelText('Days from today'), {
+      target: { value: '' },
+    })
+    expect(
+      screen.getByLabelText<HTMLInputElement>('Days from today').value,
+    ).toBe('')
+    expect(
+      screen.getByText(
+        /An event created today would start on Enter a valid schedule/,
+      ),
+    ).toBeTruthy()
+    fireEvent.click(screen.getByText('Save preset'))
+    await screen.findByRole('alert')
+    expect(api.updatePreset).not.toHaveBeenCalled()
   })
   it('does not let the default preset be unmarked as default', async () => {
     await mount(
