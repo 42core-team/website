@@ -120,13 +120,13 @@ postgres("unrevealed match results (PostgreSQL)", () => {
       eventService,
       matchService,
       database,
-      await createAuthorizationService(),
+      await createAuthorizationService(database),
     );
     // The constructor opens queue clients; the read paths never use them.
     Object.assign(matchService, {
       teamService,
       eventService,
-      authorization: await createAuthorizationService(),
+      authorization: await createAuthorizationService(database),
       matchRepository: database.getRepository(MatchEntity),
       matchStatsRepository: database.getRepository(MatchStatsEntity),
       dataSource: database,
@@ -137,11 +137,13 @@ postgres("unrevealed match results (PostgreSQL)", () => {
 
     const moduleRef = await Test.createTestingModule({
       imports: [
-        authzTestingModule((id) =>
-          database.getRepository(UserEntity).findOne({
-            where: { id },
-            relations: { roles: true },
-          }),
+        authzTestingModule(
+          (id) =>
+            database.getRepository(UserEntity).findOne({
+              where: { id },
+              relations: { roles: true },
+            }),
+          database,
         ),
       ],
       controllers: [MatchController, TeamController, StatsController],

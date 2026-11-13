@@ -70,7 +70,7 @@ postgres("team invite eligibility (PostgreSQL)", () => {
       eventService,
       {} as never,
       database,
-      await createAuthorizationService(),
+      await createAuthorizationService(database),
     );
     Object.assign(eventService, { teamService });
     const userService = new UserService(
@@ -80,11 +80,13 @@ postgres("team invite eligibility (PostgreSQL)", () => {
 
     const moduleRef = await Test.createTestingModule({
       imports: [
-        authzTestingModule((id) =>
-          database.getRepository(UserEntity).findOne({
-            where: { id },
-            relations: { roles: true },
-          }),
+        authzTestingModule(
+          (id) =>
+            database.getRepository(UserEntity).findOne({
+              where: { id },
+              relations: { roles: true },
+            }),
+          database,
         ),
       ],
       controllers: [TeamController, EventController],
@@ -200,7 +202,8 @@ postgres("team invite eligibility (PostgreSQL)", () => {
   it("does not invite a user who is neither whitelisted nor registered", async () => {
     const { event, member, teamId } = await privateEventWithTeam();
     const outsider = await createUser();
-    await put(`/event/${event.id}/join`, outsider.id).expect(401);
+    // The event is hidden from them, so it answers like an unknown one.
+    await put(`/event/${event.id}/join`, outsider.id).expect(404);
 
     const response = await invite(event, member, outsider.id);
 
@@ -225,7 +228,14 @@ postgres("team invite eligibility (PostgreSQL)", () => {
   it("does not invite an unregistered user to a private event without a whitelist", async () => {
     const event = await createEvent(true);
     const member = await createUser();
-    await register(event, member);
+    // Only its admins and moderators see a private event without a
+    // whitelist, so nobody can join it; enrol the member directly.
+    await put(`/event/${event.id}/join`, member.id).expect(404);
+    await database
+      .createQueryBuilder()
+      .relation(UserEntity, "events")
+      .of(member.id)
+      .add(event.id);
     const teamId = await createTeamOf(event, member);
     const outsider = await createUser();
 

@@ -28,6 +28,7 @@ import {
   type Principal,
 } from ".";
 import { JwtStrategy } from "../auth/jwt.strategy";
+import { EventAudience } from "./event-audience";
 import { UserService } from "../user/user.service";
 import type { UserEntity } from "../user/entities/user.entity";
 
@@ -64,6 +65,19 @@ class ProbeController {
     return { id };
   }
 
+  @Can(EventPolicy, "view", param("id"))
+  @Get("events/:id/view")
+  view(@Param("id", new ParseUUIDPipe()) id: string) {
+    return { id };
+  }
+
+  @SignedIn()
+  @Can(EventPolicy, "view", param("id"))
+  @Get("events/:id/view-signed-in")
+  viewSignedIn(@Param("id", new ParseUUIDPipe()) id: string) {
+    return { id };
+  }
+
   @Get("undecided")
   undecided() {
     return "reached";
@@ -86,6 +100,10 @@ describe("global authentication and authorization guards", () => {
   let app: INestApplication;
   let jwt: JwtService;
   const getUserWithRoles = jest.fn(async (id: string) => users[id] ?? null);
+  // Only OTHER_EVENT is public; nobody takes part in EVENT.
+  const audience = {
+    includes: jest.fn(async (eventId: string) => eventId === OTHER_EVENT),
+  };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -103,7 +121,10 @@ describe("global authentication and authorization guards", () => {
         },
         { provide: UserService, useValue: { getUserWithRoles } },
       ],
-    }).compile();
+    })
+      .overrideProvider(EventAudience)
+      .useValue(audience)
+      .compile();
     app = moduleRef.createNestApplication({ logger: false });
     app.use(cookieParser());
     await app.init();
@@ -184,6 +205,24 @@ describe("global authentication and authorization guards", () => {
   it("turns a denial inside the handler into 403", async () => {
     await get(`events/${EVENT}/in-service`, token("plain")).expect(403);
     await get(`events/${EVENT}/in-service`, token("eventAdmin")).expect(200);
+  });
+
+  it("answers a hidden event with 404 for guests and signed-in users alike", async () => {
+    await get(`events/${EVENT}/view`).expect(404, /Event not found/);
+    await get(`events/${EVENT}/view`, token("plain")).expect(404);
+    await get(`events/${EVENT}/view`, token("eventAdmin")).expect(200);
+    await get(`events/${OTHER_EVENT}/view`).expect(200);
+    await get(`events/${OTHER_EVENT}/view`, token("plain")).expect(200);
+    await get("events/not-a-uuid/view", token("plain")).expect(404);
+  });
+
+  it("asks a guest to sign in before checking the event", async () => {
+    await get(`events/${EVENT}/view-signed-in`).expect(401);
+    await get(`events/${OTHER_EVENT}/view-signed-in`).expect(401);
+    await get(`events/${EVENT}/view-signed-in`, token("plain")).expect(404);
+    await get(`events/${OTHER_EVENT}/view-signed-in`, token("plain")).expect(
+      200,
+    );
   });
 
   it("does not treat a database outage as a guest", async () => {

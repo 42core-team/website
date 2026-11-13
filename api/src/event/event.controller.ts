@@ -65,19 +65,19 @@ export class EventController {
     return this.eventService.getAllEvents();
   }
 
-  @Public()
+  @Can(EventPolicy, "view", param("id"))
   @Get(":id")
   async getEventById(@Param("id", new ParseUUIDPipe()) id: string) {
     return await this.eventService.getEventById(id);
   }
 
-  @Public()
+  @Can(EventPolicy, "view", param("id"))
   @Get(":id/version")
   async getEventVersion(@Param("id", new ParseUUIDPipe()) id: string) {
     return await this.eventService.getEventVersion(id);
   }
 
-  @Public()
+  @Can(EventPolicy, "view", param("id"))
   @Get(":id/templates/:templateId/version")
   async getStarterTemplateVersion(
     @Param("id", new ParseUUIDPipe()) id: string,
@@ -86,19 +86,19 @@ export class EventController {
     return await this.eventService.getTemplateVersion(id, templateId);
   }
 
-  @Public()
+  @Can(EventPolicy, "view", param("id"))
   @Get(":id/game-config")
   async getEventGameConfig(@Param("id", new ParseUUIDPipe()) id: string) {
     return await this.eventService.getEventGameConfig(id);
   }
 
-  @Public()
+  @Can(EventPolicy, "view", param("id"))
   @Get(":id/server-config")
   async getEventServerConfig(@Param("id", new ParseUUIDPipe()) id: string) {
     return await this.eventService.getEventServerConfig(id);
   }
 
-  @Public()
+  @Can(EventPolicy, "view", param("id"))
   @Get(":id/github-org")
   async getEventGithubOrg(@Param("id", new ParseUUIDPipe()) id: string) {
     const event = await this.eventService.getEventById(id);
@@ -148,13 +148,13 @@ export class EventController {
     );
   }
 
-  @Public()
+  @Can(EventPolicy, "view", param("id"))
   @Get(":id/teamsCount")
   getTeamsCountForEvent(@Param("id", new ParseUUIDPipe()) eventId: string) {
     return this.teamService.getTeamCountForEvent(eventId);
   }
 
-  @Public()
+  @Can(EventPolicy, "view", param("id"))
   @Get(":id/participantsCount")
   getParticipantsCountForEvent(
     @Param("id", new ParseUUIDPipe()) eventId: string,
@@ -180,7 +180,9 @@ export class EventController {
     return this.authorization.can(EventPolicy, "administer", user, eventId);
   }
 
+  // Whitelisted users see a private event before joining it.
   @SignedIn()
+  @Can(EventPolicy, "view", param("id"))
   @Put(":id/join")
   async joinEvent(
     @Param("id", new ParseUUIDPipe()) eventId: string,
@@ -356,6 +358,7 @@ export class EventController {
   }
 
   @SignedIn()
+  @Can(EventPolicy, "view", param("id"))
   @Get(":id/templates")
   async getStarterTemplates(@Param("id", new ParseUUIDPipe()) eventId: string) {
     return this.eventService.getStarterTemplates(eventId);

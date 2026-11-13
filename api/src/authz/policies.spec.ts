@@ -3,6 +3,8 @@ import {
   AuthorizationModule,
   AuthorizationService,
 } from "@nestjs/authorization";
+import { Module } from "@nestjs/common";
+import { EventAudience } from "./event-audience";
 import { EventPolicy } from "./event.policy";
 import { PlatformPolicy } from "./platform.policy";
 import { Principal, RoleGrant, UserRole } from "./roles";
@@ -58,6 +60,7 @@ const platformAbilities = [
   "createPublicEvent",
 ] as const;
 const eventAbilities = [
+  "view",
   "administer",
   "viewUnrevealedResults",
   "publish",
@@ -84,6 +87,16 @@ const platformAllowed: Record<(typeof platformAbilities)[number], Who[]> = {
   ],
 };
 const eventAllowed: Record<(typeof eventAbilities)[number], Who[]> = {
+  // Without participation or a whitelist entry; see the audience tests.
+  view: [
+    "global ADMIN",
+    "global MODERATOR",
+    "event ADMIN",
+    "event MODERATOR",
+    "event ADMIN + global PUBLIC_EVENT_CREATOR",
+    "event ADMIN + global PRIVATE_EVENT_CREATOR",
+    "event MODERATOR + global PUBLIC_EVENT_CREATOR",
+  ],
   administer: [
     "global ADMIN",
     "event ADMIN",
@@ -113,6 +126,15 @@ function cases<A extends string>(
   );
 }
 
+// Answers for participation and whitelists; the PostgreSQL tests cover it.
+const audience = { includes: jest.fn(async () => false) };
+
+@Module({
+  providers: [{ provide: EventAudience, useValue: audience }],
+  exports: [EventAudience],
+})
+class StubAudienceModule {}
+
 describe("policies", () => {
   let authorization: AuthorizationService;
 
@@ -122,6 +144,7 @@ describe("policies", () => {
         AuthorizationModule.forRoot({
           globalGuard: false,
           policies: [PlatformPolicy, EventPolicy],
+          imports: [StubAudienceModule],
         }),
       ],
     }).compile();
@@ -158,11 +181,30 @@ describe("policies", () => {
     );
 
     it("lets a global admin skip every ability through before()", () => {
-      const policy = new EventPolicy();
+      const policy = new EventPolicy(audience as unknown as EventAudience);
       expect(policy.before(principals["global ADMIN"])).toBe(true);
       for (const who of Object.keys(principals) as Who[])
         if (who !== "global ADMIN")
           expect(policy.before(principals[who])).toBeUndefined();
+    });
+
+    it("asks the audience about everyone the roles do not let see the event", async () => {
+      audience.includes.mockClear();
+      for (const who of ["global ADMIN", "event MODERATOR"] as Who[])
+        await authorization.can(EventPolicy, "view", principals[who], EVENT);
+      expect(audience.includes).not.toHaveBeenCalled();
+
+      audience.includes.mockResolvedValueOnce(true);
+      await expect(
+        authorization.can(EventPolicy, "view", principals["no roles"], EVENT),
+      ).resolves.toBe(true);
+      await expect(
+        authorization.can(EventPolicy, "view", principals.guest, EVENT),
+      ).resolves.toBe(false);
+      expect(audience.includes.mock.calls).toEqual([
+        [EVENT, "u"],
+        [EVENT, null],
+      ]);
     });
 
     it("lets a global admin publish an event they hold no grant in", async () => {
