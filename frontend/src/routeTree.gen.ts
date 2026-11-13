@@ -19,6 +19,8 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RushRouteImport } from './routes/rush'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as WikiRouteImport } from './routes/wiki'
+import { Route as AdminGithubInstallationsRouteImport } from './routes/admin/github-installations'
+import { Route as AdminPresetsRouteImport } from './routes/admin/presets'
 import { Route as AdminRolesRouteImport } from './routes/admin/roles'
 import { Route as EventsIdRouteImport } from './routes/events/$id'
 import { Route as EventsCreateRouteImport } from './routes/events/create'
@@ -84,6 +86,17 @@ const SettingsRoute = SettingsRouteImport.update({
 const WikiRoute = WikiRouteImport.update({
   id: '/wiki',
   path: '/wiki',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminGithubInstallationsRoute =
+  AdminGithubInstallationsRouteImport.update({
+    id: '/admin/github-installations',
+    path: '/admin/github-installations',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AdminPresetsRoute = AdminPresetsRouteImport.update({
+  id: '/admin/presets',
+  path: '/admin/presets',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRolesRoute = AdminRolesRouteImport.update({
@@ -178,6 +191,8 @@ export interface FileRoutesByFullPath {
   '/rush': typeof RushRoute
   '/settings': typeof SettingsRoute
   '/wiki': typeof WikiRouteWithChildren
+  '/admin/github-installations': typeof AdminGithubInstallationsRoute
+  '/admin/presets': typeof AdminPresetsRoute
   '/admin/roles': typeof AdminRolesRoute
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
@@ -206,6 +221,8 @@ export interface FileRoutesByTo {
   '/rush': typeof RushRoute
   '/settings': typeof SettingsRoute
   '/wiki': typeof WikiRouteWithChildren
+  '/admin/github-installations': typeof AdminGithubInstallationsRoute
+  '/admin/presets': typeof AdminPresetsRoute
   '/admin/roles': typeof AdminRolesRoute
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
@@ -235,6 +252,8 @@ export interface FileRoutesById {
   '/rush': typeof RushRoute
   '/settings': typeof SettingsRoute
   '/wiki': typeof WikiRouteWithChildren
+  '/admin/github-installations': typeof AdminGithubInstallationsRoute
+  '/admin/presets': typeof AdminPresetsRoute
   '/admin/roles': typeof AdminRolesRoute
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
@@ -265,6 +284,8 @@ export interface FileRouteTypes {
     | '/rush'
     | '/settings'
     | '/wiki'
+    | '/admin/github-installations'
+    | '/admin/presets'
     | '/admin/roles'
     | '/events/$id'
     | '/events/create'
@@ -293,6 +314,8 @@ export interface FileRouteTypes {
     | '/rush'
     | '/settings'
     | '/wiki'
+    | '/admin/github-installations'
+    | '/admin/presets'
     | '/admin/roles'
     | '/events/$id'
     | '/events/create'
@@ -321,6 +344,8 @@ export interface FileRouteTypes {
     | '/rush'
     | '/settings'
     | '/wiki'
+    | '/admin/github-installations'
+    | '/admin/presets'
     | '/admin/roles'
     | '/events/$id'
     | '/events/create'
@@ -350,6 +375,8 @@ export interface RootRouteChildren {
   RushRoute: typeof RushRoute
   SettingsRoute: typeof SettingsRoute
   WikiRoute: typeof WikiRouteWithChildren
+  AdminGithubInstallationsRoute: typeof AdminGithubInstallationsRoute
+  AdminPresetsRoute: typeof AdminPresetsRoute
   AdminRolesRoute: typeof AdminRolesRoute
   GithubSetupRoute: typeof GithubSetupRoute
   UsersUsernameRoute: typeof UsersUsernameRoute
@@ -425,6 +452,20 @@ declare module '@tanstack/react-router' {
       path: '/wiki'
       fullPath: '/wiki'
       preLoaderRoute: typeof WikiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/github-installations': {
+      id: '/admin/github-installations'
+      path: '/admin/github-installations'
+      fullPath: '/admin/github-installations'
+      preLoaderRoute: typeof AdminGithubInstallationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/presets': {
+      id: '/admin/presets'
+      path: '/admin/presets'
+      fullPath: '/admin/presets'
+      preLoaderRoute: typeof AdminPresetsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/roles': {
@@ -616,6 +657,8 @@ const rootRouteChildren: RootRouteChildren = {
   RushRoute: RushRoute,
   SettingsRoute: SettingsRoute,
   WikiRoute: WikiRouteWithChildren,
+  AdminGithubInstallationsRoute: AdminGithubInstallationsRoute,
+  AdminPresetsRoute: AdminPresetsRoute,
   AdminRolesRoute: AdminRolesRoute,
   GithubSetupRoute: GithubSetupRoute,
   UsersUsernameRoute: UsersUsernameRoute,
