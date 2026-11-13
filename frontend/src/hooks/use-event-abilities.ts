@@ -28,7 +28,10 @@ export function useEventAbilities(eventId: string) {
   })
 
   return {
-    abilities: query.data ?? NO_EVENT_ABILITIES,
+    abilities:
+      userId && !query.isError
+        ? (query.data ?? NO_EVENT_ABILITIES)
+        : NO_EVENT_ABILITIES,
     isPending: session.status === 'loading' || (!!userId && query.isPending),
   }
 }
