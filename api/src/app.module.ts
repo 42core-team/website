@@ -16,6 +16,7 @@ import { StatsModule } from "./stats/stats.module";
 import { LoggerModule } from "nestjs-pino";
 import { IncomingMessage } from "http";
 import { GamblingModule } from "./gambling/gambling.module";
+import { ProfileModule } from "./profile/profile.module";
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { GamblingModule } from "./gambling/gambling.module";
     GithubAppModule,
     StatsModule,
     GamblingModule,
+    ProfileModule,
   ],
   controllers: [AppController],
   providers: [AppService],

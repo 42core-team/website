@@ -35,7 +35,11 @@ import {
 import { GithubAuthService } from "../github-api/github-auth";
 import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
 import { GamblingService } from "../gambling/gambling.service";
-import { canViewTeamMatchReplay } from "./team-match-visibility";
+import {
+  canViewTeamMatchReplay,
+  findVisibleTeamMatchIds,
+} from "./team-match-visibility";
+import { addPlacementMatchFlags } from "./placement-matches";
 import { EventState, getEventState } from "../event/event-lifecycle";
 import { lockEvent } from "../event/event-lock";
 import {
@@ -1097,47 +1101,11 @@ export class MatchService {
       },
     });
 
-    const matchesWithPlacement = this.addPlacementMatchFlags(tournamentMatches);
+    const matchesWithPlacement = addPlacementMatchFlags(tournamentMatches);
     const revealAll = await this.canRevealAll(eventId, userId, adminReveal);
     return matchesWithPlacement.map((match) =>
       toMatchResponse(match, revealAll),
     );
-  }
-
-  private addPlacementMatchFlags(
-    matches: MatchEntity[],
-  ): Array<MatchEntity & { isPlacementMatch?: boolean }> {
-    if (matches.length === 0) return matches;
-
-    const maxRound = Math.max(...matches.map((match) => match.round));
-    if (!Number.isFinite(maxRound)) return matches;
-
-    const previousRoundMatches = matches.filter(
-      (match) => match.round === maxRound - 1,
-    );
-    if (previousRoundMatches.length === 0) return matches;
-
-    const loserIds = new Set<string>();
-    for (const match of previousRoundMatches) {
-      const loser = match.teams?.find((team) => team.id !== match.winner?.id);
-      if (loser) loserIds.add(loser.id);
-    }
-
-    if (loserIds.size < 2) return matches;
-
-    return matches.map((match) => {
-      if (match.round !== maxRound) return match;
-      if (
-        match.teams?.length === 2 &&
-        match.teams.every((team) => loserIds.has(team.id))
-      ) {
-        return {
-          ...match,
-          isPlacementMatch: true,
-        };
-      }
-      return match;
-    });
   }
 
   async getMatchesForTeam(teamId: string, userId: string) {
@@ -1145,27 +1113,9 @@ export class MatchService {
     const viewerTeam = userId
       ? await this.teamService.getTeamOfUserForEvent(team.eventId, userId)
       : null;
-    const matchesToQuery = (
-      await this.matchRepository.find({
-        select: {
-          id: true,
-        },
-        where: [
-          {
-            teams: { id: teamId },
-            state: MatchState.FINISHED,
-            phase: MatchPhase.QUEUE,
-          },
-          {
-            teams: { id: teamId },
-            state: MatchState.FINISHED,
-            isRevealed: true,
-            phase: Not(MatchPhase.MANUAL),
-          },
-        ],
-        withDeleted: true,
-      })
-    ).map((match) => match.id);
+    const matchesToQuery = await findVisibleTeamMatchIds(this.matchRepository, [
+      teamId,
+    ]);
 
     if (matchesToQuery.length === 0) return [];
 
@@ -1522,7 +1472,7 @@ export class MatchService {
         winner: true,
       },
     });
-    const matchWithPlacementFlag = this.addPlacementMatchFlags(
+    const matchWithPlacementFlag = addPlacementMatchFlags(
       tournamentMatches,
     ).find((tournamentMatch) => tournamentMatch.id === match.id);
 
