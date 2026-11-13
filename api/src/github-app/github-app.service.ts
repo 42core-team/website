@@ -14,6 +14,7 @@ import { EventEntity } from "../event/entities/event.entity";
 import { isPlaying } from "../event/event-lifecycle";
 import { EventService } from "../event/event.service";
 import { GithubInstallationEntity } from "../github-api/entities/github-installation.entity";
+import { isSharedInstallation } from "../github-api/installation-sharing";
 import {
   GithubAppAuth,
   GithubAppInstallation,
@@ -68,13 +69,6 @@ export interface AdminGithubInstallation {
   sharedBy: { id: string; username: string } | null;
   /** Events linked to the installation. */
   eventCount: number;
-}
-
-/** Whether any event creator may link the installation without the owner check. */
-export function isSharedInstallation(
-  installation: Pick<GithubInstallationEntity, "sharedAt" | "deletedAt"> | null,
-): installation is GithubInstallationEntity {
-  return !!installation?.sharedAt && !installation.deletedAt;
 }
 
 function connectionStatus(
