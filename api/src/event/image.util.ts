@@ -30,11 +30,15 @@ export async function assertImageExists(ref?: string): Promise<void> {
   try {
     const { token } = (await fetch(
       `https://ghcr.io/token?scope=repository:${repo}:pull&service=ghcr.io`,
-      { signal: AbortSignal.timeout(TIMEOUT_MS) },
-    ).then((r) => r.json())) as { token?: string };
+      { signal: AbortSignal.timeout(TIMEOUT_MS), redirect: "error" },
+    ).then((r) => {
+      if (!r.ok) throw new Error(`Registry token request returned ${r.status}`);
+      return r.json();
+    })) as { token?: string };
 
     res = await fetch(`https://ghcr.io/v2/${repo}/manifests/${tag}`, {
       method: "HEAD",
+      redirect: "error",
       headers: { Authorization: `Bearer ${token ?? ""}`, Accept: ACCEPT },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -47,6 +51,12 @@ export async function assertImageExists(ref?: string): Promise<void> {
 
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) return;
+    if (res.status === 429 || res.status >= 500) {
+      logger.warn(
+        `Skipping image check for ${ref}: registry returned ${res.status}`,
+      );
+      return;
+    }
     throw new BadRequestException(
       `Image not found in registry: ${ref} (registry returned ${res.status})`,
     );

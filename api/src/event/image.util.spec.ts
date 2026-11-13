@@ -51,6 +51,59 @@ describe("assertImageExists", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("bounds requests and refuses registry redirects", async () => {
+    await assertImageExists("ghcr.io/42core-team/server:dev");
+    for (const [url, options] of fetchMock.mock.calls) {
+      expect(new URL(url).origin).toBe("https://ghcr.io");
+      expect(options).toMatchObject({
+        redirect: "error",
+        signal: expect.any(AbortSignal),
+      });
+    }
+  });
+
+  it.each([429, 500, 503])(
+    "fails open on registry status %s",
+    async (status) => {
+      fetchMock
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "t" }) })
+        .mockResolvedValueOnce({ ok: false, status });
+      await expect(
+        assertImageExists("ghcr.io/42core-team/server:dev"),
+      ).resolves.toBeUndefined();
+    },
+  );
+
+  it("times out without blocking administration", async () => {
+    jest.useFakeTimers();
+    const timeout = jest
+      .spyOn(AbortSignal, "timeout")
+      .mockImplementation((ms) => {
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), ms);
+        return controller.signal;
+      });
+    try {
+      fetchMock.mockImplementation(
+        (_url, { signal }) =>
+          new Promise((_resolve, reject) => {
+            signal.addEventListener(
+              "abort",
+              () => reject(new Error("timeout")),
+              { once: true },
+            );
+          }),
+      );
+      const check = assertImageExists("ghcr.io/42core-team/server:dev");
+      await jest.advanceTimersByTimeAsync(5000);
+      await expect(check).resolves.toBeUndefined();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      timeout.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+
   it("fails open on network errors", async () => {
     fetchMock.mockRejectedValue(new Error("getaddrinfo ENOTFOUND ghcr.io"));
     await expect(
