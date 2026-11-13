@@ -43,6 +43,11 @@ export const labels: Record<string, string> = {
   submissionDeadline: 'Submission deadline',
   scheduledEndDate: 'Scheduled end',
   endDate: 'End date',
+  startOffsetDays: 'Days from today',
+  startTime: 'Start time',
+  submissionDeadlineAfterHours: 'Submission deadline after hours',
+  scheduledEndAfterHours: 'Scheduled end after hours',
+  endAfterHours: 'End after hours',
 }
 export function Reset({
   changed,
