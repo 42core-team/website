@@ -8,7 +8,8 @@ import type { ReactNode } from 'react'
 import { useId } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { CalendarIcon } from 'lucide-react'
+import { CalendarIcon, TriangleAlert } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Calendar } from '@/components/ui/calendar'
@@ -468,6 +469,19 @@ export function issueMessages(
     const label = [prefix, field ?? path.join('.')].filter(Boolean).join(' ')
     return label ? `${label}: ${issue.message}` : issue.message
   })
+}
+/** The server's warnings about a preset, such as an unavailable installation. */
+export function PresetWarnings({ warnings }: { warnings: readonly string[] }) {
+  return warnings.length ? (
+    <Alert variant="warning" role="status">
+      <TriangleAlert className="size-4" aria-hidden="true" />
+      <AlertDescription>
+        {warnings.map((warning) => (
+          <p key={warning}>{warning}</p>
+        ))}
+      </AlertDescription>
+    </Alert>
+  ) : null
 }
 export function ValidationErrors({ messages }: { messages: string[] }) {
   return messages.length ? (
