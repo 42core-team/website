@@ -121,6 +121,10 @@ export async function updatePreset(
 ) {
   return (await axiosInstance.put<PresetDetail>(presetPath(id), input)).data
 }
+export async function setDefaultPreset(id: string) {
+  return (await axiosInstance.post<PresetDetail>(`${presetPath(id)}/default`))
+    .data
+}
 export async function duplicatePreset(id: string) {
   return (await axiosInstance.post<PresetDetail>(`${presetPath(id)}/duplicate`))
     .data
