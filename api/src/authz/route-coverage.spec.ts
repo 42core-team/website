@@ -83,6 +83,7 @@ function httpRoutes(controllers: Type[]): Route[] {
 // Changing an entry here is a deliberate authorization change.
 const DECISIONS: Record<string, string> = {
   "DELETE /admin/roles/:id": "PlatformPolicy.manageRoles",
+  "GET /admin/events": "PlatformPolicy.manageRoles",
   "GET /admin/roles": "PlatformPolicy.manageRoles",
   "POST /admin/roles": "PlatformPolicy.manageRoles",
   "DELETE /event/:id/admins/:adminId": "EventPolicy.administer",

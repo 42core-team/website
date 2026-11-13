@@ -1,6 +1,7 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { EventEntity } from "./entities/event.entity";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { AdminEventsController } from "./admin-events.controller";
 import { EventController } from "./event.controller";
 import { EventService } from "./event.service";
 import { TeamModule } from "../team/team.module";
@@ -22,7 +23,7 @@ import { EventWhitelistEntity } from "./entities/event-whitelist.entity";
     UserModule,
     forwardRef(() => TeamModule),
   ],
-  controllers: [EventController, CheckController],
+  controllers: [EventController, CheckController, AdminEventsController],
   providers: [EventService],
   exports: [EventService],
 })
