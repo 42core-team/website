@@ -105,6 +105,7 @@ const DECISIONS: Record<string, string> = {
   "GET /check/:id": "public",
   "GET /event": "public",
   "GET /event/:id": "EventPolicy.view",
+  "GET /event/:id/abilities": "SessionPolicy.signedIn+EventPolicy.view",
   "GET /event/:id/admins": "EventPolicy.administer",
   "GET /event/:id/game-config": "EventPolicy.view",
   "GET /event/:id/github": "EventPolicy.administer",
