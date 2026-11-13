@@ -36,6 +36,7 @@ postgres("queue repeat opponents (PostgreSQL)", () => {
       database.getRepository(TeamEntity),
       {} as never,
       {} as never,
+      {} as never,
       { startMatch: jest.fn() } as never,
       database,
     );

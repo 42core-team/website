@@ -48,10 +48,10 @@ function setup(
       findOne: jest.fn().mockResolvedValue(match),
     },
     configService: { get: jest.fn().mockReturnValue(undefined) },
-    githubApiService: {
-      decryptSecret: jest.fn().mockImplementation(() => {
+    githubAuthService: {
+      cloneTokenFor: jest.fn().mockImplementation(async (_event, repo) => {
         if (overrides.decryptError) throw overrides.decryptError;
-        return TOKEN;
+        return `${TOKEN}-${repo}`;
       }),
     },
     gameQueue: { emit },
@@ -64,7 +64,7 @@ function stateUpdates(queryBuilder: { set: jest.Mock }) {
 }
 
 describe("new_match message", () => {
-  it("sends clean repository URLs and the token in a separate field", async () => {
+  it("sends clean repository URLs and a token per repository in a separate field", async () => {
     const { service, emit, queryBuilder } = setup();
 
     await service.startMatch("match");
@@ -77,12 +77,12 @@ describe("new_match message", () => {
       expect.objectContaining({
         id: "team-0",
         repoURL: "https://github.com/core-org/event-team-one-1",
-        repoToken: TOKEN,
+        repoToken: `${TOKEN}-event-team-one-1`,
       }),
       expect.objectContaining({
         id: "team-1",
         repoURL: "https://github.com/core-org/event-team-two-2",
-        repoToken: TOKEN,
+        repoToken: `${TOKEN}-event-team-two-2`,
       }),
     ]);
     for (const bot of payload.bots) {
@@ -123,7 +123,7 @@ describe("new_match message", () => {
     },
   );
 
-  it("puts the match back to PLANNED when the token cannot be decrypted", async () => {
+  it("puts the match back to PLANNED when no clone token can be issued", async () => {
     const { service, emit, queryBuilder } = setup({
       decryptError: new Error("bad ciphertext"),
     });

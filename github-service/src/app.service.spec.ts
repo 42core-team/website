@@ -5,6 +5,8 @@ import { ClientProxyFactory } from "@nestjs/microservices";
 import { AppService } from "./app.service";
 import { of } from "rxjs";
 import { GitHubApiClient, RepositoryApi } from "./githubApi";
+import { GithubAppAuth } from "./github-app-auth";
+import { GithubAuth } from "./github-auth";
 
 jest.mock("./main", () => ({
   getRabbitmqConfig: jest.fn().mockReturnValue({}),
@@ -25,6 +27,8 @@ jest.mock("./githubApi", () => ({
   UserApi: jest.fn(),
 }));
 
+const tokenAuth: GithubAuth = { kind: "token", encryptedSecret: "secret" };
+
 const SIM_REPOSITORY = "sim-0b7e2f4c-3d1a-4e6b-9c8d-2a5f7e1b3c9d";
 
 describe("AppService", () => {
@@ -41,7 +45,7 @@ describe("AppService", () => {
     operationId: "operation",
     repositoryName,
     githubOrg: "org",
-    encryptedSecret: "secret",
+    githubAuth: tokenAuth,
     locked: true,
     githubUsers: [{ username: "member", githubId: "1", githubAccessToken: "" }],
   });
@@ -59,7 +63,7 @@ describe("AppService", () => {
       jest
         .mocked(RepositoryApi)
         .mockImplementationOnce(() => ({ hasCommitsBeyondInitial }) as never);
-      const service = new AppService({} as never);
+      const service = new AppService({} as never, new GithubAppAuth());
       jest.spyOn(service, "decryptSecret").mockReturnValue("token");
       return service;
     }
@@ -73,7 +77,7 @@ describe("AppService", () => {
       const results = await service.getRepositoryActivity(
         ["pushed", "idle", "broken"],
         "org",
-        "secret",
+        tokenAuth,
       );
       expect(results).toEqual(
         expect.arrayContaining([
@@ -97,14 +101,14 @@ describe("AppService", () => {
         .spyOn(ClientProxyFactory, "create")
         .mockReturnValue({ emit: jest.fn() } as never);
       jest.mocked(RepositoryApi).mockClear();
-      const service = new AppService({} as never);
+      const service = new AppService({} as never, new GithubAppAuth());
       jest.spyOn(service, "decryptSecret").mockImplementation(() => {
         throw new Error("bad secret");
       });
       const results = await service.getRepositoryActivity(
         ["real-repo", SIM_REPOSITORY],
         "org",
-        "secret",
+        tokenAuth,
       );
       expect(results).toEqual(
         expect.arrayContaining([
@@ -127,7 +131,7 @@ describe("AppService", () => {
       await service.getRepositoryActivity(
         Array.from({ length: 12 }, (_, index) => `repo-${index}`),
         "org",
-        "secret",
+        tokenAuth,
       );
       expect(peak).toBe(5);
     });
@@ -137,7 +141,7 @@ describe("AppService", () => {
       const check = jest.fn();
       const service = activityService(check);
       await expect(
-        service.getRepositoryActivity([SIM_REPOSITORY], "org", "secret"),
+        service.getRepositoryActivity([SIM_REPOSITORY], "org", tokenAuth),
       ).resolves.toEqual([
         { repositoryName: SIM_REPOSITORY, status: "active" },
       ]);
@@ -149,7 +153,7 @@ describe("AppService", () => {
     process.env.NODE_ENV = "development";
     const emit = jest.fn().mockReturnValue(of(undefined));
     jest.spyOn(ClientProxyFactory, "create").mockReturnValue({ emit } as never);
-    const service = new AppService({} as never);
+    const service = new AppService({} as never, new GithubAppAuth());
     jest.mocked(RepositoryApi).mockClear();
 
     await service.setRepositoryAccess(accessRequest(SIM_REPOSITORY));
@@ -166,7 +170,7 @@ describe("AppService", () => {
   it.each<[string, (service: AppService) => Promise<unknown>]>([
     [
       "deleteRepository",
-      (service) => service.deleteRepository(SIM_REPOSITORY, "org", "secret"),
+      (service) => service.deleteRepository(SIM_REPOSITORY, "org", tokenAuth),
     ],
     [
       "removeUserFromRepository",
@@ -176,7 +180,7 @@ describe("AppService", () => {
           "member",
           "1",
           "org",
-          "secret",
+          tokenAuth,
         ),
     ],
     [
@@ -187,7 +191,7 @@ describe("AppService", () => {
           "member",
           "1",
           "org",
-          "secret",
+          tokenAuth,
           "token",
         ),
     ],
@@ -199,7 +203,7 @@ describe("AppService", () => {
           "1",
           "org",
           SIM_REPOSITORY,
-          "secret",
+          tokenAuth,
         ),
     ],
     [
@@ -210,13 +214,13 @@ describe("AppService", () => {
           "1",
           "org",
           SIM_REPOSITORY,
-          "secret",
+          tokenAuth,
         ),
     ],
     [
       "removeFormerCollaborators",
       (service) =>
-        service.removeFormerCollaborators("org", SIM_REPOSITORY, "secret", [
+        service.removeFormerCollaborators("org", SIM_REPOSITORY, tokenAuth, [
           { username: "member", githubId: "1" },
         ]),
     ],
@@ -227,7 +231,7 @@ describe("AppService", () => {
       jest
         .spyOn(ClientProxyFactory, "create")
         .mockReturnValue({ emit: jest.fn() } as never);
-      const service = new AppService({} as never);
+      const service = new AppService({} as never, new GithubAppAuth());
       jest.spyOn(service, "decryptSecret").mockReturnValue("token");
       jest.mocked(RepositoryApi).mockClear();
       jest.mocked(GitHubApiClient).mockClear();
@@ -243,7 +247,7 @@ describe("AppService", () => {
     process.env.NODE_ENV = "production";
     const emit = jest.fn().mockReturnValue(of(undefined));
     jest.spyOn(ClientProxyFactory, "create").mockReturnValue({ emit } as never);
-    const service = new AppService({} as never);
+    const service = new AppService({} as never, new GithubAppAuth());
     const removeFormerCollaborators = jest
       .spyOn(service, "removeFormerCollaborators")
       .mockResolvedValue(undefined);
@@ -260,7 +264,7 @@ describe("AppService", () => {
     jest
       .spyOn(ClientProxyFactory, "create")
       .mockReturnValue({ emit: jest.fn() } as never);
-    const service = new AppService({} as never);
+    const service = new AppService({} as never, new GithubAppAuth());
     jest.spyOn(service, "decryptSecret").mockReturnValue("token");
     const updateCollaboratorPermission = jest.fn().mockResolvedValue(undefined);
     jest.mocked(RepositoryApi).mockImplementationOnce(
@@ -280,7 +284,7 @@ describe("AppService", () => {
         "1",
         "org",
         "repo",
-        "secret",
+        tokenAuth,
       ),
     ).resolves.toBeUndefined();
     expect(updateCollaboratorPermission).toHaveBeenCalledWith(
@@ -297,7 +301,7 @@ describe("AppService", () => {
   it("acknowledges READY only after collaborators have access", async () => {
     const emit = jest.fn().mockReturnValue(of(undefined));
     jest.spyOn(ClientProxyFactory, "create").mockReturnValue({ emit } as never);
-    const service = new AppService({} as never);
+    const service = new AppService({} as never, new GithubAppAuth());
     jest.spyOn(service, "decryptSecret").mockReturnValue("token");
     const repoUtils = Reflect.get(service, "repoUtils");
     jest.spyOn(repoUtils, "cloneMonoRepo").mockResolvedValue({});
@@ -319,7 +323,7 @@ describe("AppService", () => {
       "team",
       [{ username: "user", githubId: "1", githubAccessToken: "token" }],
       "org",
-      "secret",
+      tokenAuth,
       "team",
       "url",
       "main",
@@ -348,7 +352,7 @@ describe("AppService", () => {
   it("reports permission errors instead of acknowledging a lock", async () => {
     const emit = jest.fn().mockReturnValue(of(undefined));
     jest.spyOn(ClientProxyFactory, "create").mockReturnValue({ emit } as never);
-    const service = new AppService({} as never);
+    const service = new AppService({} as never, new GithubAppAuth());
     jest
       .spyOn(service, "removeWritePermissionsForUser")
       .mockRejectedValue(new Error("403"));
@@ -357,7 +361,7 @@ describe("AppService", () => {
       operationId: "op",
       repositoryName: "repo",
       githubOrg: "org",
-      encryptedSecret: "secret",
+      githubAuth: tokenAuth,
       locked: true,
       githubUsers: [
         { username: "user", githubId: "1", githubAccessToken: "token" },
@@ -391,7 +395,7 @@ describe("AppService", () => {
     jest
       .mocked(RepositoryApi)
       .mockImplementationOnce(() => repositoryApi as never);
-    const service = new AppService({} as never);
+    const service = new AppService({} as never, new GithubAppAuth());
     jest.spyOn(service, "decryptSecret").mockReturnValue("token");
     const removeWrite = jest
       .spyOn(service, "removeWritePermissionsForUser")
@@ -401,7 +405,7 @@ describe("AppService", () => {
       operationId: "op",
       repositoryName: "repo",
       githubOrg: "org",
-      encryptedSecret: "secret",
+      githubAuth: tokenAuth,
       locked: true,
       githubUsers: [
         { username: "member", githubId: "1", githubAccessToken: "token" },
@@ -430,7 +434,7 @@ describe("AppService", () => {
     jest
       .spyOn(ClientProxyFactory, "create")
       .mockReturnValue({ send: jest.fn().mockReturnValue(of(false)) } as never);
-    const service = new AppService({} as never);
+    const service = new AppService({} as never, new GithubAppAuth());
     const action = jest.fn();
     await service.runRepositoryOperation("team", "obsolete", action);
     expect(action).not.toHaveBeenCalled();
@@ -446,7 +450,7 @@ describe("AppService", () => {
           hasCommits: jest.fn().mockResolvedValue(true),
         }) as never,
     );
-    const service = new AppService({} as never);
+    const service = new AppService({} as never, new GithubAppAuth());
     jest.spyOn(service, "decryptSecret").mockReturnValue("token");
     const push = jest.spyOn(
       Reflect.get(service, "repoUtils"),
@@ -457,7 +461,7 @@ describe("AppService", () => {
       "team",
       [],
       "org",
-      "secret",
+      tokenAuth,
       "team",
       "url",
       "main",
@@ -485,9 +489,12 @@ describe("AppService", () => {
     const emit = jest.fn();
     jest.spyOn(ClientProxyFactory, "create").mockReturnValue({ emit } as never);
 
-    const service = new AppService({} as never);
+    const service = new AppService({} as never, new GithubAppAuth());
     const setupError = new Error("clone failed");
-    const encryptedEventToken = "v2:encrypted-event-token";
+    const encryptedEventToken = {
+      kind: "token" as const,
+      encryptedSecret: "v2:encrypted-event-token",
+    };
 
     jest.spyOn(service, "decryptSecret").mockReturnValue("plaintext-token");
     const deleteRepository = jest
@@ -536,5 +543,45 @@ describe("AppService", () => {
       expect.anything(),
     );
     expect(fs.rm).toHaveBeenCalled();
+  });
+  describe("resolveGithubToken", () => {
+    beforeEach(() => {
+      jest
+        .spyOn(ClientProxyFactory, "create")
+        .mockReturnValue({ emit: jest.fn() } as never);
+    });
+
+    it("decrypts an organizer token", async () => {
+      const service = new AppService({} as never, new GithubAppAuth());
+      jest.spyOn(service, "decryptSecret").mockReturnValue("pat");
+      await expect(service.resolveGithubToken(tokenAuth)).resolves.toBe("pat");
+      expect(service.decryptSecret).toHaveBeenCalledWith("secret");
+    });
+
+    it("mints an installation token", async () => {
+      const appAuth = new GithubAppAuth();
+      jest.spyOn(appAuth, "isEnabled").mockReturnValue(true);
+      jest
+        .spyOn(appAuth, "getInstallationToken")
+        .mockResolvedValue("installation-token");
+      const service = new AppService({} as never, appAuth);
+      await expect(
+        service.resolveGithubToken({
+          kind: "installation",
+          installationId: 42,
+        }),
+      ).resolves.toBe("installation-token");
+      expect(appAuth.getInstallationToken).toHaveBeenCalledWith(42);
+    });
+
+    it("fails clearly when the App is not configured", async () => {
+      const service = new AppService({} as never, new GithubAppAuth());
+      await expect(
+        service.resolveGithubToken({
+          kind: "installation",
+          installationId: 42,
+        }),
+      ).rejects.toThrow("not configured");
+    });
   });
 });

@@ -113,8 +113,9 @@ export async function joinEvent(eventId: string): Promise<boolean> {
 export interface EventCreateParams {
   name: string
   description?: string
-  githubOrg: string
-  githubOrgSecret: string
+  /** Omit both to connect the CORE GitHub App after creating the event. */
+  githubOrg?: string
+  githubOrgSecret?: string
   location?: string
   startDate: number
   submissionDeadline: number
@@ -134,6 +135,47 @@ export interface EventCreateParams {
   gameConfig: string
   serverConfig: string
   isPrivate: boolean
+}
+
+export interface EventGithubStatus {
+  appAvailable: boolean
+  githubOrg: string
+  usesOrganizerToken: boolean
+  installation: {
+    accountLogin: string
+    status: 'active' | 'suspended' | 'uninstalled'
+  } | null
+}
+
+export async function isGithubAppAvailable(): Promise<boolean> {
+  return (await axiosInstance.get<{ available: boolean }>('github/app')).data
+    .available
+}
+
+export async function getEventGithubStatus(
+  eventId: string,
+): Promise<EventGithubStatus> {
+  return (await axiosInstance.get<EventGithubStatus>(`event/${eventId}/github`))
+    .data
+}
+
+/** The GitHub page where an organization owner installs the App for this event. */
+export async function getGithubAppInstallUrl(eventId: string): Promise<string> {
+  return (
+    await axiosInstance.post<{ url: string }>(`event/${eventId}/github/connect`)
+  ).data.url
+}
+
+export async function completeGithubAppInstallation(
+  installationId: number,
+  state: string,
+): Promise<{ eventId: string }> {
+  return (
+    await axiosInstance.post<{ eventId: string }>('github/installations', {
+      installationId,
+      state,
+    })
+  ).data
 }
 
 // Create a new event

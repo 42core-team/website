@@ -2,8 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
+  JoinColumn,
   JoinTable,
   ManyToMany,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -17,6 +20,7 @@ import { Exclude } from "class-transformer";
 import { EventStarterTemplateEntity } from "./event-starter-template.entity";
 import { EventWhitelistEntity } from "./event-whitelist.entity";
 import { EventState } from "../event-lifecycle";
+import { GithubInstallationEntity } from "../../github-api/entities/github-installation.entity";
 
 @Entity("events")
 export class EventEntity {
@@ -32,9 +36,27 @@ export class EventEntity {
   @Column()
   githubOrg: string;
 
+  /** The organizer's encrypted token; null for events that only use the GitHub App. */
   @Exclude()
-  @Column()
-  githubOrgSecret: string;
+  @Column({ type: "varchar", nullable: true })
+  githubOrgSecret: string | null;
+
+  @Exclude()
+  @Column({ type: "uuid", nullable: true })
+  @Index("IDX_events_github_installation_id")
+  githubInstallationId: string | null;
+
+  /** When set, the event uses the CORE GitHub App instead of `githubOrgSecret`. */
+  @Exclude()
+  @ManyToOne(() => GithubInstallationEntity, {
+    nullable: true,
+    onDelete: "SET NULL",
+  })
+  @JoinColumn({
+    name: "githubInstallationId",
+    foreignKeyConstraintName: "FK_events_github_installation",
+  })
+  githubInstallation: GithubInstallationEntity | null;
 
   @Column({ default: "" })
   location: string;

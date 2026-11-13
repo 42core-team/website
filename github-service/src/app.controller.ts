@@ -1,6 +1,7 @@
 import { Controller, Logger } from "@nestjs/common";
 import { AppService } from "./app.service";
 import { EventPattern, MessagePattern } from "@nestjs/microservices";
+import { GithubAuth } from "./github-auth";
 
 @Controller()
 export class AppController {
@@ -24,7 +25,7 @@ export class AppController {
     githubId: string;
     repoOwner: string;
     repoName: string;
-    encryptedSecret: string;
+    githubAuth: GithubAuth;
   }) {
     const safeData = {
       username: data.username,
@@ -39,7 +40,7 @@ export class AppController {
       data.githubId,
       data.repoOwner,
       data.repoName,
-      data.encryptedSecret,
+      data.githubAuth,
     );
   }
 
@@ -49,7 +50,7 @@ export class AppController {
     githubId: string;
     repoOwner: string;
     repoName: string;
-    encryptedSecret: string;
+    githubAuth: GithubAuth;
   }) {
     const safeData = {
       username: data.username,
@@ -64,7 +65,7 @@ export class AppController {
       data.githubId,
       data.repoOwner,
       data.repoName,
-      data.encryptedSecret,
+      data.githubAuth,
     );
   }
 
@@ -74,7 +75,7 @@ export class AppController {
     username: string;
     githubId: string;
     githubOrg: string;
-    encryptedSecret: string;
+    githubAuth: GithubAuth;
     githubAccessToken: string;
   }) {
     const safeData = {
@@ -90,7 +91,7 @@ export class AppController {
       data.username,
       data.githubId,
       data.githubOrg,
-      data.encryptedSecret,
+      data.githubAuth,
       data.githubAccessToken,
     );
   }
@@ -101,7 +102,7 @@ export class AppController {
     username: string;
     githubId: string;
     githubOrg: string;
-    encryptedSecret: string;
+    githubAuth: GithubAuth;
   }) {
     const safeData = {
       repositoryName: data.repositoryName,
@@ -116,7 +117,7 @@ export class AppController {
       data.username,
       data.githubId,
       data.githubOrg,
-      data.encryptedSecret,
+      data.githubAuth,
     );
     return { success: true };
   }
@@ -125,7 +126,7 @@ export class AppController {
   handleGetRepositoryActivity(data: {
     repositoryNames: string[];
     githubOrg: string;
-    encryptedSecret: string;
+    githubAuth: GithubAuth;
   }) {
     this.logger.log(
       `get_repository_activity event received ${JSON.stringify({
@@ -136,7 +137,7 @@ export class AppController {
     return this.appService.getRepositoryActivity(
       data.repositoryNames,
       data.githubOrg,
-      data.encryptedSecret,
+      data.githubAuth,
     );
   }
 
@@ -144,7 +145,7 @@ export class AppController {
   async handleDeleteRepository(data: {
     repositoryName: string;
     githubOrg: string;
-    encryptedSecret: string;
+    githubAuth: GithubAuth;
   }) {
     const safeData = {
       repositoryName: data.repositoryName,
@@ -156,7 +157,7 @@ export class AppController {
     return await this.appService.deleteRepository(
       data.repositoryName,
       data.githubOrg,
-      data.encryptedSecret,
+      data.githubAuth,
     );
   }
 
@@ -170,7 +171,7 @@ export class AppController {
       githubAccessToken: string;
     }[];
     githubOrg: string;
-    encryptedSecret: string;
+    githubAuth: GithubAuth;
     teamId: string;
     monoRepoUrl: string;
     monoRepoVersion: string;
@@ -213,7 +214,7 @@ export class AppController {
           data.teamName,
           data.githubUsers,
           data.githubOrg,
-          data.encryptedSecret,
+          data.githubAuth,
           data.teamId,
           data.monoRepoUrl,
           data.monoRepoVersion,

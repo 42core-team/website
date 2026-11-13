@@ -10,7 +10,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import * as z from 'zod'
 import type { EventCreateParams } from '@/app/actions/event'
-import { canUserCreateEvent, createEvent } from '@/app/actions/event'
+import {
+  canUserCreateEvent,
+  createEvent,
+  isGithubAppAvailable,
+} from '@/app/actions/event'
 import Link from '@/components/app-link'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -46,10 +50,10 @@ const formSchema = z
       if (message) ctx.addIssue({ code: 'custom', message })
     }),
     description: z.string().optional(),
-    githubOrg: githubConfigSchema('githubOrg'),
-    githubOrgSecret: z
-      .string()
-      .min(1, 'GitHub organization secret is required'),
+    useGithubApp: z.boolean(),
+    // Only used without the GitHub App, see the superRefine below.
+    githubOrg: z.string(),
+    githubOrgSecret: z.string(),
     location: z.string().optional(),
     startDate: z.date({ message: 'Start date is required' }),
     submissionDeadline: z.date({ message: 'Submission deadline is required' }),
@@ -87,12 +91,26 @@ const formSchema = z
     message: 'Submission deadline must be after play starts',
     path: ['submissionDeadline'],
   })
+  .superRefine((value, ctx) => {
+    if (value.useGithubApp) return
+    const orgError = getGithubConfigError('githubOrg', value.githubOrg)
+    if (orgError)
+      ctx.addIssue({ code: 'custom', message: orgError, path: ['githubOrg'] })
+    if (!value.githubOrgSecret)
+      ctx.addIssue({
+        code: 'custom',
+        message: 'GitHub organization secret is required',
+        path: ['githubOrgSecret'],
+      })
+  })
 
 type FormValues = z.infer<typeof formSchema>
 
 const defaultValues: FormValues = {
   name: '',
   description: '',
+  // Turned on once the server confirms it has the GitHub App configured.
+  useGithubApp: false,
   githubOrg: '',
   githubOrgSecret: '',
   location: '',
@@ -232,6 +250,11 @@ function CreateEventRoute() {
     queryFn: canUserCreateEvent,
     enabled: Boolean(session?.user.id),
   })
+  const githubAppQuery = useQuery({
+    queryKey: ['github', 'app-available'],
+    queryFn: isGithubAppAvailable,
+  })
+  const githubAppAvailable = githubAppQuery.data === true
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -264,21 +287,28 @@ function CreateEventRoute() {
       if (!visualizerDockerImage)
         throw new Error('Visualizer image is required')
 
-      const githubOrg = normalizeGithubConfigValue(
-        'githubOrg',
-        values.githubOrg,
-      )
-      const validationError = await validateGithubToken(
-        githubOrg,
-        values.githubOrgSecret,
-      )
-      if (validationError) throw new Error(validationError)
+      const useGithubApp = values.useGithubApp
+      let githubConfig: Pick<
+        EventCreateParams,
+        'githubOrg' | 'githubOrgSecret'
+      > = {}
+      if (!useGithubApp) {
+        const githubOrg = normalizeGithubConfigValue(
+          'githubOrg',
+          values.githubOrg,
+        )
+        const validationError = await validateGithubToken(
+          githubOrg,
+          values.githubOrgSecret,
+        )
+        if (validationError) throw new Error(validationError)
+        githubConfig = { githubOrg, githubOrgSecret: values.githubOrgSecret }
+      }
 
       const payload: EventCreateParams = {
         name: values.name.trim(),
         description: values.description?.trim() || '',
-        githubOrg,
-        githubOrgSecret: values.githubOrgSecret,
+        ...githubConfig,
         location: values.location?.trim() || '',
         startDate: values.startDate.getTime(),
         submissionDeadline: values.submissionDeadline.getTime(),
@@ -308,10 +338,16 @@ function CreateEventRoute() {
 
       return createEvent(payload)
     },
-    onSuccess: async (event) => {
+    onSuccess: async (event, values) => {
       toast.success('Event created.')
       await queryClient.invalidateQueries({ queryKey: ['events'] })
-      await navigate({ to: '/events/$id', params: { id: event.id } })
+      // The App is connected from the dashboard once the event exists.
+      if (values.useGithubApp)
+        await navigate({
+          to: '/events/$id/dashboard',
+          params: { id: event.id },
+        })
+      else await navigate({ to: '/events/$id', params: { id: event.id } })
     },
     onError: (mutationError) => {
       setError(getErrorMessage(mutationError))
@@ -330,6 +366,10 @@ function CreateEventRoute() {
   })
 
   const formValues = useStore(form.store, (state) => state.values)
+
+  useEffect(() => {
+    if (githubAppAvailable) form.setFieldValue('useGithubApp', true)
+  }, [form, githubAppAvailable])
   const parsedRepo = useMemo(
     () => parseGitHubRepo(formValues.monorepoUrl),
     [formValues.monorepoUrl],
@@ -736,52 +776,78 @@ function CreateEventRoute() {
 
           <Card className="w-full p-6">
             <h2 className="mb-4 text-xl font-semibold">GitHub Integration</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {githubAppAvailable && (
               <form.Field
-                name="githubOrg"
+                name="useGithubApp"
                 children={(field) => (
-                  <TextField
-                    errors={field.state.meta.errors}
-                    label="Organization Name *"
-                  >
-                    <Input
+                  <div className="mb-4 flex items-center justify-between gap-4">
+                    <div>
+                      <Label htmlFor={field.name}>
+                        Use the CORE GitHub App
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        {field.state.value
+                          ? 'After creating the event, an owner of your GitHub organization connects it from the event dashboard. No token needed.'
+                          : 'Use a personal access token with Administration and Contents permissions instead.'}
+                      </p>
+                    </div>
+                    <Switch
                       id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                      placeholder="e.g. 42-core-repos"
+                      checked={field.state.value}
+                      onCheckedChange={field.handleChange}
                     />
-                  </TextField>
+                  </div>
                 )}
               />
+            )}
+            {!formValues.useGithubApp && (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <form.Field
+                  name="githubOrg"
+                  children={(field) => (
+                    <TextField
+                      errors={field.state.meta.errors}
+                      label="Organization Name *"
+                    >
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        placeholder="e.g. 42-core-repos"
+                      />
+                    </TextField>
+                  )}
+                />
 
-              <form.Field
-                name="githubOrgSecret"
-                children={(field) => (
-                  <TextField
-                    description="Required permissions: Administration and Contents"
-                    errors={field.state.meta.errors}
-                    label="GitHub Organization Secret *"
-                  >
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      type="password"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                      placeholder="github_pat_*"
-                      title="The token needs Administration and Contents permissions."
-                    />
-                  </TextField>
-                )}
-              />
-            </div>
+                <form.Field
+                  name="githubOrgSecret"
+                  children={(field) => (
+                    <TextField
+                      description="Required permissions: Administration and Contents"
+                      errors={field.state.meta.errors}
+                      label="GitHub Organization Secret *"
+                    >
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type="password"
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        placeholder="github_pat_*"
+                        title="The token needs Administration and Contents permissions."
+                      />
+                    </TextField>
+                  )}
+                />
+              </div>
+            )}
           </Card>
 
           <Card className="w-full p-6">

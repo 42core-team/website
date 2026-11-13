@@ -216,6 +216,8 @@ jobs:
             --set env.MEDIA_S3_ENDPOINT="${{ vars.MEDIA_S3_ENDPOINT }}" \
             --set env.MEDIA_S3_BUCKET="${{ vars.MEDIA_S3_BUCKET }}" \
             --set env.MEDIA_S3_REGION="${{ vars.MEDIA_S3_REGION || 'eu01' }}" \
+            --set env.GITHUB_APP_ID="${{ vars.CORE_APP_ID }}" \
+            --set env.GITHUB_APP_SLUG="${{ vars.CORE_APP_SLUG }}" \
             --set secrets.DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
             --set secrets.DB_URL="${{ secrets.DB_URL }}" \
             --set secrets.API_SECRET_ENCRYPTION_KEY="${{ secrets.API_SECRET_ENCRYPTION_KEY }}" \
@@ -225,6 +227,8 @@ jobs:
             --set secrets.FORTYTWO_CLIENT_SECRET="${{ secrets.FORTYTWO_CLIENT_SECRET }}" \
             --set secrets.MEDIA_S3_ACCESS_KEY_ID="${{ secrets.MEDIA_S3_ACCESS_KEY_ID }}" \
             --set secrets.MEDIA_S3_SECRET_ACCESS_KEY="${{ secrets.MEDIA_S3_SECRET_ACCESS_KEY }}" \
+            --set secrets.GITHUB_APP_PRIVATE_KEY="${{ secrets.CORE_APP_PRIVATE_KEY }}" \
+            --set secrets.GITHUB_APP_WEBHOOK_SECRET="${{ secrets.CORE_APP_WEBHOOK_SECRET }}" \
             --wait \
             --timeout=5m \
             --atomic \

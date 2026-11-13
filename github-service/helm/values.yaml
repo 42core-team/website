@@ -47,11 +47,15 @@ autoscaling:
 # Optional non-sensitive environment variables
 env:
   RABBITMQ_QUEUE_PREFIX: ""
+  # CORE GitHub App; leave empty to keep using per-event organization tokens.
+  GITHUB_APP_ID: ""
 
 # Sensitive values are passed as Kubernetes Secret
 secrets:
   RABBITMQ_URL: ""
   API_SECRET_ENCRYPTION_KEY: ""
+  # PEM, or the PEM base64-encoded on a single line.
+  GITHUB_APP_PRIVATE_KEY: ""
 
 # HTTP port, only used for health probes
 port: 3000

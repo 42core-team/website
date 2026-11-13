@@ -40,9 +40,11 @@ secrets:
   RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
   JWT_SECRET: local-dev-jwt-secret
   API_SECRET_ENCRYPTION_KEY: secret-encryption-key
-  # CLIENT_GITHUB_SECRET and FORTYTWO_CLIENT_SECRET are injected via --set from .env.tilt
+  # CLIENT_GITHUB_SECRET, FORTYTWO_CLIENT_SECRET and the GITHUB_APP_* values are injected via --set from .env.tilt
   CLIENT_GITHUB_SECRET: ""
   FORTYTWO_CLIENT_SECRET: ""
+  GITHUB_APP_PRIVATE_KEY: ""
+  GITHUB_APP_WEBHOOK_SECRET: ""
 
 resources:
   limits:

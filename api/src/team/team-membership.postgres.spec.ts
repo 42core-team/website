@@ -43,6 +43,7 @@ postgres("team membership concurrency (PostgreSQL)", () => {
     service = new TeamService(
       database.getRepository(TeamEntity),
       {} as never,
+      {} as never,
       // No whitelists here, so eligibility is the registration check.
       {
         isUserEligibleForEvent: (

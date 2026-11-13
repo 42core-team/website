@@ -38,7 +38,11 @@ export const getRabbitmqConfig = (
 };
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+    // GitHub webhook signatures are computed over the exact request bytes.
+    rawBody: true,
+  });
   app.useLogger(app.get(Logger));
   const configService = app.get(ConfigService);
   const httpAdapterHost = app.get(HttpAdapterHost);

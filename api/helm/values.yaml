@@ -82,6 +82,9 @@ env:
   MEDIA_S3_ENDPOINT: ""
   MEDIA_S3_BUCKET: ""
   MEDIA_S3_REGION: "eu01"
+  # CORE GitHub App; leave empty to keep using per-event organization tokens.
+  GITHUB_APP_ID: ""
+  GITHUB_APP_SLUG: ""
 
 # These are placeholders.
 # Values are injected at runtime via --set flags in the CI/CD pipeline.
@@ -95,6 +98,9 @@ secrets:
   FORTYTWO_CLIENT_SECRET: ""
   MEDIA_S3_ACCESS_KEY_ID: ""
   MEDIA_S3_SECRET_ACCESS_KEY: ""
+  # PEM, or the PEM base64-encoded on a single line.
+  GITHUB_APP_PRIVATE_KEY: ""
+  GITHUB_APP_WEBHOOK_SECRET: ""
 
 ingress:
   enabled: false

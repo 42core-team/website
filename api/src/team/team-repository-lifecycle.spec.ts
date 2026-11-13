@@ -29,6 +29,7 @@ jest.mock("../user/user.service", () => ({
 }));
 
 import { TeamService } from "./team.service";
+import { GithubNotConnectedError } from "../github-api/github-auth";
 
 function setup(status = "PROVISIONING", closed = false) {
   const event = {
@@ -74,8 +75,16 @@ function setup(status = "PROVISIONING", closed = false) {
     createTeamRepository: jest.fn(),
   };
   Reflect.set(service, "githubApiService", github);
+  Reflect.set(service, "githubAuthService", tokenAuthService);
   return { service, team, event, repository, manager, github };
 }
+
+const tokenAuthService = {
+  authFor: jest.fn(async (event: { githubOrgSecret: string }) => ({
+    kind: "token",
+    encryptedSecret: event.githubOrgSecret,
+  })),
+};
 
 describe("repository lifecycle", () => {
   it.each([false, true])(
@@ -283,6 +292,22 @@ describe("repository lifecycle", () => {
     const { service, manager, github } = setup("PENDING", true);
     await service.createTeamRepository("team", manager as never);
     expect(github.createTeamRepository).not.toHaveBeenCalled();
+  });
+
+  it("marks provisioning failed when the event has no GitHub access", async () => {
+    const { service, manager, github, repository } = setup("PENDING");
+    Reflect.set(service, "githubAuthService", {
+      authFor: jest
+        .fn()
+        .mockRejectedValue(new GithubNotConnectedError("not connected")),
+    });
+    await service.createTeamRepository("team", manager as never);
+    expect(github.createTeamRepository).not.toHaveBeenCalled();
+    expect(repository.update).toHaveBeenCalledWith("team", {
+      repositoryStatus: "FAILED",
+      repositoryOperationId: null,
+      repositoryError: "not connected",
+    });
   });
 
   it.each([true, false])(
