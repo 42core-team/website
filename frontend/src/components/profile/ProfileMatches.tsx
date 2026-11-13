@@ -135,7 +135,7 @@ export function ProfileMatches({ profile }: { profile: UserProfile }) {
 
   return (
     <Card className="overflow-hidden border shadow-sm">
-      <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0 border-b bg-muted/10 px-5 py-4">
+      <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0 border-b bg-muted/10 px-4 py-3.5 sm:px-5 sm:py-4">
         <div className="flex items-center gap-2">
           <History className="size-5 text-muted-foreground" />
           <h3 className="text-xl font-semibold text-foreground">
@@ -163,8 +163,9 @@ export function ProfileMatches({ profile }: { profile: UserProfile }) {
       </CardHeader>
 
       <Tabs value={phase} onValueChange={setPhase} className="w-full">
+        {/* Two rows of two on phones instead of a ragged wrap. */}
         <div className="border-b px-4 py-3">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-2 sm:inline-flex sm:w-auto">
             {TABS.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}>
                 {tab.label}

@@ -50,11 +50,11 @@ function TeamCard({ team }: { team: ProfileTeam }) {
   return (
     <Card className="gap-0 overflow-hidden pt-0">
       {team.background ? (
-        <TeamCover team={team} className="aspect-auto h-20 sm:h-24" />
+        <TeamCover team={team} className="aspect-auto h-14 sm:h-24" />
       ) : (
-        <TeamCoverStripe className="sm:h-24" />
+        <TeamCoverStripe className="h-14 sm:h-24" />
       )}
-      <CardHeader className="relative -mt-2 flex flex-row items-center gap-3 space-y-0 pt-0 pb-4">
+      <CardHeader className="relative -mt-2 flex flex-row items-center gap-3 space-y-0 px-4 pt-0 pb-4 sm:px-6">
         <div className="shrink-0 rounded-2xl bg-card p-1 shadow-sm">
           <TeamPicture team={team} large className="size-16" />
         </div>
@@ -78,8 +78,8 @@ function TeamCard({ team }: { team: ProfileTeam }) {
           </p>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <dl className="divide-y rounded-xl border p-4">
+      <CardContent className="space-y-4 px-4 sm:px-6">
+        <dl className="divide-y rounded-xl border p-3 sm:p-4">
           <Row icon={Swords} label="Record">
             {totalMatches(record) ? `${record.wins}–${record.losses}` : '–'}
           </Row>
@@ -143,7 +143,12 @@ function TeamCard({ team }: { team: ProfileTeam }) {
               </Link>
             ))}
           </div>
-          <Button asChild variant="secondary" size="sm">
+          <Button
+            asChild
+            variant="secondary"
+            size="sm"
+            className="w-full sm:w-auto"
+          >
             <Link to={teamPath}>View team</Link>
           </Button>
         </div>

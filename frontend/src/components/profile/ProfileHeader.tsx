@@ -9,6 +9,7 @@ import { TeamCover, TeamCoverStripe } from '@/components/team/TeamAppearance'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   finishLabel,
@@ -66,9 +67,11 @@ export function ProfileHeader({ profile }: { profile: UserProfile }) {
       ) : (
         <TeamCoverStripe />
       )}
-      <CardHeader className="relative -mt-2 flex flex-col gap-4 space-y-0 pt-0 pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="shrink-0 rounded-2xl bg-card p-1 shadow-sm">
+      <CardHeader className="relative -mt-10 flex flex-col gap-4 space-y-0 px-4 pt-0 pb-4 sm:-mt-2 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        {/* Phones put the picture above the name, so the name gets the
+            whole width; from sm up they sit side by side. */}
+        <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="w-fit shrink-0 rounded-2xl bg-card p-1 shadow-sm">
             <Avatar className="size-20 shrink-0 rounded-xl border-2 border-background">
               <AvatarImage
                 src={user.profilePicture ?? undefined}
@@ -95,14 +98,23 @@ export function ProfileHeader({ profile }: { profile: UserProfile }) {
                 )}
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">
-              @{user.username}
-              {user.intra && ` · ${user.intra.username} on 42`} · Playing since{' '}
-              {format(new Date(user.createdAt), 'MMMM yyyy')}
+            {/* Separate items, so a narrow screen wraps between them. */}
+            <p className="flex flex-wrap gap-x-1.5 text-sm text-muted-foreground">
+              <span>@{user.username}</span>
+              {user.intra && (
+                <span>
+                  <span aria-hidden>· </span>
+                  {user.intra.username} on 42
+                </span>
+              )}
+              <span>
+                <span aria-hidden>· </span>
+                Playing since {format(new Date(user.createdAt), 'MMMM yyyy')}
+              </span>
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex">
           <Button variant="outline" size="sm" asChild>
             <a
               href={`https://github.com/${encodeURIComponent(user.username)}`}
@@ -119,10 +131,10 @@ export function ProfileHeader({ profile }: { profile: UserProfile }) {
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        <section aria-label="Career" className="rounded-xl border p-4">
+      <CardContent className="px-4 sm:px-6">
+        <section aria-label="Career" className="rounded-xl border p-3 sm:p-4">
           <h3 className="mb-3 text-lg font-semibold">Career</h3>
-          <dl className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+          <dl className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3 lg:grid-cols-5">
             <Stat
               label="Events"
               value={teams.length}
@@ -160,6 +172,8 @@ export function ProfileHeader({ profile }: { profile: UserProfile }) {
             />
             <Stat
               label="Longest streak"
+              // The fifth tile would sit alone in a two-column row.
+              className="col-span-2 md:col-span-1"
               value={streaks.longestWin}
               detail={
                 streaks.current?.result === 'WIN' && streaks.current.length > 1
@@ -178,13 +192,15 @@ function Stat({
   label,
   value,
   detail,
+  className,
 }: {
   label: string
   value: ReactNode
   detail: string
+  className?: string
 }) {
   return (
-    <div className="min-w-0 rounded-lg border p-3">
+    <div className={cn('min-w-0 rounded-lg border p-3', className)}>
       <dt className="text-[0.625rem] font-semibold tracking-wider text-muted-foreground uppercase">
         {label}
       </dt>

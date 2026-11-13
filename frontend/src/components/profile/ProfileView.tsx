@@ -48,13 +48,21 @@ export function ProfileView({ username }: { username: string }) {
       <div className="space-y-6">
         <ProfileHeader profile={profile} />
         <Tabs value={tab} onValueChange={onTabChange}>
-          <TabsList>
+          {/* Phones give each tab a third of the width. */}
+          <TabsList className="grid w-full grid-cols-3 sm:inline-flex sm:w-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            {/* Counts only from sm up; a third of a phone is too narrow. */}
             <TabsTrigger value="teams">
-              Teams ({profile.teams.length})
+              Teams
+              <span className="hidden sm:inline">
+                &nbsp;({profile.teams.length})
+              </span>
             </TabsTrigger>
             <TabsTrigger value="matches">
-              Match History ({totalMatches(profile.summary.record)})
+              <span className="sm:hidden">Matches</span>
+              <span className="hidden sm:inline">
+                Match History ({totalMatches(profile.summary.record)})
+              </span>
             </TabsTrigger>
           </TabsList>
           <TabsContent value="overview" className="mt-6">

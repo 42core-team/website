@@ -48,7 +48,7 @@ export function Panel({
 }) {
   return (
     <Card className={cn('overflow-hidden border shadow-sm', className)}>
-      <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0 border-b bg-muted/10 px-5 py-4">
+      <CardHeader className="flex-row flex-wrap items-center justify-between gap-x-2 gap-y-1 space-y-0 border-b bg-muted/10 px-4 py-3.5 sm:px-5 sm:py-4">
         <div className="flex items-center gap-2">
           <Icon className="size-5 text-muted-foreground" aria-hidden />
           <h3 className="text-xl font-semibold text-foreground">{title}</h3>
@@ -57,7 +57,7 @@ export function Panel({
           <span className="text-sm text-muted-foreground">{aside}</span>
         )}
       </CardHeader>
-      <CardContent className="p-5">{children}</CardContent>
+      <CardContent className="p-4 sm:p-5">{children}</CardContent>
     </Card>
   )
 }
@@ -145,35 +145,64 @@ function WinRateByEvent({ profile }: { profile: UserProfile }) {
   return (
     <div className="mt-6 border-t pt-5">
       <p className="mb-4 text-sm text-muted-foreground">Win rate by event</p>
-      <div className="grid h-40 items-end gap-3 border-b" style={columns}>
-        {rows.map((team) => {
+      {/* Phones list the events as rows, so their names fit. */}
+      <ul className="space-y-3 sm:hidden">
+        {[...rows].reverse().map((team) => {
           const rate = winRate(team.record)
           return (
-            <div
-              key={team.id}
-              className="flex h-full flex-col items-center justify-end gap-1.5"
-            >
-              <span className="text-sm font-medium tabular-nums">
-                {formatPercent(rate)}
-              </span>
-              <div
-                className="w-full max-w-14 rounded-t-md bg-primary/80"
-                style={{ height: `${Math.max(4, (rate ?? 0) * 120)}px` }}
-                aria-hidden
-              />
-            </div>
+            <li key={team.id} className="space-y-1.5">
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate font-medium">
+                  {team.event.name}
+                </span>
+                <span className="shrink-0 text-muted-foreground tabular-nums">
+                  {team.record.wins}–{team.record.losses}
+                  <span className="ml-2 font-medium text-foreground">
+                    {formatPercent(rate)}
+                  </span>
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary/80"
+                  style={{ width: `${(rate ?? 0) * 100}%` }}
+                />
+              </div>
+            </li>
           )
         })}
-      </div>
-      <div className="mt-2 grid gap-3" style={columns}>
-        {rows.map((team) => (
-          <div key={team.id} className="min-w-0 text-center">
-            <p className="truncate text-xs font-medium">{team.event.name}</p>
-            <p className="text-xs text-muted-foreground tabular-nums">
-              {team.record.wins}–{team.record.losses}
-            </p>
-          </div>
-        ))}
+      </ul>
+      <div className="hidden sm:block">
+        <div className="grid h-40 items-end gap-3 border-b" style={columns}>
+          {rows.map((team) => {
+            const rate = winRate(team.record)
+            return (
+              <div
+                key={team.id}
+                className="flex h-full flex-col items-center justify-end gap-1.5"
+              >
+                <span className="text-sm font-medium tabular-nums">
+                  {formatPercent(rate)}
+                </span>
+                <div
+                  className="w-full max-w-14 rounded-t-md bg-primary/80"
+                  style={{ height: `${Math.max(4, (rate ?? 0) * 120)}px` }}
+                  aria-hidden
+                />
+              </div>
+            )
+          })}
+        </div>
+        <div className="mt-2 grid gap-3" style={columns}>
+          {rows.map((team) => (
+            <div key={team.id} className="min-w-0 text-center">
+              <p className="truncate text-xs font-medium">{team.event.name}</p>
+              <p className="text-xs text-muted-foreground tabular-nums">
+                {team.record.wins}–{team.record.losses}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

@@ -74,11 +74,13 @@ export default function MatchesList(props: MatchesListProps) {
           teams.unshift(viewedTeam)
         }
         const content = (
-          <div className="flex flex-col items-stretch sm:flex-row">
+          // Phones stack the two teams and keep the replay button beside
+          // them; from sm up the teams face each other across VS.
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center sm:flex sm:flex-row sm:items-stretch">
             {/* Match Meta */}
             <div
               className={cn(
-                'px-4 py-3 shrink-0 sm:w-52 bg-muted/10 flex flex-row sm:flex-col items-center sm:items-start justify-between sm:justify-center gap-2',
+                'col-span-2 px-4 pt-3 pb-2 sm:py-3 shrink-0 sm:w-52 bg-muted/10 flex flex-row sm:flex-col items-center sm:items-start justify-between sm:justify-center gap-2',
                 !isInsideCard &&
                   'bg-muted/20 border-b sm:border-b-0 sm:border-r',
               )}
@@ -123,8 +125,13 @@ export default function MatchesList(props: MatchesListProps) {
             </div>
 
             {/* Match Content */}
-            <div className="flex min-w-0 flex-1 items-center justify-center p-4 sm:p-6">
-              <div className="flex w-full max-w-4xl min-w-0 items-center justify-center gap-3 sm:gap-4">
+            <div
+              className={cn(
+                'flex min-w-0 flex-1 items-center justify-center px-4 pt-1 pb-3 sm:p-6',
+                !isInsideCard && 'pt-3',
+              )}
+            >
+              <div className="flex w-full max-w-4xl min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-center sm:gap-4">
                 {([0, 1] as const).map((side) => {
                   const team = teams.at(side)
                   const isWinner = Boolean(team && match.winner?.id === team.id)
@@ -136,8 +143,8 @@ export default function MatchesList(props: MatchesListProps) {
                       <TeamPicture
                         team={team}
                         className={cn(
-                          'size-8 rounded-md ring-1 ring-border',
-                          side === 0 && 'order-last',
+                          'size-7 rounded-md ring-1 ring-border sm:size-8',
+                          side === 0 && 'sm:order-last',
                           isLoser && 'opacity-60 grayscale',
                         )}
                         fallbackClassName="rounded-md bg-muted text-[10px] text-muted-foreground"
@@ -155,7 +162,7 @@ export default function MatchesList(props: MatchesListProps) {
                           aria-label="Winner"
                           className={cn(
                             'size-4 shrink-0 text-amber-500',
-                            side === 0 && 'order-first',
+                            side === 0 && 'sm:order-first',
                           )}
                         />
                       )}
@@ -163,13 +170,15 @@ export default function MatchesList(props: MatchesListProps) {
                   )
                   const nameClassName = cn(
                     'flex w-full min-w-0 items-center gap-2.5 text-sm font-semibold sm:text-base',
-                    side === 0 ? 'justify-end text-right' : 'text-left',
+                    side === 0
+                      ? 'text-left sm:justify-end sm:text-right'
+                      : 'text-left',
                   )
 
                   return (
                     <div key={side} className="contents">
                       {side === 1 && (
-                        <div className="flex shrink-0 items-center justify-center">
+                        <div className="hidden shrink-0 items-center justify-center sm:flex">
                           <span className="text-xs font-bold text-muted-foreground/50">
                             VS
                           </span>
@@ -177,8 +186,8 @@ export default function MatchesList(props: MatchesListProps) {
                       )}
                       <div
                         className={cn(
-                          'flex min-w-0 flex-1 flex-col gap-1',
-                          side === 0 ? 'items-end' : 'items-start',
+                          'flex min-w-0 items-center gap-3 sm:flex-1 sm:flex-col sm:gap-1',
+                          side === 0 ? 'sm:items-end' : 'sm:items-start',
                         )}
                       >
                         {team ? (
@@ -209,7 +218,7 @@ export default function MatchesList(props: MatchesListProps) {
                             {resultScores.has(team.id) && (
                               <span
                                 className={cn(
-                                  'text-2xl sm:text-3xl font-bold tracking-tighter',
+                                  'text-lg leading-none sm:text-3xl sm:leading-normal font-bold tracking-tighter',
                                   isWinner
                                     ? 'text-foreground'
                                     : 'text-muted-foreground/40',
@@ -234,7 +243,7 @@ export default function MatchesList(props: MatchesListProps) {
             {/* Replay */}
             <div
               className={cn(
-                'flex items-center justify-center shrink-0 px-6 sm:w-32 pb-4 sm:pb-0',
+                'flex items-center justify-center shrink-0 pr-4 pb-3 sm:w-32 sm:px-6 sm:pb-0',
                 !isInsideCard && 'sm:border-l border-border/40',
               )}
             >
