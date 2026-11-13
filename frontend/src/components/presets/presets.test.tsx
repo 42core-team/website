@@ -21,6 +21,8 @@ import { createEvent } from '@/app/actions/event'
 import { CreateEventPage } from '@/routes/events/create'
 import { PresetEditor, PresetsPage } from '@/routes/admin/presets'
 import { InstallationsPage } from '@/routes/admin/github-installations'
+import { AdminGuard } from '@/components/presets/admin-guard'
+import { useSession } from '@/lib/auth'
 import {
   defaultSettings,
   schedulePreview,
@@ -32,6 +34,7 @@ const navigate = vi.fn()
 vi.mock('@tanstack/react-router', async (original) => ({
   ...(await original<typeof Router>()),
   useNavigate: () => navigate,
+  Navigate: () => <p>Redirected</p>,
 }))
 vi.mock('@/app/actions/presets', async (original) => ({
   ...(await original<typeof api>()),
@@ -42,11 +45,13 @@ vi.mock('@/app/actions/presets', async (original) => ({
   createPreset: vi.fn(),
   updatePreset: vi.fn(),
   getAdminPresets: vi.fn(),
+  getAdminPreset: vi.fn(),
   archivePreset: vi.fn(),
   shareInstallation: vi.fn(),
   unshareInstallation: vi.fn(),
 }))
 vi.mock('@/app/actions/event', () => ({ createEvent: vi.fn() }))
+vi.mock('@/lib/auth', () => ({ useSession: vi.fn() }))
 const { schedule: _schedule, ...settings } = defaultSettings
 const resolved: ResolvedPreset = {
   presetId: 'one',
@@ -209,6 +214,50 @@ describe('preset event creation', () => {
     })
     expect(confirm).not.toHaveBeenCalled()
   })
+  it('omits a field typed back to the preset value', async () => {
+    await createPage()
+    fireEvent.click(screen.getByText('Adjust settings'))
+    const location = screen.getByLabelText('Location')
+    fireEvent.change(location, { target: { value: 'Helsinki' } })
+    fireEvent.change(location, { target: { value: '' } })
+    expect(screen.queryByText('Changed')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() =>
+      expect(createEvent).toHaveBeenCalledWith(
+        { name: 'Winter Cup', presetId: 'one' },
+        expect.anything(),
+      ),
+    )
+  })
+  it('sends edited dates as epoch ms of the entered local time', async () => {
+    await createPage()
+    fireEvent.click(screen.getByText('Adjust settings'))
+    fireEvent.change(screen.getByLabelText(/^Start date/), {
+      target: { value: '2027-01-14T12:30' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() =>
+      expect(createEvent).toHaveBeenCalledWith(
+        {
+          name: 'Winter Cup',
+          presetId: 'one',
+          startDate: new Date(2027, 0, 14, 12, 30).getTime(),
+        },
+        expect.anything(),
+      ),
+    )
+  })
+  it('opens the settings when a hidden preset value is invalid', async () => {
+    vi.mocked(api.resolvePreset).mockResolvedValue({
+      ...resolved,
+      values: { ...resolved.values, gameConfig: '' },
+    })
+    await createPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+    await screen.findByText(/^Game configuration:/)
+    expect(screen.getByLabelText('Game configuration')).toBeTruthy()
+    expect(createEvent).not.toHaveBeenCalled()
+  })
   it('includes explicit clears of inherited templates and installations', () => {
     const source = {
       ...resolved,
@@ -229,6 +278,56 @@ describe('preset event creation', () => {
       githubInstallationId: null,
       starterTemplates: [],
     })
+  })
+})
+describe('preset administration', () => {
+  it('does not render admin pages or run admin queries for non-admins', async () => {
+    vi.mocked(useSession).mockReturnValue({
+      status: 'authenticated',
+      data: { user: { abilities: { admin: false } } },
+    } as unknown as ReturnType<typeof useSession>)
+    await mount(
+      <AdminGuard>
+        <PresetsPage />
+      </AdminGuard>,
+    )
+    expect(screen.getByText('Redirected')).toBeTruthy()
+    expect(screen.queryByText('Event presets')).toBeNull()
+    expect(api.getAdminPresets).not.toHaveBeenCalled()
+  })
+  it('sets the default with a versioned update of the current preset', async () => {
+    vi.mocked(api.getAdminPresets).mockResolvedValue([
+      {
+        ...preset,
+        id: 'two',
+        isDefault: false,
+        updatedBy: null,
+        eventCount: 0,
+      },
+    ])
+    vi.mocked(api.getAdminPreset).mockResolvedValue({
+      ...preset,
+      id: 'two',
+      isDefault: false,
+      version: 7,
+    })
+    vi.mocked(api.updatePreset).mockResolvedValue(preset)
+    await mount(<PresetsPage />)
+    fireEvent.click(await screen.findByText('Set default'))
+    await waitFor(() =>
+      expect(api.updatePreset).toHaveBeenCalledWith(
+        'two',
+        expect.objectContaining({ version: 7, isDefault: true }),
+      ),
+    )
+  })
+  it('does not let the default preset be unmarked as default', async () => {
+    await mount(
+      <PresetEditor preset={preset} onSaved={vi.fn()} onCancel={vi.fn()} />,
+    )
+    expect(
+      screen.getByLabelText<HTMLInputElement>('Default preset').disabled,
+    ).toBe(true)
   })
 })
 describe('preset administration conflicts', () => {
@@ -288,9 +387,7 @@ describe('preset administration conflicts', () => {
       <PresetEditor preset={preset} onSaved={vi.fn()} onCancel={vi.fn()} />,
     )
     await screen.findByText('shared-core')
-    expect(
-      screen.queryByRole('option', { name: 'core' }),
-    ).toBeNull()
+    expect(screen.queryByRole('option', { name: 'core' })).toBeNull()
   })
 })
 describe('installation sharing', () => {
@@ -301,9 +398,7 @@ describe('installation sharing', () => {
     })
     const client = await mount(<InstallationsPage />)
     const invalidate = vi.spyOn(client, 'invalidateQueries')
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Share' }),
-    )
+    fireEvent.click(await screen.findByRole('button', { name: 'Share' }))
     expect(screen.getByText(/Sharing lets any event creator/)).toBeTruthy()
     expect(api.shareInstallation).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText('Confirm share'))
@@ -340,6 +435,30 @@ describe('Berlin schedule preview', () => {
         new Date(now),
       ).toISOString(),
     ).toBe(new Date(expected).toISOString())
+  })
+  it('moves a start time skipped by the spring switch forward an hour', () => {
+    expect(
+      schedulePreview(
+        { startOffsetDays: 1, startTime: '02:30' },
+        new Date('2026-03-28T12:00:00Z'),
+      ).toISOString(),
+    ).toBe('2026-03-29T01:30:00.000Z')
+  })
+  it('uses the first occurrence of a start time repeated in autumn', () => {
+    expect(
+      schedulePreview(
+        { startOffsetDays: 1, startTime: '02:30' },
+        new Date('2026-10-24T12:00:00Z'),
+      ).toISOString(),
+    ).toBe('2026-10-25T00:30:00.000Z')
+  })
+  it('crosses month ends and the DST switch with longer offsets', () => {
+    expect(
+      schedulePreview(
+        { startOffsetDays: 10, startTime: '18:00' },
+        new Date('2026-03-25T12:00:00Z'),
+      ).toISOString(),
+    ).toBe('2026-04-04T16:00:00.000Z')
   })
   it('uses the Berlin calendar date near UTC midnight', () => {
     expect(
