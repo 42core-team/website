@@ -75,6 +75,7 @@ const resolved: ResolvedPreset = {
   },
   starterTemplates: [],
   githubInstallation: null,
+  warnings: [],
 }
 const preset: PresetDetail = {
   id: 'one',
@@ -88,15 +89,19 @@ const preset: PresetDetail = {
   settings: defaultSettings,
   starterTemplates: [],
   githubInstallation: null,
+  warnings: [],
 }
 const installation: AdminInstallation = {
   id: 'uuid',
   accountLogin: 'core',
   accountType: 'Organization',
+  status: 'active',
   sharedAt: null,
   sharedBy: null,
   eventCount: 1,
 }
+const unavailable =
+  "This preset's GitHub installation core is no longer available; the event will be created without one."
 function conflict(message: string) {
   return new AxiosError('Conflict', '409', undefined, undefined, {
     status: 409,
@@ -284,6 +289,25 @@ describe('preset event creation', () => {
           presetId: 'one',
           startDate: expected.getTime(),
         },
+        expect.anything(),
+      ),
+    )
+  })
+  it("warns that the preset's installation is unavailable", async () => {
+    vi.mocked(api.resolvePreset).mockResolvedValue({
+      ...resolved,
+      warnings: [unavailable],
+    })
+    await createPage()
+    expect(screen.getByRole('status').textContent).toContain(unavailable)
+    fireEvent.click(screen.getByText('Adjust settings'))
+    const picker = screen.getByLabelText('GitHub installation')
+    expect(picker.parentElement?.textContent).toContain(unavailable)
+    expect(screen.getAllByText(unavailable)).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() =>
+      expect(createEvent).toHaveBeenCalledWith(
+        { name: 'Winter Cup', presetId: 'one' },
         expect.anything(),
       ),
     )
@@ -520,7 +544,7 @@ describe('preset administration conflicts', () => {
     fireEvent.click(await screen.findByText('Archive'))
     await screen.findByText('Cannot archive the default preset')
   })
-  it('offers only shared installations in the editor', async () => {
+  it('offers only shared, active installations in the editor', async () => {
     vi.mocked(api.getAdminInstallations).mockResolvedValue([
       installation,
       {
@@ -529,12 +553,57 @@ describe('preset administration conflicts', () => {
         accountLogin: 'shared-core',
         sharedAt: '2026-11-13',
       },
+      {
+        ...installation,
+        id: 'suspended',
+        accountLogin: 'suspended-core',
+        sharedAt: '2026-11-13',
+        status: 'suspended',
+      },
     ])
     await mount(
       <PresetEditor preset={preset} onSaved={vi.fn()} onCancel={vi.fn()} />,
     )
     await screen.findByText('shared-core')
     expect(screen.queryByRole('option', { name: 'core' })).toBeNull()
+    expect(screen.queryByRole('option', { name: 'suspended-core' })).toBeNull()
+  })
+  it('badges presets whose installation is unavailable', async () => {
+    vi.mocked(api.getAdminPresets).mockResolvedValue([
+      { ...preset, updatedBy: null, eventCount: 0, warnings: [unavailable] },
+    ])
+    await mount(<PresetsPage />)
+    const badge = await screen.findByText('Warning')
+    expect(badge.getAttribute('title')).toBe(unavailable)
+    expect(screen.getByText(unavailable)).toBeTruthy()
+  })
+  it('keeps an unavailable installation on save and warns until it is replaced', async () => {
+    const stale = {
+      ...preset,
+      githubInstallation: { id: 'uuid', accountLogin: 'core' },
+      warnings: [unavailable],
+    }
+    vi.mocked(api.updatePreset).mockResolvedValue(stale)
+    await mount(
+      <PresetEditor preset={stale} onSaved={vi.fn()} onCancel={vi.fn()} />,
+    )
+    const option = await screen.findByRole<HTMLOptionElement>('option', {
+      name: 'core (unavailable)',
+    })
+    expect(option.disabled).toBe(true)
+    expect(screen.getByText('Warning')).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toContain(unavailable)
+    fireEvent.click(screen.getByRole('button', { name: 'Save preset' }))
+    await waitFor(() =>
+      expect(api.updatePreset).toHaveBeenCalledWith(
+        'one',
+        expect.objectContaining({ githubInstallationId: 'uuid', version: 2 }),
+      ),
+    )
+    fireEvent.change(screen.getByLabelText('Shared GitHub installation'), {
+      target: { value: '' },
+    })
+    expect(screen.queryByRole('status')).toBeNull()
   })
 })
 describe('installation sharing', () => {
@@ -556,6 +625,15 @@ describe('installation sharing', () => {
       expect(invalidate).toHaveBeenCalledWith({
         queryKey: ['create-installations'],
       }),
+    )
+  })
+  it('shows when an installation is no longer active', async () => {
+    vi.mocked(api.getAdminInstallations).mockResolvedValue([
+      { ...installation, sharedAt: 'now', status: 'suspended' },
+    ])
+    await mount(<InstallationsPage />)
+    expect((await screen.findByText(/Shared by/)).textContent).toContain(
+      'Suspended',
     )
   })
   it('unshares only after confirmation', async () => {

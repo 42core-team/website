@@ -55,12 +55,15 @@ export interface AdminPresetSummary extends PresetSummary {
   archivedAt: string | null
   updatedBy: { id: string; username: string } | null
   eventCount: number
+  /** Such as an installation that is no longer shared or active. */
+  warnings: string[]
 }
 export interface PresetDetail extends PresetSummary {
   archivedAt: string | null
   settings: PresetSettings
   starterTemplates: StarterTemplate[]
   githubInstallation: InstallationRef | null
+  warnings: string[]
   createdAt: string
 }
 export interface ResolvedPreset {
@@ -69,6 +72,7 @@ export interface ResolvedPreset {
   values: EventSettings
   starterTemplates: StarterTemplate[]
   githubInstallation: InstallationRef | null
+  warnings: string[]
 }
 export interface PresetInput {
   name: string
@@ -81,6 +85,7 @@ export interface PresetInput {
 /** id is the installation entity UUID; installationId in older event routes is GitHub's numeric ID. */
 export interface AdminInstallation extends InstallationRef {
   accountType: string
+  status: 'active' | 'suspended' | 'uninstalled'
   sharedAt: string | null
   sharedBy: { id: string; username: string } | null
   eventCount: number

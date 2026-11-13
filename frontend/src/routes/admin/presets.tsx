@@ -22,6 +22,7 @@ import { AdminGuard } from '@/components/presets/admin-guard'
 import {
   SettingsFields,
   SettingsSection,
+  PresetWarnings,
   numberValue,
   numberInput,
   TemplatesFields,
@@ -44,8 +45,21 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Spinner } from '@/components/ui/spinner'
+
+function WarningBadge({ warnings }: { warnings: readonly string[] }) {
+  return warnings.length ? (
+    <Badge
+      variant="outline"
+      className="border-amber-500/50 text-amber-700 dark:text-amber-400"
+      title={warnings.join(' ')}
+    >
+      Warning
+    </Badge>
+  ) : null
+}
 
 export const Route = createFileRoute('/admin/presets')({
   component: () => (
@@ -126,13 +140,22 @@ export function PresetsPage() {
           {row.isDefault && (
             <span className="rounded bg-accent px-2">Default</span>
           )}{' '}
-          {row.archivedAt && <span>Archived</span>}
+          {row.archivedAt && <span>Archived</span>}{' '}
+          <WarningBadge warnings={row.warnings} />
           <p>
             v{row.version} · {row.eventCount} events · Updated by{' '}
             {row.updatedBy?.username ?? 'Unknown'} ·{' '}
             {new Date(row.updatedAt).toLocaleString()}
           </p>
           <p>{row.description}</p>
+          {row.warnings.map((warning) => (
+            <p
+              key={warning}
+              className="text-sm text-amber-700 dark:text-amber-400"
+            >
+              {warning}
+            </p>
+          ))}
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setEditing(row.id)}>
               Edit {row.name}
@@ -248,6 +271,10 @@ export function PresetEditor({
     queryKey: ['admin', 'github-installations'],
     queryFn: getAdminInstallations,
   })
+  // Presets can only save shared, active installations.
+  const linkable = installations.data?.filter(
+    (i) => i.sharedAt && i.status === 'active',
+  )
   const [errors, setErrors] = useState<string[]>([])
   const mutation = useMutation({
     mutationFn: (input: PresetInput) =>
@@ -308,7 +335,8 @@ export function PresetEditor({
   return (
     <section className="space-y-4 rounded border p-6">
       <h2 className="text-2xl font-semibold">
-        {preset ? `Edit ${preset.name} (v${preset.version})` : 'New preset'}
+        {preset ? `Edit ${preset.name} (v${preset.version})` : 'New preset'}{' '}
+        {preset && <WarningBadge warnings={preset.warnings} />}
       </h2>
       <form
         className="space-y-4"
@@ -411,22 +439,27 @@ export function PresetEditor({
           >
             <option value="">None</option>
             {preset?.githubInstallation &&
-              !installations.data?.some(
-                (i) => i.id === preset.githubInstallation?.id && i.sharedAt,
+              !linkable?.some(
+                (i) => i.id === preset.githubInstallation?.id,
               ) && (
-                <option disabled value={preset.githubInstallation.id}>
-                  {preset.githubInstallation.accountLogin} (no longer shared —
-                  choose another)
+                <option
+                  disabled={Boolean(linkable)}
+                  value={preset.githubInstallation.id}
+                >
+                  {preset.githubInstallation.accountLogin}
+                  {linkable ? ' (unavailable)' : ''}
                 </option>
               )}
-            {installations.data
-              ?.filter((i) => i.sharedAt)
-              .map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.accountLogin}
-                </option>
-              ))}
+            {linkable?.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.accountLogin}
+              </option>
+            ))}
           </select>
+          {preset &&
+            values.githubInstallationId === preset.githubInstallation?.id && (
+              <PresetWarnings warnings={preset.warnings} />
+            )}
           {installations.isError && (
             <p role="alert">
               Could not load shared installations.{' '}

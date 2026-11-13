@@ -68,6 +68,8 @@ export function InstallationsPage() {
               {row.sharedAt
                 ? `Shared by ${row.sharedBy?.username ?? 'Unknown'}`
                 : 'Not shared'}
+              {row.status !== 'active' &&
+                ` · ${row.status === 'suspended' ? 'Suspended' : 'Uninstalled'}`}
             </p>
           </div>
           <Button

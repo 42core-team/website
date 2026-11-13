@@ -26,6 +26,7 @@ import {
   SettingsSection,
   TemplatesFields,
   Reset,
+  PresetWarnings,
   ValidationErrors,
   issueMessages,
 } from '@/components/presets/settings-fields'
@@ -205,6 +206,7 @@ function CreatePresetForm({
       >
         Adjust settings
       </Button>
+      {!adjust && <PresetWarnings warnings={preset.warnings} />}
       {adjust && (
         <div className="space-y-6 rounded border p-4">
           <SettingsFields
@@ -269,6 +271,7 @@ function CreatePresetForm({
                 </option>
               ))}
             </select>
+            <PresetWarnings warnings={preset.warnings} />
             {installations.isError && (
               <p role="alert">
                 Could not load installations.{' '}
