@@ -498,7 +498,8 @@ function DashboardRoute() {
         <h1 className="text-3xl font-bold">Event Dashboard: {event.name}</h1>
         {event.preset && (
           <p>
-            Created from {event.preset.name} (v{event.presetVersion})
+            Created from {event.preset.name}
+            {event.presetVersion != null && ` (v${event.presetVersion})`}
           </p>
         )}
         {hasChanges && (
