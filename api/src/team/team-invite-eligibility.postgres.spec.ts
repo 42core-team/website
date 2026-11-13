@@ -63,6 +63,7 @@ postgres("team invite eligibility (PostgreSQL)", () => {
       {} as never,
       {} as never,
       database,
+      {} as never,
     );
     const teamService = new TeamService(
       database.getRepository(TeamEntity),

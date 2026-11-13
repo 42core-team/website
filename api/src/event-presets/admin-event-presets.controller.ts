@@ -56,6 +56,15 @@ export class AdminEventPresetsController {
     return this.presets.duplicate(id, userId);
   }
 
+  @Post(":id/default")
+  @HttpCode(200)
+  setDefault(
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @UserId() userId: string,
+  ) {
+    return this.presets.setDefault(id, userId);
+  }
+
   @Post(":id/archive")
   @HttpCode(200)
   archive(

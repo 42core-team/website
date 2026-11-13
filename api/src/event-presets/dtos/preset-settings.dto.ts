@@ -4,7 +4,7 @@ import {
   IsInt,
   IsNumber,
   IsObject,
-  IsOptional,
+  ValidateIf,
   Matches,
   Max,
   Min,
@@ -33,19 +33,19 @@ export class PresetScheduleDto {
   })
   startTime: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsNumber()
   @Min(0)
   @Max(MAX_AFTER_HOURS)
   submissionDeadlineAfterHours?: number;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsNumber()
   @Min(0)
   @Max(MAX_AFTER_HOURS)
   scheduledEndAfterHours?: number;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsNumber()
   @Min(0)
   @Max(MAX_AFTER_HOURS)
@@ -79,6 +79,7 @@ export class PresetSettingsDto extends IntersectionType(
       "streamUrl",
       "showtimeStreamUrl",
     ] as const),
+    { skipNullProperties: false },
   ),
 ) {
   @IsDefined()

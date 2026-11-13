@@ -23,6 +23,7 @@ import { EventWhitelistEntity } from "../event/entities/event-whitelist.entity";
 import { EventEntity } from "../event/entities/event.entity";
 import { EventController } from "../event/event.controller";
 import { EventService } from "../event/event.service";
+import { GithubAppRequestError } from "../github-api/github-app-auth";
 import { GithubInstallationEntity } from "../github-api/entities/github-installation.entity";
 import { TeamService } from "../team/team.service";
 import { UserRoleEntity } from "../user/entities/user-role.entity";
@@ -61,6 +62,16 @@ postgres("creating events from presets (PostgreSQL)", () => {
   let defaultPreset: EventPresetEntity;
   let otherPreset: EventPresetEntity;
   let installation: GithubInstallationEntity;
+  const appAuth = {
+    getInstallation: jest.fn(async (id: number) => ({
+      id,
+      account: { id: 7, login: "private-org", type: "Organization" },
+      suspended_at: null,
+    })),
+    getInstallationToken: jest.fn(async () => "installation-token"),
+  };
+  let githubFetch: jest.SpyInstance;
+  let owner = false;
 
   beforeAll(async () => {
     database = new DataSource({
@@ -81,6 +92,7 @@ postgres("creating events from presets (PostgreSQL)", () => {
       {} as never,
       {} as never,
       database,
+      appAuth as never,
     );
     const moduleRef = await Test.createTestingModule({
       imports: [
@@ -109,6 +121,18 @@ postgres("creating events from presets (PostgreSQL)", () => {
       new ClassSerializerInterceptor(app.get(Reflector)),
     );
     await app.init();
+    githubFetch = jest
+      .spyOn(global, "fetch")
+      .mockImplementation(
+        async (url) =>
+          new Response(
+            JSON.stringify(
+              new URL(String(url)).pathname.startsWith("/user/")
+                ? { login: "creator" }
+                : { role: owner ? "admin" : "member", state: "active" },
+            ),
+          ),
+      );
 
     const creator = await database.getRepository(UserEntity).save({
       githubId: "1",
@@ -150,6 +174,7 @@ postgres("creating events from presets (PostgreSQL)", () => {
   });
 
   afterAll(async () => {
+    githubFetch?.mockRestore();
     await app?.close();
     if (database?.isInitialized) {
       await database.query(`DROP SCHEMA "${schema}" CASCADE`);
@@ -249,6 +274,7 @@ postgres("creating events from presets (PostgreSQL)", () => {
       startDate,
       submissionDeadline: startDate + HOUR,
       scheduledEndDate: startDate + 2 * HOUR,
+      endDate: startDate + 3 * HOUR,
       streamUrl: "https://stream.example.com",
       starterTemplates: [],
       githubInstallationId: null,
@@ -261,6 +287,8 @@ postgres("creating events from presets (PostgreSQL)", () => {
       maxTeamSize: 6,
       startDate: new Date(startDate),
       submissionDeadline: new Date(startDate + HOUR),
+      scheduledEndDate: new Date(startDate + 2 * HOUR),
+      endDate: new Date(startDate + 3 * HOUR),
       streamUrl: "https://stream.example.com",
       isPrivate: true,
       presetId: otherPreset.id,
@@ -319,7 +347,7 @@ postgres("creating events from presets (PostgreSQL)", () => {
       .expect(404);
   });
 
-  it("refuses an installation that is not shared", async () => {
+  it("checks ownership for every unshared installation at create time", async () => {
     const unshared = await database
       .getRepository(GithubInstallationEntity)
       .save({
@@ -329,11 +357,68 @@ postgres("creating events from presets (PostgreSQL)", () => {
         accountType: "Organization",
       });
     const before = await counts();
-    const { body } = await create({
-      githubInstallationId: unshared.id,
-    }).expect(400);
-    expect(body.message).toMatch("shared");
+    await create({ githubInstallationId: unshared.id }).expect(403);
     expect(await counts()).toEqual(before);
+    owner = true;
+    try {
+      const { body } = await create({
+        githubInstallationId: unshared.id,
+      }).expect(201);
+      expect(await load(body.id)).toMatchObject({
+        githubInstallationId: unshared.id,
+      });
+    } finally {
+      owner = false;
+    }
+    await create({ githubInstallationId: unshared.id }).expect(403);
+  });
+
+  it.each(["suspendedAt", "deletedAt"] as const)(
+    "refuses a shared installation with %s",
+    async (field) => {
+      const rows = database.getRepository(GithubInstallationEntity);
+      await rows.update(installation.id, { [field]: new Date() });
+      try {
+        const before = await counts();
+        await create({ githubInstallationId: installation.id }).expect(400);
+        expect(await counts()).toEqual(before);
+      } finally {
+        await rows.update(installation.id, { [field]: null });
+      }
+    },
+  );
+
+  it("returns 400 when GitHub reports an unshared installation was uninstalled", async () => {
+    const row = await database.getRepository(GithubInstallationEntity).save({
+      installationId: 81,
+      accountId: 7,
+      accountLogin: "gone",
+      accountType: "Organization",
+    });
+    appAuth.getInstallation.mockRejectedValueOnce(
+      new GithubAppRequestError(404, "Not found"),
+    );
+    await create({ githubInstallationId: row.id }).expect(400);
+  });
+
+  it("shifts derived dates when only the start date changes", async () => {
+    const startDate = Date.parse("2031-05-01T08:00:00Z");
+    const { body } = await create({ startDate }).expect(201);
+    expect(await load(body.id)).toMatchObject({
+      startDate: new Date(startDate),
+      submissionDeadline: new Date(startDate + 48 * HOUR),
+      scheduledEndDate: new Date(startDate + 50 * HOUR),
+      endDate: new Date(startDate + 50 * HOUR),
+      repoLockDate: new Date(startDate + 48 * HOUR),
+    });
+    const explicit = startDate + 4 * HOUR;
+    const changed = (
+      await create({ startDate, submissionDeadline: explicit }).expect(201)
+    ).body;
+    expect(await load(changed.id)).toMatchObject({
+      submissionDeadline: new Date(explicit),
+      scheduledEndDate: new Date(startDate + 50 * HOUR),
+    });
   });
 
   it("rolls the event and its templates back when a later insert fails", async () => {

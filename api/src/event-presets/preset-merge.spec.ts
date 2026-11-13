@@ -46,9 +46,38 @@ describe("mergeEventSettings", () => {
       submissionDeadline: resolved.startDate + 5000,
       // Not overridden.
       minTeamSize: resolved.minTeamSize,
-      scheduledEndDate: resolved.scheduledEndDate,
+      scheduledEndDate: resolved.scheduledEndDate + 1000,
       gameConfig: resolved.gameConfig,
     });
+  });
+
+  it.each([24 * 60 * 60 * 1000, -24 * 60 * 60 * 1000])(
+    "shifts missing dates by %s ms",
+    async (delta) => {
+      const merged = await mergeEventSettings(
+        resolved,
+        request({ startDate: resolved.startDate + delta }),
+      );
+      for (const field of [
+        "startDate",
+        "submissionDeadline",
+        "scheduledEndDate",
+        "endDate",
+      ] as const)
+        expect(merged[field]).toBe(resolved[field] + delta);
+    },
+  );
+
+  it("preserves every explicit date when moving the start", async () => {
+    const dates = {
+      startDate: 1000,
+      submissionDeadline: 2000,
+      scheduledEndDate: 3000,
+      endDate: 4000,
+    };
+    expect(await mergeEventSettings(resolved, request(dates))).toMatchObject(
+      dates,
+    );
   });
 
   it("always creates a private event", async () => {
@@ -142,6 +171,16 @@ describe("POST /event body", () => {
       isPrivate: true,
     };
     await expect(parse(body)).resolves.toMatchObject(body);
+  });
+
+  it.each([
+    { starterTemplates: null },
+    { presetId: null },
+    { introEnabled: null },
+  ])("rejects undocumented nulls %p", async (fields) => {
+    await expect(
+      parse({ name: "Summer Cup", ...fields }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it("validates overrides with the event validators", async () => {

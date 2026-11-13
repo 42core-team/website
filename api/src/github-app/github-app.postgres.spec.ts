@@ -57,6 +57,17 @@ postgres("GitHub App connection (PostgreSQL)", () => {
     service = new GithubAppService(
       {
         isEnabled: () => true,
+        listInstallations: async () =>
+          [901, 902].map((id) => ({
+            id,
+            account: { id, login: `owner-org-${id}`, type: "Organization" },
+            suspended_at: null,
+            permissions: {
+              administration: "write",
+              contents: "write",
+              members: "read",
+            },
+          })),
         getInstallation: async (id: number) => ({
           id,
           account: { id: 5, login: "core-org", type: "Organization" },
@@ -158,6 +169,84 @@ postgres("GitHub App connection (PostgreSQL)", () => {
           .findOneByOrFail({ id: event.id })
       ).githubInstallationId,
     ).toBeNull();
+  });
+
+  it("lists owned plus shared UUID installations once, excluding inactive rows", async () => {
+    const rows = database.getRepository(GithubInstallationEntity);
+    const sharedOwned = await rows.save({
+      installationId: 902,
+      accountId: 902,
+      accountLogin: "owner-org-902",
+      accountType: "Organization",
+      sharedAt: new Date(),
+    });
+    const shared = await rows.save({
+      installationId: 903,
+      accountId: 903,
+      accountLogin: "shared-org",
+      accountType: "Organization",
+      sharedAt: new Date(),
+    });
+    await rows.save([
+      {
+        installationId: 904,
+        accountId: 904,
+        accountLogin: "suspended-org",
+        accountType: "Organization",
+        sharedAt: new Date(),
+        suspendedAt: new Date(),
+      },
+      {
+        installationId: 905,
+        accountId: 905,
+        accountLogin: "deleted-org",
+        accountType: "Organization",
+        sharedAt: new Date(),
+        deletedAt: new Date(),
+      },
+    ]);
+    const listed = await service.listInstallations({ id: userId });
+    expect(listed).toEqual([
+      {
+        id: expect.any(String),
+        accountLogin: "owner-org-901",
+        accountType: "Organization",
+        shared: false,
+      },
+      {
+        id: sharedOwned.id,
+        accountLogin: "owner-org-902",
+        accountType: "Organization",
+        shared: true,
+      },
+      {
+        id: shared.id,
+        accountLogin: "shared-org",
+        accountType: "Organization",
+        shared: true,
+      },
+    ]);
+    expect(await rows.findOneBy({ installationId: 901 })).toMatchObject({
+      id: listed[0].id,
+    });
+    // A cached ownership result must not resurrect an installation disabled
+    // by a newer webhook, including an installation that was shared.
+    await rows.update(sharedOwned.id, { suspendedAt: new Date() });
+    await rows.update(listed[0].id, { deletedAt: new Date() });
+    expect(await service.listInstallations({ id: userId })).toEqual([
+      {
+        id: shared.id,
+        accountLogin: "shared-org",
+        accountType: "Organization",
+        shared: true,
+      },
+    ]);
+    expect(await rows.findOneByOrFail({ id: sharedOwned.id })).toMatchObject({
+      suspendedAt: expect.any(Date),
+    });
+    expect(await rows.findOneByOrFail({ id: listed[0].id })).toMatchObject({
+      deletedAt: expect.any(Date),
+    });
   });
 
   describe("shared installations", () => {

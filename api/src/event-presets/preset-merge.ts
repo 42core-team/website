@@ -31,6 +31,13 @@ export async function mergeEventSettings(
   const overrides: Record<string, unknown> = {};
   for (const field of OVERRIDABLE_FIELDS)
     if (dto[field] !== undefined) overrides[field] = dto[field];
+  // Keep the preset's offsets when the caller moves the start. Explicit dates win.
+  if (dto.startDate !== undefined) {
+    const delta = dto.startDate - resolved.startDate;
+    for (const field of EVENT_DATE_FIELDS)
+      if (field !== "startDate" && dto[field] === undefined)
+        overrides[field] = resolved[field] + delta;
+  }
   const merged = plainToInstance(EventSettingsDto, {
     ...resolved,
     ...overrides,

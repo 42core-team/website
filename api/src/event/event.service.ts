@@ -45,6 +45,12 @@ import { toPublicUsers } from "../user/dtos/public-user.dto";
 import { removeAdminGrant } from "../roles/admin-grants";
 import { EventSettingsDto } from "./dtos/eventSettingsDto";
 import { GithubInstallationEntity } from "../github-api/entities/github-installation.entity";
+import {
+  GithubAppAuth,
+  GithubAppInstallation,
+  GithubAppRequestError,
+} from "../github-api/github-app-auth";
+import { GithubInstallationOwner } from "../github-api/github-installation-owner";
 import { isSharedInstallation } from "../github-api/installation-sharing";
 
 /** Everything a new event is created from; see EventService.createEvent. */
@@ -59,7 +65,7 @@ export interface CreateEventInput {
     basePath: string;
     myCoreBotDockerImage: string;
   }[];
-  /** A shared installation; checked again inside the transaction. */
+  /** A shared or actively owned installation, checked at create time. */
   githubInstallationId: string | null;
 }
 
@@ -78,6 +84,7 @@ export class EventService {
     @Inject(forwardRef(() => TeamService))
     private readonly teamService: TeamService,
     private readonly dataSource: DataSource,
+    private readonly githubAppAuth: GithubAppAuth,
   ) {}
 
   logger = new Logger("EventService");
@@ -332,7 +339,7 @@ export class EventService {
   /**
    * Creates the event, its starter templates and the creator's event ADMIN
    * role, and links the installation, all in one transaction. The settings
-   * are already merged and validated; the installation must be shared.
+   * are already merged and validated; unshared installations need ownership.
    */
   async createEvent({
     userId,
@@ -350,6 +357,9 @@ export class EventService {
       introLeadMinutes: settings.introLeadMinutes,
     };
     this.validateLifecycleDates(dates);
+    const endDate = new Date(settings.endDate);
+    if (!Number.isFinite(endDate.getTime()))
+      throw new BadRequestException("A valid endDate is required");
     const streamUrl = normalizeStreamUrl(settings.streamUrl);
     const showtimeStreamUrl = normalizeStreamUrl(
       settings.showtimeStreamUrl,
@@ -363,6 +373,44 @@ export class EventService {
     ]);
     await Promise.all([...images].map(assertImageExists));
 
+    // GitHub calls run before the transaction, then local status/sharing are
+    // checked under a row lock. Never reuse the list endpoint's ownership cache.
+    let ownedInstallationId: string | null = null;
+    if (githubInstallationId) {
+      const installation = await this.dataSource
+        .getRepository(GithubInstallationEntity)
+        .findOneBy({ id: githubInstallationId });
+      if (!installation || installation.suspendedAt || installation.deletedAt)
+        throw new BadRequestException(
+          "The GitHub installation is unknown, suspended or uninstalled.",
+        );
+      if (!isSharedInstallation(installation)) {
+        let live: GithubAppInstallation;
+        try {
+          live = await this.githubAppAuth.getInstallation(
+            installation.installationId,
+          );
+        } catch (error) {
+          if (error instanceof GithubAppRequestError && error.status === 404)
+            throw new BadRequestException(
+              "The GitHub installation is uninstalled.",
+            );
+          throw error;
+        }
+        if (!live.account || live.suspended_at)
+          throw new BadRequestException(
+            "The GitHub installation is unavailable.",
+          );
+        const user = await this.dataSource
+          .getRepository(UserEntity)
+          .findOneByOrFail({ id: userId });
+        await new GithubInstallationOwner(
+          this.githubAppAuth,
+        ).assertCanManageAccount(live, user.githubId);
+        ownedInstallationId = installation.id;
+      }
+    }
+
     return this.dataSource.transaction(async (manager) => {
       const installation = githubInstallationId
         ? await manager.getRepository(GithubInstallationEntity).findOne({
@@ -370,9 +418,20 @@ export class EventService {
             lock: { mode: "pessimistic_read" },
           })
         : null;
-      if (githubInstallationId && !isSharedInstallation(installation))
+      if (
+        githubInstallationId &&
+        (!installation || installation.suspendedAt || installation.deletedAt)
+      )
         throw new BadRequestException(
-          "Only a GitHub installation that a global admin shared can be linked when creating an event. Connect your own organization from the event dashboard instead.",
+          "The GitHub installation is unknown, suspended or uninstalled.",
+        );
+      if (
+        installation &&
+        !isSharedInstallation(installation) &&
+        ownedInstallationId !== installation.id
+      )
+        throw new ConflictException(
+          "This installation is no longer shared. Retry to check ownership.",
         );
 
       const events = manager.getRepository(EventEntity);
@@ -394,7 +453,7 @@ export class EventService {
           canCreateTeam: isRegistrationOpen(dates),
           processQueue: isRegistrationOpen(dates),
           gamblingEnabled: isRegistrationOpen(dates),
-          endDate: dates.scheduledEndDate,
+          endDate,
           repoLockDate: dates.submissionDeadline,
           users: [{ id: userId }],
           gameServerDockerImage: settings.gameServerDockerImage,

@@ -14,6 +14,7 @@ import { EventEntity } from "../event/entities/event.entity";
 import { isPlaying } from "../event/event-lifecycle";
 import { EventService } from "../event/event.service";
 import { GithubInstallationEntity } from "../github-api/entities/github-installation.entity";
+import { GithubInstallationOwner } from "../github-api/github-installation-owner";
 import { isSharedInstallation } from "../github-api/installation-sharing";
 import {
   GithubAppAuth,
@@ -25,8 +26,6 @@ import { UserEntity } from "../user/entities/user.entity";
 import { GithubInstallStateSigner } from "./github-app-state";
 import { AuthorizationService, EventPolicy, type Principal } from "../authz";
 
-const GITHUB_API_URL = "https://api.github.com";
-const REQUEST_TIMEOUT_MS = 10 * 1000;
 const OWNED_INSTALLATIONS_CACHE_MS = 60 * 1000;
 const OWNERSHIP_CHECK_CONCURRENCY = 4;
 
@@ -90,6 +89,7 @@ interface InstallationWebhook {
 @Injectable()
 export class GithubAppService {
   private readonly logger = new Logger(GithubAppService.name);
+  private readonly owner: GithubInstallationOwner;
   private readonly stateSigner: GithubInstallStateSigner;
   private readonly ownedInstallationsCache = new Map<
     string,
@@ -105,6 +105,9 @@ export class GithubAppService {
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly authorization: AuthorizationService,
   ) {
+    this.owner = new GithubInstallationOwner(githubAppAuth, (input, init) =>
+      this.fetch(input, init),
+    );
     this.stateSigner = new GithubInstallStateSigner(
       configService.getOrThrow<string>("JWT_SECRET"),
     );
@@ -215,6 +218,52 @@ export class GithubAppService {
       .sort((a, b) => a.accountLogin.localeCompare(b.accountLogin));
   }
 
+  /** Linkable installations before an event exists; ids are local UUIDs. */
+  async listInstallations(user: Principal) {
+    if (!this.githubAppAuth.isEnabled()) return [];
+    const owned = await this.ownedInstallations(user.id);
+    const installations = this.dataSource.getRepository(
+      GithubInstallationEntity,
+    );
+    if (owned.length) {
+      // The owner list may be cached. Only materialize missing UUIDs; never
+      // overwrite newer suspension/uninstall/rename webhook state from it.
+      await installations
+        .createQueryBuilder()
+        .insert()
+        .values(
+          owned.map((installation) => ({
+            installationId: installation.id,
+            accountId: installation.account!.id,
+            accountLogin: installation.account!.login,
+            accountType: installation.account!.type,
+          })),
+        )
+        .orIgnore()
+        .execute();
+    }
+    const rows = await installations.findBy([
+      ...(owned.length
+        ? [
+            {
+              installationId: In(owned.map(({ id }) => id)),
+              suspendedAt: IsNull(),
+              deletedAt: IsNull(),
+            },
+          ]
+        : []),
+      { sharedAt: Not(IsNull()), suspendedAt: IsNull(), deletedAt: IsNull() },
+    ]);
+    return rows
+      .map((row) => ({
+        id: row.id,
+        accountLogin: row.accountLogin,
+        accountType: row.accountType,
+        shared: isSharedInstallation(row),
+      }))
+      .sort((a, b) => a.accountLogin.localeCompare(b.accountLogin));
+  }
+
   /** Connects an installation that already exists, without the install redirect. */
   linkInstallation(eventId: string, user: Principal, installationId: number) {
     return this.connectInstallation(eventId, user, installationId);
@@ -253,6 +302,8 @@ export class GithubAppService {
       );
 
     const installation = await this.fetchInstallation(installationId);
+    if (installation.suspended_at)
+      throw new BadRequestException("The GitHub installation is suspended.");
     const account = installation.account;
     if (!account)
       throw new BadRequestException("The installation has no GitHub account.");
@@ -265,11 +316,12 @@ export class GithubAppService {
     const known = await this.dataSource
       .getRepository(GithubInstallationEntity)
       .findOneBy({ installationId });
-    if (!isSharedInstallation(known)) {
+    const ownershipChecked = !isSharedInstallation(known);
+    if (ownershipChecked) {
       const user = await this.dataSource
         .getRepository(UserEntity)
         .findOneByOrFail({ id: userId });
-      await this.assertCanManageAccount(installation, user.githubId);
+      await this.owner.assertCanManageAccount(installation, user.githubId);
     }
     // Fetched before the transaction so no GitHub call runs under its locks.
     const accessibleRepositories =
@@ -326,7 +378,14 @@ export class GithubAppService {
             : null,
           deletedAt: null,
         };
-        let row = await installations.findOneBy({ installationId });
+        let row = await installations.findOne({
+          where: { installationId },
+          lock: { mode: "pessimistic_write" },
+        });
+        if (!ownershipChecked && !isSharedInstallation(row))
+          throw new ForbiddenException(
+            "This installation is no longer shared. Retry to check ownership.",
+          );
         if (row) await installations.update(row.id, fields);
         else row = await installations.save({ installationId, ...fields });
         await manager.getRepository(EventEntity).update(event.id, {
@@ -395,6 +454,8 @@ export class GithubAppService {
         "The CORE GitHub App is not configured on this server.",
       );
     const installation = await this.fetchInstallation(row.installationId);
+    if (row.suspendedAt || installation.suspended_at)
+      throw new BadRequestException("The GitHub installation is suspended.");
     if (!installation.account)
       throw new BadRequestException("The installation has no GitHub account.");
     const missing = missingPermissions(installation.permissions);
@@ -405,7 +466,7 @@ export class GithubAppService {
     const user = await this.dataSource
       .getRepository(UserEntity)
       .findOneByOrFail({ id: admin.id });
-    await this.assertCanManageAccount(installation, user.githubId);
+    await this.owner.assertCanManageAccount(installation, user.githubId);
     // Sharing again keeps who shared it first.
     await installations.update(
       { id, sharedAt: IsNull() },
@@ -577,7 +638,7 @@ export class GithubAppService {
     );
     if (!candidates.length) return [];
 
-    const login = await this.githubLogin(candidates[0].id, user.githubId);
+    const login = await this.owner.githubLogin(candidates[0].id, user.githubId);
     if (!login) return [];
     const owned: GithubAppInstallation[] = [];
     let failures = 0;
@@ -586,7 +647,7 @@ export class GithubAppService {
       while (next < candidates.length) {
         const installation = candidates[next++];
         try {
-          if (await this.isActiveOwner(installation, login))
+          if (await this.owner.isActiveOwner(installation, login))
             owned.push(installation);
         } catch (error) {
           failures++;
@@ -631,95 +692,18 @@ export class GithubAppService {
     }
   }
 
-  /**
-   * Organization installs need an active org owner; anyone else could connect
-   * an installation they saw elsewhere to their own event.
-   */
-  private async assertCanManageAccount(
-    installation: GithubAppInstallation,
-    githubId: string,
-  ) {
-    if (await this.canManageAccount(installation, githubId)) return;
-    const account = installation.account!;
-    throw new ForbiddenException(
-      account.type === "Organization"
-        ? `Only an owner of ${account.login} can connect it to an event.`
-        : `Only ${account.login} can connect this installation.`,
-    );
-  }
-
-  private async canManageAccount(
-    installation: GithubAppInstallation,
-    githubId: string,
-  ) {
-    const account = installation.account!;
-    if (account.type !== "Organization") return String(account.id) === githubId;
-    const login = await this.githubLogin(installation.id, githubId);
-    return login ? this.isActiveOwner(installation, login) : false;
-  }
-
-  /** The user's current login; the stored username may be outdated, the GitHub ID is stable. */
-  private async githubLogin(installationId: number, githubId: string) {
-    const token = await this.githubAppAuth.getInstallationToken(installationId);
-    const githubUser = await this.githubRequest<{ login: string }>(
-      token,
-      `/user/${encodeURIComponent(githubId)}`,
-    );
-    return githubUser?.login ?? null;
-  }
-
-  private async isActiveOwner(
-    installation: GithubAppInstallation,
-    login: string,
-  ) {
-    const token = await this.githubAppAuth.getInstallationToken(
-      installation.id,
-    );
-    const membership = await this.githubRequest<{
-      role: string;
-      state: string;
-    }>(
-      token,
-      `/orgs/${encodeURIComponent(installation.account!.login)}/memberships/${encodeURIComponent(login)}`,
-    );
-    return membership?.role === "admin" && membership.state === "active";
-  }
-
   /** Lower-cased names of the repositories a "selected repositories" installation can access. */
   private async listInstallationRepositories(installationId: number) {
     const token = await this.githubAppAuth.getInstallationToken(installationId);
     const names = new Set<string>();
     for (let page = 1; ; page++) {
-      const result = await this.githubRequest<{
+      const result = await this.owner.request<{
         repositories: { name: string }[];
       }>(token, `/installation/repositories?per_page=100&page=${page}`);
       const repositories = result?.repositories ?? [];
       for (const { name } of repositories) names.add(name.toLowerCase());
       if (repositories.length < 100) return names;
     }
-  }
-
-  /** A GET with an installation token; null when GitHub answers 404. */
-  private async githubRequest<T>(token: string, path: string) {
-    const response = await this.fetch(`${GITHUB_API_URL}${path}`, {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "User-Agent": "CORE-GitHub-App",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-    if (response.status === 404) return null;
-    if (!response.ok) {
-      this.logger.error(
-        `GitHub request ${path} failed with ${response.status}`,
-      );
-      throw new BadGatewayException(
-        "Could not check the installation on GitHub. Try again.",
-      );
-    }
-    return (await response.json()) as T;
   }
 }
 

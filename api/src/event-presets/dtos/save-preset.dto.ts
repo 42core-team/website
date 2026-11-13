@@ -14,6 +14,7 @@ import {
   Min,
   MinLength,
   ValidateNested,
+  ValidateIf,
 } from "class-validator";
 import { EVENT_MAX_STARTER_TEMPLATES } from "../../event/dtos/createEventDto";
 import { CreateEventStarterTemplateDto } from "../../event/dtos/createEventStarterTemplateDto";
@@ -41,7 +42,7 @@ export class CreatePresetDto {
 
   /** True makes this the default preset and unsets the previous default. */
   @ApiPropertyOptional()
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsBoolean()
   isDefault?: boolean;
 
@@ -53,7 +54,7 @@ export class CreatePresetDto {
   settings: PresetSettingsDto;
 
   @ApiPropertyOptional({ type: [CreateEventStarterTemplateDto] })
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsArray()
   @ArrayMaxSize(EVENT_MAX_STARTER_TEMPLATES)
   @ValidateNested({ each: true })

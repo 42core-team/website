@@ -72,6 +72,9 @@ function setup(
     [
       GithubInstallationEntity,
       {
+        findOne: jest
+          .fn()
+          .mockResolvedValue(options.existingInstallation ?? null),
         findOneBy: jest
           .fn()
           .mockResolvedValue(options.existingInstallation ?? null),
@@ -560,6 +563,30 @@ describe("GithubAppService", () => {
         "event",
         expect.objectContaining({ githubInstallationId: "row" }),
       );
+    });
+
+    it("does not link without ownership if sharing was revoked before commit", async () => {
+      const { service, repositories } = setup({
+        membership: { role: "member", state: "active" },
+        existingInstallation: {
+          id: "row",
+          installationId: 77,
+          sharedAt: new Date(),
+          deletedAt: null,
+        },
+      });
+      repositories
+        .get(GithubInstallationEntity)!
+        .findOne.mockResolvedValue({
+          id: "row",
+          installationId: 77,
+          sharedAt: null,
+          deletedAt: null,
+        });
+      await expect(service.linkInstallation("event", USER, 77)).rejects.toThrow(
+        "no longer shared",
+      );
+      expect(repositories.get(EventEntity)!.update).not.toHaveBeenCalled();
     });
 
     it("checks the owner of a shared installation that was uninstalled", async () => {

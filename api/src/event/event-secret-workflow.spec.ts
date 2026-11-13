@@ -35,6 +35,7 @@ describe("event organization secret storage", () => {
       { getOrThrow: jest.fn().mockReturnValue(encryptionKey) } as never,
       {} as never,
       dataSource as never,
+      {} as never,
     );
 
     return { eventRepository, roleRepository, service };

@@ -80,6 +80,12 @@ export class GithubAppController {
     );
   }
 
+  @SignedIn()
+  @Get("github/installations")
+  listForCreate(@CurrentUser() user: UserEntity) {
+    return this.githubAppService.listInstallations(user);
+  }
+
   /**
    * Called by the frontend page that GitHub's Setup URL points to. The event
    * comes from the signed state, so the service checks the admin rights.

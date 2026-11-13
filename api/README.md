@@ -180,13 +180,53 @@ provenance. `POST /event` no longer takes an organizer token (`githubOrg`,
 A preset's schedule is relative: the start is `startTime` (Europe/Berlin
 wall-clock time) `startOffsetDays` after the day of creation, and the other
 dates are hours after the start. `EventPresets1793200000000` seeds the
-"Default" preset with the create form's former defaults.
+"Default" preset with the create form's former defaults and the official
+`42core-team/config` game/server JSON at commit `54f501a`, embedded in the
+migration. It keeps `basePath: bots/c/bot`. Node 26 provides Temporal without
+a flag (there is no `.nvmrc`; engines, Docker and CI specify Node 26).
+If create overrides `startDate`, omitted dates move by the same delta;
+explicit dates are kept. `scheduledEndDate` controls the lifecycle, while
+`endDate` is also stored as sent. `repoLockDate` follows the submission deadline.
 
 Global admins can share a GitHub App installation at
 `/admin/github-installations`, after passing the owner check once. Any event
 creator may then link it, from a preset, on create or from the dashboard,
-without owning its organization. Creating an event only links shared
-installations; unsharing leaves linked events alone.
+without owning its organization. Unshared installations require a fresh owner
+check when linked, including on create; suspended or uninstalled installations
+are rejected with 400. Unsharing leaves linked events alone.
+
+The create picker uses signed-in `GET /github/installations`, returning
+`[{ id, accountLogin, accountType, shared }]`. `id` is our UUID; owned and shared
+installations are deduplicated. The existing event dashboard routes still use
+GitHub's numeric `installationId`, and their list now includes `shared`.
+Presets may only save a shared, active installation. If it later stops being
+shared or active, resolve returns `githubInstallation: null` and omitted links
+on create resolve to none.
+
+Admins set the default with `POST /admin/event-presets/:id/default` (200,
+the same detail shape as GET). It clears the old default and bumps both
+versions in one transaction. Archived presets return 409; setting the current
+default again is a no-op. PUT, POST with `isDefault`, and this endpoint serialize
+default changes together. A stale PUT returns exactly
+`{ "message": "Preset was changed by someone else" }` with status 409.
+Archive/unarchive and losing default status also bump the version when changed.
+
+Create treats omitted `githubInstallationId`/`starterTemplates` as the preset's;
+`null` installation means none, and `[]` templates means none. Unknown body
+properties and null settings return 400. `isPrivate` remains accepted for old
+clients but every event starts private. PUT requires name, settings and version;
+omitted optional fields keep their values. Clear description or installation
+with null and templates with []. Duplicates are named `X (copy)`, then
+`X (copy 2)`, etc.
+
+The admin installation rows additionally expose `status` (`active`, `suspended`,
+`uninstalled`). Preset schedule hour fields are capped at 8784; a resolved
+submission deadline must follow the start. Missing deadline/end offsets fall
+back to `endAfterHours`, then 1h/2h respectively; `endDate` falls back to the
+scheduled end. Saving presets checks public tagged ghcr images. Requests are
+time-bounded, never follow redirects, and skip validation on network errors,
+rate limits and registry outages. Private or unsupported image references are
+left unchecked.
 
 ## API Documentation
 

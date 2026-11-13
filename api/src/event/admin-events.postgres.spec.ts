@@ -44,6 +44,7 @@ postgres("admin event lookup (PostgreSQL)", () => {
       {} as never,
       {} as never,
       database,
+      {} as never,
     );
     const principals = {
       admin: principalWith("admin", UserRole.ADMIN),

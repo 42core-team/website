@@ -49,6 +49,7 @@ postgres("event admins in user_roles (PostgreSQL)", () => {
       {} as never,
       {} as never,
       database,
+      {} as never,
     );
   });
 

@@ -8,6 +8,7 @@ import { TeamModule } from "../team/team.module";
 import { UserModule } from "../user/user.module";
 import { UserRoleEntity } from "../user/entities/user-role.entity";
 import { CheckController } from "./check.controller";
+import { GithubApiModule } from "../github-api/github-api.module";
 import { EventPresetsModule } from "../event-presets/event-presets.module";
 
 import { EventStarterTemplateEntity } from "./entities/event-starter-template.entity";
@@ -23,6 +24,7 @@ import { EventWhitelistEntity } from "./entities/event-whitelist.entity";
     ]),
     UserModule,
     EventPresetsModule,
+    GithubApiModule,
     forwardRef(() => TeamModule),
   ],
   controllers: [EventController, CheckController, AdminEventsController],
