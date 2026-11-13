@@ -188,7 +188,6 @@ postgres("private event visibility (PostgreSQL)", () => {
     return database.getRepository(EventEntity).save({
       name: randomUUID().slice(0, 30),
       githubOrg: "org",
-      githubOrgSecret: "secret",
       isPrivate,
       gameServerDockerImage: "server:1",
       myCoreBotDockerImage: "bot:1",

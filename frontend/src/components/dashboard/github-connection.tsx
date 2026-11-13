@@ -31,11 +31,10 @@ export function useEventGithubStatus(eventId: string) {
   })
 }
 
-/** Whether repositories can be created; false while the status is unknown. */
+/** Whether repositories can be created; true while the status is unknown. */
 export function isGithubReady(status: EventGithubStatus | undefined) {
   if (!status) return true
-  if (status.installation) return status.installation.status === 'active'
-  return status.usesOrganizerToken
+  return status.installation?.status === 'active'
 }
 
 const STATUS_LABELS = {
@@ -169,11 +168,9 @@ export function GithubConnection({ eventId }: { eventId: string }) {
             )}
             {installation
               ? 'Reconnect GitHub App'
-              : status.usesOrganizerToken
-                ? 'Switch to the CORE GitHub App'
-                : linkable.length > 0
-                  ? 'Install on another organization'
-                  : 'Connect GitHub App'}
+              : linkable.length > 0
+                ? 'Install on another organization'
+                : 'Connect GitHub App'}
           </Button>
         </CardContent>
       )}
@@ -189,8 +186,9 @@ function describe(status: EventGithubStatus) {
     return `The CORE GitHub App is suspended on ${installation.accountLogin}. An organization owner must unsuspend it on GitHub before repositories can be created.`
   if (installation?.status === 'uninstalled')
     return `The CORE GitHub App was uninstalled from ${installation.accountLogin}. Reconnect it to create repositories and run matches.`
-  if (status.usesOrganizerToken)
-    return `Repositories are created in ${status.githubOrg} with the organization token. An owner of ${status.githubOrg} can switch this event to the CORE GitHub App, so no token has to be stored.`
+  // Events that used an organization token before keep their organization.
+  if (status.githubOrg)
+    return `GitHub is not connected. The team repositories are in ${status.githubOrg}, so an owner of ${status.githubOrg} must connect the CORE GitHub App there before repositories can be created and matches can run.`
   return 'GitHub is not connected yet. An owner of the organization that should hold the team repositories must connect the CORE GitHub App before teams can get repositories.'
 }
 

@@ -47,7 +47,7 @@ autoscaling:
 # Optional non-sensitive environment variables
 env:
   RABBITMQ_QUEUE_PREFIX: ""
-  # CORE GitHub App; leave empty to keep using per-event organization tokens.
+  # CORE GitHub App; without it events cannot create team repositories.
   GITHUB_APP_ID: ""
 
 # Sensitive values are passed as Kubernetes Secret

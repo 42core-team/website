@@ -75,15 +75,12 @@ function setup(status = "PROVISIONING", closed = false) {
     createTeamRepository: jest.fn(),
   };
   Reflect.set(service, "githubApiService", github);
-  Reflect.set(service, "githubAuthService", tokenAuthService);
+  Reflect.set(service, "githubAuthService", githubAuthService);
   return { service, team, event, repository, manager, github };
 }
 
-const tokenAuthService = {
-  authFor: jest.fn(async (event: { githubOrgSecret: string }) => ({
-    kind: "token",
-    encryptedSecret: event.githubOrgSecret,
-  })),
+const githubAuthService = {
+  authFor: jest.fn(async () => ({ installationId: 42 })),
 };
 
 describe("repository lifecycle", () => {
@@ -324,6 +321,22 @@ describe("repository lifecycle", () => {
     },
   );
 
+  it("charges no credits for a direct match while the event cannot reach GitHub", async () => {
+    const { service, manager, team } = setup("READY");
+    team.repo = "repo";
+    manager.find.mockResolvedValue([team, { ...team, id: "opponent" }]);
+    Reflect.set(service, "githubAuthService", {
+      authFor: jest
+        .fn()
+        .mockRejectedValue(new GithubNotConnectedError("not connected")),
+    });
+    await expect(service.createDirectMatch("team", "opponent")).rejects.toThrow(
+      "not connected",
+    );
+    expect(manager.save).not.toHaveBeenCalled();
+    expect(team.credits).toBe(10);
+  });
+
   function setupRoster(status = "READY", afterStatusChange = () => {}) {
     const context = setup(status);
     const { team, manager, repository } = context;
@@ -410,6 +423,28 @@ describe("repository lifecycle", () => {
     expect(github.setRepositoryAccess).toHaveBeenCalledWith(
       expect.objectContaining({ locked: false }),
     );
+  });
+
+  it("refuses roster changes while the event cannot reach GitHub", async () => {
+    const disconnected = {
+      authFor: jest
+        .fn()
+        .mockRejectedValue(new GithubNotConnectedError("not connected")),
+    };
+    const leaving = setupRoster();
+    Reflect.set(leaving.service, "githubAuthService", disconnected);
+    await expect(leaving.service.leaveTeam("team", "leaves")).rejects.toThrow(
+      "not connected",
+    );
+    expect(leaving.order).toEqual(["lock"]);
+
+    const joining = setupRoster();
+    Reflect.set(joining.service, "githubAuthService", disconnected);
+    await expect(
+      joining.service.acceptTeamInvite("joins", "team"),
+    ).rejects.toThrow("not connected");
+    expect(joining.order).toEqual(["lock:user", "lock"]);
+    expect(joining.github.setRepositoryAccess).not.toHaveBeenCalled();
   });
 
   it("locks rather than unlocks when a roster change races submission closure", async () => {

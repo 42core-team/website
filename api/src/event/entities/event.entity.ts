@@ -36,17 +36,12 @@ export class EventEntity {
   @Column()
   githubOrg: string;
 
-  /** The organizer's encrypted token; null for events that only use the GitHub App. */
-  @Exclude()
-  @Column({ type: "varchar", nullable: true })
-  githubOrgSecret: string | null;
-
   @Exclude()
   @Column({ type: "uuid", nullable: true })
   @Index("IDX_events_github_installation_id")
   githubInstallationId: string | null;
 
-  /** When set, the event uses the CORE GitHub App instead of `githubOrgSecret`. */
+  /** The CORE GitHub App installation that creates the event's repositories. */
   @Exclude()
   @ManyToOne(() => GithubInstallationEntity, {
     nullable: true,

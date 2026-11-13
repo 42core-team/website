@@ -127,8 +127,6 @@ export class EventController {
       userId,
       createEventDto.name,
       createEventDto.description,
-      createEventDto.githubOrg,
-      createEventDto.githubOrgSecret,
       createEventDto.location,
       createEventDto.startDate,
       createEventDto.endDate,
