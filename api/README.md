@@ -206,7 +206,9 @@ installations are deduplicated. The existing event dashboard routes still use
 GitHub's numeric `installationId`, and their list now includes `shared`.
 Presets may only save a shared, active installation. If it later stops being
 shared or active, resolve returns `githubInstallation: null` and omitted links
-on create resolve to none.
+on create resolve to none. Resolve, the admin list and the admin detail then
+report it in `warnings: string[]`, and a PUT may send the unchanged stale id
+back so other edits still save.
 
 Admins set the default with `POST /admin/event-presets/:id/default` (200,
 the same detail shape as GET). It clears the old default and bumps both
