@@ -23,6 +23,19 @@ export interface GrantRoleParams {
   role: Role
   eventId?: string
 }
+export interface AdminEventSearchResult {
+  id: string
+  name: string
+  isPrivate: boolean
+  startDate: string
+}
+export async function searchAdminEvents(q: string) {
+  return (
+    await axiosInstance.get<AdminEventSearchResult[]>('/admin/events', {
+      params: { q, limit: 20 },
+    })
+  ).data
+}
 export async function getRoles(
   filters: { userId?: string; eventId?: string } = {},
 ) {
