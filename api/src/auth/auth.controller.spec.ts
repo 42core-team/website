@@ -136,6 +136,10 @@ describe("AuthController sessions", () => {
         if (!user) throw new Error("EntityNotFound");
         return { ...user };
       }),
+      getUserWithRoles: jest.fn(async (id: string) => {
+        const user = users.get(id);
+        return user ? { ...user, roles: [] } : null;
+      }),
       getUserWithSocialAccounts: jest.fn(async (id: string) => users.get(id)),
       recordGithubCheck,
     };

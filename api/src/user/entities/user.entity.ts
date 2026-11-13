@@ -11,6 +11,7 @@ import {
 import { EventEntity } from "../../event/entities/event.entity";
 import { TeamEntity } from "../../team/entities/team.entity";
 import { SocialAccountEntity } from "./social-account.entity";
+import { UserRoleEntity } from "./user-role.entity";
 import { Exclude } from "class-transformer";
 import { LazyMediaArtwork } from "../../media/entities/media-artwork-columns";
 
@@ -72,6 +73,11 @@ export class UserEntity extends LazyMediaArtwork {
   permissions: UserEventPermissionEntity[];
 
   @Exclude()
+  @OneToMany(() => UserRoleEntity, (role) => role.user)
+  roles: UserRoleEntity[];
+
+  /** @deprecated Replaced by user_roles; kept for one release, never read. */
+  @Exclude()
   @Column({ default: false })
   canCreateEvent: boolean;
 }
@@ -81,6 +87,7 @@ export enum PermissionRole {
   ADMIN = "ADMIN",
 }
 
+/** @deprecated Replaced by user_roles; kept for one release, never read. */
 @Entity("user_event_permissions")
 export class UserEventPermissionEntity {
   @PrimaryGeneratedColumn("uuid")

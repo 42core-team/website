@@ -148,6 +148,14 @@ export class UserService {
     });
   }
 
+  /** The user with every role granted to them, for authorization. */
+  getUserWithRoles(userId: string) {
+    return this.userRepository.findOne({
+      where: { id: userId },
+      relations: { roles: true },
+    });
+  }
+
   getUserWithSocialAccounts(userId: string) {
     return this.userRepository.findOneOrFail({
       where: { id: userId },
