@@ -14,10 +14,11 @@ export const nameSchema = z.string().superRefine((value, ctx) => {
   const message = getEventNameError(value.trim())
   if (message) ctx.addIssue({ code: 'custom', message })
 })
-const url = z.union([z.literal(''), z.url()]).optional()
+// Optional fields can come back as null from the resolved preset.
+const url = z.union([z.literal(''), z.url()]).nullish()
 export const settingsShape = {
-  description: z.string().optional(),
-  location: z.string().optional(),
+  description: z.string().nullish(),
+  location: z.string().nullish(),
   minTeamSize: z.number().min(1).max(10),
   maxTeamSize: z.number().min(1).max(10),
   gameServerDockerImage: z.string().min(1),
@@ -28,8 +29,8 @@ export const settingsShape = {
   basePath: githubConfigSchema('basePath'),
   gameConfig: z.string().min(1),
   serverConfig: z.string().min(1),
-  introEnabled: z.boolean().optional(),
-  introLeadMinutes: z.number().int().min(0).optional(),
+  introEnabled: z.boolean().nullish(),
+  introLeadMinutes: z.number().int().min(0).nullish(),
   streamUrl: url,
   showtimeStreamUrl: url,
 }
@@ -37,17 +38,16 @@ export const eventSettingsSchema = z
   .object({
     ...settingsShape,
     startDate: z.number(),
-    submissionDeadline: z.number().optional(),
-    scheduledEndDate: z.number().optional(),
-    endDate: z.number().optional(),
+    submissionDeadline: z.number().nullish(),
+    scheduledEndDate: z.number().nullish(),
+    endDate: z.number().nullish(),
   })
   .refine((v) => v.maxTeamSize >= v.minTeamSize, {
     message: 'Max team size must be at least the min team size',
     path: ['maxTeamSize'],
   })
   .refine(
-    (v) =>
-      v.submissionDeadline === undefined || v.submissionDeadline > v.startDate,
+    (v) => v.submissionDeadline == null || v.submissionDeadline > v.startDate,
     {
       message: 'Submission deadline must be after play starts',
       path: ['submissionDeadline'],
