@@ -6,6 +6,8 @@ jest.mock("../match/match.service", () => ({
   MatchService: class MatchService {},
 }));
 
+jest.mock("./image.util", () => ({ assertImageExists: jest.fn() }));
+
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { DataSource } from "typeorm";
@@ -13,6 +15,11 @@ import { UserEntity } from "../user/entities/user.entity";
 import { UserRole, UserRoleEntity } from "../user/entities/user-role.entity";
 import { EventEntity } from "./entities/event.entity";
 import { EventService } from "./event.service";
+import { EventStarterTemplateEntity } from "./entities/event-starter-template.entity";
+import {
+  EventWhitelistEntity,
+  WhitelistPlatform,
+} from "./entities/event-whitelist.entity";
 
 // A dedicated test database is required; each run owns only its random schema.
 const databaseUrl = process.env.SESSION_TEST_DATABASE_URL;
@@ -36,8 +43,8 @@ postgres("event admins in user_roles (PostgreSQL)", () => {
     service = new EventService(
       database.getRepository(EventEntity),
       database.getRepository(UserRoleEntity),
-      {} as never,
-      {} as never,
+      database.getRepository(EventStarterTemplateEntity),
+      database.getRepository(EventWhitelistEntity),
       {} as never,
       {} as never,
       database,
@@ -74,6 +81,96 @@ postgres("event admins in user_roles (PostgreSQL)", () => {
       endDate: new Date("2099-01-01"),
     });
   }
+
+  function createAs(userId: string, name: string) {
+    return service.createEvent(
+      userId,
+      name,
+      "Description",
+      undefined,
+      undefined,
+      "Location",
+      Date.now(),
+      Date.now() + 60_000,
+      1,
+      4,
+      "game-image",
+      "bot-image",
+      "visualizer-image",
+      "https://github.com/example/mono.git",
+      "main",
+      "bot",
+      "{}",
+      "{}",
+      true,
+    );
+  }
+
+  it("creates the event and the creator's ADMIN grant together", async () => {
+    const user = await createUser();
+    const event = await createAs(user.id, randomUUID());
+    expect(event.isPrivate).toBe(true);
+    expect(
+      await database.getRepository(UserRoleEntity).findOneByOrFail({
+        userId: user.id,
+        eventId: event.id,
+      }),
+    ).toMatchObject({ role: UserRole.ADMIN, grantedById: user.id });
+  });
+
+  it("rolls back event creation if the creator's grant cannot be saved", async () => {
+    const user = await createUser();
+    const name = randomUUID();
+    await database.query(
+      `ALTER TABLE "${schema}".user_roles ADD CONSTRAINT test_reject_grant CHECK ("userId" <> '${user.id}'::uuid)`,
+    );
+    try {
+      await expect(createAs(user.id, name)).rejects.toThrow(
+        /test_reject_grant/,
+      );
+      expect(await database.getRepository(EventEntity).existsBy({ name })).toBe(
+        false,
+      );
+    } finally {
+      await database.query(
+        `ALTER TABLE "${schema}".user_roles DROP CONSTRAINT test_reject_grant`,
+      );
+    }
+  });
+
+  it("does not read, update or delete templates from another event", async () => {
+    const [event, other] = [await createEvent(), await createEvent()];
+    const repository = database.getRepository(EventStarterTemplateEntity);
+    const template = await repository.save({
+      name: "Other",
+      basePath: "bot",
+      myCoreBotDockerImage: "image",
+      event: other,
+    });
+    await expect(
+      service.getTemplateVersion(event.id, template.id),
+    ).rejects.toThrow();
+    await expect(
+      service.updateStarterTemplate(event.id, template.id, { name: "Changed" }),
+    ).rejects.toThrow();
+    await service.deleteStarterTemplate(event.id, template.id);
+    expect(await repository.findOneByOrFail({ id: template.id })).toMatchObject(
+      { name: "Other" },
+    );
+  });
+
+  it("does not delete whitelist entries from another event", async () => {
+    const [event, other] = [await createEvent(), await createEvent()];
+    const repository = database.getRepository(EventWhitelistEntity);
+    const entry = await repository.save({
+      platform: WhitelistPlatform.GITHUB,
+      username: "other",
+      event: other,
+    });
+    await service.removeFromWhitelist(event.id, entry.id);
+    await service.bulkRemoveFromWhitelist(event.id, [entry.id]);
+    expect(await repository.existsBy({ id: entry.id })).toBe(true);
+  });
 
   it("adds, lists and removes event admins", async () => {
     const [first, second] = [await createUser(), await createUser()];

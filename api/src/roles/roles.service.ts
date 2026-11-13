@@ -91,21 +91,24 @@ export class RolesService {
       const roles = manager.getRepository(UserRoleEntity);
       const row = await roles.findOne({
         where: { id },
-        lock: { mode: "pessimistic_write" },
       });
       if (!row) throw new NotFoundException("Role not found.");
 
       if (row.role === UserRole.ADMIN && row.eventId === null) {
-        // Lock every global admin row, so two concurrent revocations cannot
-        // each see another admin left and remove both.
+        // Acquire all admin locks in the same order, before locking a target:
+        // locking different target rows first deadlocks concurrent revocations.
         const admins = await roles.find({
           where: { role: UserRole.ADMIN, eventId: IsNull() },
+          order: { id: "ASC" },
           lock: { mode: "pessimistic_write" },
         });
+        if (!admins.some((admin) => admin.id === id))
+          throw new NotFoundException("Role not found.");
         if (admins.length <= 1)
           throw new ConflictException("Cannot remove the last global admin.");
       }
-      await roles.delete(row.id);
+      const result = await roles.delete(row.id);
+      if (!result.affected) throw new NotFoundException("Role not found.");
     });
   }
 }
