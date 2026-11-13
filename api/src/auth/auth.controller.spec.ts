@@ -20,6 +20,7 @@ import cookieParser from "cookie-parser";
 import request from "supertest";
 import { UserService } from "../user/user.service";
 import { AuthzModule, type RoleGrant, UserRole } from "../authz";
+import { EventAudience } from "../authz/event-audience";
 import { SocialAccountService } from "../user/social-account.service";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
@@ -186,7 +187,10 @@ describe("AuthController sessions", () => {
           useValue: { authenticate: async () => USER },
         },
       ],
-    }).compile();
+    })
+      .overrideProvider(EventAudience)
+      .useValue({ includes: async () => false })
+      .compile();
 
     app = module.createNestApplication();
     app.use(cookieParser());

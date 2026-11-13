@@ -7,7 +7,12 @@ import { EventPolicy } from "../authz";
 
 const as = (id: string) => ({ id, roles: [] });
 
-function setup(phase: MatchPhase, isRevealed: boolean, isAdmin: boolean) {
+function setup(
+  phase: MatchPhase,
+  isRevealed: boolean,
+  isAdmin: boolean,
+  seesEvent = true,
+) {
   const match = Object.assign(new MatchEntity(), {
     id: "match",
     phase,
@@ -22,7 +27,9 @@ function setup(phase: MatchPhase, isRevealed: boolean, isAdmin: boolean) {
     results: [{ team: { id: "a", name: "A" }, score: 1 }],
     stats: { actionsExecuted: 918273 },
   });
-  const can = jest.fn().mockResolvedValue(isAdmin);
+  const can = jest.fn(async (_policy: unknown, ability: string) =>
+    ability === "view" ? seesEvent : isAdmin,
+  );
   const service = Object.create(MatchService.prototype) as MatchService;
   Object.assign(service, {
     authorization: { can },
@@ -56,7 +63,12 @@ describe("MatchService.getMatchResponseById", () => {
     await expect(
       service.getMatchResponseById("match", as("admin"), false),
     ).rejects.toThrow(NotFoundException);
-    expect(can).not.toHaveBeenCalled();
+    expect(can).not.toHaveBeenCalledWith(
+      EventPolicy,
+      "viewUnrevealedResults",
+      expect.anything(),
+      expect.anything(),
+    );
   });
 
   it("gives a verified admin in reveal mode the result", async () => {
@@ -97,7 +109,19 @@ describe("MatchService.getMatchResponseById", () => {
         winner: { id: "a" },
         stats: { actionsExecuted: 918273 },
       });
-      expect(can).not.toHaveBeenCalled();
+      expect(can.mock.calls).toEqual([
+        [EventPolicy, "view", as("user"), "event"],
+      ]);
+    },
+  );
+
+  it.each(Object.values(MatchPhase))(
+    "answers 404 for a revealed %s match of an event hidden from the viewer",
+    async (phase) => {
+      const { service } = setup(phase, true, true, false);
+      await expect(
+        service.getMatchResponseById("match", as("user"), true),
+      ).rejects.toThrow(NotFoundException);
     },
   );
 

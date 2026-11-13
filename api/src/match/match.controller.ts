@@ -22,7 +22,6 @@ import {
   CurrentUser,
   EventPolicy,
   param,
-  Public,
   SignedIn,
 } from "../authz";
 import { UserEntity } from "../user/entities/user.entity";
@@ -41,6 +40,7 @@ export class MatchController {
   private readonly logger = new Logger(MatchController.name);
 
   @SignedIn()
+  @Can(EventPolicy, "view", param("eventId"))
   @Get("swiss/:eventId")
   getSwissMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
@@ -97,13 +97,14 @@ export class MatchController {
     return this.matchService.startTournamentMatches(eventId);
   }
 
-  @Public()
+  @Can(EventPolicy, "view", param("eventId"))
   @Get("tournament/:eventId/teamCount")
   getTournamentTeamCount(@Param("eventId", ParseUUIDPipe) eventId: string) {
     return this.matchService.getTournamentTeamCount(eventId);
   }
 
   @SignedIn()
+  @Can(EventPolicy, "view", param("eventId"))
   @Get("tournament/:eventId")
   getTournamentMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
@@ -119,6 +120,7 @@ export class MatchController {
   }
 
   @SignedIn()
+  @Can(EventPolicy, "view", param("eventId"))
   @Get("queue/:eventId")
   async getQueueMatches(
     @Param("eventId", ParseUUIDPipe) eventId: string,
@@ -168,9 +170,9 @@ export class MatchController {
   @Get("team/:teamId")
   async getMatchesForTeam(
     @Param("teamId", ParseUUIDPipe) teamId: string,
-    @UserId() userId: string,
+    @CurrentUser() user: UserEntity,
   ) {
-    return await this.matchService.getMatchesForTeam(teamId, userId);
+    return await this.matchService.getMatchesForTeam(teamId, user);
   }
 
   @SignedIn()

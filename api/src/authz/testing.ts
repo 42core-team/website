@@ -1,24 +1,54 @@
 import { DynamicModule, ExecutionContext, Module } from "@nestjs/common";
 import { APP_GUARD, NestFactory } from "@nestjs/core";
-import {
-  AuthorizationModule,
-  AuthorizationService,
-} from "@nestjs/authorization";
-import { POLICIES } from "./authz.module";
+import { AuthorizationService } from "@nestjs/authorization";
+import { DataSource } from "typeorm";
+import { AuthorizationGuard } from "./authorization.guard";
+import { authorizationModule } from "./authz.module";
+import { EventAudience } from "./event-audience";
 import { Principal, UserRole } from "./roles";
 
-@Module({
-  imports: [
-    AuthorizationModule.forRoot({ globalGuard: false, policies: POLICIES }),
-  ],
-})
-class TestAuthorizationModule {}
+@Module({})
+class TestEventAudienceModule {}
+
+/**
+ * EventAudience on the test's database. Without one, `EventPolicy.view`
+ * fails for everyone its roles do not already let in.
+ */
+function eventAudienceModule(database?: DataSource): DynamicModule {
+  return {
+    module: TestEventAudienceModule,
+    providers: [
+      database
+        ? {
+            provide: EventAudience,
+            useFactory: () => new EventAudience(database),
+          }
+        : {
+            provide: EventAudience,
+            useValue: {
+              includes: () =>
+                Promise.reject(
+                  new Error(
+                    "EventPolicy.view needs a database: pass it to the authz test helper.",
+                  ),
+                ),
+            },
+          },
+    ],
+    exports: [EventAudience],
+  };
+}
 
 /**
  * A real AuthorizationService with the app's policies, for tests that build
  * services by hand instead of through a Nest module.
  */
-export async function createAuthorizationService(): Promise<AuthorizationService> {
+export async function createAuthorizationService(
+  database?: DataSource,
+): Promise<AuthorizationService> {
+  @Module({ imports: [authorizationModule([eventAudienceModule(database)])] })
+  class TestAuthorizationModule {}
+
   const context = await NestFactory.createApplicationContext(
     TestAuthorizationModule,
     { logger: false },
@@ -42,13 +72,15 @@ class AuthzTestingModule {}
  * The app's global guards for HTTP tests, with the user taken from the
  * `x-test-user` header instead of a session cookie: `loadUser` returns them
  * with their roles, or null. Without the header the request is a guest.
+ * `database` backs `EventPolicy.view`.
  */
 export function authzTestingModule(
   loadUser: (id: string) => Promise<Principal | null>,
+  database?: DataSource,
 ): DynamicModule {
   return {
     module: AuthzTestingModule,
-    imports: [AuthorizationModule.forRoot({ policies: POLICIES })],
+    imports: [authorizationModule([eventAudienceModule(database)])],
     providers: [
       {
         provide: APP_GUARD,
@@ -61,6 +93,7 @@ export function authzTestingModule(
           },
         },
       },
+      { provide: APP_GUARD, useClass: AuthorizationGuard },
     ],
   };
 }

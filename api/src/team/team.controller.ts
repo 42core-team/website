@@ -55,11 +55,15 @@ export class TeamController {
 
   @Public()
   @Get(":id")
-  getTeamById(@Param("id", new ParseUUIDPipe()) id: string) {
-    return this.teamService.getTeamByIdWithTags(id);
+  getTeamById(
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @CurrentUser() user: UserEntity | null,
+  ) {
+    return this.teamService.getTeamByIdWithTags(id, user);
   }
 
   @SignedIn()
+  @Can(EventPolicy, "view", param(EVENT_ID_PARAM))
   @Get(`event/:${EVENT_ID_PARAM}`)
   getTeamsForEvent(
     @EventId eventId: string,
@@ -172,9 +176,11 @@ export class TeamController {
 
   @Public()
   @Get(":id/members")
-  async getTeamMembers(@Param("id", new ParseUUIDPipe()) teamId: string) {
-    const event = await this.eventService.getEventByTeamId(teamId);
-    const team = await this.teamService.getTeamById(teamId, {
+  async getTeamMembers(
+    @Param("id", new ParseUUIDPipe()) teamId: string,
+    @CurrentUser() viewer: UserEntity | null,
+  ) {
+    const team = await this.teamService.getVisibleTeamById(teamId, viewer, {
       users: {
         ...USER_ARTWORK_RELATIONS,
         socialAccounts: true,
@@ -184,7 +190,7 @@ export class TeamController {
 
     return team.users.map((user) => {
       // The event's own admins; global admins are not listed as such.
-      const isEventAdmin = hasInEvent(user, event.id, UserRole.ADMIN);
+      const isEventAdmin = hasInEvent(user, team.eventId, UserRole.ADMIN);
       return {
         id: user.id,
         name: user.name,

@@ -8,13 +8,14 @@ import {
   Post,
   Put,
 } from "@nestjs/common";
-import { SignedIn } from "../authz";
+import { Can, EventPolicy, param, SignedIn } from "../authz";
 import { UserId } from "../guards/UserGuard";
 import { PlaceGamblingBetDto } from "./dtos/place-gambling-bet.dto";
 import { GamblingService } from "./gambling.service";
 
 @Controller("gambling")
 @SignedIn()
+@Can(EventPolicy, "view", param("eventId"))
 export class GamblingController {
   constructor(private readonly gamblingService: GamblingService) {}
 

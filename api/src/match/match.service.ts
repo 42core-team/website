@@ -1115,10 +1115,10 @@ export class MatchService {
     );
   }
 
-  async getMatchesForTeam(teamId: string, userId: string) {
-    const team = await this.teamService.getTeamById(teamId);
-    const viewerTeam = userId
-      ? await this.teamService.getTeamOfUserForEvent(team.eventId, userId)
+  async getMatchesForTeam(teamId: string, viewer: Principal | null) {
+    const team = await this.teamService.getVisibleTeamById(teamId, viewer);
+    const viewerTeam = viewer
+      ? await this.teamService.getTeamOfUserForEvent(team.eventId, viewer.id)
       : null;
     const matchesToQuery = await findVisibleTeamMatchIds(this.matchRepository, [
       teamId,
@@ -1443,14 +1443,19 @@ export class MatchService {
     // Unknown and unrevealed tournament matches answer the same way, so the
     // response never confirms that a hidden match id exists.
     if (!match) throw matchNotFound();
-    // Queue matches are never revealed. Their ids only go out to the teams
-    // that played them, and whoever has the id sees the match.
-    if (match.phase === MatchPhase.QUEUE) return toVisibleMatchResponse(match);
-
     // Deleted teams are not loaded above; their event still counts.
     const eventId =
       match.teams?.find((team) => team.event)?.event.id ??
       (await this.getEventIdOfMatch(match.id));
+    if (
+      eventId &&
+      !(await this.authorization.can(EventPolicy, "view", viewer, eventId))
+    )
+      throw matchNotFound();
+    // Queue matches are never revealed. Their ids only go out to the teams
+    // that played them, and whoever has the id sees the match.
+    if (match.phase === MatchPhase.QUEUE) return toVisibleMatchResponse(match);
+
     const revealAll = eventId
       ? await this.canRevealAll(eventId, viewer, adminReveal)
       : false;

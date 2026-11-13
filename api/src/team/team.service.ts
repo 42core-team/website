@@ -18,6 +18,7 @@ import { mediaArtwork } from "../media/media-artwork";
 import {
   DataSource,
   EntityManager,
+  EntityNotFoundError,
   In,
   Not,
   Repository,
@@ -241,8 +242,28 @@ export class TeamService {
     });
   }
 
-  async getTeamByIdWithTags(id: string): Promise<TeamResponse> {
-    const team = await this.getTeamById(id);
+  /**
+   * The team, unless its event is private and hidden from the viewer: then
+   * it answers exactly like an unknown team id.
+   */
+  async getVisibleTeamById(
+    id: string,
+    viewer: Principal | null,
+    relations: FindOptionsRelations<TeamEntity> = {},
+  ): Promise<TeamEntity> {
+    const team = await this.getTeamById(id, relations);
+    if (
+      !(await this.authorization.can(EventPolicy, "view", viewer, team.eventId))
+    )
+      throw new EntityNotFoundError(TeamEntity, { id });
+    return team;
+  }
+
+  async getTeamByIdWithTags(
+    id: string,
+    viewer: Principal | null,
+  ): Promise<TeamResponse> {
+    const team = await this.getVisibleTeamById(id, viewer);
     const tagsByTeam = await this.getLocationTagsForTeams([id]);
     return toTeamResponse(team, tagsByTeam.get(id) ?? []);
   }
