@@ -348,6 +348,20 @@ export class TeamService {
   }
 
   /** Applies the access the current event phase requires to the current roster. */
+  /**
+   * Refuses changes that would leave GitHub behind the database, e.g. a member
+   * who left keeping repository access, while the event cannot reach GitHub.
+   */
+  private async assertGithubConnected(event: EventEntity) {
+    try {
+      await this.githubAuthService.authFor(event);
+    } catch (error) {
+      if (error instanceof GithubNotConnectedError)
+        throw new BadRequestException(error.message);
+      throw error;
+    }
+  }
+
   private syncRepositoryAccess(teamId: string) {
     return this.changeRepositoryAccess(teamId, false, true);
   }
@@ -869,6 +883,8 @@ export class TeamService {
             "You are not part of a team for this event.",
           );
         const lastMember = team.users.length === 1;
+        if (team.repo && !lastMember)
+          await this.assertGithubConnected(team.event);
         await manager
           .createQueryBuilder()
           .relation(TeamEntity, "users")
@@ -984,6 +1000,7 @@ export class TeamService {
       const maxUsers = team.event.maxTeamSize;
       if (!maxUsers || team.users.length >= maxUsers)
         throw new BadRequestException("This team is full.");
+      if (team.repo) await this.assertGithubConnected(team.event);
       if (team.repo)
         await manager.update(TeamEntity, teamId, {
           repositoryStatus: RepositoryStatus.UNLOCKING,
@@ -1175,6 +1192,8 @@ export class TeamService {
         throw new BadRequestException("Match making is disabled.");
       if (!isPlaying(event) || !isMatchmakingReady(team))
         throw new BadRequestException("Match making is not available.");
+      // Checked before any credit is spent on a match that could not start.
+      await this.assertGithubConnected(event);
 
       const match = await this.createBestQueueMatch(team, entityManager);
       if (!match)
@@ -1379,6 +1398,7 @@ export class TeamService {
         throw new BadRequestException(
           "Match making requires playing teams with ready repositories.",
         );
+      await this.assertGithubConnected(event);
       accrueQueueCredits(
         challenger,
         event.maxQueueCredits,
