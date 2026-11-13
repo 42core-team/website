@@ -5,8 +5,8 @@ import { MigrationInterface, QueryRunner } from "typeorm";
  * rows of user_event_permissions. Both stay for one release but are no longer
  * read or written; the data is copied over here.
  */
-export class UserRoles1793000000000 implements MigrationInterface {
-  name = "UserRoles1793000000000";
+export class UserRoles1793050000000 implements MigrationInterface {
+  name = "UserRoles1793050000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

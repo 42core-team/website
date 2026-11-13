@@ -167,7 +167,7 @@ event.
 
 ### The user_roles migration is forward-only
 
-`UserRoles1793000000000` copies `users.canCreateEvent` and the ADMIN rows of
+`UserRoles1793050000000` copies `users.canCreateEvent` and the ADMIN rows of
 `user_event_permissions` into `user_roles`. Do not revert it once roles have
 been granted: reverting drops `user_roles`, so the old code reads the legacy
 permissions again and every grant made since the migration is lost.
