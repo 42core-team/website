@@ -18,6 +18,7 @@ import { IncomingMessage } from "http";
 import { GamblingModule } from "./gambling/gambling.module";
 import { ProfileModule } from "./profile/profile.module";
 import { AuthzModule } from "./authz";
+import { RolesModule } from "./roles/roles.module";
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { AuthzModule } from "./authz";
     StatsModule,
     GamblingModule,
     ProfileModule,
+    RolesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

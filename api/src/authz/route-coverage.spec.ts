@@ -82,6 +82,9 @@ function httpRoutes(controllers: Type[]): Route[] {
 // SessionPolicy.signedIn needs any signed-in user, the rest need the ability.
 // Changing an entry here is a deliberate authorization change.
 const DECISIONS: Record<string, string> = {
+  "DELETE /admin/roles/:id": "PlatformPolicy.manageRoles",
+  "GET /admin/roles": "PlatformPolicy.manageRoles",
+  "POST /admin/roles": "PlatformPolicy.manageRoles",
   "DELETE /event/:id/admins/:adminId": "EventPolicy.administer",
   "DELETE /event/:id/templates/:templateId": "EventPolicy.administer",
   "DELETE /event/:id/whitelist/:whitelistId": "EventPolicy.administer",
@@ -142,7 +145,6 @@ const DECISIONS: Record<string, string> = {
   "GET /team/event/:eventId/queue/summary": "SessionPolicy.signedIn",
   "GET /team/event/:eventId/searchInviteUsers/:searchQuery":
     "SessionPolicy.signedIn",
-  "GET /user/canCreateEvent": "SessionPolicy.signedIn",
   "GET /user/search": "SessionPolicy.signedIn",
   "POST /auth/logout": "public",
   "POST /auth/logout-all": "SessionPolicy.signedIn",
