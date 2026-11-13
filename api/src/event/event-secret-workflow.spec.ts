@@ -4,6 +4,7 @@ import { decryptSecret } from "../common/encryption";
 import { instanceToPlain } from "class-transformer";
 import { EventEntity } from "./entities/event.entity";
 import { EventService } from "./event.service";
+import { eventSettings, NO_PRESET } from "../event-presets/testing";
 
 jest.mock("../team/team.service", () => ({
   TeamService: class TeamService {},
@@ -14,6 +15,7 @@ describe("event organization secret storage", () => {
 
   function createService() {
     const eventRepository = {
+      create: jest.fn((event) => Object.assign(new EventEntity(), event)),
       save: jest.fn().mockImplementation((event) => Promise.resolve(event)),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
@@ -38,38 +40,21 @@ describe("event organization secret storage", () => {
     return { eventRepository, roleRepository, service };
   }
 
-  it("encrypts the organization token when creating an event", async () => {
+  it("creates events without an organization token", async () => {
     const { eventRepository, roleRepository, service } = createService();
 
-    await service.createEvent(
-      "user-id",
-      "event-name",
-      "description",
-      "github-org",
-      "plaintext-token",
-      "location",
-      Date.now(),
-      Date.now() + 1_000,
-      1,
-      2,
-      "game-image",
-      "bot-image",
-      "visualizer-image",
-      "https://github.com/example/mono.git",
-      "main",
-      "base-path",
-      "{}",
-      "{}",
-    );
+    await service.createEvent({
+      userId: "user-id",
+      settings: eventSettings(),
+      ...NO_PRESET,
+    });
 
-    const storedEvent = eventRepository.save.mock.calls[0][0] as {
-      githubOrgSecret: string;
-    };
-    expect(storedEvent.githubOrgSecret).toMatch(/^v2:/);
-    expect(storedEvent.githubOrgSecret).not.toContain("plaintext-token");
-    expect(decryptSecret(storedEvent.githubOrgSecret, encryptionKey)).toBe(
-      "plaintext-token",
-    );
+    const storedEvent = eventRepository.save.mock.calls[0][0] as EventEntity;
+    expect(storedEvent).toMatchObject({
+      githubOrg: "",
+      githubOrgSecret: null,
+      githubInstallationId: null,
+    });
     // The creator administers the event, granted in the same transaction.
     expect(roleRepository.insert).toHaveBeenCalledWith(
       expect.objectContaining({ userId: "user-id", role: "ADMIN" }),

@@ -134,6 +134,8 @@ const DECISIONS: Record<string, string> = {
   "GET /event/:id/whitelist": "EventPolicy.administer",
   "GET /event/event/currentLiveEvent": "public",
   "GET /event/overview": "SessionPolicy.signedIn",
+  "GET /event-presets": "PlatformPolicy.createEvent",
+  "GET /event-presets/:id/resolved": "PlatformPolicy.createEvent",
   "GET /gambling/event/:eventId": "SessionPolicy.signedIn+EventPolicy.view",
   "GET /github/app": "public",
   "GET /health": "public",

@@ -1,161 +1,56 @@
 import {
-  IsString,
+  ApiPropertyOptional,
+  IntersectionType,
+  OmitType,
+  PartialType,
+  PickType,
+} from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import {
+  ArrayMaxSize,
+  IsArray,
   IsOptional,
-  IsNumber,
-  MinLength,
-  MaxLength,
-  Min,
-  IsNotEmpty,
-  IsBoolean,
-  IsInt,
-  Matches,
-  ValidateIf,
+  IsUUID,
+  ValidateNested,
 } from "class-validator";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import {
-  GIT_REF_MESSAGE,
-  GIT_REF_PATTERN,
-  GITHUB_OWNER_MESSAGE,
-  GITHUB_OWNER_PATTERN,
-  GITHUB_REPO_URL_MESSAGE,
-  GITHUB_REPO_URL_PATTERN,
-  REPO_RELATIVE_PATH_MESSAGE,
-  REPO_RELATIVE_PATH_PATTERN,
-} from "../../common/github-validation";
-import { NormalizeGithubConfig } from "../../common/github-config-normalization";
-import {
-  EVENT_NAME_MAX_LENGTH,
-  EVENT_NAME_MAX_LENGTH_MESSAGE,
-} from "../../common/name-limits";
+import { CreateEventStarterTemplateDto } from "./createEventStarterTemplateDto";
+import { EventSettingsDto } from "./eventSettingsDto";
 
-/** Either field switches the event to the organizer token, which then needs both. */
-const usesOrganizerToken = (dto: CreateEventDto) =>
-  dto.githubOrg !== undefined || dto.githubOrgSecret !== undefined;
+export const EVENT_MAX_STARTER_TEMPLATES = 20;
 
-export class CreateEventDto {
-  @ApiProperty({ maxLength: EVENT_NAME_MAX_LENGTH })
-  @IsString()
-  @MinLength(3)
-  @MaxLength(EVENT_NAME_MAX_LENGTH, { message: EVENT_NAME_MAX_LENGTH_MESSAGE })
-  name: string;
-
-  @ApiProperty()
+/**
+ * A new event: a name, and any settings or dates that should differ from
+ * the preset. The merged result must be a valid EventSettingsDto.
+ *
+ * There is no organizer token: `githubOrg` and `githubOrgSecret` are
+ * rejected like any unknown property. `isPrivate` is accepted for older
+ * clients but ignored, as every event starts private.
+ */
+export class CreateEventDto extends IntersectionType(
+  PickType(EventSettingsDto, ["name"] as const),
+  PartialType(OmitType(EventSettingsDto, ["name"] as const)),
+) {
+  /** Defaults to the default preset. */
+  @ApiPropertyOptional({ format: "uuid" })
   @IsOptional()
-  @IsString()
-  description: string;
+  @IsUUID()
+  presetId?: string;
 
   /**
-   * The organization and token of the legacy token setup. Omit both to
-   * connect the CORE GitHub App after the event is created.
+   * A shared installation to link instead of the preset's; null links
+   * none. Our id, not GitHub's.
    */
-  @ApiPropertyOptional()
-  @ValidateIf(usesOrganizerToken)
-  @IsString()
-  @IsNotEmpty()
-  @NormalizeGithubConfig("githubOrg")
-  @Matches(GITHUB_OWNER_PATTERN, { message: GITHUB_OWNER_MESSAGE })
-  githubOrg?: string;
-
-  @ApiPropertyOptional()
-  @ValidateIf(usesOrganizerToken)
-  @IsString()
-  @IsNotEmpty()
-  githubOrgSecret?: string;
-
-  @ApiProperty()
+  @ApiPropertyOptional({ format: "uuid", nullable: true })
   @IsOptional()
-  @IsString()
-  location: string;
+  @IsUUID()
+  githubInstallationId?: string | null;
 
-  @ApiProperty()
-  @IsNumber()
-  startDate: number;
-
-  @ApiProperty()
+  /** Replaces the preset's starter templates. */
+  @ApiPropertyOptional({ type: [CreateEventStarterTemplateDto] })
   @IsOptional()
-  @IsNumber()
-  endDate?: number;
-
-  @IsOptional()
-  @IsNumber()
-  submissionDeadline?: number;
-
-  @IsOptional()
-  @IsNumber()
-  scheduledEndDate?: number;
-
-  @IsOptional()
-  @IsBoolean()
-  introEnabled?: boolean;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  introLeadMinutes?: number;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  @MaxLength(2048)
-  streamUrl?: string;
-
-  @ApiPropertyOptional({
-    description: "Showtime stream; falls back to streamUrl when empty",
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(2048)
-  showtimeStreamUrl?: string;
-
-  @ApiProperty()
-  @IsNumber()
-  @Min(1)
-  minTeamSize: number;
-
-  @ApiProperty()
-  @IsNumber()
-  @Min(1)
-  maxTeamSize: number;
-
-  @ApiProperty()
-  @IsString()
-  gameServerDockerImage: string;
-
-  @ApiProperty()
-  @IsString()
-  myCoreBotDockerImage: string;
-
-  @ApiProperty()
-  @IsString()
-  visualizerDockerImage: string;
-
-  @ApiProperty()
-  @IsString()
-  @NormalizeGithubConfig("monorepoUrl")
-  @Matches(GITHUB_REPO_URL_PATTERN, { message: GITHUB_REPO_URL_MESSAGE })
-  monorepoUrl: string;
-
-  @ApiProperty()
-  @IsString()
-  @NormalizeGithubConfig("monorepoVersion")
-  @Matches(GIT_REF_PATTERN, { message: GIT_REF_MESSAGE })
-  monorepoVersion: string;
-
-  @ApiProperty()
-  @IsString()
-  @NormalizeGithubConfig("basePath")
-  @Matches(REPO_RELATIVE_PATH_PATTERN, { message: REPO_RELATIVE_PATH_MESSAGE })
-  basePath: string;
-
-  @ApiProperty()
-  @IsString()
-  gameConfig: string;
-
-  @ApiProperty()
-  @IsString()
-  serverConfig: string;
-
-  @ApiProperty()
-  @IsBoolean()
-  isPrivate: boolean;
+  @IsArray()
+  @ArrayMaxSize(EVENT_MAX_STARTER_TEMPLATES)
+  @ValidateNested({ each: true })
+  @Type(() => CreateEventStarterTemplateDto)
+  starterTemplates?: CreateEventStarterTemplateDto[];
 }

@@ -7,6 +7,7 @@ import { CreateEventStarterTemplateDto } from "../event/dtos/createEventStarterT
 import { UpdateEventSettingsDto } from "../event/dtos/updateEventSettingsDto";
 import { UpdateEventStarterTemplateDto } from "../event/dtos/updateEventStarterTemplateDto";
 import { CreateEventDto } from "../event/dtos/createEventDto";
+import { strictBody } from "./strict-body";
 import { ValidationPipe } from "@nestjs/common";
 import { ROUTE_ARGS_METADATA } from "@nestjs/common/constants";
 import { RouteParamtypes } from "@nestjs/common/enums/route-paramtypes.enum";
@@ -102,8 +103,6 @@ describe("GitHub config normalization", () => {
 describe("event DTO validation", () => {
   const validCreateEvent = {
     name: "Event",
-    githubOrg: "core-org",
-    githubOrgSecret: "secret",
     startDate: Date.now(),
     minTeamSize: 1,
     maxTeamSize: 3,
@@ -132,15 +131,23 @@ describe("event DTO validation", () => {
     ["monorepoUrl", "file:///etc"],
     ["monorepoVersion", "--upload-pack=id"],
     ["basePath", "../../app"],
-  ])("rejects an invalid %s on create and update", async (field, value) => {
+  ])("rejects an invalid %s on update", async (field, value) => {
+    expect(
+      await invalidFields(UpdateEventSettingsDto, { [field]: value }),
+    ).toEqual([field]);
+  });
+
+  // Creating takes no organizer token; the strict body pipe rejects githubOrg.
+  it.each([
+    ["monorepoUrl", "file:///etc"],
+    ["monorepoVersion", "--upload-pack=id"],
+    ["basePath", "../../app"],
+  ])("rejects an invalid %s on create", async (field, value) => {
     expect(
       await invalidFields(CreateEventDto, {
         ...validCreateEvent,
         [field]: value,
       }),
-    ).toEqual([field]);
-    expect(
-      await invalidFields(UpdateEventSettingsDto, { [field]: value }),
     ).toEqual([field]);
   });
 
@@ -173,7 +180,6 @@ describe("event DTO validation", () => {
 
   it("accepts surrounding whitespace and a trailing slash on the repo URL", async () => {
     const padded = {
-      githubOrg: " core-org ",
       monorepoUrl: " https://github.com/42core-team/monorepo/ ",
       monorepoVersion: "dev\n",
       basePath: " bots/c/softcore ",
@@ -181,7 +187,12 @@ describe("event DTO validation", () => {
     expect(
       await invalidFields(CreateEventDto, { ...validCreateEvent, ...padded }),
     ).toEqual([]);
-    expect(await invalidFields(UpdateEventSettingsDto, padded)).toEqual([]);
+    expect(
+      await invalidFields(UpdateEventSettingsDto, {
+        ...padded,
+        githubOrg: " core-org ",
+      }),
+    ).toEqual([]);
     expect(
       await invalidFields(UpdateEventStarterTemplateDto, {
         basePath: " bots/c ",
@@ -246,8 +257,20 @@ describe("GitHub config normalization in the request pipeline", () => {
     });
   });
 
+  it("hands createEvent the normalized values through its strict body pipe", async () => {
+    await expect(
+      strictBody().transform(body, {
+        type: "body",
+        metatype: CreateEventDto,
+        data: undefined,
+      }),
+    ).resolves.toMatchObject({
+      monorepoUrl: "https://github.com/42core-team/monorepo",
+      basePath: "bots/c",
+    });
+  });
+
   it.each([
-    "createEvent",
     "updateEventSettings",
     "createStarterTemplate",
     "updateStarterTemplate",

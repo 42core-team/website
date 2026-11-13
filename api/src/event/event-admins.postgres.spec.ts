@@ -16,6 +16,7 @@ import { UserRole, UserRoleEntity } from "../user/entities/user-role.entity";
 import { EventEntity } from "./entities/event.entity";
 import { EventService } from "./event.service";
 import { EventStarterTemplateEntity } from "./entities/event-starter-template.entity";
+import { eventSettings, NO_PRESET } from "../event-presets/testing";
 import {
   EventWhitelistEntity,
   WhitelistPlatform,
@@ -83,27 +84,11 @@ postgres("event admins in user_roles (PostgreSQL)", () => {
   }
 
   function createAs(userId: string, name: string) {
-    return service.createEvent(
+    return service.createEvent({
       userId,
-      name,
-      "Description",
-      undefined,
-      undefined,
-      "Location",
-      Date.now(),
-      Date.now() + 60_000,
-      1,
-      4,
-      "game-image",
-      "bot-image",
-      "visualizer-image",
-      "https://github.com/example/mono.git",
-      "main",
-      "bot",
-      "{}",
-      "{}",
-      true,
-    );
+      settings: eventSettings({ name }),
+      ...NO_PRESET,
+    });
   }
 
   it("creates the event and the creator's ADMIN grant together", async () => {

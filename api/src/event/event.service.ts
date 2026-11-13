@@ -43,6 +43,25 @@ import { MatchEntity, MatchPhase } from "../match/entites/match.entity";
 import { lockEvent } from "./event-lock";
 import { toPublicUsers } from "../user/dtos/public-user.dto";
 import { removeAdminGrant } from "../roles/admin-grants";
+import { EventSettingsDto } from "./dtos/eventSettingsDto";
+import { GithubInstallationEntity } from "../github-api/entities/github-installation.entity";
+import { isSharedInstallation } from "../github-api/installation-sharing";
+
+/** Everything a new event is created from; see EventService.createEvent. */
+export interface CreateEventInput {
+  userId: string;
+  /** Merged onto the preset and validated. */
+  settings: EventSettingsDto;
+  presetId: string | null;
+  presetVersion: number | null;
+  starterTemplates: readonly {
+    name: string;
+    basePath: string;
+    myCoreBotDockerImage: string;
+  }[];
+  /** A shared installation; checked again inside the transaction. */
+  githubInstallationId: string | null;
+}
 
 @Injectable()
 export class EventService {
@@ -310,95 +329,96 @@ export class EventService {
     return event.serverConfig;
   }
 
-  async createEvent(
-    userId: string,
-    name: string,
-    description: string,
-    githubOrg: string | undefined,
-    githubOrgSecret: string | undefined,
-    location: string,
-    startDate: number,
-    endDate: number | undefined,
-    minTeamSize: number,
-    maxTeamSize: number,
-    gameServerDockerImage: string,
-    myCoreBotDockerImage: string,
-    visualizerDockerImage: string,
-    monorepoUrl: string,
-    monorepoVersion: string,
-    basePath: string,
-    gameConfig: string,
-    serverConfig: string,
-    isPrivate: boolean = false,
-    lifecycle: {
-      submissionDeadline?: number;
-      scheduledEndDate?: number;
-      introEnabled?: boolean;
-      introLeadMinutes?: number;
-      streamUrl?: string;
-      showtimeStreamUrl?: string;
-    } = {},
-  ) {
+  /**
+   * Creates the event, its starter templates and the creator's event ADMIN
+   * role, and links the installation, all in one transaction. The settings
+   * are already merged and validated; the installation must be shared.
+   */
+  async createEvent({
+    userId,
+    settings,
+    presetId,
+    presetVersion,
+    starterTemplates,
+    githubInstallationId,
+  }: CreateEventInput): Promise<EventEntity> {
     const dates = {
-      startDate: new Date(startDate),
-      submissionDeadline: new Date(
-        lifecycle.submissionDeadline ?? endDate ?? NaN,
-      ),
-      scheduledEndDate: new Date(lifecycle.scheduledEndDate ?? endDate ?? NaN),
-      introEnabled: lifecycle.introEnabled ?? false,
-      introLeadMinutes: lifecycle.introLeadMinutes ?? 15,
+      startDate: new Date(settings.startDate),
+      submissionDeadline: new Date(settings.submissionDeadline),
+      scheduledEndDate: new Date(settings.scheduledEndDate),
+      introEnabled: settings.introEnabled,
+      introLeadMinutes: settings.introLeadMinutes,
     };
     this.validateLifecycleDates(dates);
-    const streamUrl = normalizeStreamUrl(lifecycle.streamUrl);
+    const streamUrl = normalizeStreamUrl(settings.streamUrl);
     const showtimeStreamUrl = normalizeStreamUrl(
-      lifecycle.showtimeStreamUrl,
+      settings.showtimeStreamUrl,
       "showtimeStreamUrl",
     );
-    await Promise.all(
-      [gameServerDockerImage, myCoreBotDockerImage, visualizerDockerImage].map(
-        assertImageExists,
-      ),
-    );
+    const images = new Set([
+      settings.gameServerDockerImage,
+      settings.myCoreBotDockerImage,
+      settings.visualizerDockerImage,
+      ...starterTemplates.map((template) => template.myCoreBotDockerImage),
+    ]);
+    await Promise.all([...images].map(assertImageExists));
 
     return this.dataSource.transaction(async (manager) => {
-      const event = await manager.getRepository(EventEntity).save({
-        name,
-        description,
-        // Without a token the organization is set when the GitHub App is connected.
-        githubOrg: githubOrgSecret ? githubOrg : "",
-        githubOrgSecret: githubOrgSecret
-          ? encryptSecret(
-              githubOrgSecret,
-              this.configService.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
-            )
-          : null,
-        location,
-        minTeamSize,
-        maxTeamSize,
-        ...dates,
-        streamUrl,
-        showtimeStreamUrl,
-        state: getEventState(dates),
-        canCreateTeam: isRegistrationOpen(dates),
-        processQueue: isRegistrationOpen(dates),
-        gamblingEnabled: isRegistrationOpen(dates),
-        endDate: dates.scheduledEndDate,
-        repoLockDate: dates.submissionDeadline,
-        users: [
-          {
-            id: userId,
-          },
-        ],
-        gameServerDockerImage,
-        myCoreBotDockerImage,
-        visualizerDockerImage,
-        monorepoUrl,
-        monorepoVersion,
-        basePath,
-        gameConfig,
-        serverConfig,
-        isPrivate,
-      });
+      const installation = githubInstallationId
+        ? await manager.getRepository(GithubInstallationEntity).findOne({
+            where: { id: githubInstallationId },
+            lock: { mode: "pessimistic_read" },
+          })
+        : null;
+      if (githubInstallationId && !isSharedInstallation(installation))
+        throw new BadRequestException(
+          "Only a GitHub installation that a global admin shared can be linked when creating an event. Connect your own organization from the event dashboard instead.",
+        );
+
+      const events = manager.getRepository(EventEntity);
+      const event = await events.save(
+        events.create({
+          name: settings.name,
+          description: settings.description,
+          // Without an installation the organization is set when the GitHub App is connected.
+          githubOrg: installation?.accountLogin ?? "",
+          githubOrgSecret: null,
+          githubInstallationId: installation?.id ?? null,
+          location: settings.location,
+          minTeamSize: settings.minTeamSize,
+          maxTeamSize: settings.maxTeamSize,
+          ...dates,
+          streamUrl,
+          showtimeStreamUrl,
+          state: getEventState(dates),
+          canCreateTeam: isRegistrationOpen(dates),
+          processQueue: isRegistrationOpen(dates),
+          gamblingEnabled: isRegistrationOpen(dates),
+          endDate: dates.scheduledEndDate,
+          repoLockDate: dates.submissionDeadline,
+          users: [{ id: userId }],
+          gameServerDockerImage: settings.gameServerDockerImage,
+          myCoreBotDockerImage: settings.myCoreBotDockerImage,
+          visualizerDockerImage: settings.visualizerDockerImage,
+          monorepoUrl: settings.monorepoUrl,
+          monorepoVersion: settings.monorepoVersion,
+          basePath: settings.basePath,
+          gameConfig: settings.gameConfig,
+          serverConfig: settings.serverConfig,
+          isPrivate: settings.isPrivate,
+          presetId,
+          presetVersion,
+        }),
+      );
+      if (starterTemplates.length)
+        await manager.getRepository(EventStarterTemplateEntity).insert(
+          starterTemplates.map(({ name, basePath, myCoreBotDockerImage }) => ({
+            name,
+            basePath,
+            myCoreBotDockerImage,
+            event: { id: event.id },
+          })),
+        );
       await manager.getRepository(UserRoleEntity).insert({
         userId,
         role: UserRole.ADMIN,

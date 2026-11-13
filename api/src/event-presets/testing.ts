@@ -1,3 +1,6 @@
+import type { EventSettingsDto } from "../event/dtos/eventSettingsDto";
+import { resolvePresetSettings } from "./preset-resolver";
+
 /** Valid preset settings whose images skip the registry lookup. */
 export const PRESET_SETTINGS = {
   minTeamSize: 1,
@@ -16,4 +19,24 @@ export const PRESET_SETTINGS = {
     submissionDeadlineAfterHours: 48,
     scheduledEndAfterHours: 50,
   },
+};
+
+/** Valid settings for a new event, starting a week from now. */
+export function eventSettings(
+  overrides: Partial<EventSettingsDto> = {},
+): EventSettingsDto {
+  return {
+    ...resolvePresetSettings(PRESET_SETTINGS),
+    name: "Test event",
+    isPrivate: true,
+    ...overrides,
+  };
+}
+
+/** The rest of EventService.createEvent's input, without a preset. */
+export const NO_PRESET = {
+  presetId: null,
+  presetVersion: null,
+  starterTemplates: [],
+  githubInstallationId: null,
 };

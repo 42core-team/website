@@ -12,8 +12,9 @@ import {
   IsNull,
   QueryFailedError,
 } from "typeorm";
+import { CreateEventDto } from "../event/dtos/createEventDto";
 import { EventEntity } from "../event/entities/event.entity";
-import { normalizeStreamUrl } from "../event/event.service";
+import { CreateEventInput, normalizeStreamUrl } from "../event/event.service";
 import { assertImageExists } from "../event/image.util";
 import { GithubInstallationEntity } from "../github-api/entities/github-installation.entity";
 import { isSharedInstallation } from "../github-api/installation-sharing";
@@ -27,12 +28,37 @@ import {
   EventPresetEntity,
   PresetStarterTemplate,
 } from "./entities/event-preset.entity";
-import { scheduleHours } from "./preset-resolver";
+import { mergeEventSettings } from "./preset-merge";
+import {
+  ResolvedPresetValues,
+  resolvePresetSettings,
+  scheduleHours,
+} from "./preset-resolver";
 
 export const PRESET_CHANGED_MESSAGE = "Preset was changed by someone else";
 
 type UserSummary = { id: string; username: string } | null;
 type InstallationSummary = { id: string; accountLogin: string } | null;
+
+/** A preset organizers can pick. */
+export interface PresetOption {
+  id: string;
+  name: string;
+  description: string | null;
+  isDefault: boolean;
+  version: number;
+  updatedAt: Date;
+}
+
+/** What a create form starts from: the preset's values for an event created now. */
+export interface ResolvedPreset {
+  presetId: string;
+  presetVersion: number;
+  values: ResolvedPresetValues;
+  starterTemplates: PresetStarterTemplate[];
+  /** Null when the preset has none, or it is no longer shared. */
+  githubInstallation: InstallationSummary;
+}
 
 /** A preset as the admin list shows it. */
 export interface AdminPresetRow {
@@ -118,6 +144,79 @@ export class EventPresetsService {
 
   private get presets() {
     return this.dataSource.getRepository(EventPresetEntity);
+  }
+
+  /** Presets that are not archived, the default first. */
+  async listForOrganizers(): Promise<PresetOption[]> {
+    const presets = await this.presets.find({
+      where: { archivedAt: IsNull() },
+      order: { isDefault: "DESC", name: "ASC" },
+    });
+    return presets.map((preset) => ({
+      id: preset.id,
+      name: preset.name,
+      description: preset.description,
+      isDefault: preset.isDefault,
+      version: preset.version,
+      updatedAt: preset.updatedAt,
+    }));
+  }
+
+  /** An archived preset answers 404, as for an unknown one. */
+  async getResolved(id: string, now?: Date): Promise<ResolvedPreset> {
+    const preset = await this.presets.findOne({
+      where: { id, archivedAt: IsNull() },
+      relations: { githubInstallation: true },
+    });
+    if (!preset) throw presetNotFound();
+    return this.resolve(preset, now);
+  }
+
+  /**
+   * The input for EventService.createEvent: the request merged onto the
+   * named preset, or the default one, resolved for an event created now.
+   * The request's starter templates and installation replace the preset's.
+   */
+  async prepareEvent(
+    dto: CreateEventDto,
+    now?: Date,
+  ): Promise<Omit<CreateEventInput, "userId">> {
+    const preset = await this.presets.findOne({
+      where: dto.presetId
+        ? { id: dto.presetId, archivedAt: IsNull() }
+        : { isDefault: true },
+      relations: { githubInstallation: true },
+    });
+    if (!preset) {
+      if (dto.presetId) throw presetNotFound();
+      throw new BadRequestException(
+        "There is no default preset. Choose a preset.",
+      );
+    }
+    const resolved = this.resolve(preset, now);
+    return {
+      settings: await mergeEventSettings(resolved.values, dto),
+      presetId: preset.id,
+      presetVersion: preset.version,
+      starterTemplates: dto.starterTemplates ?? resolved.starterTemplates,
+      githubInstallationId:
+        dto.githubInstallationId !== undefined
+          ? dto.githubInstallationId
+          : (resolved.githubInstallation?.id ?? null),
+    };
+  }
+
+  private resolve(preset: EventPresetEntity, now?: Date): ResolvedPreset {
+    const installation = preset.githubInstallation;
+    return {
+      presetId: preset.id,
+      presetVersion: preset.version,
+      values: resolvePresetSettings(preset.settings, now),
+      starterTemplates: toTemplates(preset.starterTemplates),
+      githubInstallation: isSharedInstallation(installation)
+        ? { id: installation.id, accountLogin: installation.accountLogin }
+        : null,
+    };
   }
 
   async listForAdmin(includeArchived: boolean): Promise<AdminPresetRow[]> {

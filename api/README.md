@@ -167,6 +167,27 @@ event.
 been granted: reverting drops `user_roles`, so the old code reads the legacy
 permissions again and every grant made since the migration is lost.
 
+## Event presets
+
+Global admins manage presets of event settings at `/admin/event-presets`.
+`POST /event` needs only a `name`: the request's other fields are merged onto
+the named preset (`presetId`) or the default one, and the result must pass
+`EventSettingsDto`. Creating copies the values, so editing a preset never
+changes existing events; they keep `presetId` and `presetVersion` for
+provenance. `POST /event` no longer takes an organizer token (`githubOrg`,
+`githubOrgSecret`); the token of existing events still works.
+
+A preset's schedule is relative: the start is `startTime` (Europe/Berlin
+wall-clock time) `startOffsetDays` after the day of creation, and the other
+dates are hours after the start. `EventPresets1793200000000` seeds the
+"Default" preset with the create form's former defaults.
+
+Global admins can share a GitHub App installation at
+`/admin/github-installations`, after passing the owner check once. Any event
+creator may then link it, from a preset, on create or from the dashboard,
+without owning its organization. Creating an event only links shared
+installations; unsharing leaves linked events alone.
+
 ## API Documentation
 
 When running in development mode, Swagger documentation is available at:

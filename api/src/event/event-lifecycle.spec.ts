@@ -512,6 +512,7 @@ describe("event lifecycle", () => {
       {} as never,
       userService as never,
       {} as never,
+      {} as never,
     );
     await expect(controller.joinEvent("event", "user")).rejects.toThrow(
       "Registration is closed",

@@ -15,11 +15,11 @@ import {
   MinLength,
   ValidateNested,
 } from "class-validator";
+import { EVENT_MAX_STARTER_TEMPLATES } from "../../event/dtos/createEventDto";
 import { CreateEventStarterTemplateDto } from "../../event/dtos/createEventStarterTemplateDto";
 import { PresetSettingsDto } from "./preset-settings.dto";
 
 export const PRESET_NAME_MAX_LENGTH = 100;
-export const PRESET_MAX_STARTER_TEMPLATES = 20;
 
 /**
  * A new preset. Omitted optional fields default to no description, not the
@@ -55,7 +55,7 @@ export class CreatePresetDto {
   @ApiPropertyOptional({ type: [CreateEventStarterTemplateDto] })
   @IsOptional()
   @IsArray()
-  @ArrayMaxSize(PRESET_MAX_STARTER_TEMPLATES)
+  @ArrayMaxSize(EVENT_MAX_STARTER_TEMPLATES)
   @ValidateNested({ each: true })
   @Type(() => CreateEventStarterTemplateDto)
   starterTemplates?: CreateEventStarterTemplateDto[];

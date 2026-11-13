@@ -44,6 +44,7 @@ import {
 } from "./entities/event-whitelist.entity";
 import { EventEntity } from "./entities/event.entity";
 import { EventController } from "./event.controller";
+import { EventPresetsService } from "../event-presets/event-presets.service";
 import { EventService } from "./event.service";
 
 // A dedicated test database is required; each run owns only its random schema.
@@ -148,6 +149,10 @@ postgres("private event visibility (PostgreSQL)", () => {
         { provide: TeamService, useValue: teamService },
         { provide: MatchService, useValue: matchService },
         { provide: UserService, useValue: userService },
+        {
+          provide: EventPresetsService,
+          useValue: new EventPresetsService(database),
+        },
       ],
     }).compile();
     app = moduleRef.createNestApplication();
