@@ -4,7 +4,7 @@ import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import request from "supertest";
-import { DataSource } from "typeorm";
+import { DataSource, EntityManager, IsNull } from "typeorm";
 import { authzTestingModule } from "../authz/testing";
 import { EventEntity } from "../event/entities/event.entity";
 import { UserRole, UserRoleEntity } from "../user/entities/user-role.entity";
@@ -178,6 +178,15 @@ postgres("role admin API (PostgreSQL)", () => {
       .expect(409);
   });
 
+  it("answers 409 for a concurrent duplicate global grant", async () => {
+    const body = { userId: member.id, role: UserRole.MODERATOR };
+    const results = await Promise.all([
+      as(admin).post("/admin/roles", body),
+      as(admin).post("/admin/roles", body),
+    ]);
+    expect(results.map((result) => result.status).sort()).toEqual([201, 409]);
+  });
+
   it("answers 400 for a creator role scoped to an event and for bad input", async () => {
     for (const role of [
       UserRole.PUBLIC_EVENT_CREATOR,
@@ -222,5 +231,61 @@ postgres("role admin API (PostgreSQL)", () => {
     // The admin's own grant is gone, so they are no longer allowed.
     await as(admin).get("/admin/roles").expect(403);
     await as(member).delete(`/admin/roles/${second.body.id}`).expect(409);
+  });
+
+  it("serializes concurrent global admin revocations without deadlocking", async () => {
+    const service = app.get(RolesService);
+    const extra = await createUser();
+    const second = await service.grant(
+      { userId: extra.id, role: UserRole.ADMIN },
+      member.id,
+    );
+    // member also has other roles; select the global admin grant explicitly.
+    const own = (await service.list({ userId: member.id })).find(
+      (row) => row.role === UserRole.ADMIN && row.eventId === null,
+    )!;
+    let arrivals = 0;
+    let release!: () => void;
+    const bothRead = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const concurrentService = new RolesService(
+      database.getRepository(UserRoleEntity),
+      {
+        transaction: (work: (manager: EntityManager) => Promise<void>) =>
+          database.transaction(async (manager) => {
+            const repository = manager.getRepository(UserRoleEntity);
+            const findOne = repository.findOne.bind(repository);
+            jest
+              .spyOn(repository, "findOne")
+              .mockImplementation(async (options) => {
+                const row = await findOne(options);
+                if (++arrivals === 2) release();
+                await bothRead;
+                return row;
+              });
+            return work(manager);
+          }),
+      } as DataSource,
+    );
+    // Both revocations read their target before proceeding, forcing the race.
+    const results = await Promise.allSettled([
+      concurrentService.revoke(own.id),
+      concurrentService.revoke(second.id),
+    ]);
+    expect(
+      results.filter((result) => result.status === "fulfilled"),
+    ).toHaveLength(1);
+    expect(
+      results.find((result) => result.status === "rejected"),
+    ).toMatchObject({
+      reason: { status: 409 },
+    });
+    expect(
+      await database.getRepository(UserRoleEntity).countBy({
+        role: UserRole.ADMIN,
+        eventId: IsNull(),
+      }),
+    ).toBe(1);
   });
 });

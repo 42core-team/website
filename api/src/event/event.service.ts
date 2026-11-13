@@ -1032,6 +1032,7 @@ export class EventService {
         .createQueryBuilder(UserRoleEntity, "role")
         .where("role.eventId = :eventId", { eventId })
         .andWhere("role.role = :role", { role: UserRole.ADMIN })
+        .orderBy("role.id", "ASC")
         .setLock("pessimistic_write")
         .getMany();
 
