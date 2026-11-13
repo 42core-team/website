@@ -87,6 +87,13 @@ const DECISIONS: Record<string, string> = {
   "DELETE /admin/github-installations/:id/share":
     "PlatformPolicy.manageSharedInstallations",
   "DELETE /admin/roles/:id": "PlatformPolicy.manageRoles",
+  "GET /admin/event-presets": "PlatformPolicy.managePresets",
+  "GET /admin/event-presets/:id": "PlatformPolicy.managePresets",
+  "POST /admin/event-presets": "PlatformPolicy.managePresets",
+  "POST /admin/event-presets/:id/archive": "PlatformPolicy.managePresets",
+  "POST /admin/event-presets/:id/duplicate": "PlatformPolicy.managePresets",
+  "POST /admin/event-presets/:id/unarchive": "PlatformPolicy.managePresets",
+  "PUT /admin/event-presets/:id": "PlatformPolicy.managePresets",
   "GET /admin/events": "PlatformPolicy.manageRoles",
   "GET /admin/github-installations": "PlatformPolicy.manageSharedInstallations",
   "GET /admin/roles": "PlatformPolicy.manageRoles",
