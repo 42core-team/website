@@ -3,6 +3,7 @@ import type { BracketFinish, UserProfile } from '@/app/actions/profile'
 import { format } from 'date-fns'
 import { Share2, Trophy } from 'lucide-react'
 import { toast } from 'sonner'
+import { userAvatarSrc } from '@/lib/user-avatar'
 import { GithubIcon } from '@/components/icons'
 import LocationTags from '@/components/team/LocationTags'
 import { TeamCover, TeamCoverStripe } from '@/components/team/TeamAppearance'
@@ -36,7 +37,7 @@ function placeLabel(finish: BracketFinish) {
 /** Identity and career numbers, laid out like a team's public profile. */
 export function ProfileHeader({ profile }: { profile: UserProfile }) {
   const { user, teams, summary } = profile
-  const coverTeam = teams.find((team) => team.background)
+  const cover = user.background ? user : teams.find((team) => team.background)
   const { record, streaks } = summary
   const formWins = summary.form.filter((match) => match.result === 'WIN').length
   const best = getBestFinish(teams)
@@ -58,9 +59,9 @@ export function ProfileHeader({ profile }: { profile: UserProfile }) {
 
   return (
     <Card className="gap-0 overflow-hidden pt-0">
-      {coverTeam ? (
+      {cover ? (
         <div className="relative">
-          <TeamCover team={coverTeam} className="aspect-auto h-20 sm:h-28" />
+          <TeamCover team={cover} className="aspect-auto h-20 sm:h-28" />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/20" />
         </div>
       ) : (
@@ -71,7 +72,7 @@ export function ProfileHeader({ profile }: { profile: UserProfile }) {
           <div className="shrink-0 rounded-2xl bg-card p-1 shadow-sm">
             <Avatar className="size-20 shrink-0 rounded-xl border-2 border-background">
               <AvatarImage
-                src={user.profilePicture ?? undefined}
+                src={userAvatarSrc(user, true)}
                 alt=""
                 className="object-cover"
               />

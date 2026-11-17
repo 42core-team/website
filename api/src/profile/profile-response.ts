@@ -1,7 +1,7 @@
 import type { EventState } from "../event/event-lifecycle";
 import type { MatchPhase } from "../match/entites/match.entity";
 import type { MatchTeamResponse } from "../match/match-response";
-import type { TeamBackground, TeamImage } from "../team/team-image.service";
+import type { MediaBackground, MediaImage } from "../media/media-artwork";
 import type { BracketFinish } from "./profile-finish";
 import type { ProfileRepo } from "./profile-repo";
 import type { MatchRecord, ProfileMatchResult } from "./profile-summary";
@@ -13,6 +13,8 @@ export interface ProfileUserResponse {
   username: string;
   name: string;
   profilePicture: string | null;
+  picture: MediaImage | null;
+  background: MediaBackground | null;
   createdAt: Date;
   tags: string[];
   intra: { username: string; campusName: string | null } | null;
@@ -23,13 +25,14 @@ export interface ProfileTeamMemberResponse {
   username: string;
   name: string;
   profilePicture: string | null;
+  picture: MediaImage | null;
 }
 
 export interface ProfileTeamResponse {
   id: string;
   name: string;
-  picture: TeamImage | null;
-  background: TeamBackground | null;
+  picture: MediaImage | null;
+  background: MediaBackground | null;
   /** Only for viewers on the team: nobody else has access to it. */
   repo: ProfileRepo | null;
   starterTemplate: string | null;

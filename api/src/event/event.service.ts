@@ -44,6 +44,7 @@ import { TeamEntity } from "../team/entities/team.entity";
 import { MatchEntity, MatchPhase } from "../match/entites/match.entity";
 import { lockEvent } from "./event-lock";
 import { toPublicUsers } from "../user/dtos/public-user.dto";
+import { USER_ARTWORK_RELATIONS } from "../media/artwork-relations";
 
 @Injectable()
 export class EventService {
@@ -998,7 +999,7 @@ export class EventService {
         role: PermissionRole.ADMIN,
       },
       relations: {
-        user: true,
+        user: USER_ARTWORK_RELATIONS,
       },
     });
     return toPublicUsers(permissions.map((p) => p.user));

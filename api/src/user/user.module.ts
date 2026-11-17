@@ -7,6 +7,9 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { UserEntity, UserEventPermissionEntity } from "./entities/user.entity";
 import { SocialAccountEntity } from "./entities/social-account.entity";
 
+import { UserImageController } from "./user-image.controller";
+import { UserImageService } from "./user-image.service";
+import { MediaUploadEntity } from "../media/entities/media-upload.entity";
 import { UserEventsController } from "./user.events.controller";
 
 @Module({
@@ -15,10 +18,16 @@ import { UserEventsController } from "./user.events.controller";
       UserEntity,
       UserEventPermissionEntity,
       SocialAccountEntity,
+      MediaUploadEntity,
     ]),
   ],
-  controllers: [UserController, SocialAccountController, UserEventsController],
-  providers: [UserService, SocialAccountService],
+  controllers: [
+    UserController,
+    SocialAccountController,
+    UserEventsController,
+    UserImageController,
+  ],
+  providers: [UserService, SocialAccountService, UserImageService],
   exports: [UserService, SocialAccountService],
 })
 export class UserModule {}

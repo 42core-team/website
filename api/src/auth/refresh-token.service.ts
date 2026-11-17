@@ -160,6 +160,9 @@ export class RefreshTokenService {
         select: { id: true, githubAccessToken: true },
         where: { id: userId },
         lock: { mode: "pessimistic_write" },
+        // Guard: a locked user find must never join relations, because FOR UPDATE
+        // cannot apply to the nullable side of an outer join.
+        loadEagerRelations: false,
       });
       if (!user) return null;
       return work(manager.getRepository(RefreshTokenEntity), user);

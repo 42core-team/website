@@ -1,4 +1,5 @@
 'use client'
+import { userAvatarSrc } from '@/lib/user-avatar'
 import type { HTMLAttributes, ReactNode, SVGAttributes } from 'react'
 import { useSession, useSignOut } from '@/lib/auth'
 import Link from '@/components/app-link'
@@ -205,7 +206,7 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
                   <button className="rounded-full outline-none">
                     <Avatar className="size-10 transition-transform">
                       <AvatarImage
-                        src={user.profilePicture}
+                        src={userAvatarSrc(user)}
                         alt={displayName}
                       />
                       <AvatarFallback>{initials}</AvatarFallback>

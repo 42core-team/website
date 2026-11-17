@@ -3,6 +3,8 @@ import { DataSource, getMetadataArgsStorage } from "typeorm";
 import { MediaUploadEntity } from "./entities/media-upload.entity";
 import { mediaArtwork } from "./media-artwork";
 import { TeamEntity } from "../team/entities/team.entity";
+import { USER_ARTWORK_RELATIONS } from "./artwork-relations";
+import { UserEntity } from "../user/entities/user.entity";
 import { MatchEntity } from "../match/entites/match.entity";
 
 function upload(objectKey: string) {
@@ -130,5 +132,33 @@ describe("media upload ORM schema", () => {
       .getSql();
     expect(sql).not.toContain('JOIN "media_uploads"');
     expect(sql).toContain("FOR UPDATE");
+  });
+
+  it("omits artwork joins when locking a user without eager relations", () => {
+    const repository = source.getRepository(UserEntity);
+    const locked = repository
+      .createQueryBuilder("user")
+      .setFindOptions({
+        select: { id: true, githubAccessToken: true },
+        where: { id: "user" },
+        loadEagerRelations: false,
+        lock: { mode: "pessimistic_write" },
+      })
+      .getSql();
+    expect(locked).not.toContain('JOIN "media_uploads"');
+    // Users load artwork only on request, so auth lookups stay join-free.
+    const plain = repository
+      .createQueryBuilder("user")
+      .setFindOptions({ where: { id: "user" } })
+      .getSql();
+    expect(plain).not.toContain('JOIN "media_uploads"');
+    const requested = repository
+      .createQueryBuilder("user")
+      .setFindOptions({
+        where: { id: "user" },
+        relations: USER_ARTWORK_RELATIONS,
+      })
+      .getSql();
+    expect(requested.match(/JOIN "media_uploads"/g)).toHaveLength(3);
   });
 });

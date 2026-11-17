@@ -1,3 +1,4 @@
+import { userAvatarSrc } from '@/lib/user-avatar'
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import type { ProfileSummary, UserProfile } from '@/app/actions/profile'
@@ -444,10 +445,7 @@ function RivalsPanel({ profile }: { profile: UserProfile }) {
               className="flex min-w-0 items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted"
             >
               <Avatar className="size-10 shrink-0">
-                <AvatarImage
-                  src={teammate.member.profilePicture ?? undefined}
-                  alt=""
-                />
+                <AvatarImage src={userAvatarSrc(teammate.member)} alt="" />
                 <AvatarFallback>
                   {teammate.member.name.slice(0, 2).toUpperCase()}
                 </AvatarFallback>

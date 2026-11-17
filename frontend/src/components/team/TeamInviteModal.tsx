@@ -1,3 +1,4 @@
+import { userAvatarSrc } from '@/lib/user-avatar'
 import type { UserSearchResult } from '@/app/actions/team'
 
 import { useEffect, useState } from 'react'
@@ -135,7 +136,7 @@ export function TeamInviteModal({
                   <div className="flex items-center gap-3">
                     <Avatar>
                       <AvatarImage
-                        src={user.profilePicture}
+                        src={userAvatarSrc(user)}
                         alt={user.name || 'User'}
                       />
                       <AvatarFallback>

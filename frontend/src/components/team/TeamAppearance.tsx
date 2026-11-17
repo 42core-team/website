@@ -1,17 +1,10 @@
 import type { ReactNode } from 'react'
 import type { TeamAppearance as Appearance } from '@/app/actions/team'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { mediaUrl } from '@/lib/media-url'
 import { cn } from '@/lib/utils'
 
-export function teamImageUrl(key: string) {
-  const base = (
-    import.meta.env.VITE_MEDIA_URL ||
-    (import.meta.env.DEV ? 'http://localhost:9000/core-team-images' : '')
-  ).replace(/\/$/, '')
-  return base
-    ? `${base}/${key.split('/').map(encodeURIComponent).join('/')}`
-    : undefined
-}
+export { mediaUrl as teamImageUrl }
 export function TeamPicture({
   team,
   large = false,
@@ -35,7 +28,7 @@ export function TeamPicture({
       <AvatarImage
         src={
           team.picture
-            ? teamImageUrl(large ? team.picture.large : team.picture.small)
+            ? mediaUrl(large ? team.picture.large : team.picture.small)
             : undefined
         }
         alt=""
@@ -68,7 +61,7 @@ export function TeamCover({
     >
       {team.background && (
         <img
-          src={teamImageUrl(team.background.large)}
+          src={mediaUrl(team.background.large)}
           alt=""
           className="absolute inset-0 size-full object-cover"
         />
