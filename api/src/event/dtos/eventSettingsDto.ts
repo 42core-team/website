@@ -1,3 +1,4 @@
+import { BadRequestException } from "@nestjs/common";
 import {
   IsBoolean,
   IsInt,
@@ -83,12 +84,12 @@ export class EventSettingsDto {
   showtimeStreamUrl: string;
 
   @ApiProperty()
-  @IsNumber()
+  @IsInt()
   @Min(1)
   minTeamSize: number;
 
   @ApiProperty()
-  @IsNumber()
+  @IsInt()
   @Min(1)
   maxTeamSize: number;
 
@@ -133,6 +134,16 @@ export class EventSettingsDto {
   @ApiProperty()
   @IsBoolean()
   isPrivate: boolean;
+}
+
+export function assertTeamSizeRange({
+  minTeamSize,
+  maxTeamSize,
+}: Pick<EventSettingsDto, "minTeamSize" | "maxTeamSize">): void {
+  if (minTeamSize > maxTeamSize)
+    throw new BadRequestException(
+      "Max team size must be at least the min team size.",
+    );
 }
 
 /** The settings an event takes over from a preset, apart from its dates. */

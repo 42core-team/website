@@ -14,6 +14,7 @@ import {
 } from "typeorm";
 import { LockKeys } from "../constants";
 import { CreateEventDto } from "../event/dtos/createEventDto";
+import { assertTeamSizeRange } from "../event/dtos/eventSettingsDto";
 import { EventEntity } from "../event/entities/event.entity";
 import { CreateEventInput, normalizeStreamUrl } from "../event/event.service";
 import { assertImageExists } from "../event/image.util";
@@ -93,6 +94,10 @@ export interface PresetDetail {
   updatedAt: Date;
 }
 
+function installationWarning(accountLogin: string): string {
+  return `This preset's GitHub installation ${accountLogin} is no longer available; the event will be created without one.`;
+}
+
 /**
  * What may surprise whoever uses the preset. Its installation is dropped on
  * create once it is unshared, suspended or uninstalled.
@@ -102,9 +107,7 @@ export function presetWarnings(
 ): string[] {
   const installation = preset.githubInstallation;
   return installation && !isSharedInstallation(installation)
-    ? [
-        `This preset's GitHub installation ${installation.accountLogin} is no longer available; the event will be created without one.`,
-      ]
+    ? [installationWarning(installation.accountLogin)]
     : [];
 }
 
@@ -199,7 +202,9 @@ export class EventPresetsService {
   async prepareEvent(
     dto: CreateEventDto,
     now?: Date,
-  ): Promise<Omit<CreateEventInput, "userId">> {
+  ): Promise<
+    Omit<CreateEventInput, "userId"> & { inheritedInstallationWarning?: string }
+  > {
     const preset = await this.presets.findOne({
       where: dto.presetId
         ? { id: dto.presetId, archivedAt: IsNull() }
@@ -213,6 +218,7 @@ export class EventPresetsService {
       );
     }
     const resolved = this.resolve(preset, now);
+    const inheritsInstallation = dto.githubInstallationId === undefined;
     return {
       settings: await mergeEventSettings(resolved.values, dto),
       presetId: preset.id,
@@ -222,6 +228,11 @@ export class EventPresetsService {
         dto.githubInstallationId !== undefined
           ? dto.githubInstallationId
           : (resolved.githubInstallation?.id ?? null),
+      inheritsInstallation,
+      inheritedInstallationWarning:
+        inheritsInstallation && preset.githubInstallation
+          ? installationWarning(preset.githubInstallation.accountLogin)
+          : undefined,
     };
   }
 
@@ -518,6 +529,7 @@ export class EventPresetsService {
    */
   private async assertUsable(dto: CreatePresetDto) {
     const { settings } = dto;
+    assertTeamSizeRange(settings);
     if (scheduleHours(settings.schedule).submissionDeadline <= 0)
       throw new BadRequestException(
         "The submission deadline must be after the start.",

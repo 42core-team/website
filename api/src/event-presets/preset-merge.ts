@@ -3,6 +3,7 @@ import { plainToInstance } from "class-transformer";
 import { validate, ValidationError } from "class-validator";
 import { CreateEventDto } from "../event/dtos/createEventDto";
 import {
+  assertTeamSizeRange,
   EVENT_DATE_FIELDS,
   EventSettingsDto,
   PRESET_SETTING_FIELDS,
@@ -50,5 +51,6 @@ export async function mergeEventSettings(
     forbidNonWhitelisted: true,
   });
   if (errors.length) throw new BadRequestException(messages(errors));
+  assertTeamSizeRange(merged);
   return merged;
 }

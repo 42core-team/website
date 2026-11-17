@@ -27,7 +27,12 @@ import {
 import { RepositoryStatus, TeamEntity } from "../team/entities/team.entity";
 import { UserEntity } from "../user/entities/user.entity";
 import { GithubInstallStateSigner } from "./github-app-state";
-import { AuthorizationService, EventPolicy, type Principal } from "../authz";
+import {
+  AuthorizationService,
+  EventPolicy,
+  PlatformPolicy,
+  type Principal,
+} from "../authz";
 
 const OWNED_INSTALLATIONS_CACHE_MS = 60 * 1000;
 const OWNERSHIP_CHECK_CONCURRENCY = 4;
@@ -176,13 +181,20 @@ export class GithubAppService {
       event.githubOrg && (await this.hasRepositories(event.id))
         ? event.githubOrg.toLowerCase()
         : null;
+    const canUseShared = await this.authorization.can(
+      PlatformPolicy,
+      "createEvent",
+      user,
+    );
     const [owned, shared] = await Promise.all([
       this.ownedInstallations(user.id),
-      this.dataSource.getRepository(GithubInstallationEntity).findBy({
-        sharedAt: Not(IsNull()),
-        suspendedAt: IsNull(),
-        deletedAt: IsNull(),
-      }),
+      canUseShared
+        ? this.dataSource.getRepository(GithubInstallationEntity).findBy({
+            sharedAt: Not(IsNull()),
+            suspendedAt: IsNull(),
+            deletedAt: IsNull(),
+          })
+        : [],
     ]);
     const sharedIds = new Set(shared.map((row) => row.installationId));
     const ownedIds = new Set(owned.map((installation) => installation.id));
@@ -310,7 +322,9 @@ export class GithubAppService {
     const known = await this.dataSource
       .getRepository(GithubInstallationEntity)
       .findOneBy({ installationId });
-    const ownershipChecked = !isSharedInstallation(known);
+    const ownershipChecked =
+      !isSharedInstallation(known) ||
+      !(await this.authorization.can(PlatformPolicy, "createEvent", principal));
     if (ownershipChecked) {
       const user = await this.dataSource
         .getRepository(UserEntity)

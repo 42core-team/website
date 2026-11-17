@@ -57,6 +57,7 @@ export class CreatePresetDto {
   @ValidateIf((_object, value) => value !== undefined)
   @IsArray()
   @ArrayMaxSize(EVENT_MAX_STARTER_TEMPLATES)
+  @IsObject({ each: true })
   @ValidateNested({ each: true })
   @Type(() => CreateEventStarterTemplateDto)
   starterTemplates?: CreateEventStarterTemplateDto[];

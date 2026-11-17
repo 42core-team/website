@@ -151,6 +151,7 @@ function CreatePresetForm({
     mutationFn: createEvent,
     onSuccess: async (event) => {
       toast.success('Event created.')
+      for (const warning of event.warnings ?? []) toast.warning(warning)
       await client.invalidateQueries({ queryKey: ['events'] })
       await navigate({ to: '/events/$id/dashboard', params: { id: event.id } })
     },
@@ -188,7 +189,9 @@ function CreatePresetForm({
         e.preventDefault()
         void form.handleSubmit()
       }}
-      onChange={() => mutation.reset()}
+      onChange={() => {
+        if (!mutation.isPending) mutation.reset()
+      }}
     >
       <label htmlFor="event-name">Name</label>
       <Input
