@@ -88,7 +88,7 @@ The frontend is a client-side SPA that sends the cookie via axios
     page load). It starts one shared in-flight `POST /auth/refresh` per tab,
     then retries the original request once. If the refresh fails, the session
     query is set to `null` and the logged-out UI shows. No forced redirect.
-    A 404 from an event-scoped route (`/event`, `/team`, `/match`,
+    A 404 from an event-scoped GET (`/event`, `/team`, `/match`,
     `/gambling`) does the same while a session is cached, because the API
     hides a private event from a guest with 404, not 401, so an expired
     access cookie would otherwise look like an unknown event. Guests'

@@ -267,6 +267,21 @@ describe('installRefreshInterceptor', () => {
       ])
     })
 
+    it('does not refresh or replay a write returning 404', async () => {
+      const { instance, calls } = createClient(() => 404, {
+        hasSession: signedIn,
+      })
+
+      await expect(
+        instance.put('event/unknown-id/settings', {}),
+      ).rejects.toMatchObject({
+        response: { status: 404 },
+      })
+      expect(calls).toEqual([
+        { method: 'put', url: 'event/unknown-id/settings' },
+      ])
+    })
+
     it('does not refresh for a guest', async () => {
       const { instance, calls } = createClient(() => 404, {
         hasSession: () => false,

@@ -48,7 +48,7 @@ export interface RefreshInterceptorOptions {
   onRefreshFailed?: () => void
   /**
    * Whether the user is believed to be signed in. Only then does a 404 from
-   * an event-scoped route refresh and retry, since the access cookie may have
+   * an event-scoped GET refresh and retry, since the access cookie may have
    * expired. Without it, 404s are never retried.
    */
   hasSession?: () => boolean
@@ -57,7 +57,7 @@ export interface RefreshInterceptorOptions {
 /**
  * On a 401, exchange the refresh cookie for a new access token via
  * `POST /auth/refresh` and retry the original request once. A 404 from an
- * event-scoped route does the same while `hasSession` says the user is signed
+ * event-scoped GET does the same while `hasSession` says the user is signed
  * in. Concurrent 401s and 404s share one in-flight refresh. If the refresh
  * fails, the original error is rethrown. See ADR 0002, decision 11.
  */
@@ -91,16 +91,20 @@ export function installRefreshInterceptor(
   const mayBeExpiredSession = (
     status: number | undefined,
     url: string | undefined,
+    method: string | undefined,
   ) =>
     status === 401 ||
-    (status === 404 && isEventScoped(url) && hasSession?.() === true)
+    (status === 404 &&
+      method === 'get' &&
+      isEventScoped(url) &&
+      hasSession?.() === true)
 
   return instance.interceptors.response.use(undefined, async (error) => {
     const config = isAxiosError(error) ? error.config : undefined
     if (
       !config ||
       !isAxiosError(error) ||
-      !mayBeExpiredSession(error.response?.status, config.url) ||
+      !mayBeExpiredSession(error.response?.status, config.url, config.method) ||
       config._retriedAfterRefresh ||
       isExcluded(config.url)
     ) {
