@@ -128,6 +128,45 @@ describe("team image cleanup locking", () => {
     expect(destroy).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps objects referenced by soft-deleted teams", async () => {
+    const { service, manager, send } = setup();
+    manager.find.mockResolvedValue([
+      {
+        id: "deleted-team",
+        deletedAt: new Date(),
+        pictureSmallUpload: { id: "u1", objectKey: "images/deleted-small" },
+        pictureLargeUpload: { id: "u2", objectKey: "images/deleted-large" },
+        backgroundLargeUpload: { id: "u3", objectKey: "images/deleted-bg" },
+      },
+    ]);
+    const old = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    send.mockImplementation(async (command) =>
+      command instanceof ListObjectsV2Command
+        ? {
+            Contents: [
+              { Key: "images/deleted-small", LastModified: old },
+              { Key: "images/deleted-large", LastModified: old },
+              { Key: "images/deleted-bg", LastModified: old },
+              { Key: "images/orphan", LastModified: old },
+            ],
+          }
+        : {},
+    );
+    await service.cleanup();
+    expect(manager.find).toHaveBeenCalledWith(
+      TeamEntity,
+      expect.objectContaining({ withDeleted: true }),
+    );
+    const deletes = send.mock.calls
+      .map(([command]) => command)
+      .filter((c) => c instanceof DeleteObjectsCommand)
+      .map((c) => c as DeleteObjectsCommand);
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0].input.Delete?.Objects).toEqual([
+      { Key: "images/orphan" },
+    ]);
+  });
+
   it("propagates storage failure out of the transaction so it rolls back and releases its lock", async () => {
     const { service, transaction, send, destroy } = setup();
     send.mockRejectedValue(new Error("storage unavailable") as never);

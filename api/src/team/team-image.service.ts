@@ -270,7 +270,8 @@ export class TeamImageService {
         if (!lock.acquired) return;
         const storage = this.storage();
         client = storage.client;
-        const activeTeams = await manager.find(TeamEntity, {
+        // Soft-deleted teams stay referenced: match history and profiles still show them.
+        const teamsWithArtwork = await manager.find(TeamEntity, {
           select: {
             id: true,
             pictureSmallUpload: { id: true, objectKey: true },
@@ -283,9 +284,10 @@ export class TeamImageService {
             backgroundLargeUpload: true,
           },
           loadEagerRelations: false,
+          withDeleted: true,
         });
         const referenced = new Set(
-          activeTeams.flatMap((team) =>
+          teamsWithArtwork.flatMap((team) =>
             [
               team.pictureSmallUpload?.objectKey,
               team.pictureLargeUpload?.objectKey,
