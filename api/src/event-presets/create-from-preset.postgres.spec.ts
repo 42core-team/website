@@ -333,6 +333,7 @@ postgres("creating events from presets (PostgreSQL)", () => {
     ],
     ["an unknown preset", { presetId: randomUUID() }, 404],
     ["an invalid override", { maxTeamSize: 0 }, 400],
+    ["a minimum team size above the preset maximum", { minTeamSize: 5 }, 400],
     ["a deadline before the start", { submissionDeadline: 0 }, 400],
     ["an unknown installation", { githubInstallationId: randomUUID() }, 400],
   ])("refuses %s and creates nothing", async (_, body, status) => {
@@ -358,7 +359,7 @@ postgres("creating events from presets (PostgreSQL)", () => {
       .save({
         installationId: 79,
         accountId: 7,
-        accountLogin: "private-org",
+        accountLogin: "old-private-org",
         accountType: "Organization",
       });
     const before = await counts();
@@ -371,7 +372,13 @@ postgres("creating events from presets (PostgreSQL)", () => {
       }).expect(201);
       expect(await load(body.id)).toMatchObject({
         githubInstallationId: unshared.id,
+        githubOrg: "private-org",
       });
+      expect(
+        await database
+          .getRepository(GithubInstallationEntity)
+          .findOneByOrFail({ id: unshared.id }),
+      ).toMatchObject({ accountLogin: "private-org" });
     } finally {
       owner = false;
     }
@@ -584,6 +591,35 @@ postgres("creating events from presets (PostgreSQL)", () => {
     );
   });
 
+  it("creates without an inherited installation unshared before the event transaction", async () => {
+    const installations = database.getRepository(GithubInstallationEntity);
+    const prepareEvent = EventPresetsService.prototype.prepareEvent;
+    const prepare = jest.spyOn(EventPresetsService.prototype, "prepareEvent");
+    prepare.mockImplementationOnce(async function (
+      this: EventPresetsService,
+      dto,
+    ) {
+      const input = await prepareEvent.call(this, dto);
+      await installations.update(installation.id, { sharedAt: null });
+      return input;
+    });
+    try {
+      const { body } = await create({}).expect(201);
+      expect(body.warnings).toEqual([
+        expect.stringContaining(
+          "GitHub installation core-org is no longer available",
+        ),
+      ]);
+      expect(await load(body.id)).toMatchObject({
+        githubInstallationId: null,
+        githubOrg: "",
+      });
+    } finally {
+      prepare.mockRestore();
+      await installations.update(installation.id, { sharedAt: new Date() });
+    }
+  });
+
   it.each([
     ["no longer shared", { sharedAt: null }],
     ["suspended", { suspendedAt: new Date() }],
@@ -603,6 +639,11 @@ postgres("creating events from presets (PostgreSQL)", () => {
           "This preset's GitHub installation core-org is no longer available; the event will be created without one.",
         ]);
         const { body: created } = await create({}).expect(201);
+        expect(created.warnings).toEqual(body.warnings);
+        const { body: explicitNone } = await create({
+          githubInstallationId: null,
+        }).expect(201);
+        expect(explicitNone.warnings).toEqual([]);
         expect(await load(created.id)).toMatchObject({
           githubInstallationId: null,
           githubOrg: "",

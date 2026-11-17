@@ -70,6 +70,8 @@ export interface CreateEventInput {
   }[];
   /** A shared or actively owned installation, checked at create time. */
   githubInstallationId: string | null;
+  /** An inherited installation can only be linked while it remains shared. */
+  inheritsInstallation?: boolean;
 }
 
 @Injectable()
@@ -351,6 +353,7 @@ export class EventService {
     presetVersion,
     starterTemplates,
     githubInstallationId,
+    inheritsInstallation,
   }: CreateEventInput): Promise<EventEntity> {
     const dates = {
       startDate: new Date(settings.startDate),
@@ -378,8 +381,14 @@ export class EventService {
 
     // GitHub calls run before the transaction, then local status/sharing are
     // checked under a row lock. Never reuse the list endpoint's ownership cache.
-    let ownedInstallationId: string | null = null;
-    if (githubInstallationId) {
+    let ownedInstallation:
+      | {
+          id: string;
+          cachedLogin: string;
+          liveLogin: string;
+        }
+      | undefined;
+    if (githubInstallationId && !inheritsInstallation) {
       const installation = await this.dataSource
         .getRepository(GithubInstallationEntity)
         .findOneBy({ id: githubInstallationId });
@@ -416,40 +425,67 @@ export class EventService {
         await new GithubInstallationOwner(
           this.githubAppAuth,
         ).assertCanManageAccount(live, user.githubId);
-        ownedInstallationId = installation.id;
+        ownedInstallation = {
+          id: installation.id,
+          cachedLogin: installation.accountLogin,
+          liveLogin: live.account.login,
+        };
       }
     }
 
     return this.dataSource.transaction(async (manager) => {
-      const installation = githubInstallationId
-        ? await manager.getRepository(GithubInstallationEntity).findOne({
+      const installations = manager.getRepository(GithubInstallationEntity);
+      const loginChanged =
+        ownedInstallation &&
+        ownedInstallation.cachedLogin !== ownedInstallation.liveLogin;
+      let installation = githubInstallationId
+        ? await installations.findOne({
             where: { id: githubInstallationId },
-            lock: { mode: "pessimistic_read" },
+            lock: {
+              mode: loginChanged ? "pessimistic_write" : "pessimistic_read",
+            },
           })
         : null;
-      if (
-        githubInstallationId &&
-        (!installation || installation.suspendedAt || installation.deletedAt)
-      )
-        throw new BadRequestException(
-          "The GitHub installation is unknown, suspended or uninstalled.",
-        );
+      if (inheritsInstallation) {
+        if (!isSharedInstallation(installation)) installation = null;
+      } else {
+        if (
+          githubInstallationId &&
+          (!installation || installation.suspendedAt || installation.deletedAt)
+        )
+          throw new BadRequestException(
+            "The GitHub installation is unknown, suspended or uninstalled.",
+          );
+        if (
+          installation &&
+          !isSharedInstallation(installation) &&
+          ownedInstallation?.id !== installation.id
+        )
+          throw new ConflictException(
+            "This installation is no longer shared. Retry to check ownership.",
+          );
+      }
+
+      // An intervening webhook may already have provided a newer login.
+      let githubOrg = installation?.accountLogin ?? "";
       if (
         installation &&
-        !isSharedInstallation(installation) &&
-        ownedInstallationId !== installation.id
-      )
-        throw new ConflictException(
-          "This installation is no longer shared. Retry to check ownership.",
-        );
+        ownedInstallation &&
+        loginChanged &&
+        installation.accountLogin === ownedInstallation.cachedLogin
+      ) {
+        githubOrg = ownedInstallation.liveLogin;
+        await installations.update(installation.id, {
+          accountLogin: githubOrg,
+        });
+      }
 
       const events = manager.getRepository(EventEntity);
       const event = await events.save(
         events.create({
           name: settings.name,
           description: settings.description,
-          // Without an installation the organization is set when the GitHub App is connected.
-          githubOrg: installation?.accountLogin ?? "",
+          githubOrg,
           githubInstallationId: installation?.id ?? null,
           location: settings.location,
           minTeamSize: settings.minTeamSize,

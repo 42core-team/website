@@ -196,9 +196,10 @@ explicit dates are kept. `scheduledEndDate` controls the lifecycle, while
 Global admins can share a GitHub App installation at
 `/admin/github-installations`, after passing the owner check once. Any event
 creator may then link it, from a preset, on create or from the dashboard,
-without owning its organization. Unshared installations require a fresh owner
-check when linked, including on create; suspended or uninstalled installations
-are rejected with 400. Unsharing leaves linked events alone.
+without owning its organization. Event admins without creator permission can
+link installations they own through the dashboard. Unshared installations
+require a fresh owner check when linked, including on create. Suspended or
+uninstalled installations are rejected with 400. Unsharing leaves linked events alone.
 
 The create picker requires `PlatformPolicy.createEvent` for
 `GET /github/installations`, returning
@@ -207,9 +208,9 @@ installations are deduplicated. The existing event dashboard routes still use
 GitHub's numeric `installationId`, and their list now includes `shared`.
 Presets may only save a shared, active installation. If it later stops being
 shared or active, resolve returns `githubInstallation: null` and omitted links
-on create resolve to none. Resolve, the admin list and the admin detail then
-report it in `warnings: string[]`, and a PUT may send the unchanged stale id
-back so other edits still save.
+on create resolve to none. Resolve, create, the admin list and the admin detail
+report it in `warnings: string[]` when applicable. A PUT may send the unchanged
+stale id back so other edits still save.
 
 Admins set the default with `POST /admin/event-presets/:id/default` (200,
 the same detail shape as GET). It clears the old default and bumps both

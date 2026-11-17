@@ -230,6 +230,7 @@ postgres("admin event presets (PostgreSQL)", () => {
     ],
     ["an unknown field", { isPrivate: false }],
     ["null templates", { starterTemplates: null }],
+    ["a nested template array", { starterTemplates: [[]] }],
     ["null default flag", { isDefault: null }],
     [
       "a null optional setting",
@@ -280,6 +281,18 @@ postgres("admin event presets (PostgreSQL)", () => {
       "no team size",
       { settings: { ...PRESET_SETTINGS, maxTeamSize: undefined } },
     ],
+    [
+      "a fractional minimum team size",
+      { settings: { ...PRESET_SETTINGS, minTeamSize: 1.5 } },
+    ],
+    [
+      "a fractional maximum team size",
+      { settings: { ...PRESET_SETTINGS, maxTeamSize: 2.5 } },
+    ],
+    [
+      "a minimum team size greater than the maximum",
+      { settings: { ...PRESET_SETTINGS, minTeamSize: 5, maxTeamSize: 4 } },
+    ],
     ["a short name", { name: "ab" }],
     [
       "a bad stream URL",
@@ -295,6 +308,11 @@ postgres("admin event presets (PostgreSQL)", () => {
     ],
   ])("rejects %s", async (_, body) => {
     await create(body).expect(400);
+  });
+
+  it("accepts an empty starter templates array", async () => {
+    const { body } = await create({ starterTemplates: [] }).expect(201);
+    expect(body.starterTemplates).toEqual([]);
   });
 
   it("answers 409 when the name is taken", async () => {

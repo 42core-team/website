@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useBlocker } from '@tanstack/react-router'
 import { AxiosError } from 'axios'
 import { format } from 'date-fns'
+import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type * as Router from '@tanstack/react-router'
 import type {
@@ -65,6 +66,7 @@ vi.mock('@/app/actions/presets', async (original) => ({
   unshareInstallation: vi.fn(),
 }))
 vi.mock('@/app/actions/event', () => ({ createEvent: vi.fn() }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), warning: vi.fn() } }))
 vi.mock('@/lib/auth', () => ({ useSession: vi.fn() }))
 const { schedule: _schedule, ...settings } = defaultSettings
 const resolved: ResolvedPreset = {
@@ -171,6 +173,15 @@ async function mount(element: React.ReactNode) {
   })
   return client
 }
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
+}
 async function createPage() {
   await mount(<CreateEventPage />)
   await screen.findByLabelText('Name')
@@ -194,6 +205,39 @@ describe('preset event creation', () => {
     expect(screen.queryByRole('status')).toBeNull()
     fireEvent.click(screen.getByText('Adjust settings'))
     expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('keeps a create request pending and shows its error after a field change', async () => {
+    const request = deferred<Awaited<ReturnType<typeof createEvent>>>()
+    vi.mocked(createEvent).mockReturnValue(request.promise)
+    await createPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+    await screen.findByRole('button', { name: 'Creating…' })
+    fireEvent.change(screen.getByLabelText('Name'), {
+      target: { value: 'Edited Cup' },
+    })
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Creating…' })
+        .disabled,
+    ).toBe(true)
+    request.reject(conflict('Event name is already taken'))
+    await screen.findByText('Event name is already taken')
+  })
+
+  it('shows an installation warning returned when the event is created', async () => {
+    vi.mocked(createEvent).mockResolvedValue({
+      id: 'new',
+      warnings: [unavailable],
+    } as Awaited<ReturnType<typeof createEvent>>)
+    await createPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() => expect(toast.warning).toHaveBeenCalledWith(unavailable))
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/events/$id/dashboard',
+        params: { id: 'new' },
+      }),
+    )
   })
 
   it('sends only name and preset when settings are unchanged', async () => {
@@ -506,6 +550,70 @@ describe('preset administration', () => {
     expect(api.getAdminPreset).toHaveBeenCalledWith('one')
     expect(api.updatePreset).not.toHaveBeenCalled()
   })
+  it('keeps a new draft when the default list and detail change', async () => {
+    const defaults = {
+      ...preset,
+      settings: { ...defaultSettings, location: 'Original venue' },
+    }
+    vi.mocked(api.getAdminPreset).mockResolvedValue(defaults)
+    const client = await mount(<PresetsPage />)
+    fireEvent.click(screen.getByText('Create preset'))
+    fireEvent.change(await screen.findByLabelText('Preset name'), {
+      target: { value: 'My draft' },
+    })
+
+    const replacement = {
+      ...preset,
+      id: 'two',
+      settings: { ...defaultSettings, location: 'New venue' },
+    }
+    vi.mocked(api.getAdminPresets).mockResolvedValue([
+      { ...replacement, updatedBy: null, eventCount: 0 },
+    ])
+    vi.mocked(api.getAdminPreset).mockImplementation(async (id) =>
+      id === 'one' ? { ...replacement, id, version: 3 } : replacement,
+    )
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ['admin', 'presets'] })
+      await client.refetchQueries({ queryKey: ['admin', 'preset', 'one'] })
+    })
+
+    expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
+      'My draft',
+    )
+    expect(screen.getByLabelText<HTMLInputElement>('Location').value).toBe(
+      'Original venue',
+    )
+    expect(api.getAdminPreset).not.toHaveBeenCalledWith('two')
+  })
+
+  it('refreshes caches after a late save and keeps the newer editor open', async () => {
+    const save = deferred<PresetDetail>()
+    vi.mocked(api.updatePreset).mockReturnValue(save.promise)
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const client = await mount(<PresetsPage />)
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Default' }))
+    fireEvent.change(await screen.findByLabelText('Preset name'), {
+      target: { value: 'First draft' },
+    })
+    fireEvent.click(screen.getByText('Save preset'))
+    await waitFor(() => expect(api.updatePreset).toHaveBeenCalledOnce())
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+
+    fireEvent.click(screen.getByText('Create preset'))
+    fireEvent.change(await screen.findByLabelText('Preset name'), {
+      target: { value: 'Second draft' },
+    })
+    await act(async () => save.resolve({ ...preset, version: 3 }))
+
+    expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
+      'Second draft',
+    )
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['admin', 'presets'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['admin', 'preset'] })
+  })
+
   it('uses blank values when there is no default preset', async () => {
     vi.mocked(api.getAdminPresets).mockResolvedValue([])
     await mount(<PresetsPage />)
@@ -680,6 +788,36 @@ describe('preset administration conflicts', () => {
       'My changes',
     )
   })
+  it('keeps the edited version until explicitly reloading after a conflict', async () => {
+    const newer = { ...preset, name: 'Server version', version: 3 }
+    vi.mocked(api.updatePreset).mockRejectedValue(
+      conflict('Preset was changed by someone else'),
+    )
+    const client = await mount(<PresetsPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Default' }))
+    fireEvent.change(await screen.findByLabelText('Preset name'), {
+      target: { value: 'My changes' },
+    })
+
+    vi.mocked(api.getAdminPreset).mockResolvedValue(newer)
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ['admin', 'preset', 'one'] })
+    })
+    expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
+      'My changes',
+    )
+    fireEvent.click(screen.getByText('Save preset'))
+    fireEvent.click(await screen.findByText('Reload preset and discard edits'))
+    expect(api.updatePreset).toHaveBeenCalledWith(
+      'one',
+      expect.objectContaining({ name: 'My changes', version: 2 }),
+    )
+    await screen.findByRole('heading', { name: 'Edit Server version (v3)' })
+    expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
+      'Server version',
+    )
+  })
+
   it('shows name conflicts inline without a version reload prompt', async () => {
     vi.mocked(api.updatePreset).mockRejectedValue(
       conflict('Preset name is already taken'),

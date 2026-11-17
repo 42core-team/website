@@ -134,8 +134,14 @@ export class EventController {
       presetId: createEventDto.presetId,
     });
 
-    const input = await this.presets.prepareEvent(createEventDto);
-    return this.eventService.createEvent({ userId, ...input });
+    const { inheritedInstallationWarning, ...input } =
+      await this.presets.prepareEvent(createEventDto);
+    const event = await this.eventService.createEvent({ userId, ...input });
+    const warnings =
+      !event.githubInstallationId && inheritedInstallationWarning
+        ? [inheritedInstallationWarning]
+        : [];
+    return Object.assign(event, { warnings });
   }
 
   @Can(EventPolicy, "view", param("id"))

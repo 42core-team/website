@@ -24,6 +24,7 @@ const PERMISSIONS = {
 function setup(
   options: {
     admin?: boolean;
+    creator?: boolean;
     accountType?: string;
     permissions?: Record<string, string>;
     membership?: { role: string; state: string } | null;
@@ -123,7 +124,13 @@ function setup(
     eventService as never,
     config as never,
     dataSource as never,
-    { can: jest.fn().mockResolvedValue(options.admin ?? true) } as never,
+    {
+      can: jest.fn(async (_policy, ability) =>
+        ability === "createEvent"
+          ? (options.creator ?? true)
+          : (options.admin ?? true),
+      ),
+    } as never,
   );
   const membership =
     options.membership === undefined
@@ -447,6 +454,30 @@ describe("GithubAppService", () => {
       ]);
     });
 
+    it("lists only owned installations for an event admin without creator permission", async () => {
+      const { service } = setup({
+        creator: false,
+        installations: [installation(77, "Core-Org")],
+        sharedInstallations: [
+          {
+            installationId: 90,
+            accountLogin: "Arena-Org",
+            sharedAt: new Date(),
+          },
+        ],
+      });
+      await expect(
+        service.listLinkableInstallations("event", USER),
+      ).resolves.toEqual([
+        {
+          installationId: 77,
+          accountLogin: "Core-Org",
+          accountType: "Organization",
+          shared: false,
+        },
+      ]);
+    });
+
     it("leaves out personal accounts", async () => {
       const { service } = setup({
         installations: [
@@ -563,6 +594,32 @@ describe("GithubAppService", () => {
         expect.objectContaining({ githubInstallationId: "row" }),
       );
     });
+
+    it.each([
+      ["member", false],
+      ["admin", true],
+    ] as const)(
+      "checks ownership of a shared installation for an event admin without creator permission (%s)",
+      async (role, canLink) => {
+        const { service, repositories, appAuth } = setup({
+          creator: false,
+          membership: { role, state: "active" },
+          existingInstallation: {
+            id: "row",
+            installationId: 77,
+            sharedAt: new Date(),
+          },
+        });
+        const link = service.linkInstallation("event", USER, 77);
+        if (canLink) {
+          await expect(link).resolves.toEqual({ eventId: "event" });
+        } else {
+          await expect(link).rejects.toThrow("Only an owner of Core-Org");
+          expect(repositories.get(EventEntity)!.update).not.toHaveBeenCalled();
+        }
+        expect(appAuth.getInstallationToken).toHaveBeenCalled();
+      },
+    );
 
     it("does not link without ownership if sharing was revoked before commit", async () => {
       const { service, repositories } = setup({

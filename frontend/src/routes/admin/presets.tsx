@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { useStore } from '@tanstack/react-store'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -70,43 +70,83 @@ export const Route = createFileRoute('/admin/presets')({
     </AdminGuard>
   ),
 })
+type EditorSession = {
+  token: number
+  isNew: boolean
+  // A new draft can open before the list loads. Null means it had no default.
+  sourceId: string | null | undefined
+  snapshot?: PresetDetail | null
+  dirty: boolean
+  loadFailed?: boolean
+}
+
 export function PresetsPage() {
   const client = useQueryClient()
   const [archived, setArchived] = useState(false)
-  const [dirty, setDirty] = useState(false)
-  const discardEditor = () => {
-    setDirty(false)
-    setEditing(null)
-  }
+  const [editing, setEditing] = useState<EditorSession | null>(null)
+  const nextToken = useRef(0)
+  const isDirty = editing?.dirty ?? false
   const closeEditor = () => {
-    if (dirty && !window.confirm('Discard your unsaved preset edits?')) return
-    discardEditor()
+    if (isDirty && !window.confirm('Discard your unsaved preset edits?')) return
+    setEditing(null)
   }
   useBlocker({
     shouldBlockFn: () =>
-      dirty && !window.confirm('Discard your unsaved preset edits?'),
-    enableBeforeUnload: dirty,
+      isDirty && !window.confirm('Discard your unsaved preset edits?'),
+    enableBeforeUnload: isDirty,
   })
-  const [editing, setEditing] = useState<string | null>(null)
-  const rows = useQuery({
+  const listQuery = {
     queryKey: ['admin', 'presets', archived],
     queryFn: () => getAdminPresets(archived),
-  })
-  const defaultId = rows.data?.find((row) => row.isDefault)?.id
-  const defaults = useQuery({
-    queryKey: ['admin', 'preset', defaultId],
-    queryFn: () => getAdminPreset(defaultId!),
-    enabled: editing === 'new' && Boolean(defaultId) && !dirty,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    // A new editor starts with the current default, even if it was edited elsewhere.
-    staleTime: 0,
-  })
-  const detail = useQuery({
-    queryKey: ['admin', 'preset', editing],
-    queryFn: () => getAdminPreset(editing!),
-    enabled: Boolean(editing && editing !== 'new'),
-  })
+  }
+  const rows = useQuery(listQuery)
+
+  const loadEditor = async (session: EditorSession) => {
+    let sourceId = session.sourceId
+    const token = ++nextToken.current
+    setEditing((current) =>
+      current?.token === session.token
+        ? { ...current, loadFailed: false }
+        : current,
+    )
+    try {
+      if (sourceId === undefined) {
+        const list = await client.ensureQueryData(listQuery)
+        sourceId = list.find((row) => row.isDefault)?.id ?? null
+      }
+      const id = sourceId
+      const snapshot = id
+        ? await client.fetchQuery({
+            queryKey: ['admin', 'preset', id],
+            queryFn: () => getAdminPreset(id),
+            staleTime: 0,
+          })
+        : null
+      setEditing((current) =>
+        current?.token === session.token
+          ? { ...current, token, sourceId, snapshot, dirty: false }
+          : current,
+      )
+    } catch {
+      setEditing((current) =>
+        current?.token === session.token
+          ? { ...current, sourceId, loadFailed: true }
+          : current,
+      )
+    }
+  }
+
+  const openEditor = (isNew: boolean, sourceId?: string | null) => {
+    const session: EditorSession = {
+      token: ++nextToken.current,
+      isNew,
+      sourceId,
+      dirty: false,
+    }
+    setEditing(session)
+    void loadEditor(session)
+  }
+
   const refresh = async () => {
     await client.invalidateQueries({ queryKey: ['admin', 'presets'] })
     await client.invalidateQueries({ queryKey: ['event-presets'] })
@@ -131,7 +171,18 @@ export function PresetsPage() {
     <main className="container mx-auto max-w-5xl space-y-6 px-4 py-8">
       <h1 className="text-3xl font-bold">Event presets</h1>
       <div className="flex gap-4">
-        <Button onClick={() => setEditing('new')}>Create preset</Button>
+        <Button
+          onClick={() =>
+            openEditor(
+              true,
+              rows.data
+                ? (rows.data.find((row) => row.isDefault)?.id ?? null)
+                : undefined,
+            )
+          }
+        >
+          Create preset
+        </Button>
         <label htmlFor="include-archived">Include archived</label>
         <Switch
           id="include-archived"
@@ -169,7 +220,7 @@ export function PresetsPage() {
             </p>
           ))}
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setEditing(row.id)}>
+            <Button variant="outline" onClick={() => openEditor(false, row.id)}>
               Edit {row.name}
             </Button>
             <Button
@@ -218,65 +269,53 @@ export function PresetsPage() {
       >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogTitle>
-            {editing === 'new' ? 'Create preset' : 'Edit preset'}
+            {editing?.isNew ? 'Create preset' : 'Edit preset'}
           </DialogTitle>
           <DialogDescription>
             Configure the settings organizers start with when creating an event.
           </DialogDescription>
-          {editing && editing !== 'new' && detail.isPending && <Spinner />}
-          {editing && detail.isError && (
+          {editing && !editing.loadFailed && editing.snapshot === undefined && (
+            <Spinner />
+          )}
+          {editing?.loadFailed && (
             <p role="alert">
-              Could not load preset.{' '}
-              <Button onClick={() => void detail.refetch()}>Retry</Button>
+              {editing.isNew
+                ? 'Could not load default preset.'
+                : 'Could not load preset.'}{' '}
+              <Button onClick={() => void loadEditor(editing)}>Retry</Button>
             </p>
           )}
-          {editing === 'new' &&
-            (rows.isPending || (defaultId && defaults.isFetching)) && (
-              <Spinner />
-            )}
-          {editing === 'new' && defaults.isError && (
-            <p role="alert">
-              Could not load default preset.{' '}
-              <Button onClick={() => void defaults.refetch()}>Retry</Button>
-            </p>
+          {editing && editing.snapshot !== undefined && (
+            <PresetEditor
+              key={editing.token}
+              preset={
+                editing.isNew ? undefined : (editing.snapshot ?? undefined)
+              }
+              defaults={
+                editing.isNew ? (editing.snapshot ?? undefined) : undefined
+              }
+              onReload={() => void loadEditor(editing)}
+              onCancel={() => setEditing(null)}
+              onDirty={(dirty) =>
+                setEditing((current) =>
+                  current?.token === editing.token && current.dirty !== dirty
+                    ? { ...current, dirty }
+                    : current,
+                )
+              }
+              onSaved={async () => {
+                setEditing((current) =>
+                  current?.token === editing.token ? null : current,
+                )
+                await refresh()
+                if (!editing.isNew) {
+                  await client.invalidateQueries({
+                    queryKey: ['admin', 'preset'],
+                  })
+                }
+              }}
+            />
           )}
-          {editing === 'new'
-            ? !rows.isPending &&
-              !rows.isError &&
-              (!defaultId ||
-                (defaults.data &&
-                  !defaults.isFetching &&
-                  !defaults.isError)) && (
-                <PresetEditor
-                  key="new"
-                  defaults={defaultId ? defaults.data : undefined}
-                  onDirty={setDirty}
-                  onSaved={async () => {
-                    setDirty(false)
-                    setEditing(null)
-                    await refresh()
-                  }}
-                  onCancel={discardEditor}
-                />
-              )
-            : editing &&
-              detail.data && (
-                <PresetEditor
-                  key={`${detail.data.id}-${detail.data.version}`}
-                  preset={detail.data}
-                  onReload={() => void detail.refetch()}
-                  onCancel={discardEditor}
-                  onDirty={setDirty}
-                  onSaved={async () => {
-                    setDirty(false)
-                    setEditing(null)
-                    await refresh()
-                    await client.invalidateQueries({
-                      queryKey: ['admin', 'preset'],
-                    })
-                  }}
-                />
-              )}
         </DialogContent>
       </Dialog>
     </main>

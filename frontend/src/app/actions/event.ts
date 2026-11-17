@@ -202,8 +202,13 @@ export async function completeGithubAppInstallation(
 // Create a new event
 export async function createEvent(
   eventData: EventCreateParams,
-): Promise<Event> {
-  return (await axiosInstance.post<Event>(`event`, eventData)).data
+): Promise<Event & { warnings?: string[] }> {
+  return (
+    await axiosInstance.post<Event & { warnings?: string[] }>(
+      `event`,
+      eventData,
+    )
+  ).data
 }
 
 export async function updateEventSettings(
