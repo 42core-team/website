@@ -43,6 +43,7 @@ func (c *Client) CreateGameJob(ctx context.Context, game *Game) error {
 		presignedURL,
 		c.cfg.RabbitMQHTTP+"/api/exchanges/%2f/amq.default/publish",
 		c.cfg.QueueName("game_results"),
+		c.cfg.BotPortIsolation,
 	)
 	if err != nil {
 		return err
@@ -117,8 +118,9 @@ func createGameResources(ctx context.Context, clientset kubernetes.Interface, na
 }
 
 // buildGameResources builds the Job, ConfigMap and (if needed) credentials
-// Secret for a game without talking to the cluster.
-func buildGameResources(game *Game, namespace, presignedURL, rabbitMQPublishURL, resultsQueue string) (*gameResources, error) {
+// Secret for a game without talking to the cluster. With botPortIsolation,
+// every bot gets its own uid and game server port (see netGuardScript).
+func buildGameResources(game *Game, namespace, presignedURL, rabbitMQPublishURL, resultsQueue string, botPortIsolation bool) (*gameResources, error) {
 	for _, bot := range game.Bots {
 		if err := validateRepoURL(bot.RepoURL); err != nil {
 			return nil, fmt.Errorf("%w: invalid repository URL for bot %s: %v", ErrInvalidGame, bot.ID, err)
@@ -155,7 +157,7 @@ func buildGameResources(game *Game, namespace, presignedURL, rabbitMQPublishURL,
 	var botContainers []corev1.Container
 
 	// Security context helpers
-	botRunAsUser := int64(2000) // untrusted bots
+	slots := botSlots(len(game.Bots), botPortIsolation) // uid and port of each untrusted bot
 	//serverRunAsUser := int64(1000) // trusted game server
 	runAsNonRootTrue := true
 	readOnlyRootTrue := true
@@ -195,7 +197,8 @@ func buildGameResources(game *Game, namespace, presignedURL, rabbitMQPublishURL,
 		},
 	})
 
-	for _, bot := range game.Bots {
+	for ind, bot := range game.Bots {
+		botRunAsUser := slots[ind].uid
 		volumeName := "shared-data-" + bot.ID.String()
 		tmpVolumeName := "tmp-" + bot.ID.String()
 		initContainerName := "clone-repo-" + bot.ID.String()
@@ -281,6 +284,11 @@ func buildGameResources(game *Game, namespace, presignedURL, rabbitMQPublishURL,
 		{Name: "UPLOAD_REPLAY", Value: "true"},
 		{Name: "BOT_ID_MAPPING", Value: string(botMappingJSON)},
 	}
+	netGuard := legacyNetGuardScript(botBaseUID)
+	if botPortIsolation {
+		gameEnv = append(gameEnv, corev1.EnvVar{Name: "TEAM_PORTS", Value: teamPortsEnv(botIDs, slots)})
+		netGuard = netGuardScript(slots)
+	}
 	gameEnv = append(gameEnv, playerNameEnvs...)
 
 	mainContainer := corev1.Container{
@@ -322,18 +330,14 @@ func buildGameResources(game *Game, namespace, presignedURL, rabbitMQPublishURL,
 		},
 	}
 
-	// Final init container that installs iptables rules to restrict bot egress to loopback only.
+	// Final init container that installs iptables rules to restrict bot egress
+	// to loopback only and, with botPortIsolation, each bot to its own port.
 	// Requires NET_ADMIN but runs before app containers start.
 	initContainers = append(initContainers, corev1.Container{
 		Name:  "net-guard",
 		Image: "ghcr.io/paulicstudios/alpine-iptables:latest",
 		Command: []string{
-			"sh", "-c", fmt.Sprintf(`
-				set -eux;
-				# Block all non-loopback egress for bot UID
-				iptables -I OUTPUT 1 -m owner --uid-owner %d ! -o lo -j DROP;
-				ip6tables -I OUTPUT 1 -m owner --uid-owner %d ! -o lo -j DROP;
-			`, botRunAsUser, botRunAsUser),
+			"sh", "-c", netGuard,
 		},
 		SecurityContext: &corev1.SecurityContext{
 			RunAsUser: func(i int64) *int64 { return &i }(0),

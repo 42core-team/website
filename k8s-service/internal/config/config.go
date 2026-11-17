@@ -20,6 +20,10 @@ type Config struct {
 	S3Bucket            string  `env:"S3_BUCKET, required"`
 	S3AccessKeyID       string  `env:"S3_ACCESS_KEY_ID, required"`
 	S3SecretKey         string  `env:"S3_SECRET_ACCESS_KEY, required"`
+	// BotPortIsolation gives every bot of a game its own uid and game server
+	// port (TEAM_PORTS). Only enable it once every game server image in use
+	// supports TEAM_PORTS; older images listen only on 4444.
+	BotPortIsolation bool `env:"BOT_PORT_ISOLATION, default=false"`
 }
 
 func (c *Config) QueueName(name string) string {

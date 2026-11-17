@@ -19,7 +19,7 @@ const testNamespace = "games"
 func newTestResources(t *testing.T) *gameResources {
 	t.Helper()
 	game := newTestGame("bot", "https://github.com/core-org/team-repo", testToken)
-	res, err := buildGameResources(game, testNamespace, "", "", "")
+	res, err := buildGameResources(game, testNamespace, "", "", "", false)
 	if err != nil {
 		t.Fatalf("buildGameResources: %v", err)
 	}
@@ -123,7 +123,7 @@ func TestCreateGameResourcesDeletesConfigMapWhenJobCreateFails(t *testing.T) {
 
 func TestBuildGameResourcesMarksInvalidGames(t *testing.T) {
 	game := newTestGame("bot", "https://org:token@github.com/core-org/team-repo", testToken)
-	_, err := buildGameResources(game, testNamespace, "", "", "")
+	_, err := buildGameResources(game, testNamespace, "", "", "", false)
 	if !errors.Is(err, ErrInvalidGame) {
 		t.Fatalf("expected ErrInvalidGame, got %v", err)
 	}
@@ -131,7 +131,7 @@ func TestBuildGameResourcesMarksInvalidGames(t *testing.T) {
 
 func TestBuildGameResourcesSetsResultQueue(t *testing.T) {
 	game := newTestGame("bot", "https://github.com/core-org/team-repo", testToken)
-	res, err := buildGameResources(game, testNamespace, "", "", "dev_game_results")
+	res, err := buildGameResources(game, testNamespace, "", "", "dev_game_results", false)
 	if err != nil {
 		t.Fatalf("buildGameResources: %v", err)
 	}

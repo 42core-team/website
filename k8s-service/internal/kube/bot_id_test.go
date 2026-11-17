@@ -26,7 +26,7 @@ func gameContainerEnv(t *testing.T, res *gameResources, name string) string {
 func TestBuildGameResourcesBotIDsAreDistinctAndInRange(t *testing.T) {
 	for i := 0; i < 2000; i++ {
 		game := newTestGame("bot", "https://github.com/core-org/team-repo", testToken)
-		res, err := buildGameResources(game, testNamespace, "", "", "")
+		res, err := buildGameResources(game, testNamespace, "", "", "", false)
 		if err != nil {
 			t.Fatalf("buildGameResources: %v", err)
 		}

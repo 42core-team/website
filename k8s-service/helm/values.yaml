@@ -64,6 +64,9 @@ env:
   S3_ENDPOINT: "https://s3.example"
   S3_REGION: "eu"
   S3_BUCKET: "core-replays"
+  # Bind each bot to its own game server port. Only enable it once every event
+  # uses a game server image that supports TEAM_PORTS (see the README).
+  BOT_PORT_ISOLATION: "false"
 
 # Probes (both check the RabbitMQ channel; the service has no reconnect logic,
 # so a liveness restart is how it recovers from a lost connection)
