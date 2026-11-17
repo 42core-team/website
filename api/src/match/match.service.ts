@@ -55,6 +55,13 @@ import {
 } from "./match-response";
 import type { CoreSides } from "./match-sides";
 import { QueueMatchesQueryDto } from "./dtos/queueMatchesQueryDto";
+import { LockKeys } from "../constants";
+import {
+  findStaleMatches,
+  MAX_START_ATTEMPTS,
+  resetStaleMatch,
+  STALE_MATCH_TIMEOUT_MINUTES,
+} from "./stale-matches";
 
 const QUEUE_MATCH_SELECT: FindOptionsSelect<MatchEntity> = {
   id: true,
@@ -422,6 +429,74 @@ export class MatchService {
     }
   }
 
+  /**
+   * Restarts matches whose game never reported a result (the Job failed, or
+   * the result was lost). Never picks a winner: after MAX_START_ATTEMPTS the
+   * match is left IN_PROGRESS for an admin and logged on every run.
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async restartStaleMatches() {
+    const lockKey = LockKeys.RESTART_STALE_MATCHES;
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    try {
+      const [lock] = await queryRunner.query(
+        "SELECT pg_try_advisory_lock($1) AS acquired",
+        [lockKey],
+      );
+      if (!lock?.acquired) return;
+      try {
+        await this.restartStaleMatchesLocked();
+      } finally {
+        await queryRunner.query("SELECT pg_advisory_unlock($1)", [lockKey]);
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.stack : String(error);
+      this.logger.error(`Could not restart stale matches: ${reason}`);
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  private async restartStaleMatchesLocked() {
+    const stale = await findStaleMatches(this.matchRepository);
+    const gaveUp: string[] = [];
+    for (const match of stale) {
+      if (match.startAttempts >= MAX_START_ATTEMPTS) {
+        gaveUp.push(match.id);
+        continue;
+      }
+      try {
+        if (
+          match.state === MatchState.IN_PROGRESS &&
+          !(await resetStaleMatch(this.matchRepository, match))
+        )
+          continue;
+        this.logger.warn({
+          action: "restart_stale_match",
+          matchId: match.id,
+          attempt: match.startAttempts + 1,
+          maxStartAttempts: MAX_START_ATTEMPTS,
+        });
+        await this.startMatch(match.id);
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        this.logger.error({
+          action: "restart_stale_match_failed",
+          matchId: match.id,
+          reason,
+        });
+      }
+    }
+    if (gaveUp.length > 0)
+      this.logger.error({
+        action: "stale_match_gave_up",
+        matchIds: gaveUp,
+        maxStartAttempts: MAX_START_ATTEMPTS,
+        timeoutMinutes: STALE_MATCH_TIMEOUT_MINUTES,
+      });
+  }
+
   async processTournamentFinishRound(eventId: string) {
     const event = await this.eventService.getEventById(eventId, {
       teams: true,
@@ -478,7 +553,11 @@ export class MatchService {
     const transition = await this.matchRepository
       .createQueryBuilder()
       .update(MatchEntity)
-      .set({ state: MatchState.IN_PROGRESS })
+      .set({
+        state: MatchState.IN_PROGRESS,
+        startedAt: () => "now()",
+        startAttempts: () => `"startAttempts" + 1`,
+      })
       .where("id = :matchId", { matchId })
       .andWhere("state = :state", { state: MatchState.PLANNED })
       .execute();

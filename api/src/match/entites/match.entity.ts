@@ -11,6 +11,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Exclude } from "class-transformer";
 import { TeamEntity } from "../../team/entities/team.entity";
 import { MatchTeamResultEntity } from "./match.team.result.entity";
 import { MatchStatsEntity } from "./matchStats.entity";
@@ -80,6 +81,19 @@ export class MatchEntity {
 
   @Column({ default: false })
   isRevealed: boolean;
+
+  // How often the match was flipped PLANNED -> IN_PROGRESS. The stale-match
+  // cron stops restarting a match once this reaches MAX_START_ATTEMPTS.
+  @Exclude()
+  @Column({ type: "int", default: 0 })
+  startAttempts: number;
+
+  // When the current game run was started. Null for matches started before
+  // this column existed; the stale-match cron never touches those. updatedAt
+  // is no substitute: reveals also bump it.
+  @Exclude()
+  @Column({ type: "timestamptz", nullable: true })
+  startedAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;
