@@ -7,7 +7,8 @@ metadata:
 rules:
   - apiGroups: ["batch"]
     resources: ["jobs"]
-    # delete: remove a game Job whose credentials Secret could not be created.
+    # delete: remove a game Job whose credentials Secret could not be created,
+    # or a failed game Job that the API restarts.
     verbs: ["create", "get", "list", "watch", "delete"]
   - apiGroups: [""]
     resources: ["pods"]
@@ -19,10 +20,11 @@ rules:
     resources: ["configmaps"]
     verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
   # Per-game repository clone credentials. Each Secret is created with the game
-  # Job as its owner and garbage-collected with it, so only "create" is needed.
+  # Job as its owner and garbage-collected with it. "delete" removes the Secret
+  # of a failed game Job before a restart recreates it with fresh tokens.
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["create"]
+    verbs: ["create", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
