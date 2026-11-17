@@ -162,7 +162,7 @@ func newCloneRepoInitContainer(name, volumeName string, bot Bot, credentialsSecr
 	allowPrivilegeEscalation := false
 	return corev1.Container{
 		Name:    name,
-		Image:   "alpine/git",
+		Image:   repoCloneImage,
 		Command: []string{"sh", "-c", cloneRepoScript},
 		Env:     env,
 		VolumeMounts: []corev1.VolumeMount{

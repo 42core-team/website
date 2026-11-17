@@ -325,7 +325,7 @@ func buildGameResources(game *Game, namespace, presignedURL, rabbitMQPublishURL,
 	// Requires NET_ADMIN but runs before app containers start.
 	initContainers = append(initContainers, corev1.Container{
 		Name:  "net-guard",
-		Image: "ghcr.io/paulicstudios/alpine-iptables:latest",
+		Image: netGuardImage,
 		Command: []string{
 			"sh", "-c", fmt.Sprintf(`
 				set -eux;
