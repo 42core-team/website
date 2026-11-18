@@ -12,10 +12,16 @@ import { totalMatches } from './profile-stats'
 
 const TABS = ['overview', 'teams', 'matches'] as const
 
-export function ProfileView({ username }: { username: string }) {
+export function ProfileView({
+  username,
+  viewerId,
+}: {
+  username: string | null
+  viewerId: string
+}) {
   const { currentTab, onTabChange } = useTabParam('overview')
   const query = useQuery({
-    queryKey: profileQueryKeys.profile(username),
+    queryKey: profileQueryKeys.profile(username, viewerId),
     queryFn: () => getUserProfile(username),
     retry: (count, error) =>
       (error as AxiosError).response?.status !== 404 && count < 2,
@@ -24,13 +30,14 @@ export function ProfileView({ username }: { username: string }) {
   if (query.isPending) return <ProfileSkeleton />
   if (query.isError) {
     const status = (query.error as AxiosError).response?.status
+    const playerNotFound = status === 404 && username !== null
     return (
       <div className="container mx-auto max-w-xl px-4 py-24 text-center">
         <h1 className="text-2xl font-bold">
-          {status === 404 ? 'Player not found' : 'Could not load this profile'}
+          {playerNotFound ? 'Player not found' : 'Could not load this profile'}
         </h1>
         <p className="mt-2 text-muted-foreground">
-          {status === 404
+          {playerNotFound
             ? `Nobody called @${username} has played CORE yet.`
             : 'Try again in a moment.'}
         </p>
@@ -46,7 +53,7 @@ export function ProfileView({ username }: { username: string }) {
   return (
     <main className="container mx-auto max-w-7xl px-4 py-8">
       <div className="space-y-6">
-        <ProfileHeader profile={profile} />
+        <ProfileHeader profile={profile} viewerId={viewerId} />
         <Tabs value={tab} onValueChange={onTabChange}>
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -64,7 +71,11 @@ export function ProfileView({ username }: { username: string }) {
             <ProfileTeams profile={profile} />
           </TabsContent>
           <TabsContent value="matches" className="mt-6">
-            <ProfileMatches profile={profile} />
+            <ProfileMatches
+              profile={profile}
+              username={username}
+              viewerId={viewerId}
+            />
           </TabsContent>
         </Tabs>
       </div>

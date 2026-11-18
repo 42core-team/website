@@ -157,27 +157,42 @@ export interface ProfileMatchesQuery {
 }
 
 export const profileQueryKeys = {
-  profile: (username: string) => ['profile', username.toLowerCase()] as const,
-  matches: (username: string, filters: Omit<ProfileMatchesQuery, 'offset'>) =>
-    ['profile', username.toLowerCase(), 'matches', filters] as const,
+  profile: (username: string | null, viewerId: string) =>
+    ['profile', viewerId, username?.toLowerCase() ?? null] as const,
+  matches: (
+    username: string | null,
+    viewerId: string,
+    filters: Omit<ProfileMatchesQuery, 'offset'>,
+  ) =>
+    [
+      ...profileQueryKeys.profile(username, viewerId),
+      'matches',
+      filters,
+    ] as const,
 }
 
-export async function getUserProfile(username: string): Promise<UserProfile> {
-  return (
-    await axiosInstance.get<UserProfile>(
-      `profile/${encodeURIComponent(username)}`,
-    )
-  ).data
+function profilePath(username: string | null) {
+  return username === null
+    ? 'profile/me/details'
+    : `profile/${encodeURIComponent(username)}`
+}
+
+export async function getUserProfile(
+  username: string | null,
+): Promise<UserProfile> {
+  return (await axiosInstance.get<UserProfile>(profilePath(username))).data
 }
 
 export async function getUserProfileMatches(
-  username: string,
+  username: string | null,
   query: ProfileMatchesQuery,
 ): Promise<ProfileMatchesPage> {
   return (
     await axiosInstance.get<ProfileMatchesPage>(
-      `profile/${encodeURIComponent(username)}/matches`,
-      { params: query },
+      `${profilePath(username)}/matches`,
+      {
+        params: query,
+      },
     )
   ).data
 }

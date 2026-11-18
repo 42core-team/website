@@ -1,5 +1,4 @@
 import { useEffect } from 'react'
-import { UserAppearanceEditor } from '@/components/profile/UserAppearanceEditor'
 import { title } from '@/components/primitives'
 import SocialAccountsDisplay from '@/components/social-accounts-display'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -48,22 +47,6 @@ export default function SettingsClient() {
               }}
               className="justify-start gap-4"
             />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile Appearance</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-2 pb-4">
-            <UserAppearanceEditor user={session.user} kind="background" />
-            <div className="flex items-center gap-4">
-              <UserAppearanceEditor user={session.user} kind="picture" />
-              <p className="text-sm text-muted-foreground">
-                Upload a picture and background for your profile. Without a
-                picture, your GitHub avatar is used.
-              </p>
-            </div>
           </CardContent>
         </Card>
 
