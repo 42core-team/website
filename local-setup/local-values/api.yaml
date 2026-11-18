@@ -17,6 +17,7 @@ service:
 
 env:
   NODE_ENV: development
+  SEED_LOCAL_DATABASE: "true"
   PORT: "4000"
   DB_SSL_REQUIRED: "false"
   K8S_SERVICE_URL: "http://k8s-service"
