@@ -4,8 +4,8 @@ import { MigrationInterface, QueryRunner } from "typeorm";
  * A global admin can share an installation, so any event creator may link it
  * without being an owner of its organization.
  */
-export class SharedGithubInstallations1793100000000 implements MigrationInterface {
-  name = "SharedGithubInstallations1793100000000";
+export class SharedGithubInstallations1793150000000 implements MigrationInterface {
+  name = "SharedGithubInstallations1793150000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
