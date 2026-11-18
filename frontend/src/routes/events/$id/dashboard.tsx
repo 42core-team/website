@@ -1,34 +1,21 @@
-import { userAvatarSrc } from '@/lib/user-avatar'
 import type { Event } from '@/app/actions/event'
+import { UsersTable } from '@/components/users/users-table'
 import { LifecycleControls } from '@/components/dashboard/lifecycle-controls'
-import type { Team, TeamImage } from '@/app/actions/team'
-import type { UserSearchResult } from '@/app/actions/user'
+import type { Team } from '@/app/actions/team'
 import type { UseMutationResult } from '@tanstack/react-query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { format } from 'date-fns'
-import {
-  Loader2,
-  Lock,
-  Maximize2,
-  Minimize2,
-  Save,
-  Search,
-  Trash2,
-  UserPlus,
-} from 'lucide-react'
+import { Loader2, Lock, Maximize2, Minimize2, Save, Trash2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { isAxiosError } from 'axios'
 import { useEffect, useId, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  addEventAdmin,
-  getEventAdmins,
   getEventById,
   getParticipantsCountForEvent,
   getStarterTemplates,
   getTeamsCountForEvent,
-  removeEventAdmin,
   updateEventSettings,
 } from '@/app/actions/event'
 import {
@@ -42,7 +29,6 @@ import {
   startSwissMatches,
   startTournamentMatches,
 } from '@/app/actions/tournament'
-import { searchUsers } from '@/app/actions/user'
 import { StarterTemplatesManagement } from '@/components/dashboard/starter-templates-management'
 import { ManualMatchesManagement } from '@/components/dashboard/manual-matches-management'
 import { MatchesAnalytics } from '@/components/dashboard/matches-analytics'
@@ -126,15 +112,6 @@ type PendingEventSettings = Partial<
 type EventSettingsUpdate = Parameters<typeof updateEventSettings>[1]
 type VoidMutation = UseMutationResult<unknown, Error, void, unknown>
 type PhaseMutation = UseMutationResult<unknown, Error, string, unknown>
-type StringMutation = UseMutationResult<unknown, Error, string, unknown>
-
-interface EventAdmin {
-  id: string
-  username: string
-  name: string
-  profilePicture?: string
-  picture?: TeamImage | null
-}
 
 const SETTINGS_FIELDS = [
   'name',
@@ -209,9 +186,6 @@ function DashboardRoute() {
   const { currentTab, onTabChange } = useTabParam('overview')
   const now = useEventClock()
 
-  const [userSearchQuery, setUserSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([])
-  const [isSearching, setIsSearching] = useState(false)
   const [isGameConfigExpanded, setIsGameConfigExpanded] = useState(false)
   const [isServerConfigExpanded, setIsServerConfigExpanded] = useState(false)
   const [pendingSettings, setPendingSettings] = useState<PendingEventSettings>(
@@ -234,12 +208,6 @@ function DashboardRoute() {
   })
 
   const { abilities, isPending: abilitiesPending } = useEventAbilities(id)
-
-  const adminsQuery = useQuery<EventAdmin[]>({
-    queryKey: ['event', id, 'admins'],
-    queryFn: () => getEventAdmins(id),
-    enabled: abilities.administer,
-  })
 
   const starterTemplatesQuery = useQuery({
     queryKey: ['event', id, 'templates'],
@@ -301,50 +269,6 @@ function DashboardRoute() {
           : getErrorMessage(error, 'Failed to update event settings.'),
       ),
   })
-
-  const addAdminMutation = useMutation({
-    mutationFn: (userId: string) => addEventAdmin(id, userId),
-    onSuccess: async () => {
-      toast.success('Admin added.')
-      await queryClient.invalidateQueries({
-        queryKey: ['event', id, 'admins'],
-      })
-    },
-    onError: (error) =>
-      toast.error(getErrorMessage(error, 'Failed to add admin.')),
-  })
-
-  const removeAdminMutation = useMutation({
-    mutationFn: (userId: string) => removeEventAdmin(id, userId),
-    onSuccess: async () => {
-      toast.success('Admin removed.')
-      await queryClient.invalidateQueries({
-        queryKey: ['event', id, 'admins'],
-      })
-    },
-    onError: (error) =>
-      toast.error(getErrorMessage(error, 'Failed to remove admin.')),
-  })
-
-  useEffect(() => {
-    const delayDebounceFn = window.setTimeout(async () => {
-      if (userSearchQuery.length <= 2) {
-        setSearchResults([])
-        return
-      }
-
-      setIsSearching(true)
-      try {
-        setSearchResults(await searchUsers(userSearchQuery))
-      } catch (error) {
-        toast.error(getErrorMessage(error, 'Failed to search users.'))
-      } finally {
-        setIsSearching(false)
-      }
-    }, 300)
-
-    return () => window.clearTimeout(delayDebounceFn)
-  }, [userSearchQuery])
 
   const event = eventQuery.data
   const isLoading =
@@ -515,7 +439,7 @@ function DashboardRoute() {
           <TabsTrigger value="operation">Operation</TabsTrigger>
           <TabsTrigger value="teams">Teams</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
-          <TabsTrigger value="admins">Admins</TabsTrigger>
+          <TabsTrigger value="admins">Users</TabsTrigger>
           <TabsTrigger value="whitelist">Whitelist</TabsTrigger>
         </TabsList>
 
@@ -568,16 +492,7 @@ function DashboardRoute() {
         </TabsContent>
 
         <TabsContent value="admins" className="space-y-6">
-          <AdminsTab
-            admins={adminsQuery.data ?? []}
-            isAdminsLoading={adminsQuery.isPending}
-            userSearchQuery={userSearchQuery}
-            setUserSearchQuery={setUserSearchQuery}
-            searchResults={searchResults}
-            isSearching={isSearching}
-            addAdminMutation={addAdminMutation}
-            removeAdminMutation={removeAdminMutation}
-          />
+          <UsersTable key={id} event={{ id, name: event.name }} />
         </TabsContent>
 
         <TabsContent value="whitelist" className="space-y-6">
@@ -1199,153 +1114,6 @@ function SettingsTab({
         </CardContent>
       </Card>
     </>
-  )
-}
-
-function AdminsTab({
-  admins,
-  isAdminsLoading,
-  userSearchQuery,
-  setUserSearchQuery,
-  searchResults,
-  isSearching,
-  addAdminMutation,
-  removeAdminMutation,
-}: {
-  admins: EventAdmin[]
-  isAdminsLoading: boolean
-  userSearchQuery: string
-  setUserSearchQuery: (value: string) => void
-  searchResults: UserSearchResult[]
-  isSearching: boolean
-  addAdminMutation: StringMutation
-  removeAdminMutation: StringMutation
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Event Administrators</CardTitle>
-        <CardDescription>Manage who can control this event.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="relative">
-          <div className="flex max-w-md items-end gap-4">
-            <div className="flex-1 space-y-2">
-              <Label>Search User to add as Admin</Label>
-              <div className="relative">
-                <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name or username..."
-                  className="pl-9"
-                  value={userSearchQuery}
-                  onChange={(event) => setUserSearchQuery(event.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          {searchResults.length > 0 && (
-            <div className="absolute z-10 mt-1 w-full max-w-md rounded-md border bg-popover text-popover-foreground shadow-md">
-              <div className="p-1">
-                {searchResults.map((user) => (
-                  <button
-                    key={user.id}
-                    type="button"
-                    className="flex w-full cursor-pointer items-center justify-between rounded-sm p-2 text-left transition-colors hover:bg-accent"
-                    onClick={() => {
-                      addAdminMutation.mutate(user.id)
-                      setUserSearchQuery('')
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={userAvatarSrc(user)}
-                        alt={user.name}
-                        className="h-8 w-8 rounded-full border bg-muted"
-                      />
-                      <div>
-                        <p className="text-sm leading-none font-medium">
-                          {user.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          @{user.username}
-                        </p>
-                      </div>
-                    </div>
-                    <UserPlus className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {isSearching && (
-            <div className="absolute z-10 mt-1 flex w-full max-w-md items-center justify-center rounded-md border bg-popover p-4 text-center text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Searching...
-            </div>
-          )}
-        </div>
-
-        <div className="border-t pt-4">
-          <h3 className="mb-4 text-sm font-semibold">Current Administrators</h3>
-
-          {isAdminsLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead className="w-[100px] text-right">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {admins.map((admin) => (
-                  <TableRow key={admin.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={
-                            userAvatarSrc(admin) || '/placeholder-avatar.png'
-                          }
-                          alt={admin.name}
-                          className="h-10 w-10 rounded-full border bg-background"
-                        />
-                        <div>
-                          <p className="leading-none font-semibold">
-                            {admin.name || 'Unknown User'}
-                          </p>
-                          <p className="mt-1 font-mono text-xs text-muted-foreground">
-                            @{admin.username}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        disabled={
-                          removeAdminMutation.isPending || admins.length <= 1
-                        }
-                        onClick={() => removeAdminMutation.mutate(admin.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
-      </CardContent>
-    </Card>
   )
 }
 

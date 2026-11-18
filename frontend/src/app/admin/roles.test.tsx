@@ -12,9 +12,17 @@ import { AxiosError } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type * as Router from '@tanstack/react-router'
 import type * as Roles from '@/app/actions/roles'
+import { UsersTable } from '@/components/users/users-table'
 import { Route } from '@/routes/admin/roles'
 import { useSession } from '@/lib/auth'
-import { getRoles, grantRole, removeRole } from '@/app/actions/roles'
+import {
+  getRoles,
+  grantRole,
+  removeRole,
+  listRoleUsers,
+  getEventRoles,
+  grantEventRole,
+} from '@/app/actions/roles'
 import type { RoleGrant } from '@/app/actions/roles'
 import axiosInstance from '@/app/actions/axios'
 import { searchUsers } from '@/app/actions/user'
@@ -28,11 +36,15 @@ vi.mock('@/app/actions/axios', () => ({ default: { get: vi.fn() } }))
 vi.mock('@/app/actions/user', () => ({ searchUsers: vi.fn() }))
 vi.mock('@/app/actions/roles', async (original) => ({
   ...(await original<typeof Roles>()),
+  listRoleUsers: vi.fn(),
+  getEventRoles: vi.fn(),
+  grantEventRole: vi.fn(),
   getRoles: vi.fn(),
   grantRole: vi.fn(),
   removeRole: vi.fn(),
 }))
 const user = { id: 'ada', username: 'ada', name: 'Ada', profilePicture: '' }
+const grace = { ...user, id: 'grace', name: 'Grace', username: 'grace' }
 const globalRole: RoleGrant = {
   id: 'global',
   role: 'ADMIN',
@@ -59,6 +71,8 @@ beforeEach(() => {
     status: 'authenticated',
     update: vi.fn(),
   } as unknown as ReturnType<typeof useSession>)
+  vi.mocked(listRoleUsers).mockResolvedValue([user, grace])
+  vi.mocked(getEventRoles).mockResolvedValue([])
   vi.mocked(getRoles).mockResolvedValue([
     globalRole,
     {
@@ -77,7 +91,7 @@ afterEach(() => {
   cleanup()
   vi.resetAllMocks()
 })
-async function setup() {
+async function setup(event?: { id: string; name: string }) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
@@ -86,7 +100,7 @@ async function setup() {
   await act(async () => {
     render(
       <QueryClientProvider client={client}>
-        <Component />
+        {event ? <UsersTable event={event} /> : <Component />}
       </QueryClientProvider>,
     )
   })
@@ -115,132 +129,64 @@ describe('roles administration', () => {
     expect(getRoles).not.toHaveBeenCalled()
     expect(axiosInstance.get).not.toHaveBeenCalled()
   })
-  it('groups roles and confirms removal, retaining the last-admin error inline', async () => {
+  it('lists users without grants and filters by name and global role', async () => {
+    await setup()
+    await screen.findByText('Grace')
+    fireEvent.change(screen.getByLabelText('Global role'), {
+      target: { value: 'none' },
+    })
+    expect(screen.queryByText('Ada')).toBeNull()
+    expect(screen.getByText('Grace')).toBeDefined()
+    fireEvent.change(screen.getByLabelText('Search users'), {
+      target: { value: 'ada' },
+    })
+    expect(screen.getByText('No users match these filters.')).toBeDefined()
+  })
+
+  async function editAda() {
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Edit roles for Ada' }),
+    )
+  }
+
+  it('confirms removal separately and retains the last-admin error inline', async () => {
     const error = new AxiosError('Conflict')
     error.response = { status: 409 } as AxiosError['response']
     vi.mocked(removeRole).mockRejectedValue(error)
     await setup()
-    await screen.findByText('Winter Cup', { exact: false })
-    expect(screen.getByText('Global roles')).toBeDefined()
-    expect(screen.getByText('Event roles')).toBeDefined()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Remove' })[0])
+    await editAda()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Remove Admin global role' }),
+    )
+    expect(screen.queryByRole('button', { name: 'Add global role' })).toBeNull()
     expect(removeRole).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Remove role' }))
     await screen.findByText("Can't remove the last global admin.")
-    expect(removeRole).toHaveBeenCalledWith('global', expect.anything())
+    expect(removeRole).toHaveBeenCalledWith('global')
   })
-  it('reloads the roles when the grant to remove no longer exists', async () => {
+
+  it('refreshes roles when an assignment no longer exists', async () => {
     const error = new AxiosError('Not Found')
     error.response = { status: 404 } as AxiosError['response']
     vi.mocked(removeRole).mockRejectedValue(error)
     await setup()
-    await screen.findByText('Winter Cup', { exact: false })
-    expect(getRoles).toHaveBeenCalledTimes(1)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Remove' })[1])
+    await editAda()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Remove Moderator for Winter Cup' }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Remove role' }))
     await screen.findByText(/no longer exists/)
     await waitFor(() => expect(getRoles).toHaveBeenCalledTimes(2))
   })
-  it('hides results of an outdated search term while the next one is pending', async () => {
-    const grace = { ...user, id: 'grace', username: 'grace', name: 'Grace' }
-    vi.mocked(searchUsers).mockImplementation(async (query) =>
-      query === 'gr' ? [grace] : [user],
-    )
+
+  it('grants a global role from the selected user’s editor', async () => {
     await setup()
-    const input = screen.getByLabelText('User')
-    fireEvent.change(input, { target: { value: 'gr' } })
-    await screen.findByRole('button', { name: 'Grace (@grace)' })
-    fireEvent.change(input, { target: { value: 'ada' } })
-    expect(screen.queryByRole('button', { name: 'Grace (@grace)' })).toBeNull()
-    await screen.findByRole('button', { name: 'Ada (@ada)' })
-    expect(searchUsers).toHaveBeenCalledTimes(2)
-  })
-  it('queries admin events after debounce and hides stale results', async () => {
-    const event = {
-      id: 'private',
-      name: 'Private Cup',
-      isPrivate: true,
-      startDate: '2026-11-13T12:00:00Z',
-    }
-    let finishOldSearch: (value: { data: (typeof event)[] }) => void = () =>
-      undefined
-    vi.mocked(axiosInstance.get).mockImplementation((_url, config) => {
-      const params = config?.params
-      const q =
-        params && typeof params === 'object' && 'q' in params
-          ? params.q
-          : undefined
-      if (q === 'old') {
-        return new Promise((resolve) => {
-          finishOldSearch = resolve
-        })
-      }
-      return Promise.resolve({
-        data: q === 'cup' ? [event] : [],
-      })
+    await editAda()
+    fireEvent.click(screen.getByRole('button', { name: 'Add global role' }))
+    expect(axiosInstance.get).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('Role'), {
+      target: { value: 'MODERATOR' },
     })
-    await setup()
-    expect(axiosInstance.get).toHaveBeenCalledWith('/admin/events', {
-      params: { q: '', limit: 20 },
-    })
-    const input = screen.getByLabelText('Event (optional)')
-    fireEvent.change(input, { target: { value: 'cup' } })
-    expect(axiosInstance.get).toHaveBeenCalledTimes(1)
-    await screen.findByRole('button', { name: 'Private Cup Private' })
-    expect(axiosInstance.get).toHaveBeenLastCalledWith('/admin/events', {
-      params: { q: 'cup', limit: 20 },
-    })
-    fireEvent.change(input, { target: { value: 'old' } })
-    expect(
-      screen.queryByRole('button', { name: 'Private Cup Private' }),
-    ).toBeNull()
-    await waitFor(() =>
-      expect(axiosInstance.get).toHaveBeenLastCalledWith('/admin/events', {
-        params: { q: 'old', limit: 20 },
-      }),
-    )
-    fireEvent.change(input, { target: { value: 'new' } })
-    await act(async () => {
-      finishOldSearch({ data: [event] })
-    })
-    expect(
-      screen.queryByRole('button', { name: 'Private Cup Private' }),
-    ).toBeNull()
-    await waitFor(() =>
-      expect(axiosInstance.get).toHaveBeenLastCalledWith('/admin/events', {
-        params: { q: 'new', limit: 20 },
-      }),
-    )
-    await screen.findByText('No events found.')
-  })
-  it('retries event search failures and clears a private event back to global', async () => {
-    vi.mocked(axiosInstance.get).mockRejectedValueOnce(new Error('Failed'))
-    await setup()
-    await screen.findByText('Failed to search events.')
-    vi.mocked(axiosInstance.get).mockResolvedValue({
-      data: [
-        {
-          id: 'private',
-          name: 'Private Cup',
-          isPrivate: true,
-          startDate: '2026-11-13T12:00:00Z',
-        },
-      ],
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Private Cup Private' }),
-    )
-    await screen.findByText('Selected: Private Cup')
-    fireEvent.click(screen.getByRole('button', { name: 'Global role' }))
-    expect(screen.queryByText('Selected: Private Cup')).toBeNull()
-    expect(
-      screen.getByLabelText<HTMLInputElement>('Event (optional)').value,
-    ).toBe('')
-    fireEvent.change(screen.getByLabelText('User'), {
-      target: { value: 'ada' },
-    })
-    fireEvent.click(await screen.findByRole('button', { name: 'Ada (@ada)' }))
     fireEvent.click(screen.getByRole('button', { name: 'Grant role' }))
     await waitFor(() =>
       expect(grantRole).toHaveBeenCalledWith({
@@ -248,26 +194,58 @@ describe('roles administration', () => {
         role: 'MODERATOR',
       }),
     )
+    await screen.findByRole('button', { name: 'Add global role' })
   })
-  it('grants an event-scoped Moderator role and resets the event picker', async () => {
-    vi.mocked(axiosInstance.get).mockResolvedValue({
-      data: [
-        {
-          id: 'private',
-          name: 'Private Cup',
-          isPrivate: true,
-          startDate: '2026-11-13T12:00:00Z',
-        },
-      ],
-    })
+
+  it('searches events after debounce and preserves role selection when changing the event', async () => {
+    const event = {
+      id: 'private',
+      name: 'Private Cup',
+      isPrivate: true,
+      startDate: '2026-11-13T12:00:00Z',
+    }
+    vi.mocked(axiosInstance.get).mockImplementation(async (_url, config) => ({
+      data:
+        config?.params &&
+        typeof config.params === 'object' &&
+        'q' in config.params &&
+        config.params.q === 'cup'
+          ? [event]
+          : [],
+    }))
     await setup()
+    await editAda()
+    fireEvent.click(screen.getByRole('button', { name: 'Add event role' }))
+    const input = screen.getByPlaceholderText('Search events by name')
+    fireEvent.change(input, { target: { value: 'cup' } })
+    const result = await screen.findByRole('button', {
+      name: 'Private Cup Private',
+    })
+    expect(axiosInstance.get).toHaveBeenLastCalledWith('/admin/events', {
+      params: { q: 'cup', limit: 20 },
+    })
+    fireEvent.change(input, { target: { value: 'other' } })
+    expect(
+      screen.queryByRole('button', { name: 'Private Cup Private' }),
+    ).toBeNull()
+    fireEvent.change(input, { target: { value: 'cup' } })
     fireEvent.click(
       await screen.findByRole('button', { name: 'Private Cup Private' }),
     )
-    fireEvent.change(screen.getByLabelText('User'), {
-      target: { value: 'ada' },
+    expect(result.textContent).toContain('Private Cup')
+    fireEvent.change(screen.getByLabelText('Role'), {
+      target: { value: 'MODERATOR' },
     })
-    fireEvent.click(await screen.findByRole('button', { name: 'Ada (@ada)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }))
+    expect(screen.getByLabelText<HTMLSelectElement>('Role').value).toBe(
+      'MODERATOR',
+    )
+    fireEvent.change(screen.getByPlaceholderText('Search events by name'), {
+      target: { value: 'cup' },
+    })
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Private Cup Private' }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Grant role' }))
     await waitFor(() =>
       expect(grantRole).toHaveBeenCalledWith({
@@ -276,29 +254,35 @@ describe('roles administration', () => {
         eventId: 'private',
       }),
     )
-    await screen.findByText('Role granted.')
-    expect(screen.queryByText('Selected: Private Cup')).toBeNull()
-    expect(
-      screen.getByLabelText<HTMLInputElement>('Event (optional)').value,
-    ).toBe('')
   })
-  it('searches users after debounce and grants a global role without eventId', async () => {
-    await setup()
-    expect(screen.getByRole('combobox', { name: 'Role' }).textContent).toBe(
-      'Moderator',
+
+  it('keeps the event table joined-only and finds unjoined accounts through global search', async () => {
+    vi.mocked(listRoleUsers).mockResolvedValue([user])
+    vi.mocked(searchUsers).mockResolvedValue([grace])
+    await setup({ id: 'winter', name: 'Winter Cup' })
+    await screen.findByText('Ada')
+    expect(listRoleUsers).toHaveBeenCalledWith('winter')
+    expect(screen.queryByText('Grace')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Search all users' }))
+    fireEvent.change(screen.getByLabelText('User'), { target: { value: 'gr' } })
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Grace (@grace)' }),
     )
-    fireEvent.change(screen.getByLabelText('User'), {
-      target: { value: 'ada' },
+    await screen.findByRole('heading', { name: 'Edit roles for Grace' })
+    expect(screen.queryByText('Global roles')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Add event role' }))
+    expect(screen.queryByPlaceholderText('Search events by name')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Role'), {
+      target: { value: 'MODERATOR' },
     })
-    expect(searchUsers).not.toHaveBeenCalled()
-    fireEvent.click(await screen.findByRole('button', { name: 'Ada (@ada)' }))
     fireEvent.click(screen.getByRole('button', { name: 'Grant role' }))
     await waitFor(() =>
-      expect(grantRole).toHaveBeenCalledWith({
-        userId: 'ada',
+      expect(grantEventRole).toHaveBeenCalledWith('winter', {
+        userId: 'grace',
         role: 'MODERATOR',
       }),
     )
-    await screen.findByText('Role granted.')
+    fireEvent.click(await screen.findByRole('button', { name: 'Done' }))
+    expect(screen.queryByText('Grace')).toBeNull()
   })
 })

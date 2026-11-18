@@ -29,6 +29,25 @@ export class RolesService {
     private readonly dataSource: DataSource,
   ) {}
 
+  async listUsers(eventId?: string) {
+    // Public events have no separate registration step. Team members there
+    // have joined even when there is no entry in the registration relation.
+    const users = await this.dataSource.getRepository(UserEntity).find({
+      select: { id: true, username: true, name: true, profilePicture: true },
+      where: eventId
+        ? [{ events: { id: eventId } }, { teams: { event: { id: eventId } } }]
+        : {},
+      order: { username: "ASC", id: "ASC" },
+      loadEagerRelations: false,
+    });
+    return users.map(({ id, username, name, profilePicture }) => ({
+      id,
+      username,
+      name,
+      profilePicture,
+    }));
+  }
+
   async list(filter: ListRolesQueryDto): Promise<RoleResponse[]> {
     const rows = await this.roleRepository.find({
       where: {
@@ -87,11 +106,11 @@ export class RolesService {
     );
   }
 
-  async revoke(id: string): Promise<void> {
+  async revoke(id: string, eventId?: string): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       const roles = manager.getRepository(UserRoleEntity);
       const row = await roles.findOne({
-        where: { id },
+        where: { id, ...(eventId && { eventId }) },
       });
       if (!row) throw new NotFoundException("Role not found.");
 
