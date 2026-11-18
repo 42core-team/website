@@ -1,21 +1,38 @@
 package kube
 
-// The helper images below run in every game pod and are pinned by digest
-// instead of a mutable tag: net-guard runs as root with NET_ADMIN and the
-// clone container holds the repository clone token, so a moved tag must not
-// change what runs there.
-//
-// To update a digest, resolve the multi-arch index digest and replace the
-// sha256 value (keep the version tag for readability):
-//
-//	docker buildx imagetools inspect <image>:<tag>   # use the top-level "Digest:" line
-//
-// Both digests were resolved on 2026-11-18. Neither container sets
-// ImagePullPolicy, so Kubernetes defaults the digest-pinned images to
-// IfNotPresent.
-const (
-	// netGuardImage is ghcr.io/paulicstudios/alpine-iptables:latest (linux/amd64, linux/arm64).
-	netGuardImage = "ghcr.io/paulicstudios/alpine-iptables:latest@sha256:3bcd6c8e4661e4987c88b240de32e81045b3d7e323a010f0ab2c07132a5c2f3f"
-	// repoCloneImage is alpine/git v2.54.1, which `latest` pointed to on 2026-11-18.
-	repoCloneImage = "alpine/git:v2.54.1@sha256:2306e2b05ee0ef99f5d25b0779f645b24ae9f91ba187107503592fcdfe78da3a"
+import (
+	_ "embed"
+	"fmt"
+	"regexp"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
+
+//go:embed helper_images.yaml
+var helperImagesManifest []byte
+
+var pinnedImageReference = regexp.MustCompile(`^[^@\s]+@sha256:[0-9a-f]{64}$`)
+
+var netGuardImage, repoCloneImage = loadHelperImages(helperImagesManifest)
+
+func loadHelperImages(manifest []byte) (string, string) {
+	var template corev1.PodTemplate
+	if err := yaml.UnmarshalStrict(manifest, &template); err != nil {
+		panic(fmt.Errorf("parse embedded helper images: %w", err))
+	}
+
+	images := make(map[string]string, len(template.Template.Spec.Containers))
+	for _, container := range template.Template.Spec.Containers {
+		if _, exists := images[container.Name]; exists {
+			panic(fmt.Sprintf("duplicate embedded helper image %q", container.Name))
+		}
+		images[container.Name] = container.Image
+	}
+	for _, name := range []string{"net-guard", "clone-repo"} {
+		if !pinnedImageReference.MatchString(images[name]) {
+			panic(fmt.Sprintf("embedded helper image %q must be pinned by SHA-256 digest", name))
+		}
+	}
+	return images["net-guard"], images["clone-repo"]
+}
