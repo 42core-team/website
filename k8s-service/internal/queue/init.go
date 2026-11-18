@@ -2,8 +2,8 @@ package queue
 
 import (
 	"context"
-	"errors"
 	"sync"
+	"time"
 
 	"github.com/42core-team/website_relaunch/k8s-service/internal/kube"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -115,22 +115,27 @@ func (q *Queue) ConsumeGameQueue(logger *zap.SugaredLogger, kubeClient *kube.Cli
 			logger.Infoln("Received game message", "gameID", game.ID.String())
 
 			err = kubeClient.CreateGameJob(context.Background(), &game)
-			if errors.Is(err, kube.ErrInvalidGame) {
-				// Retrying can never succeed and would block the queue (prefetch 1).
-				logger.Errorln("Invalid game message, dropping it", "gameID", game.ID.String(), zap.Error(err))
+			count := deliveryCount(d.Headers)
+			switch decideAction(err, count) {
+			case actionAck:
+				if err := d.Ack(false); err != nil {
+					logger.Errorln("There was an error during Acknowledgement", zap.Error(err), zap.Uint64("deliveryTag", d.DeliveryTag))
+				}
+			case actionReject:
+				// Retrying can never succeed or has been tried often enough; an
+				// unacked message would block the queue (prefetch 1).
+				logger.Errorln("Failed to create game job, dropping message", "gameID", game.ID.String(), "deliveryCount", count, zap.Error(err))
 				rejectMessage(logger, d)
-				continue
-			}
-			if err != nil {
-				logger.Errorln("Failed to create game job", zap.Error(err))
-				continue
-			}
-
-			err = d.Ack(false)
-			if err != nil {
-				logger.Errorln("There was an error during Acknowledgement", zap.Error(err), zap.Uint64("deliveryTag", d.DeliveryTag))
+			case actionRequeue:
+				logger.Errorln("Failed to create game job, requeueing message", "gameID", game.ID.String(), "deliveryCount", count, zap.Error(err))
+				// Wait so a failing Kubernetes API or S3 is not hammered in a tight loop.
+				time.Sleep(requeueDelay)
+				if err := d.Nack(false, true); err != nil {
+					logger.Errorln("There was an error during Nack", zap.Error(err), zap.Uint64("deliveryTag", d.DeliveryTag))
+				}
 			}
 		}
+		logger.Errorln("Game queue consumer stopped: deliveries channel closed, no new games will be processed")
 	}()
 	return nil
 }
