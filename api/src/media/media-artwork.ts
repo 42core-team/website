@@ -1,6 +1,14 @@
 import type { MediaUploadEntity } from "./entities/media-upload.entity";
 
-export interface TeamMediaUploads {
+export interface MediaImage {
+  small: string;
+  large: string;
+}
+export interface MediaBackground {
+  large: string;
+}
+
+export interface MediaUploads {
   pictureSmallUpload?: Pick<MediaUploadEntity, "objectKey"> | null;
   pictureLargeUpload?: Pick<MediaUploadEntity, "objectKey"> | null;
   backgroundLargeUpload?: Pick<MediaUploadEntity, "objectKey"> | null;
@@ -10,7 +18,7 @@ export function mediaArtwork({
   pictureSmallUpload,
   pictureLargeUpload,
   backgroundLargeUpload,
-}: TeamMediaUploads) {
+}: MediaUploads) {
   return {
     picture:
       pictureSmallUpload && pictureLargeUpload

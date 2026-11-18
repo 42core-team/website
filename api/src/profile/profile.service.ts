@@ -1,3 +1,7 @@
+import {
+  USER_ARTWORK_RELATIONS,
+  joinArtwork,
+} from "../media/artwork-relations";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
@@ -138,6 +142,8 @@ export class ProfileService {
         username: user.username,
         name: user.name,
         profilePicture: user.profilePicture ?? null,
+        picture: user.picture ?? null,
+        background: user.background ?? null,
         createdAt: user.createdAt,
         tags: getLocationTags(user.socialAccounts),
         intra: fortyTwo
@@ -235,9 +241,12 @@ export class ProfileService {
     username: string,
     viewerId: string,
   ): Promise<ResolvedProfile> {
-    const user = await this.userRepository
-      .createQueryBuilder("user")
-      .leftJoinAndSelect("user.socialAccounts", "socialAccount")
+    const user = await joinArtwork(
+      this.userRepository
+        .createQueryBuilder("user")
+        .leftJoinAndSelect("user.socialAccounts", "socialAccount"),
+      "user",
+    )
       .where("LOWER(user.username) = LOWER(:username)", { username })
       .orderBy("user.updatedAt", "DESC")
       .getOne();
@@ -342,7 +351,7 @@ export class ProfileService {
     if (teamIds.length === 0) return byTeam;
     const teams = await this.teamRepository.find({
       where: { id: In(teamIds) },
-      relations: { users: true },
+      relations: { users: USER_ARTWORK_RELATIONS },
     });
     for (const team of teams) {
       byTeam.set(
@@ -352,6 +361,7 @@ export class ProfileService {
           username: member.username,
           name: member.name,
           profilePicture: member.profilePicture ?? null,
+          picture: member.picture ?? null,
         })),
       );
     }

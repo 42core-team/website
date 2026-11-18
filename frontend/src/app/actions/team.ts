@@ -1,5 +1,6 @@
 import type { QueueMatch } from '@/app/actions/tournament-model'
 import axiosInstance from '@/app/actions/axios'
+import { imageFormData } from '@/lib/image-form-data'
 
 export interface TeamImage {
   small: string
@@ -63,6 +64,7 @@ export interface TeamMember {
   avatar?: string
   username: string
   profilePicture?: string
+  picture?: TeamImage | null
   intraUsername?: string
   tags: string[]
 }
@@ -90,6 +92,7 @@ export interface TeamMemberApiResponse {
   isEventAdmin: boolean
   username: string
   profilePicture?: string
+  picture?: TeamImage | null
   tags?: string[]
   socialAccounts?: Array<{ platform: string; username: string }>
 }
@@ -99,6 +102,7 @@ export interface UserSearchResult {
   name: string
   username: string
   profilePicture: string
+  picture?: TeamImage | null
   isInvited: boolean
 }
 
@@ -202,6 +206,7 @@ export function mapTeamMemberResponse(
     isEventAdmin: member.isEventAdmin,
     username: member.username,
     profilePicture: member.profilePicture,
+    picture: member.picture,
     intraUsername: member.socialAccounts?.find((a) => a.platform === '42')
       ?.username,
     tags: member.tags ?? [],
@@ -322,11 +327,7 @@ export async function saveTeamImage(
   y: number,
   scale = 1,
 ) {
-  const data = new FormData()
-  data.append('file', file)
-  data.append('x', String(x))
-  data.append('y', String(y))
-  data.append('scale', String(scale))
+  const data = imageFormData(file, x, y, scale)
   return (
     await axiosInstance.put(`team/event/${eventId}/my/images/${kind}`, data, {
       headers: { 'Content-Type': undefined },

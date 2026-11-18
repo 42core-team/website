@@ -28,6 +28,8 @@ export interface ProfileUser {
   username: string
   name: string
   profilePicture: string | null
+  picture: TeamImage | null
+  background: TeamBackground | null
   createdAt: string
   tags: string[]
   intra: { username: string; campusName: string | null } | null
@@ -38,6 +40,7 @@ export interface ProfileTeamMember {
   username: string
   name: string
   profilePicture: string | null
+  picture?: TeamImage | null
 }
 
 export interface ProfileTeam {
