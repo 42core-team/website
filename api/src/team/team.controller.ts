@@ -33,6 +33,7 @@ import { TeamEntity } from "./entities/team.entity";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { getLocationTags } from "../user/location-tags";
 import { UpdateTeamCreditsDto } from "./dtos/updateTeamCreditsDto";
+import { USER_ARTWORK_RELATIONS } from "../media/artwork-relations";
 
 @Controller("team")
 export class TeamController {
@@ -174,6 +175,7 @@ export class TeamController {
     const event = await this.eventService.getEventByTeamId(teamId);
     const team = await this.teamService.getTeamById(teamId, {
       users: {
+        ...USER_ARTWORK_RELATIONS,
         socialAccounts: true,
         permissions: {
           event: true,
@@ -190,6 +192,7 @@ export class TeamController {
         name: user.name,
         username: user.username,
         profilePicture: user.profilePicture,
+        picture: user.picture ?? null,
         isEventAdmin,
         tags: getLocationTags(user.socialAccounts),
         socialAccounts: user.socialAccounts.map((sa) => ({

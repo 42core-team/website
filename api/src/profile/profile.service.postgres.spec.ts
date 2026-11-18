@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
+import { ConfigService } from "@nestjs/config";
 import { NotFoundException } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { EventEntity } from "../event/entities/event.entity";
@@ -10,7 +11,10 @@ import {
 } from "../match/entites/match.entity";
 import { MatchStatsEntity } from "../match/entites/matchStats.entity";
 import { TeamEntity } from "../team/entities/team.entity";
+import { MediaUploadEntity } from "../media/entities/media-upload.entity";
+import { USER_ARTWORK_RELATIONS } from "../media/artwork-relations";
 import { UserEntity } from "../user/entities/user.entity";
+import { UserService } from "../user/user.service";
 import { ProfileService } from "./profile.service";
 
 // A dedicated test database is required; each run owns only its random schema.
@@ -242,6 +246,18 @@ postgres("ProfileService visibility (PostgreSQL)", () => {
       true,
       "2026-02-01T11:00:00Z",
     );
+
+    const [small, large, background] = await database
+      .getRepository(MediaUploadEntity)
+      .save(
+        ["picture-small", "picture-large", "background-large"].map((key) => ({
+          objectKey: `images/test/${key}.webp`,
+        })),
+      );
+    await database.query(
+      `UPDATE "${schema}".users SET "pictureSmallUploadId" = $1, "pictureLargeUploadId" = $2, "backgroundLargeUploadId" = $3 WHERE id = $4`,
+      [small.id, large.id, background.id, users.owner.id],
+    );
   }
 
   const teamIds = (profile: { teams: { id: string }[] }) =>
@@ -267,6 +283,53 @@ postgres("ProfileService visibility (PostgreSQL)", () => {
     );
     expect(history.total).toBe(3);
     expect(history.matches.every((match) => match.id === null)).toBe(true);
+  });
+
+  it("returns the uploaded profile picture and background", async () => {
+    const { user } = await service.getProfile(
+      users.owner.username,
+      users.outsider.id,
+    );
+    expect(user.picture).toEqual({
+      small: "images/test/picture-small.webp",
+      large: "images/test/picture-large.webp",
+    });
+    expect(user.background).toEqual({
+      large: "images/test/background-large.webp",
+    });
+    const plain = await service.getProfile(
+      users.rival.username,
+      users.outsider.id,
+    );
+    expect(plain.user.picture).toBeNull();
+  });
+
+  it("returns member pictures on /auth/me, team members and profile teams", async () => {
+    const small = "images/test/picture-small.webp";
+    const me = await new UserService(
+      database.getRepository(UserEntity),
+      new ConfigService({}),
+    ).getUserWithSocialAccounts(users.owner.id);
+    expect(me.picture?.small).toBe(small);
+    expect(me.background?.large).toBe("images/test/background-large.webp");
+
+    // The relations the team members endpoint requests.
+    const team = await database.getRepository(TeamEntity).findOneOrFail({
+      where: { id: teams.ownerPublic.id },
+      relations: { users: { ...USER_ARTWORK_RELATIONS, socialAccounts: true } },
+    });
+    const members = new Map(team.users.map((u) => [u.id, u.picture]));
+    expect(members.get(users.owner.id)?.small).toBe(small);
+    expect(members.get(users.teammate.id)).toBeNull();
+
+    const profile = await service.getProfile(
+      users.owner.username,
+      users.outsider.id,
+    );
+    const roster = profile.teams.find((t) => t.id === teams.ownerPublic.id)!;
+    expect(
+      roster.members.find((m) => m.id === users.owner.id)?.picture,
+    ).toEqual(expect.objectContaining({ small }));
   });
 
   it("never lists unrevealed tournament or manual matches", async () => {

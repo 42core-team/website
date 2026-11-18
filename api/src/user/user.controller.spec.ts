@@ -95,6 +95,7 @@ describe("toPublicUser", () => {
     expect(Object.keys(result).sort()).toEqual([
       "id",
       "name",
+      "picture",
       "profilePicture",
       "username",
     ]);

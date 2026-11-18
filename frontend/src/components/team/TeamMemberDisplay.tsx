@@ -1,3 +1,4 @@
+import { userAvatarSrc } from '@/lib/user-avatar'
 import type { TeamMember } from '@/app/actions/team'
 import Image from '@/components/app-image'
 import Link from '@/components/app-link'
@@ -35,7 +36,7 @@ export default function TeamMemberDisplay({
               'outline-2 outline-solid outline-orange-500',
           )}
         >
-          <AvatarImage src={member.profilePicture} alt={member.name} />
+          <AvatarImage src={userAvatarSrc(member)} alt={member.name} />
           <AvatarFallback>
             {member.name.slice(0, 2).toUpperCase()}
           </AvatarFallback>

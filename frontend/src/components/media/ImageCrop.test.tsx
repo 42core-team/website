@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, cleanup } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cropFrame, resizeCrop, TeamImageCrop } from './TeamImageCrop'
+import { cropFrame, resizeCrop, ImageCrop } from './ImageCrop'
 
 afterEach(cleanup)
 describe('visual crop selection', () => {
@@ -13,7 +13,7 @@ describe('visual crop selection', () => {
   it('supports keyboard adjustment and keeps selection inside the image', () => {
     const onChange = vi.fn()
     render(
-      <TeamImageCrop
+      <ImageCrop
         src="test.png"
         width={1200}
         height={600}
@@ -33,7 +33,7 @@ describe('visual crop selection', () => {
   it('does not move the crop while saving', () => {
     const onChange = vi.fn()
     render(
-      <TeamImageCrop
+      <ImageCrop
         src="test.png"
         width={1200}
         height={600}

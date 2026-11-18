@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
+import type { TeamBackground, TeamImage } from '@/app/actions/team'
 import axiosInstance, { onSessionExpired } from '@/app/actions/axios'
 
 export interface ClientUser {
@@ -10,6 +11,8 @@ export interface ClientUser {
   name: string
   email: string
   profilePicture: string
+  picture?: TeamImage | null
+  background?: TeamBackground | null
 }
 
 export interface ClientSession {

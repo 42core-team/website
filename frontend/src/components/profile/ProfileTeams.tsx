@@ -1,3 +1,4 @@
+import { userAvatarSrc } from '@/lib/user-avatar'
 import type { ReactNode } from 'react'
 import type { ProfileTeam, UserProfile } from '@/app/actions/profile'
 import { format } from 'date-fns'
@@ -131,10 +132,7 @@ function TeamCard({ team }: { team: ProfileTeam }) {
                 className="flex min-w-0 items-center gap-2 rounded-lg border py-1 pr-2.5 pl-1 text-sm transition-colors hover:bg-muted"
               >
                 <Avatar className="size-6">
-                  <AvatarImage
-                    src={member.profilePicture ?? undefined}
-                    alt=""
-                  />
+                  <AvatarImage src={userAvatarSrc(member)} alt="" />
                   <AvatarFallback className="text-[10px]">
                     {member.name.slice(0, 2).toUpperCase()}
                   </AvatarFallback>

@@ -1,4 +1,4 @@
-import type { TeamBackground, TeamImage } from "./team-image.service";
+import type { MediaBackground, MediaImage } from "../media/media-artwork";
 import type { RepositoryStatus, TeamEntity } from "./entities/team.entity";
 
 export interface TeamStanding {
@@ -15,8 +15,8 @@ export interface TeamStanding {
 export interface TeamResponse {
   id: string;
   name: string;
-  picture: TeamImage | null;
-  background: TeamBackground | null;
+  picture: MediaImage | null;
+  background: MediaBackground | null;
   tags: string[];
 }
 
@@ -39,7 +39,7 @@ export interface InvitingTeamResponse {
 export interface EventTeamResponse {
   id: string;
   name: string;
-  picture: TeamImage | null;
+  picture: MediaImage | null;
   tags: string[];
   userCount: number;
   createdAt: Date;

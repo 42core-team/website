@@ -1,6 +1,7 @@
+import { userAvatarSrc } from '@/lib/user-avatar'
 import type { Event } from '@/app/actions/event'
 import { LifecycleControls } from '@/components/dashboard/lifecycle-controls'
-import type { Team } from '@/app/actions/team'
+import type { Team, TeamImage } from '@/app/actions/team'
 import type { UserSearchResult } from '@/app/actions/user'
 import type { UseMutationResult } from '@tanstack/react-query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -133,6 +134,7 @@ interface EventAdmin {
   username: string
   name: string
   profilePicture?: string
+  picture?: TeamImage | null
 }
 
 const SETTINGS_FIELDS = [
@@ -1232,7 +1234,7 @@ function AdminsTab({
                   >
                     <div className="flex items-center gap-2">
                       <img
-                        src={user.profilePicture}
+                        src={userAvatarSrc(user)}
                         alt={user.name}
                         className="h-8 w-8 rounded-full border bg-muted"
                       />
@@ -1283,7 +1285,7 @@ function AdminsTab({
                       <div className="flex items-center gap-3">
                         <img
                           src={
-                            admin.profilePicture || '/placeholder-avatar.png'
+                            userAvatarSrc(admin) || '/placeholder-avatar.png'
                           }
                           alt={admin.name}
                           className="h-10 w-10 rounded-full border bg-background"

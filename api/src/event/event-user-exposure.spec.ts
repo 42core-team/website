@@ -39,6 +39,7 @@ describe("event responses do not expose user details", () => {
     expect(Object.keys(instanceToPlain(admins[0])).sort()).toEqual([
       "id",
       "name",
+      "picture",
       "profilePicture",
       "username",
     ]);

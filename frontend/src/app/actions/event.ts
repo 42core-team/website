@@ -1,3 +1,4 @@
+import type { TeamImage } from '@/app/actions/team'
 import type { WhitelistPlatform } from '@/lib/constants/whitelist'
 
 import axiosInstance from '@/app/actions/axios'
@@ -310,14 +311,24 @@ export async function excludeInactiveTeams(
   ).data
 }
 
-export async function getEventAdmins(
-  eventId: string,
-): Promise<
-  { id: string; username: string; name: string; profilePicture?: string }[]
+export async function getEventAdmins(eventId: string): Promise<
+  {
+    id: string
+    username: string
+    name: string
+    profilePicture?: string
+    picture?: TeamImage | null
+  }[]
 > {
   return (
     await axiosInstance.get<
-      { id: string; username: string; name: string; profilePicture?: string }[]
+      {
+        id: string
+        username: string
+        name: string
+        profilePicture?: string
+        picture?: TeamImage | null
+      }[]
     >(`event/${eventId}/admins`)
   ).data
 }

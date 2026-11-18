@@ -6,7 +6,9 @@ import { EventEntity } from "../event/entities/event.entity";
 import { UserInviteSearchResult } from "./dtos/user-search-invite.dto";
 import { ConfigService } from "@nestjs/config";
 import { encryptSecret } from "../common/encryption";
+import { mediaArtwork } from "../media/media-artwork";
 import { isRegistrationOpen } from "../event/event-lifecycle";
+import { USER_ARTWORK_RELATIONS } from "../media/artwork-relations";
 
 /** GitHub profile fields kept in sync by the grant check (ADR 0003). */
 export type GithubSyncedProfile = Partial<
@@ -149,7 +151,7 @@ export class UserService {
   getUserWithSocialAccounts(userId: string) {
     return this.userRepository.findOneOrFail({
       where: { id: userId },
-      relations: { socialAccounts: true },
+      relations: { socialAccounts: true, ...USER_ARTWORK_RELATIONS },
     });
   }
 
@@ -180,10 +182,14 @@ export class UserService {
       .addSelect("user.name", "name")
       .addSelect("user.username", "username")
       .addSelect("user.profilePicture", "profilePicture")
+      .addSelect("pictureSmall.objectKey", "pictureSmallKey")
+      .addSelect("pictureLarge.objectKey", "pictureLargeKey")
       .addSelect(
         `(MAX(CASE WHEN inviteTeam.id = :teamId THEN 1 ELSE 0 END) = 1)`,
         "isInvited",
       )
+      .leftJoin("user.pictureSmallUpload", "pictureSmall")
+      .leftJoin("user.pictureLargeUpload", "pictureLarge")
       .leftJoin("user.events", "event", "event.id = :eventId", { eventId })
       .leftJoin("user.teams", "team", "team.eventId = :eventId", { eventId })
       .leftJoin("user.teamInvites", "inviteTeam")
@@ -203,18 +209,37 @@ export class UserService {
         "(inviteEvent.id IS NULL OR inviteEvent.id != :eventId OR inviteTeam.id = :teamId)",
         { eventId, teamId },
       )
-      .groupBy("user.id");
+      .groupBy("user.id")
+      .addGroupBy("pictureSmall.id")
+      .addGroupBy("pictureLarge.id");
 
     if (!isEventPublic) {
       queryBuilder.andWhere("event.id IS NOT NULL");
     }
 
-    return queryBuilder.getRawMany<UserInviteSearchResult>();
+    const rows = await queryBuilder.getRawMany<
+      Omit<UserInviteSearchResult, "picture"> & {
+        pictureSmallKey: string | null;
+        pictureLargeKey: string | null;
+      }
+    >();
+    return rows.map(({ pictureSmallKey, pictureLargeKey, ...row }) => ({
+      ...row,
+      picture: mediaArtwork({
+        pictureSmallUpload: pictureSmallKey
+          ? { objectKey: pictureSmallKey }
+          : null,
+        pictureLargeUpload: pictureLargeKey
+          ? { objectKey: pictureLargeKey }
+          : null,
+      }).picture,
+    }));
   }
 
   async searchUsers(query: string): Promise<UserEntity[]> {
     return this.userRepository.find({
       where: [{ username: ILike(`%${query}%`) }, { name: ILike(`%${query}%`) }],
+      relations: USER_ARTWORK_RELATIONS,
       take: 10,
     });
   }

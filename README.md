@@ -64,17 +64,17 @@ This command:
 
 Once Tilt reports the resources as ready, the local services are available at:
 
-| Service | URL or address |
-| --- | --- |
-| Frontend | <http://localhost:3000> |
-| API | <http://localhost:4000> |
-| RabbitMQ | `localhost:5672` |
+| Service                | URL or address                               |
+| ---------------------- | -------------------------------------------- |
+| Frontend               | <http://localhost:3000>                      |
+| API                    | <http://localhost:4000>                      |
+| RabbitMQ               | `localhost:5672`                             |
 | RabbitMQ management UI | <http://localhost:15672> (`guest` / `guest`) |
-| SeaweedFS S3 API | <http://localhost:9000> |
-| SeaweedFS master UI | <http://localhost:9001> |
-| SeaweedFS filer UI | <http://localhost:9002> |
-| K8s service | <http://localhost:9003> |
-| PostgreSQL | `localhost:5432` (`postgres` / `postgres`) |
+| SeaweedFS S3 API       | <http://localhost:9000>                      |
+| SeaweedFS master UI    | <http://localhost:9001>                      |
+| SeaweedFS filer UI     | <http://localhost:9002>                      |
+| K8s service            | <http://localhost:9003>                      |
+| PostgreSQL             | `localhost:5432` (`postgres` / `postgres`)   |
 
 The local PostgreSQL connection string is:
 
@@ -143,9 +143,11 @@ For issues and questions:
 - Check the individual service READMEs for service-specific setup and commands.
 - Open an issue in this repository.
 
-### Team pictures and backgrounds
+### Team and profile pictures and backgrounds
 
-Team members can upload, crop, replace, and remove artwork in **My Team → edit icon on the team picture or Edit background on the cover**, including while the roster is locked. JPEG, PNG, static WebP, and animated GIF
+Team members can upload, crop, replace, and remove artwork in **My Team → edit icon on the team picture or Edit background on the cover**, including while the roster is locked. Users manage their own profile picture
+and background in **Settings → Profile Appearance**; without an uploaded
+picture, the GitHub avatar is shown. JPEG, PNG, static WebP, and animated GIF
 uploads are limited to 10 MB and 25 megapixels. The API generates square WebP
 pictures (128/512 px) and a single wide cover (1600×600 px), without enlarging
 small inputs. GIF animation, frame timing, and looping are preserved in WebP output.
@@ -174,19 +176,27 @@ credentials, and public image URL. Only generated artwork should have public
 read access; writes, listing, and deletion belong to the API credentials.
 
 Images use immutable UUID keys. Replacements become visible only after all
-required variants are stored. A daily 03:00 server-time cleanup removes unreferenced
-objects older than 24 hours, including failed uploads. Artwork of deleted teams is kept because match
-history and profiles still show those teams.
-The `media_uploads` table stores one object key per variant, and `teams`
-references those rows through `pictureSmallUploadId`, `pictureLargeUploadId`,
+required variants are stored. Once a replacement or removal commits, the API
+deletes the old objects on a best-effort basis (a failure is logged and does not
+fail the request). A daily 03:00 server-time cleanup is the backstop: it removes
+unreferenced objects older than 24 hours, including failed uploads. Artwork
+referenced by soft-deleted teams stays available in match history and profiles.
+The `media_uploads` table stores one object key per variant, and both `teams`
+and `users` reference those rows through `pictureSmallUploadId`, `pictureLargeUploadId`,
 and `backgroundLargeUploadId` (`ON DELETE SET NULL`). Keeping `media_uploads`
-owner-agnostic allows future uploads on other entities without modifying the
-media table. The team API still returns `picture` and `background` objects
-assembled from these rows. Replacement rows are committed together in a
+owner-agnostic allows uploads on further entities without modifying the
+media table. The team and user APIs return `picture` and `background` objects
+assembled from these rows. Team artwork is always loaded with the team; user
+artwork is loaded only by endpoints that return it, so authentication lookups
+stay join-free. Replacement rows are committed together in a
 transaction after storage succeeds.
 Generated objects use the shared `images/` prefix. Cleanup is restricted to this
-prefix and preserves all uploads referenced by teams, including deleted ones.
-Processing is limited to two concurrent uploads per API process and one per team.
+prefix and preserves uploads referenced by users and teams, including soft-deleted teams.
+Processing is limited to two concurrent uploads per API process and one per
+owner (a team or a user). Each owner holds at most one picture and one
+background. A new upload of the same kind (picture or background) for the same owner
+within 10 seconds of the previous successful one is rejected with HTTP 429.
+A failed upload starts only a 2 second cooldown, and removals are not rate limited.
 
 Production media storage configuration uses GitHub environment variables
 `MEDIA_S3_ENDPOINT`, `MEDIA_S3_BUCKET`, `MEDIA_S3_REGION`, and
