@@ -11,9 +11,14 @@ import { DataSource, EntityManager, IsNull } from "typeorm";
 import { authzTestingModule } from "../authz/testing";
 import { EventEntity } from "../event/entities/event.entity";
 import { EventService } from "../event/event.service";
+import { TeamEntity } from "../team/entities/team.entity";
 import { UserRole, UserRoleEntity } from "../user/entities/user-role.entity";
 import { UserEntity } from "../user/entities/user.entity";
-import { RolesController } from "./roles.controller";
+import {
+  AdminUsersController,
+  EventUsersController,
+  RolesController,
+} from "./roles.controller";
 import { RolesService } from "./roles.service";
 
 // A dedicated test database is required; each run owns only its random schema.
@@ -53,7 +58,11 @@ postgres("role admin API (PostgreSQL)", () => {
           }),
         ),
       ],
-      controllers: [RolesController],
+      controllers: [
+        RolesController,
+        AdminUsersController,
+        EventUsersController,
+      ],
       providers: [
         RolesService,
         {
@@ -123,6 +132,110 @@ postgres("role admin API (PostgreSQL)", () => {
       .post("/admin/roles", { userId: member.id, role: UserRole.ADMIN })
       .expect(403);
     await as(member).delete(`/admin/roles/${randomUUID()}`).expect(403);
+  });
+
+  it("lists accounts without roles globally and only joined accounts in an event", async () => {
+    const joined = await createUser();
+    await database
+      .createQueryBuilder()
+      .relation(UserEntity, "events")
+      .of(joined.id)
+      .add(event.id);
+
+    const teammate = await createUser();
+    const teams = database.getRepository(TeamEntity);
+    const team = await teams.save({
+      name: "Joined team",
+      event,
+      users: [teammate],
+    });
+    await as(member).get("/admin/users").expect(403);
+    await as(member).get(`/event/${event.id}/users`).expect(403);
+    const all = await as(admin).get("/admin/users").expect(200);
+    expect(all.body).toEqual(
+      expect.arrayContaining([
+        {
+          id: joined.id,
+          name: joined.name,
+          username: joined.username,
+          profilePicture: joined.profilePicture,
+        },
+      ]),
+    );
+    const eventUsers = await as(admin)
+      .get(`/event/${event.id}/users`)
+      .expect(200);
+    expect(
+      eventUsers.body.map((user: { id: string }) => user.id).sort(),
+    ).toEqual([joined.id, teammate.id].sort());
+    await teams.softDelete(team.id);
+    const afterLeave = await as(admin)
+      .get(`/event/${event.id}/users`)
+      .expect(200);
+    expect(afterLeave.body.map((user: { id: string }) => user.id)).toEqual([
+      joined.id,
+    ]);
+  });
+
+  it("lets event admins manage event roles for unjoined users and confines changes to their event", async () => {
+    const eventAdmin = await createUser();
+    const unjoined = await createUser();
+    const repo = database.getRepository(UserRoleEntity);
+    const eventGrant = await repo.save({
+      userId: eventAdmin.id,
+      eventId: event.id,
+      role: UserRole.ADMIN,
+    });
+    const globalGrant = await repo.findOneByOrFail({
+      userId: admin.id,
+      eventId: IsNull(),
+      role: UserRole.ADMIN,
+    });
+    const path = `/event/${event.id}/roles`;
+
+    try {
+      await as(member).get(path).expect(403);
+      await as(eventAdmin)
+        .post(path, {
+          userId: unjoined.id,
+          role: UserRole.PRIVATE_EVENT_CREATOR,
+        })
+        .expect(400);
+      await as(eventAdmin)
+        .post(path, {
+          userId: unjoined.id,
+          role: UserRole.ADMIN,
+          eventId: randomUUID(),
+        })
+        .expect(400);
+      await as(eventAdmin).delete(`${path}/${globalGrant.id}`).expect(404);
+      await as(eventAdmin).delete(`${path}/${eventGrant.id}`).expect(409);
+
+      const created = await as(eventAdmin)
+        .post(path, { userId: unjoined.id, role: UserRole.MODERATOR })
+        .expect(201);
+      const roles = await as(eventAdmin).get(path).expect(200);
+      expect(roles.body).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: created.body.id, eventId: event.id }),
+        ]),
+      );
+      expect(roles.body).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: globalGrant.id }),
+        ]),
+      );
+      const users = await as(eventAdmin)
+        .get(`/event/${event.id}/users`)
+        .expect(200);
+      expect(users.body).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: unjoined.id })]),
+      );
+      await as(eventAdmin).delete(`${path}/${created.body.id}`).expect(204);
+    } finally {
+      await repo.delete({ userId: eventAdmin.id });
+      await repo.delete({ userId: unjoined.id });
+    }
   });
 
   it("grants a role and lists it with its user, event and granter", async () => {
