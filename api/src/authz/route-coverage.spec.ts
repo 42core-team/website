@@ -97,6 +97,7 @@ const DECISIONS: Record<string, string> = {
   "DELETE /team/event/:eventId/admin/:teamId": "EventPolicy.administer",
   "DELETE /team/event/:eventId/declineInvite/:teamId": "SessionPolicy.signedIn",
   "DELETE /team/event/:eventId/my/images/:kind": "SessionPolicy.signedIn",
+  "DELETE /user/me/images/:kind": "SessionPolicy.signedIn",
   "GET /": "public",
   "GET /auth/42/callback": "public",
   "GET /auth/42/getUrl": "SessionPolicy.signedIn",
@@ -189,6 +190,7 @@ const DECISIONS: Record<string, string> = {
   "PUT /team/event/:eventId/leave": "SessionPolicy.signedIn",
   "PUT /team/event/:eventId/my/images/:kind": "SessionPolicy.signedIn",
   "PUT /team/event/:eventId/queue/join": "SessionPolicy.signedIn",
+  "PUT /user/me/images/:kind": "SessionPolicy.signedIn",
 };
 
 describe("route authorization coverage", () => {
