@@ -82,12 +82,13 @@ The local PostgreSQL connection string is:
 postgresql://postgres:postgres@localhost:5432/postgres
 ```
 
-On first startup, the local API seeds an empty events database with ten sample
-events across all five lifecycle states, with team rosters, match history, and
-standings. The schedules are relative to the first startup and advance normally
-as time passes. The seed runs once per database and skips databases with existing
-events. To start with an empty database, set `SEED_LOCAL_DATABASE` to `"false"`
-in [the local API values](local-setup/local-values/api.yaml) before starting Tilt.
+On first startup, the local API container applies migrations and then adds ten
+sample events if the database has no events. The sample events cover all five
+lifecycle states and include team rosters, match history, and standings. Event
+schedules are relative to the first startup and advance as time passes. The
+seed remembers its first run per database schema. To opt out, set
+`SEED_LOCAL_DATABASE` to `"false"` in [the local API values](local-setup/local-values/api.yaml)
+before starting Tilt.
 
 ### OAuth setup
 

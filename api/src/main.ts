@@ -11,7 +11,6 @@ import {
   Transport,
 } from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
-import { DataSource } from "typeorm";
 import cookieParser from "cookie-parser";
 import { createCsrfProtection } from "./common/csrf-protection";
 import { rabbitmqQueueName } from "./rabbitmq-queue-name";
@@ -19,7 +18,6 @@ import {
   getAuthCookieName,
   REFRESH_COOKIE_NAME,
 } from "./auth/session.constants";
-import { seedLocalDatabase } from "./scripts/seed-local-database";
 
 export const getRabbitmqConfig = (
   configService: ConfigService,
@@ -48,13 +46,6 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
   const configService = app.get(ConfigService);
   const httpAdapterHost = app.get(HttpAdapterHost);
-
-  if (
-    process.env.NODE_ENV === "development" &&
-    configService.get<string>("SEED_LOCAL_DATABASE") === "true"
-  ) {
-    await seedLocalDatabase(app.get(DataSource));
-  }
 
   app.useGlobalPipes(new ValidationPipe());
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));

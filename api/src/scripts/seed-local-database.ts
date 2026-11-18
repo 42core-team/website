@@ -108,8 +108,10 @@ const scenarios: {
   },
 ];
 
-export async function seedLocalDatabase(dataSource: DataSource): Promise<void> {
-  await dataSource.transaction(async (manager) => {
+export async function seedLocalDatabase(
+  dataSource: DataSource,
+): Promise<number> {
+  return dataSource.transaction(async (manager) => {
     await manager.query("SELECT pg_advisory_xact_lock($1)", [
       LockKeys.LOCAL_DATABASE_SEED,
     ]);
@@ -125,12 +127,13 @@ export async function seedLocalDatabase(dataSource: DataSource): Promise<void> {
        ON CONFLICT DO NOTHING RETURNING name`,
       ["default-events"],
     );
-    if (inserted.length === 0 || (await manager.exists(EventEntity))) return;
+    if (inserted.length === 0 || (await manager.exists(EventEntity))) return 0;
 
     const now = Date.now();
     for (const scenario of scenarios) {
       await seedEvent(manager, scenario, now);
     }
+    return scenarios.length;
   });
 }
 
@@ -274,7 +277,7 @@ function tournamentMatches(
           createdAt: new Date(
             deadline.getTime() + (round + 1) * HOUR + index * 60_000,
           ),
-          isRevealed: completed || round < rounds - 1,
+          isRevealed: true,
         }),
       );
     }
@@ -324,8 +327,14 @@ function finishedMatch(
 ) {
   const unitsSpawned =
     20 + (Math.floor(details.createdAt.getTime() / 60_000) % 73);
+  const damageUnits = unitsSpawned * 240;
+  const damageCores = unitsSpawned * 95;
+  const damageWalls = unitsSpawned * 50;
+  // The activity chart uses the match update time for finished games.
+  const updatedAt = new Date(details.createdAt.getTime() + 5 * 60_000);
   return {
     ...details,
+    updatedAt,
     teams,
     winner,
     leftTeamId: teams[0].id,
@@ -333,8 +342,14 @@ function finishedMatch(
     state: MatchState.FINISHED,
     stats: {
       unitsSpawned,
+      createdAt: updatedAt,
+      updatedAt,
       actionsExecuted: unitsSpawned * 142,
-      damageTotal: unitsSpawned * 385,
+      damageUnits,
+      damageCores,
+      damageWalls,
+      damageOpponent: damageUnits + damageCores + damageWalls,
+      damageTotal: damageUnits + damageCores + damageWalls,
       gemsGained: unitsSpawned * 74,
     },
     // Elimination matches use the winner directly. The other phases record
