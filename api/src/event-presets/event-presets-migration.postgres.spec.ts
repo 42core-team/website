@@ -26,8 +26,12 @@ postgres("EventPresets migrations (PostgreSQL)", () => {
       new EventPresets1793200000000(),
     ];
     if (direction === "down") migrations.reverse();
-    for (const migration of migrations) await migration[direction](queryRunner);
-    await queryRunner.release();
+    try {
+      for (const migration of migrations)
+        await migration[direction](queryRunner);
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   beforeAll(async () => {
