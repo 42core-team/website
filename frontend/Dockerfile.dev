@@ -2,7 +2,8 @@ FROM oven/bun:1.4.4-alpine
 
 WORKDIR /app
 
-COPY package.json bun.lock ./
+COPY package.json bun.lock bunfig.toml ./
+COPY patches ./patches
 RUN bun install --frozen-lockfile
 
 COPY . .
@@ -11,6 +12,5 @@ EXPOSE 3000
 
 ENV NODE_ENV=development
 ENV HOST=0.0.0.0
-ENV NODE_OPTIONS="--max-old-space-size=1536"
 
-CMD ["bun", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["bun", "run", "dev", "--host", "0.0.0.0"]

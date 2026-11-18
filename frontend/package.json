@@ -2,12 +2,13 @@
   "name": "frontend-vite",
   "private": true,
   "type": "module",
+  "packageManager": "bun@1.4.4",
   "imports": {
     "#/*": "./src/*"
   },
   "scripts": {
-    "prebuild": "bun scripts/clone-wiki-branches.cjs && bun scripts/fetch-releases.cjs && bun scripts/fetch-visualizer-assets.js",
-    "clone:wiki": "node scripts/clone-wiki-branches.cjs",
+    "prebuild": "bun run clone:wiki && bun scripts/fetch-releases.cjs && bun run fetch:visualizer-assets",
+    "clone:wiki": "bun scripts/clone-wiki-branches.cjs",
     "fetch:visualizer-assets": "bun scripts/fetch-visualizer-assets.js",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
@@ -95,13 +96,10 @@
     "vite": "^8.3.6",
     "vitest": "^5.1.0"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "lightningcss"
-    ]
-  },
   "overrides": {
     "follow-redirects": "^1.16.2"
+  },
+  "patchedDependencies": {
+    "follow-redirects@1.16.2": "patches/follow-redirects@1.16.2.patch"
   }
 }

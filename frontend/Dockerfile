@@ -3,14 +3,15 @@
 FROM oven/bun:1.4.4-alpine AS deps
 WORKDIR /app
 
-COPY package.json bun.lock ./
+COPY package.json bun.lock bunfig.toml ./
+COPY patches ./patches
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile
 
 FROM oven/bun:1.4.4-alpine AS builder
 WORKDIR /app
 
-RUN apk add --no-cache git nodejs openssh
+RUN apk add --no-cache git openssh
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

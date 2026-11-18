@@ -82,6 +82,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "follow-redirects@1.16.2": "patches/follow-redirects@1.16.2.patch",
+  },
   "overrides": {
     "follow-redirects": "^1.16.2",
   },
