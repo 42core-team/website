@@ -180,7 +180,7 @@ the named preset (`presetId`) or the default one, and the result must pass
 `EventSettingsDto`. Creating copies the values, so editing a preset never
 changes existing events; they keep `presetId` and `presetVersion` for
 provenance. `POST /event` no longer takes an organizer token (`githubOrg`,
-`githubOrgSecret`); the token of existing events still works.
+`githubOrgSecret`). GitHub App installations provide repository access.
 
 A preset's schedule is relative: the start is `startTime` (Europe/Berlin
 wall-clock time) `startOffsetDays` after the day of creation, and the other
