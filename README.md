@@ -179,8 +179,8 @@ Images use immutable UUID keys. Replacements become visible only after all
 required variants are stored. Once a replacement or removal commits, the API
 deletes the old objects on a best-effort basis (a failure is logged and does not
 fail the request). A daily 03:00 server-time cleanup is the backstop: it removes
-unreferenced objects older than 24 hours, including failed uploads and
-deleted-team artwork.
+unreferenced objects older than 24 hours, including failed uploads. Artwork
+referenced by soft-deleted teams stays available in match history and profiles.
 The `media_uploads` table stores one object key per variant, and both `teams`
 and `users` reference those rows through `pictureSmallUploadId`, `pictureLargeUploadId`,
 and `backgroundLargeUploadId` (`ON DELETE SET NULL`). Keeping `media_uploads`
@@ -191,7 +191,7 @@ artwork is loaded only by endpoints that return it, so authentication lookups
 stay join-free. Replacement rows are committed together in a
 transaction after storage succeeds.
 Generated objects use the shared `images/` prefix. Cleanup is restricted to this
-prefix and preserves all uploads referenced by teams and users.
+prefix and preserves uploads referenced by users and teams, including soft-deleted teams.
 Processing is limited to two concurrent uploads per API process and one per
 owner (a team or a user). Each owner holds at most one picture and one
 background. A new upload of the same kind (picture or background) for the same owner
