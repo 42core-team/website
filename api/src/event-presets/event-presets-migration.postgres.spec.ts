@@ -5,9 +5,9 @@ import { DataSource } from "typeorm";
 import { SharedGithubInstallations1793150000000 } from "../../db/migrations/1793150000000-shared-github-installations";
 import {
   DEFAULT_PRESET_SETTINGS,
-  EventPresets1793200000000,
   seedDefaultPreset,
-} from "../../db/migrations/1793200000000-event-presets";
+} from "../../db/event-preset-seed";
+import { EventPresets1793200000000 } from "../../db/migrations/1793200000000-event-presets";
 import { PresetSettingsDto } from "./dtos/preset-settings.dto";
 import { resolvePresetSettings } from "./preset-resolver";
 
