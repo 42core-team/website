@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
 import { DataSource } from "typeorm";
-import { SharedGithubInstallations1793100000000 } from "../../db/migrations/1793100000000-shared-github-installations";
+import { SharedGithubInstallations1793150000000 } from "../../db/migrations/1793150000000-shared-github-installations";
 import {
   DEFAULT_PRESET_SETTINGS,
   EventPresets1793200000000,
@@ -22,7 +22,7 @@ postgres("EventPresets migrations (PostgreSQL)", () => {
   async function run(direction: "up" | "down") {
     const queryRunner = database.createQueryRunner();
     const migrations = [
-      new SharedGithubInstallations1793100000000(),
+      new SharedGithubInstallations1793150000000(),
       new EventPresets1793200000000(),
     ];
     if (direction === "down") migrations.reverse();
