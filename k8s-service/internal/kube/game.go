@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
 	batchv1 "k8s.io/api/batch/v1"
@@ -15,6 +16,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -74,6 +76,16 @@ func createGameResources(ctx context.Context, clientset kubernetes.Interface, na
 		if err != nil {
 			return fmt.Errorf("failed to get existing job: %w", err)
 		}
+		// The API restarts a match whose game never reported a result by
+		// sending new_match again. Replace a failed run; leave an active or
+		// succeeded one alone, as for a redelivered message.
+		if jobFailed(createdJob) {
+			logger.Warnw("Replacing failed game job", "jobName", createdJob.Name)
+			createdJob, err = replaceFailedJob(ctx, clientset, namespace, res)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	jobOwnerReference := metav1.OwnerReference{
@@ -114,6 +126,72 @@ func createGameResources(ctx context.Context, clientset kubernetes.Interface, na
 
 	logger.Infoln("Job to run a game successfully created", "jobName", createdJob.Name)
 	return nil
+}
+
+// jobDeletionTimeout bounds how long replaceFailedJob waits for the old Job
+// and its pods to be removed. Variables so tests can shorten them.
+var (
+	jobDeletionTimeout      = 15 * time.Second
+	jobDeletionPollInterval = 250 * time.Millisecond
+)
+
+// jobFailed reports whether a Job ended (or is ending) without success:
+// pod failure, BackoffLimit or ActiveDeadlineSeconds all set these conditions.
+func jobFailed(job *batchv1.Job) bool {
+	for _, condition := range job.Status.Conditions {
+		if condition.Status == corev1.ConditionTrue &&
+			(condition.Type == batchv1.JobFailed || condition.Type == batchv1.JobFailureTarget) {
+			return true
+		}
+	}
+	return false
+}
+
+// replaceFailedJob deletes a failed game Job with its ConfigMap and
+// credentials Secret, then creates the ConfigMap and Job of res. The Secret is
+// immutable and the new message carries fresh clone tokens, so it is deleted
+// here and recreated by the caller. Garbage collection alone is not enough:
+// the dependents carry no blockOwnerDeletion, so they may outlive the Job.
+func replaceFailedJob(ctx context.Context, clientset kubernetes.Interface, namespace string, res *gameResources) (*batchv1.Job, error) {
+	jobs := clientset.BatchV1().Jobs(namespace)
+	// Foreground: the Job is only gone once its pods are.
+	propagation := metav1.DeletePropagationForeground
+	err := jobs.Delete(ctx, res.job.Name, metav1.DeleteOptions{PropagationPolicy: &propagation})
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to delete failed job: %w", err)
+	}
+	err = wait.PollUntilContextTimeout(ctx, jobDeletionPollInterval, jobDeletionTimeout, true, func(ctx context.Context) (bool, error) {
+		_, err := jobs.Get(ctx, res.job.Name, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed waiting for failed job to be deleted: %w", err)
+	}
+
+	err = clientset.CoreV1().ConfigMaps(namespace).Delete(ctx, res.configMap.Name, metav1.DeleteOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to delete configmap of failed job: %w", err)
+	}
+	if res.credentialsSecret != nil {
+		err = clientset.CoreV1().Secrets(namespace).Delete(ctx, res.credentialsSecret.Name, metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to delete credentials secret of failed job: %w", err)
+		}
+	}
+
+	_, err = clientset.CoreV1().ConfigMaps(namespace).Create(ctx, res.configMap, metav1.CreateOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create configmap: %w", err)
+	}
+	createdJob, err := jobs.Create(ctx, res.job, metav1.CreateOptions{})
+	if err != nil {
+		_ = clientset.CoreV1().ConfigMaps(namespace).Delete(ctx, res.configMap.Name, metav1.DeleteOptions{})
+		return nil, fmt.Errorf("failed to create job: %w", err)
+	}
+	return createdJob, nil
 }
 
 // buildGameResources builds the Job, ConfigMap and (if needed) credentials

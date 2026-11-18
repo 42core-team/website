@@ -51,6 +51,10 @@ and does not check `pattern`):
   - `name`: Display name for the bot/player
 - `data.gameConfig` / `data.serverConfig`: Game and server configuration JSON (as strings)
 
+### Restarts
+
+A match that is still `IN_PROGRESS` 35 minutes after it was started (the game Job's deadline is 30 minutes) has not reported a result, so the API sends `new_match` again with the same `data.id` and fresh repository tokens. It does this at most three times per match, counting the first start; after that the match stays `IN_PROGRESS` and the API logs `stale_match_gave_up` every minute until 24 hours after the last start, then leaves the match alone for an administrator. Matches started before this behaviour was added (no recorded start time) are never restarted. The k8s-service replaces the existing Job `game-<id>` only if it failed; an active or succeeded Job is left alone.
+
 ## Game Results
 
 Game results will be published to the configured game result queue (by default
