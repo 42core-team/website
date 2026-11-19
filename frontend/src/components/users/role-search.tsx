@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,6 +13,8 @@ export function RoleSearch<T extends { id: string }>({
   renderResult,
   onSelect,
   minLength = 0,
+  hideLabel = false,
+  autoFocus = false,
 }: {
   label: string
   placeholder: string
@@ -19,6 +22,8 @@ export function RoleSearch<T extends { id: string }>({
   renderResult: (item: T) => React.ReactNode
   onSelect: (item: T) => void
   minLength?: number
+  hideLabel?: boolean
+  autoFocus?: boolean
 }) {
   const id = useId()
   const [input, setInput] = useState('')
@@ -32,16 +37,29 @@ export function RoleSearch<T extends { id: string }>({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        value={input}
-        placeholder={placeholder}
-        onChange={(event) => setInput(event.target.value)}
-      />
+      <Label htmlFor={id} className={hideLabel ? 'sr-only' : undefined}>
+        {label}
+      </Label>
+      <div className="relative">
+        <Search
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+        />
+        <Input
+          id={id}
+          type="search"
+          value={input}
+          placeholder={placeholder}
+          autoFocus={autoFocus}
+          className="pl-8"
+          onChange={(event) => setInput(event.target.value)}
+        />
+      </div>
       {term.length >= minLength &&
         (term !== query || results.isPending ? (
-          <p role="status">Searching…</p>
+          <p role="status" className="text-sm text-muted-foreground">
+            Searching…
+          </p>
         ) : results.isError ? (
           <p role="alert">
             Search failed.{' '}
@@ -56,14 +74,14 @@ export function RoleSearch<T extends { id: string }>({
         ) : results.data.length ? (
           <ul
             aria-label={`${label} results`}
-            className="max-h-44 overflow-auto rounded-md border p-1"
+            className="max-h-56 overflow-auto rounded-md border bg-background p-1"
           >
             {results.data.map((item) => (
               <li key={item.id}>
                 <Button
                   type="button"
                   variant="ghost"
-                  className="w-full justify-start"
+                  className="h-auto w-full justify-start py-2 font-normal"
                   onClick={() => onSelect(item)}
                 >
                   {renderResult(item)}

@@ -1,5 +1,5 @@
 import type { Event } from '@/app/actions/event'
-import { UsersTable } from '@/components/users/users-table'
+import { UsersManager } from '@/components/users/users-manager'
 import { LifecycleControls } from '@/components/dashboard/lifecycle-controls'
 import type { Team } from '@/app/actions/team'
 import type { UseMutationResult } from '@tanstack/react-query'
@@ -492,7 +492,7 @@ function DashboardRoute() {
         </TabsContent>
 
         <TabsContent value="admins" className="space-y-6">
-          <UsersTable key={id} event={{ id, name: event.name }} />
+          <UsersManager key={id} event={{ id, name: event.name }} />
         </TabsContent>
 
         <TabsContent value="whitelist" className="space-y-6">

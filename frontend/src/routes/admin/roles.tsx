@@ -1,5 +1,5 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router'
-import { UsersTable } from '@/components/users/users-table'
+import { UsersManager } from '@/components/users/users-manager'
 import { Spinner } from '@/components/ui/spinner'
 import { useSession } from '@/lib/auth'
 
@@ -15,9 +15,8 @@ function UsersRoute() {
     )
   if (!session?.user.abilities.admin) return <Navigate to="/" replace />
   return (
-    <main className="container mx-auto space-y-4 px-4 py-8">
-      <h1 className="text-3xl font-bold">Users</h1>
-      <UsersTable />
+    <main className="container mx-auto px-4 py-8">
+      <UsersManager />
     </main>
   )
 }
