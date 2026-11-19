@@ -51,7 +51,7 @@ export function ProfileView({
     : 'overview'
 
   return (
-    <main className="container mx-auto max-w-7xl px-4 py-8">
+    <main className="container mx-auto max-w-5xl px-4 py-8">
       <div className="space-y-6">
         <ProfileHeader profile={profile} viewerId={viewerId} />
         <Tabs value={tab} onValueChange={onTabChange}>
@@ -85,7 +85,7 @@ export function ProfileView({
 
 function ProfileSkeleton() {
   return (
-    <main aria-busy className="container mx-auto max-w-7xl space-y-6 px-4 py-8">
+    <main aria-busy className="container mx-auto max-w-5xl space-y-6 px-4 py-8">
       <Skeleton className="h-80 rounded-xl" />
       <Skeleton className="h-9 w-80 rounded-lg" />
       <div className="grid gap-6 lg:grid-cols-3">
