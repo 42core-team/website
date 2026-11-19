@@ -27,5 +27,5 @@ export default function ProfileClient() {
   if (status === 'loading') return <PageLoader />
   if (!session) return null
 
-  return <ProfileView username={session.user.username} />
+  return <ProfileView username={null} viewerId={session.user.id} />
 }

@@ -9,7 +9,6 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { removeUserImage, saveUserImage } from '@/app/actions/user'
-import type { ClientUser } from '@/lib/auth'
 import { UserAppearanceEditor } from './UserAppearanceEditor'
 
 vi.mock('@/app/actions/user', () => ({
@@ -26,9 +25,10 @@ const user = {
   id: 'user',
   username: 'ada',
   name: 'Ada Lovelace',
-  email: 'ada@example.com',
   profilePicture: 'https://github.com/avatar.png',
-} as ClientUser
+  picture: null,
+  background: null,
+}
 
 function renderEditor(
   props: Partial<Parameters<typeof UserAppearanceEditor>[0]> = {},
@@ -70,23 +70,24 @@ describe('user appearance dialog', () => {
     expect(screen.getByRole('button', { name: 'Remove image' })).toBeTruthy()
   })
 
-  it('shows a compact cover with an add button when there is no background', () => {
+  it('opens the add background dialog when there is no personal background', () => {
     renderEditor({ kind: 'background' })
-    expect(document.querySelector('img')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Add background' }))
     expect(screen.getByLabelText('Choose background file')).toBeTruthy()
     expect(screen.queryByLabelText('Choose picture file')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Remove image' })).toBeNull()
   })
 
-  it('opens the background editor from the visible cover', () => {
+  it('offers removal for an uploaded background', () => {
     renderEditor({
       kind: 'background',
       user: { ...user, background: { large: 'large.webp' } },
     })
-    expect(document.querySelector('img')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Edit background' }))
     expect(screen.getByLabelText('Choose background file')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Remove image' })).toBeTruthy()
   })
+
   it('removes the uploaded image through removeUserImage', async () => {
     vi.mocked(removeUserImage).mockResolvedValue(undefined)
     renderEditor({
