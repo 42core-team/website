@@ -8,18 +8,13 @@ import {
 import type { CSSProperties, HTMLAttributes, ReactNode } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { useStore } from '@tanstack/react-store'
-import {
-  queryOptions,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useBlocker, useNavigate } from '@tanstack/react-router'
 import { TriangleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import {
-  getAdminPresets,
+  invalidatePresets,
   getAdminPreset,
   getAdminInstallations,
   createPreset,
@@ -27,6 +22,7 @@ import {
   presetError,
   isVersionConflict,
 } from '@/app/actions/presets'
+import { adminPresetsQuery } from '@/components/presets/queries'
 import type {
   PresetDetail,
   PresetInput,
@@ -63,11 +59,6 @@ import { Switch } from '@/components/ui/switch'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
 
-/** Active and archived presets; the tabs split them. */
-export const adminPresetsQuery = queryOptions({
-  queryKey: ['admin', 'presets'],
-  queryFn: () => getAdminPresets(true),
-})
 const DISCARD = 'Discard your unsaved preset edits?'
 const scheduleKeys = [
   'startOffsetDays',
@@ -78,7 +69,7 @@ const scheduleKeys = [
 ] as const
 const settingKeys = (...keys: string[]) => keys.map((key) => `settings.${key}`)
 /** The editor's sections and the field keys (see `fieldValues`) in each. */
-export const editorSections = [
+const editorSections = [
   {
     id: 'basics',
     label: 'Basics',
@@ -134,6 +125,7 @@ const presetSchema = z.object({
   settings: presetSettingsSchema,
   starterTemplates: templatesSchema,
 })
+const sectionIds = editorSections.map((s) => `preset-${s.id}`)
 const plural = (count: number, word: string) =>
   `${count} ${word}${count === 1 ? '' : 's'}`
 
@@ -206,17 +198,13 @@ export function PresetEditorPage({ id }: { id?: string }) {
       preset={id ? (load.snapshot ?? undefined) : undefined}
       defaults={id ? undefined : (load.snapshot ?? undefined)}
       reference={compare ? reference.data : undefined}
+      referenceFailed={
+        compare && (reference.isError || (list.isSuccess && !defaultId))
+      }
       eventCount={list.data?.find((row) => row.id === id)?.eventCount}
       onReload={() => void fetchSnapshot()}
       onSaved={async () => {
-        await Promise.all(
-          [
-            ['admin', 'presets'],
-            ['admin', 'preset'],
-            ['event-presets'],
-            ['resolved-preset'],
-          ].map((queryKey) => client.invalidateQueries({ queryKey })),
-        )
+        await invalidatePresets(client)
         toast.success('Preset saved.')
         // A late save must not leave the page the admin moved on to.
         if (mounted.current) await navigate({ to: '/admin/presets' })
@@ -229,6 +217,7 @@ export function PresetEditor({
   preset,
   defaults,
   reference,
+  referenceFailed = false,
   eventCount,
   onSaved,
   onReload,
@@ -238,6 +227,8 @@ export function PresetEditor({
   defaults?: PresetDetail
   /** The default preset an edited preset is compared with. */
   reference?: PresetDetail
+  /** The default preset could not be loaded to compare with. */
+  referenceFailed?: boolean
   eventCount?: number
   onSaved: () => Promise<void>
   onReload?: () => void
@@ -284,13 +275,19 @@ export function PresetEditor({
   const values = useStore(form.store, (state) => state.values)
   const dirty = !same(values, initialValues)
   useBlocker({
-    shouldBlockFn: () => dirty && !saved.current && !window.confirm(DISCARD),
+    shouldBlockFn: ({ current, next }) =>
+      current.pathname !== next.pathname &&
+      dirty &&
+      !saved.current &&
+      !window.confirm(DISCARD),
     enableBeforeUnload: dirty,
   })
 
   // New presets and other presets compare with the default preset, the
   // default preset itself with its saved version.
   const against = preset?.isDefault ? undefined : preset ? reference : defaults
+  // Until the default loads, an edited preset compares with its saved values.
+  const comparing = Boolean(preset && !preset.isDefault && !reference)
   const resetTo = against ? 'default' : 'saved value'
   const baseline = against
     ? {
@@ -355,9 +352,7 @@ export function PresetEditor({
     observer.observe(element)
     return () => observer.disconnect()
   }, [])
-  const [current, setCurrent] = useScrollSpy(
-    editorSections.map((s) => `preset-${s.id}`),
-  )
+  const [current, setCurrent] = useScrollSpy(sectionIds)
   // Below the site navbar (4rem plus its 1px border) and this page's header,
   // plus the grid's top padding (py-6), so the side columns stick where they
   // already are instead of jumping when scrolling starts.
@@ -398,10 +393,14 @@ export function PresetEditor({
                   ? `v${preset.version}${eventCount === undefined ? '' : ` · ${plural(eventCount, 'event')}`}`
                   : 'Draft'}
               </Pill>
-              <Pill tone="info" aria-live="polite">
-                {against
-                  ? `${plural(changed.length, 'change')} from default`
-                  : `${changed.length} unsaved change${changed.length === 1 ? '' : 's'}`}
+              <Pill tone="info">
+                {comparing
+                  ? referenceFailed
+                    ? 'Could not load the default to compare'
+                    : 'Comparing with default…'
+                  : against
+                    ? `${plural(changed.length, 'change')} from default`
+                    : plural(changed.length, 'unsaved change')}
               </Pill>
               {preset && warnings.length > 0 && (
                 <Pill tone="warning" title={warnings.join(' ')}>
@@ -446,7 +445,12 @@ export function PresetEditor({
                   <a
                     href={`#${id}`}
                     aria-current={current === id ? 'location' : undefined}
-                    onClick={() => setCurrent(id)}
+                    onClick={(event) => {
+                      // A hash navigation would run the router's blocker.
+                      event.preventDefault()
+                      document.getElementById(id)?.scrollIntoView()
+                      setCurrent(id)
+                    }}
                     className={cn(
                       'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm whitespace-nowrap text-muted-foreground hover:bg-muted',
                       current === id && 'bg-muted font-medium text-foreground',
@@ -682,9 +686,8 @@ function Pill({
 }
 
 /** The first of `ids` in a reading band near the top of the viewport. */
-function useScrollSpy(ids: string[]) {
+function useScrollSpy(ids: readonly string[]) {
   const [active, setActive] = useState(ids[0])
-  const key = ids.join()
   useEffect(() => {
     if (typeof IntersectionObserver === 'undefined') return
     const visible = new Set<string>()
@@ -693,17 +696,17 @@ function useScrollSpy(ids: string[]) {
         for (const entry of entries)
           if (entry.isIntersecting) visible.add(entry.target.id)
           else visible.delete(entry.target.id)
-        const first = key.split(',').find((id) => visible.has(id))
+        const first = ids.find((id) => visible.has(id))
         if (first) setActive(first)
       },
       { rootMargin: '-25% 0px -65% 0px' },
     )
-    for (const id of key.split(',')) {
+    for (const id of ids) {
       const element = document.getElementById(id)
       if (element) observer.observe(element)
     }
     return () => observer.disconnect()
-  }, [key])
+  }, [ids])
   return [active, setActive] as const
 }
 
@@ -784,7 +787,7 @@ function PresetPreview({
       <h2 id="preset-preview" className="text-lg font-semibold">
         Preview · if created today
       </h2>
-      <p aria-live="polite" className="text-sm">
+      <p className="text-sm">
         An event created today would start on{' '}
         {dates
           ? berlin(dates.start, {

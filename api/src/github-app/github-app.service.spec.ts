@@ -4,6 +4,7 @@ jest.mock("../event/event.service", () => ({
   EventService: class EventService {},
 }));
 
+import { ForbiddenException } from "@nestjs/common";
 import { EventEntity } from "../event/entities/event.entity";
 import { GithubInstallationEntity } from "../github-api/entities/github-installation.entity";
 import { GithubAppRequestError } from "../github-api/github-app-auth";
@@ -270,11 +271,23 @@ describe("GithubAppService", () => {
       expect(installations.upsert).not.toHaveBeenCalled();
     });
 
+    it("refuses a suspended installation", async () => {
+      const { service, installations, appAuth } = setupAdmin();
+      appAuth.getInstallation.mockResolvedValue({
+        ...(await appAuth.getInstallation()),
+        suspended_at: "2026-01-01T00:00:00Z",
+      });
+      await expect(
+        service.completeInstallation(USER, 77, adminState),
+      ).rejects.toThrow("suspended");
+      expect(installations.upsert).not.toHaveBeenCalled();
+    });
+
     it("refuses accounts the admin cannot manage", async () => {
       const { service, installations } = setupAdmin({ membership: null });
       await expect(
         service.completeInstallation(USER, 77, adminState),
-      ).rejects.toThrow();
+      ).rejects.toBeInstanceOf(ForbiddenException);
       expect(installations.upsert).not.toHaveBeenCalled();
     });
   });
@@ -304,16 +317,6 @@ describe("GithubAppService", () => {
           startDate: new Date("2026-01-01"),
         },
       ]);
-      events.createQueryBuilder = jest.fn(() => {
-        const builder = {
-          select: () => builder,
-          addSelect: () => builder,
-          where: () => builder,
-          groupBy: () => builder,
-          getRawMany: async () => [{ id: "row", count: 1 }],
-        };
-        return builder;
-      });
       return context;
     }
 

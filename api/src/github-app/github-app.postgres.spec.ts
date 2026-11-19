@@ -268,6 +268,7 @@ postgres("GitHub App connection (PostgreSQL)", () => {
       const shared = await service.share(row.id, { id: adminId });
       expect(shared).toEqual({
         id: row.id,
+        installationId: 301,
         accountLogin: "core-org",
         accountType: "Organization",
         status: "active",

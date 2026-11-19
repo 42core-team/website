@@ -9,10 +9,11 @@ import {
   archivePreset,
   unarchivePreset,
   presetError,
+  invalidatePresets,
 } from '@/app/actions/presets'
+import { adminPresetsQuery } from '@/components/presets/queries'
 import type { AdminPresetSummary } from '@/app/actions/presets'
 import { AdminGuard } from '@/components/presets/admin-guard'
-import { adminPresetsQuery } from '@/components/presets/preset-editor'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -71,11 +72,7 @@ export function PresetsPage() {
       if (operation === 'unarchive') return unarchivePreset(id)
       return setDefaultPreset(id)
     },
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: ['admin', 'presets'] })
-      await client.invalidateQueries({ queryKey: ['event-presets'] })
-      await client.invalidateQueries({ queryKey: ['resolved-preset'] })
-    },
+    onSuccess: () => invalidatePresets(client),
   })
   const edit = (id: string) =>
     void navigate({ to: '/admin/presets/$id', params: { id } })

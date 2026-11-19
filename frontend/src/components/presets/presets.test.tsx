@@ -44,14 +44,17 @@ vi.mock('@tanstack/react-router', async (original) => ({
   Navigate: () => <p>Redirected</p>,
   Link: ({
     to,
-    params: _params,
+    params,
     children,
     ...props
   }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
     to: string
-    params?: unknown
+    params?: Record<string, string>
   }) => (
-    <a href={to} {...props}>
+    <a
+      href={to.replace(/\$(\w+)/g, (_, key: string) => params?.[key] ?? '')}
+      {...props}
+    >
       {children}
     </a>
   ),
@@ -576,7 +579,7 @@ describe('preset list', () => {
   it('opens the editor from a row or its menu', async () => {
     await mount(<PresetsPage />)
     const link = await screen.findByRole('link', { name: 'Default' })
-    expect(link.getAttribute('href')).toBe('/admin/presets/$id')
+    expect(link.getAttribute('href')).toBe('/admin/presets/one')
     expect(
       screen.getByRole('link', { name: 'New preset' }).getAttribute('href'),
     ).toBe('/admin/presets/new')
@@ -661,6 +664,16 @@ describe('preset list', () => {
     expect(badge.textContent).toBe(`1 warning: ${unavailable}`)
   })
 })
+type Location = { pathname: string }
+const leaving = {
+  current: { pathname: '/admin/presets/new' },
+  next: { pathname: '/admin/presets' },
+}
+const lastBlocker = () =>
+  vi.mocked(useBlocker).mock.calls.at(-1)?.[0] as unknown as {
+    shouldBlockFn: (locations: { current: Location; next: Location }) => boolean
+    enableBeforeUnload: boolean
+  }
 describe('preset editor page', () => {
   it('initializes new presets from the default detail without copying identity', async () => {
     const defaults = {
@@ -786,13 +799,17 @@ describe('preset editor page', () => {
     fireEvent.change(screen.getByLabelText('Preset name'), {
       target: { value: 'Unsaved' },
     })
-    const blocker = vi.mocked(useBlocker).mock.calls.at(-1)?.[0] as unknown as {
-      shouldBlockFn: () => boolean
-      enableBeforeUnload: boolean
-    }
+    const blocker = lastBlocker()
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
     expect(blocker.enableBeforeUnload).toBe(true)
-    expect(blocker.shouldBlockFn()).toBe(true)
+    expect(blocker.shouldBlockFn(leaving)).toBe(true)
+    // Section links only change the hash.
+    expect(
+      blocker.shouldBlockFn({
+        current: { pathname: '/admin/presets/new' },
+        next: { pathname: '/admin/presets/new' },
+      }),
+    ).toBe(false)
     fireEvent.click(discard)
     expect(confirm).toHaveBeenCalledTimes(2)
     expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
@@ -803,10 +820,7 @@ describe('preset editor page', () => {
     expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
       '',
     )
-    const clean = vi.mocked(useBlocker).mock.calls.at(-1)?.[0] as unknown as {
-      enableBeforeUnload: boolean
-    }
-    expect(clean.enableBeforeUnload).toBe(false)
+    expect(lastBlocker().enableBeforeUnload).toBe(false)
   })
   it('saves without a discard prompt and returns to the list', async () => {
     const confirm = vi.spyOn(window, 'confirm')
@@ -826,10 +840,7 @@ describe('preset editor page', () => {
       expect.objectContaining({ name: 'New preset' }),
     )
     expect(toast.success).toHaveBeenCalledWith('Preset saved.')
-    const blocker = vi.mocked(useBlocker).mock.calls.at(-1)?.[0] as unknown as {
-      shouldBlockFn: () => boolean
-    }
-    expect(blocker.shouldBlockFn()).toBe(false)
+    expect(lastBlocker().shouldBlockFn(leaving)).toBe(false)
     expect(confirm).not.toHaveBeenCalled()
   })
   it('counts changes from the default preset and resets a field to it', async () => {
@@ -1123,7 +1134,7 @@ describe('installation sharing', () => {
       (await screen.findByText('CORE Berlin'))
         .closest('a')
         ?.getAttribute('href'),
-    ).toBe('/events/$id')
+    ).toBe('/events/event')
     expect(screen.getByText('Members (read)').textContent).toContain('Missing')
     expect(screen.getByText('Contents (write)').textContent).toContain(
       'Granted',

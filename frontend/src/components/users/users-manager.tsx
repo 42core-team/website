@@ -73,7 +73,10 @@ class RoleChangeError extends Error {
 }
 
 /** Runs ops in order and returns the ops that undo them. */
-async function applyChange({ user, ops }: RoleChange, eventId?: string) {
+async function applyChange(
+  { user, ops }: Pick<RoleChange, 'user' | 'ops'>,
+  eventId?: string,
+) {
   const inverse: RoleOp[] = []
   for (const op of ops) {
     try {
@@ -96,6 +99,9 @@ async function applyChange({ user, ops }: RoleChange, eventId?: string) {
         })
       }
     } catch (error) {
+      // Roll back the steps that went through, so a failed change leaves
+      // the user as they were (e.g. not both moderator and admin).
+      await applyChange({ user, ops: inverse }, eventId).catch(() => undefined)
       throw new RoleChangeError(error, op)
     }
   }
@@ -109,8 +115,9 @@ export function UsersManager({
 }) {
   const [search, setSearch] = useState('')
   const [chip, setChip] = useState<Chip>('all')
-  const [eventFilter, setEventFilter] = useState('')
-  const [selected, setSelected] = useState<UserSearchResult | null>(null)
+  const [eventFilterId, setEventFilter] = useState('')
+  // Kept as picked, e.g. from "Search all users", and refreshed from the list.
+  const [picked, setSelected] = useState<UserSearchResult | null>(null)
   const [searchingAccounts, setSearchingAccounts] = useState(false)
   const client = useQueryClient()
   const users = useQuery({
@@ -134,7 +141,8 @@ export function UsersManager({
         toast.success(change.summary, {
           action: {
             label: 'Undo',
-            onClick: () => undo({ ...change, ops: inverse, undo: true }),
+            onClick: () =>
+              mutation.mutate({ ...change, ops: inverse, undo: true }),
           },
         })
     },
@@ -145,18 +153,16 @@ export function UsersManager({
       const missing = isAxiosError(cause) && cause.response?.status === 404
       return Promise.all([
         client.invalidateQueries({
-          queryKey: missing ? ['admin'] : ['admin', 'roles'],
+          queryKey: event
+            ? ['event', event.id]
+            : missing
+              ? ['admin']
+              : ['admin', 'roles'],
         }),
         client.invalidateQueries({ queryKey: ['auth', 'session'] }),
-        client.invalidateQueries({
-          queryKey: event ? ['event', event.id] : ['event'],
-        }),
       ])
     },
   })
-  function undo(change: RoleChange): void {
-    mutation.mutate(change)
-  }
   function select(user: UserSearchResult) {
     mutation.reset()
     setSelected(user)
@@ -171,6 +177,9 @@ export function UsersManager({
     ])
     if (grant.event) eventOptions.set(grant.event.id, grant.event.name)
   }
+  // An event whose last staff role was removed drops out of the options.
+  const eventFilter = eventOptions.has(eventFilterId) ? eventFilterId : ''
+  const selected = users.data?.find((user) => user.id === picked?.id) ?? picked
   // Roles each user counts toward, matching the chips
   function userChips(user: UserSearchResult) {
     const grants = grantsByUser.get(user.id) ?? []
@@ -368,8 +377,8 @@ export function UsersManager({
           </div>
         </div>
       )}
-      {searchingAccounts && (
-        <Dialog open onOpenChange={setSearchingAccounts}>
+      {event && (
+        <Dialog open={searchingAccounts} onOpenChange={setSearchingAccounts}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Search all users</DialogTitle>

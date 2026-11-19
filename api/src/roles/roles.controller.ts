@@ -51,12 +51,11 @@ export class RolesController {
   @Delete(":id")
   @HttpCode(204)
   async revoke(
-    @UserId() userId: string,
     @CurrentUser() user: UserEntity,
     @Param("id", new ParseUUIDPipe()) id: string,
   ): Promise<void> {
     await this.rolesService.revoke(id, user);
-    this.logger.log({ action: "revoke_role", userId, roleId: id });
+    this.logger.log({ action: "revoke_role", userId: user.id, roleId: id });
   }
 }
 
@@ -114,10 +113,14 @@ export class EventUsersController {
   async revoke(
     @Param("id", ParseUUIDPipe) eventId: string,
     @Param("roleId", ParseUUIDPipe) roleId: string,
-    @UserId() actorId: string,
     @CurrentUser() user: UserEntity,
   ) {
     await this.rolesService.revoke(roleId, user, eventId);
-    this.logger.log({ action: "revoke_role", actorId, eventId, roleId });
+    this.logger.log({
+      action: "revoke_role",
+      actorId: user.id,
+      eventId,
+      roleId,
+    });
   }
 }

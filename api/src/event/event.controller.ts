@@ -354,12 +354,11 @@ export class EventController {
   async removeEventAdmin(
     @Param("id", new ParseUUIDPipe()) eventId: string,
     @Param("adminId", new ParseUUIDPipe()) adminIdToRemove: string,
-    @UserId() userId: string,
     @CurrentUser() user: UserEntity,
   ) {
     this.logger.log({
       action: "attempt_remove_event_admin",
-      userId,
+      userId: user.id,
       eventId,
       removedAdminId: adminIdToRemove,
     });

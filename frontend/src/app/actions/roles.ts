@@ -18,12 +18,12 @@ export interface RoleGrant {
   grantedBy?: { id: string; username: string } | null
   createdAt: string
 }
-export interface GrantRoleParams {
+interface GrantRoleParams {
   userId: string
   role: Role
   eventId?: string
 }
-export interface AdminEventSearchResult {
+interface AdminEventSearchResult {
   id: string
   name: string
   isPrivate: boolean

@@ -64,12 +64,13 @@ function GithubSetupRoute() {
   let message: string | null = null
   if (setupAction === 'request')
     message =
-      'GitHub sent the installation request to the owners of your organization. Once an owner approves it, they can connect the App from the event dashboard.'
+      'GitHub sent the installation request to the owners of your organization. Once an owner approves it, connect the App again from where you started: the event dashboard, or GitHub installations for admins.'
   else if (installationId === null || !state)
     message =
-      'GitHub did not return an installation for this event. Start again from the event dashboard.'
+      'GitHub did not return an installation. Start again from the event dashboard, or GitHub installations for admins.'
   else if (status === 'unauthenticated')
-    message = 'Sign in, then connect GitHub again from the event dashboard.'
+    message =
+      'Sign in, then start again from the event dashboard, or GitHub installations for admins.'
   else if (completion.isError) message = getErrorMessage(completion.error)
 
   return (
@@ -97,5 +98,5 @@ function getErrorMessage(error: unknown) {
     if (Array.isArray(message)) return message.join(', ')
     if (message) return message
   }
-  return 'Could not connect GitHub. Try again from the event dashboard.'
+  return 'Could not connect GitHub. Try again from the event dashboard, or GitHub installations for admins.'
 }

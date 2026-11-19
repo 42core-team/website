@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { Check, ExternalLink, Plus, X } from 'lucide-react'
@@ -11,10 +11,7 @@ import {
   unshareInstallation,
   presetError,
 } from '@/app/actions/presets'
-import type {
-  AdminInstallation,
-  AdminInstallationDetail,
-} from '@/app/actions/presets'
+import type { AdminInstallation } from '@/app/actions/presets'
 import { AdminGuard } from '@/components/presets/admin-guard'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -29,6 +26,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { lifecycleLabels } from '@/lib/event-lifecycle'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/admin/github-installations')({
@@ -56,16 +54,6 @@ const STATUS_LABELS: Record<AdminInstallation['status'], string> = {
   active: 'Active',
   suspended: 'Suspended',
   uninstalled: 'Uninstalled',
-}
-const EVENT_STATES: Record<
-  AdminInstallationDetail['events'][number]['state'],
-  string
-> = {
-  REGISTRATION: 'Registration',
-  PLAYING: 'Coding',
-  SUBMISSIONS_CLOSED: 'Submissions closed',
-  SHOWCASE: 'Showcase',
-  COMPLETED: 'Completed',
 }
 // Mirrors the API's REQUIRED_PERMISSIONS.
 const PERMISSIONS = [
@@ -120,6 +108,8 @@ export function InstallationsPage() {
   const [filter, setFilter] = useState<Filter>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<AdminInstallation | null>(null)
+  // Kept after closing, so the dialog's text holds while it animates out.
+  const [shown, setShown] = useState<AdminInstallation | null>(null)
   const rows = useQuery({
     queryKey: ['admin', 'github-installations'],
     queryFn: getAdminInstallations,
@@ -251,10 +241,12 @@ export function InstallationsPage() {
             {selected ? (
               <InstallationPanel
                 row={selected}
+                appAvailable={available.data !== false}
                 pending={mutation.isPending}
                 onToggleShare={() => {
                   mutation.reset()
                   setConfirming(selected)
+                  setShown(selected)
                 }}
               />
             ) : (
@@ -274,11 +266,10 @@ export function InstallationsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {confirming?.sharedAt ? 'Unshare' : 'Share'}{' '}
-              {confirming?.accountLogin}?
+              {shown?.sharedAt ? 'Unshare' : 'Share'} {shown?.accountLogin}?
             </DialogTitle>
             <DialogDescription>
-              {confirming?.sharedAt
+              {shown?.sharedAt
                 ? 'Event creators will no longer be able to use this as a shared installation. Existing events stay linked.'
                 : 'Sharing lets any event creator use this GitHub installation for their events. You must own the GitHub account to share it.'}
             </DialogDescription>
@@ -298,7 +289,7 @@ export function InstallationsPage() {
               disabled={mutation.isPending}
               onClick={() => confirming && mutation.mutate(confirming)}
             >
-              {confirming?.sharedAt ? 'Confirm unshare' : 'Confirm share'}
+              {shown?.sharedAt ? 'Confirm unshare' : 'Confirm share'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -309,17 +300,22 @@ export function InstallationsPage() {
 
 function InstallationPanel({
   row,
+  appAvailable,
   pending,
   onToggleShare,
 }: {
   row: AdminInstallation
+  appAvailable: boolean
   pending: boolean
   onToggleShare: () => void
 }) {
   const detail = useQuery({
     queryKey: ['admin', 'github-installations', row.id],
     queryFn: () => getAdminInstallation(row.id),
+    // Each fetch asks GitHub for the permissions.
+    staleTime: 60_000,
   })
+  const switchId = useId()
   const active = row.status === 'active'
   return (
     <div className="space-y-6">
@@ -354,17 +350,19 @@ function InstallationPanel({
         <h3 className="text-sm font-semibold">Sharing</h3>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <Label htmlFor="installation-shared">
-              Shared with event creators
-            </Label>
-            <p className="text-sm text-muted-foreground">
+            <Label htmlFor={switchId}>Shared with event creators</Label>
+            <p
+              id={`${switchId}-hint`}
+              className="text-sm text-muted-foreground"
+            >
               {row.sharedAt
                 ? `Any event creator can use it for their events. Shared by @${row.sharedBy?.username ?? 'unknown'} on ${new Date(row.sharedAt).toLocaleDateString()}.`
                 : 'Only owners of this account can use it for their events.'}
             </p>
           </div>
           <Switch
-            id="installation-shared"
+            id={switchId}
+            aria-describedby={`${switchId}-hint`}
             checked={Boolean(row.sharedAt)}
             disabled={pending || (!active && !row.sharedAt)}
             onCheckedChange={onToggleShare}
@@ -378,6 +376,10 @@ function InstallationPanel({
           <p className="text-sm text-muted-foreground">
             Not checked while the App is{' '}
             {STATUS_LABELS[row.status].toLowerCase()}.
+          </p>
+        ) : !appAvailable ? (
+          <p className="text-sm text-muted-foreground">
+            Not checked: the CORE GitHub App is not configured on this server.
           </p>
         ) : detail.isPending ? (
           <Spinner />
@@ -432,7 +434,7 @@ function InstallationPanel({
                 >
                   <span className="truncate font-medium">{event.name}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {EVENT_STATES[event.state]} ·{' '}
+                    {lifecycleLabels[event.state]} ·{' '}
                     {new Date(event.startDate).toLocaleDateString()}
                   </span>
                 </Link>

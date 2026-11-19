@@ -14,8 +14,8 @@ import { userAvatarSrc } from '@/lib/user-avatar'
 import { cn } from '@/lib/utils'
 import { RoleSearch } from './role-search'
 
-export const EVENT_ROLES: Role[] = ['ADMIN', 'MODERATOR']
-export const GLOBAL_ROLES: Role[] = [
+const EVENT_ROLES: Role[] = ['ADMIN', 'MODERATOR']
+const GLOBAL_ROLES: Role[] = [
   ...EVENT_ROLES,
   'PUBLIC_EVENT_CREATOR',
   'PRIVATE_EVENT_CREATOR',
@@ -52,7 +52,7 @@ export function eventLevel(grants: RoleGrant[]): Level {
   return 'NONE'
 }
 
-export function initials(user: UserSearchResult) {
+function initials(user: UserSearchResult) {
   return (user.name || user.username)
     .split(/\s+/)
     .filter(Boolean)

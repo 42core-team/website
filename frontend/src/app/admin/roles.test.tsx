@@ -312,6 +312,23 @@ describe('roles administration', () => {
     )
   })
 
+  it('rolls back a half-applied change when a later step fails', async () => {
+    vi.mocked(removeRole)
+      .mockRejectedValueOnce(httpError(409))
+      .mockResolvedValue(undefined)
+    await setup()
+    await selectUser('Ada')
+    const winter = screen.getByRole('radiogroup', {
+      name: 'Role in Winter Cup',
+    })
+    fireEvent.click(within(winter).getByRole('radio', { name: 'Admin' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    // The Admin grant that went through is removed again.
+    expect(removeRole).toHaveBeenNthCalledWith(1, 'scoped')
+    expect(removeRole).toHaveBeenNthCalledWith(2, 'new-ADMIN')
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
   it('removes every grant for an event when set to None', async () => {
     vi.mocked(getRoles).mockResolvedValue([
       scopedRole,

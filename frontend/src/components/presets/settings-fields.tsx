@@ -75,8 +75,8 @@ export function Reset({
   ) : null
 }
 /** Outline of a field that differs from its baseline in the preset editor. */
-export const changedRing = '-m-2 rounded-md p-2 ring-2 ring-info/60'
-export function ResetLink({
+const changedRing = '-m-2 rounded-md p-2 ring-2 ring-info/60'
+function ResetLink({
   label,
   resetTo,
   onReset,

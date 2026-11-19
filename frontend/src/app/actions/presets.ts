@@ -1,5 +1,7 @@
+import type { QueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import axiosInstance from '@/app/actions/axios'
+import type { Event } from '@/app/actions/event'
 
 export interface EventSettings {
   description?: string
@@ -96,12 +98,7 @@ export interface AdminInstallationDetail extends AdminInstallation {
   events: {
     id: string
     name: string
-    state:
-      | 'REGISTRATION'
-      | 'PLAYING'
-      | 'SUBMISSIONS_CLOSED'
-      | 'SHOWCASE'
-      | 'COMPLETED'
+    state: Event['state']
     startDate: string
   }[]
   /** Required permissions GitHub has not granted; null if not checked. */
@@ -210,5 +207,17 @@ export function isVersionConflict(error: unknown) {
     isAxiosError(error) &&
     error.response?.status === 409 &&
     presetError(error) === 'Preset was changed by someone else'
+  )
+}
+
+/** Everything that shows presets, after an admin changed one. */
+export function invalidatePresets(client: QueryClient) {
+  return Promise.all(
+    [
+      ['admin', 'presets'],
+      ['admin', 'preset'],
+      ['event-presets'],
+      ['resolved-preset'],
+    ].map((queryKey) => client.invalidateQueries({ queryKey })),
   )
 }

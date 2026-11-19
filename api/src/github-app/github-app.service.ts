@@ -61,6 +61,9 @@ export interface LinkableGithubInstallation {
   shared: boolean;
 }
 
+const APP_NOT_CONFIGURED =
+  "The CORE GitHub App is not configured on this server.";
+
 /** An installation as global admins manage its sharing. */
 export interface AdminGithubInstallation {
   id: string;
@@ -79,6 +82,25 @@ export interface AdminGithubInstallationDetail extends AdminGithubInstallation {
   events: { id: string; name: string; state: EventState; startDate: Date }[];
   /** Required permissions GitHub has not granted; null if not checked. */
   missingPermissions: string[] | null;
+}
+
+function toAdminRow(
+  row: GithubInstallationEntity,
+  eventCount: number,
+): AdminGithubInstallation {
+  return {
+    id: row.id,
+    installationId: row.installationId,
+    accountLogin: row.accountLogin,
+    accountType: row.accountType,
+    status: connectionStatus(row),
+    sharedAt: row.sharedAt,
+    sharedBy: row.sharedBy && {
+      id: row.sharedBy.id,
+      username: row.sharedBy.username,
+    },
+    eventCount,
+  };
 }
 
 function connectionStatus(
@@ -154,9 +176,7 @@ export class GithubAppService {
   async createInstallUrl(eventId: string, user: Principal) {
     await this.assertEventAdmin(eventId, user);
     if (!this.isAvailable())
-      throw new ServiceUnavailableException(
-        "The CORE GitHub App is not configured on this server.",
-      );
+      throw new ServiceUnavailableException(APP_NOT_CONFIGURED);
     return { url: this.installUrl({ eventId, userId: user.id }) };
   }
 
@@ -166,9 +186,7 @@ export class GithubAppService {
    */
   createAdminInstallUrl(admin: Principal) {
     if (!this.isAvailable())
-      throw new ServiceUnavailableException(
-        "The CORE GitHub App is not configured on this server.",
-      );
+      throw new ServiceUnavailableException(APP_NOT_CONFIGURED);
     return { url: this.installUrl({ eventId: null, userId: admin.id }) };
   }
 
@@ -308,7 +326,7 @@ export class GithubAppService {
     const state = this.stateSigner.verify(stateValue);
     if (!state || state.userId !== user.id)
       throw new BadRequestException(
-        "This GitHub connection link is invalid or has expired. Start again from the event dashboard.",
+        "This GitHub link is invalid or has expired. Start the installation again.",
       );
     if (state.eventId === null)
       return {
@@ -335,9 +353,7 @@ export class GithubAppService {
     )
       throw new ForbiddenException("Only global admins can add installations.");
     if (!this.githubAppAuth.isEnabled())
-      throw new ServiceUnavailableException(
-        "The CORE GitHub App is not configured on this server.",
-      );
+      throw new ServiceUnavailableException(APP_NOT_CONFIGURED);
     const installation = await this.fetchInstallation(installationId);
     if (installation.suspended_at)
       throw new BadRequestException("The GitHub installation is suspended.");
@@ -375,13 +391,7 @@ export class GithubAppService {
       installationId,
       account: account.login,
     });
-    const [row] = await this.toAdminRows([
-      await installations.findOneOrFail({
-        where: { installationId },
-        relations: { sharedBy: true },
-      }),
-    ]);
-    return row;
+    return this.adminRow({ installationId });
   }
 
   /**
@@ -398,9 +408,7 @@ export class GithubAppService {
     await this.assertEventAdmin(eventId, principal);
     const userId = principal.id;
     if (!this.githubAppAuth.isEnabled())
-      throw new ServiceUnavailableException(
-        "The CORE GitHub App is not configured on this server.",
-      );
+      throw new ServiceUnavailableException(APP_NOT_CONFIGURED);
 
     const installation = await this.fetchInstallation(installationId);
     if (installation.suspended_at)
@@ -545,13 +553,11 @@ export class GithubAppService {
       .getRepository(GithubInstallationEntity)
       .findOne({ where: { id }, relations: { sharedBy: true } });
     if (!row) throw new NotFoundException("Installation not found");
-    const [[admin], events] = await Promise.all([
-      this.toAdminRows([row]),
-      this.dataSource.getRepository(EventEntity).find({
-        where: { githubInstallationId: id },
-        order: { startDate: "DESC" },
-      }),
-    ]);
+    const events = await this.dataSource.getRepository(EventEntity).find({
+      where: { githubInstallationId: id },
+      order: { startDate: "DESC" },
+    });
+    const admin = toAdminRow(row, events.length);
     let missing: string[] | null = null;
     if (admin.status === "active" && this.githubAppAuth.isEnabled())
       try {
@@ -560,9 +566,11 @@ export class GithubAppService {
         );
         missing = missingPermissions(installation.permissions);
       } catch (error) {
-        this.logger.warn(
-          `Could not check permissions of installation ${row.installationId}: ${String(error)}`,
-        );
+        this.logger.warn({
+          action: "github_installation_permission_check_failed",
+          installationId: row.installationId,
+          error: String(error),
+        });
       }
     return {
       ...admin,
@@ -591,9 +599,7 @@ export class GithubAppService {
         `The App was uninstalled from ${row.accountLogin}, so it cannot be shared.`,
       );
     if (!this.githubAppAuth.isEnabled())
-      throw new ServiceUnavailableException(
-        "The CORE GitHub App is not configured on this server.",
-      );
+      throw new ServiceUnavailableException(APP_NOT_CONFIGURED);
     const installation = await this.fetchInstallation(row.installationId);
     if (row.suspendedAt || installation.suspended_at)
       throw new BadRequestException("The GitHub installation is suspended.");
@@ -619,13 +625,7 @@ export class GithubAppService {
       installationId: row.installationId,
       account: row.accountLogin,
     });
-    const [shared] = await this.toAdminRows([
-      await installations.findOneOrFail({
-        where: { id },
-        relations: { sharedBy: true },
-      }),
-    ]);
-    return shared;
+    return this.adminRow({ id });
   }
 
   /** Stops new links; events that already use the installation keep it. */
@@ -639,6 +639,19 @@ export class GithubAppService {
       userId: admin.id,
       id,
     });
+  }
+
+  private async adminRow(
+    where:
+      | Pick<GithubInstallationEntity, "id">
+      | Pick<GithubInstallationEntity, "installationId">,
+  ): Promise<AdminGithubInstallation> {
+    const [row] = await this.toAdminRows([
+      await this.dataSource
+        .getRepository(GithubInstallationEntity)
+        .findOneOrFail({ where, relations: { sharedBy: true } }),
+    ]);
+    return row;
   }
 
   private async toAdminRows(
@@ -655,19 +668,7 @@ export class GithubAppService {
           .getRawMany<{ id: string; count: number }>()
       : [];
     const eventCounts = new Map(counts.map(({ id, count }) => [id, count]));
-    return rows.map((row) => ({
-      id: row.id,
-      installationId: row.installationId,
-      accountLogin: row.accountLogin,
-      accountType: row.accountType,
-      status: connectionStatus(row),
-      sharedAt: row.sharedAt,
-      sharedBy: row.sharedBy && {
-        id: row.sharedBy.id,
-        username: row.sharedBy.username,
-      },
-      eventCount: eventCounts.get(row.id) ?? 0,
-    }));
+    return rows.map((row) => toAdminRow(row, eventCounts.get(row.id) ?? 0));
   }
 
   /** Keeps installation rows in sync with changes made on GitHub. */
