@@ -1,11 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { isEventAdmin } from '@/app/actions/event'
 import { getTeamsForEventTable } from '@/app/actions/team'
-import { getSwissMatches, getTournamentTeamCount } from '@/app/actions/tournament'
+import {
+  getSwissMatches,
+  getTournamentTeamCount,
+} from '@/app/actions/tournament'
 import { AdminRevealSwitch } from '@/components/tournament/admin-reveal-switch'
 import { GroupPhaseTabs } from '@/components/tournament/tournament-tabs'
 import { Spinner } from '@/components/ui/spinner'
+import { useEventAbilities } from '@/hooks/use-event-abilities'
 import { useSearchParams } from '@/lib/router-hooks'
 
 export const Route = createFileRoute('/events/$id/groups')({
@@ -22,17 +25,18 @@ function GroupsRoute() {
     queryFn: () => getSwissMatches(id, isAdminReveal),
   })
 
-  const eventAdminQuery = useQuery({
-    queryKey: ['event', id, 'is-event-admin'],
-    queryFn: () => isEventAdmin(id),
-  })
+  const { abilities, isPending: abilitiesPending } = useEventAbilities(id)
 
   const teamsQuery = useQuery({
     queryKey: [
       'event',
       id,
       'teams',
-      { sortColumn: 'score', sortDirection: 'desc', adminReveal: isAdminReveal },
+      {
+        sortColumn: 'score',
+        sortDirection: 'desc',
+        adminReveal: isAdminReveal,
+      },
     ],
     queryFn: () =>
       getTeamsForEventTable(id, undefined, 'score', 'desc', isAdminReveal),
@@ -45,7 +49,7 @@ function GroupsRoute() {
 
   if (
     matchesQuery.isPending ||
-    eventAdminQuery.isPending ||
+    abilitiesPending ||
     teamsQuery.isPending ||
     advancementCountQuery.isPending
   ) {
@@ -58,7 +62,6 @@ function GroupsRoute() {
 
   if (
     matchesQuery.isError ||
-    eventAdminQuery.isError ||
     teamsQuery.isError ||
     advancementCountQuery.isError
   ) {
@@ -70,8 +73,6 @@ function GroupsRoute() {
       </main>
     )
   }
-
-  const isAdmin = eventAdminQuery.data
 
   return (
     <main className="container mx-auto max-w-7xl px-4 py-8">
@@ -86,7 +87,7 @@ function GroupsRoute() {
               system, with rankings determined by the Buchholz scoring system.
             </p>
           </div>
-          {isAdmin && (
+          {abilities.viewUnrevealedResults && (
             <div className="flex-shrink-0">
               <AdminRevealSwitch />
             </div>
@@ -97,7 +98,7 @@ function GroupsRoute() {
           eventId={id}
           matches={matchesQuery.data}
           teams={teamsQuery.data}
-          isEventAdmin={isAdmin}
+          canViewUnrevealedResults={abilities.viewUnrevealedResults}
           advancementCount={advancementCountQuery.data}
         />
       </div>

@@ -59,6 +59,7 @@ postgres("team membership concurrency (PostgreSQL)", () => {
       } as never,
       {} as never,
       database,
+      {} as never,
     );
   });
 

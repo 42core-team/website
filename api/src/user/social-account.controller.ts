@@ -5,7 +5,6 @@ import {
   Param,
   HttpCode,
   HttpStatus,
-  UseGuards,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { SocialAccountService } from "./social-account.service";
@@ -14,9 +13,9 @@ import {
   SocialPlatform,
 } from "./entities/social-account.entity";
 import { UserId } from "../guards/UserGuard";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { SignedIn } from "../authz";
 
-@UseGuards(JwtAuthGuard)
+@SignedIn()
 @ApiTags("social-accounts")
 @Controller("social-accounts")
 export class SocialAccountController {

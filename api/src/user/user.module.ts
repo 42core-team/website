@@ -6,6 +6,7 @@ import { SocialAccountService } from "./social-account.service";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { UserEntity, UserEventPermissionEntity } from "./entities/user.entity";
 import { SocialAccountEntity } from "./entities/social-account.entity";
+import { UserRoleEntity } from "./entities/user-role.entity";
 
 import { UserImageController } from "./user-image.controller";
 import { UserImageService } from "./user-image.service";
@@ -19,6 +20,7 @@ import { UserEventsController } from "./user.events.controller";
       UserEventPermissionEntity,
       SocialAccountEntity,
       MediaUploadEntity,
+      UserRoleEntity,
     ]),
   ],
   controllers: [

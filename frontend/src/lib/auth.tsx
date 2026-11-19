@@ -3,9 +3,20 @@ import type { QueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import type { TeamBackground, TeamImage } from '@/app/actions/team'
-import axiosInstance, { onSessionExpired } from '@/app/actions/axios'
+import axiosInstance, {
+  onSessionExpired,
+  setSessionProbe,
+} from '@/app/actions/axios'
+
+export interface UserAbilities {
+  admin: boolean
+  moderator: boolean
+  createEvent: boolean
+  createPublicEvent: boolean
+}
 
 export interface ClientUser {
+  abilities: UserAbilities
   id: string
   username: string
   name: string
@@ -21,12 +32,22 @@ export interface ClientSession {
 
 const SESSION_QUERY_KEY = ['auth', 'session'] as const
 
+const NO_ABILITIES: UserAbilities = {
+  admin: false,
+  moderator: false,
+  createEvent: false,
+  createPublicEvent: false,
+}
+
 async function fetchCurrentUser(): Promise<ClientSession | null> {
   const response = await axiosInstance.get<ClientUser>('/auth/me')
   return {
     user: {
       ...response.data,
       name: response.data.name || response.data.username,
+      // A missing or partial field (e.g. an API without abilities) must not
+      // crash every `abilities.*` read; it only hides gated UI.
+      abilities: { ...NO_ABILITIES, ...response.data.abilities },
     },
   }
 }
@@ -79,6 +100,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onSessionExpired(() => {
         endSession(queryClient)
       }),
+    [queryClient],
+  )
+
+  useEffect(
+    () =>
+      setSessionProbe(() =>
+        Boolean(queryClient.getQueryData(SESSION_QUERY_KEY)),
+      ),
     [queryClient],
   )
 

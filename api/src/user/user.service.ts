@@ -30,7 +30,6 @@ export class UserService {
     profilePicture: string,
     githubId: string,
     githubAccessToken: string,
-    canCreateEvent?: boolean,
   ): Promise<UserEntity> {
     const encryptedToken = encryptSecret(
       githubAccessToken,
@@ -46,7 +45,6 @@ export class UserService {
       githubAccessToken: encryptedToken,
       // Login just fetched GET /user with this token (ADR 0003).
       githubCheckedAt: new Date(),
-      canCreateEvent,
     });
     return this.userRepository.save(newUser);
   }
@@ -131,13 +129,6 @@ export class UserService {
     });
   }
 
-  canCreateEvent(userId: string): Promise<boolean> {
-    return this.userRepository.existsBy({
-      id: userId,
-      canCreateEvent: true,
-    });
-  }
-
   userExists(userId: string): Promise<boolean> {
     return this.userRepository.existsBy({ id: userId });
   }
@@ -145,6 +136,14 @@ export class UserService {
   getUserById(userId: string) {
     return this.userRepository.findOneOrFail({
       where: { id: userId },
+    });
+  }
+
+  /** The user with every role granted to them, for authorization. */
+  getUserWithRoles(userId: string) {
+    return this.userRepository.findOne({
+      where: { id: userId },
+      relations: { roles: true },
     });
   }
 

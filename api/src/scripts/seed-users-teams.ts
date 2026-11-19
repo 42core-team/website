@@ -1,11 +1,7 @@
 import "reflect-metadata";
 import { DataSource, DataSourceOptions } from "typeorm";
 import { EventEntity } from "../event/entities/event.entity";
-import {
-  UserEntity,
-  UserEventPermissionEntity,
-  PermissionRole,
-} from "../user/entities/user.entity";
+import { UserEntity } from "../user/entities/user.entity";
 import { RepositoryStatus, TeamEntity } from "../team/entities/team.entity";
 import { randomUUID } from "crypto";
 import { config } from "dotenv";
@@ -52,9 +48,6 @@ async function bootstrap() {
     const userRepository = dataSource.getRepository(UserEntity);
     const teamRepository = dataSource.getRepository(TeamEntity);
     const eventRepository = dataSource.getRepository(EventEntity);
-    const permissionRepository = dataSource.getRepository(
-      UserEventPermissionEntity,
-    );
 
     const event = await eventRepository.findOne({ where: { id: eventId } });
     if (!event) {
@@ -85,17 +78,6 @@ async function bootstrap() {
 
     const savedUsers = await userRepository.save(users);
     console.log(`Successfully saved ${numUsers} users`);
-
-    // Add event permissions for these users
-    const permissions = savedUsers.map((user) => {
-      const perm = new UserEventPermissionEntity();
-      perm.user = user;
-      perm.event = event;
-      perm.role = PermissionRole.USER;
-      return perm;
-    });
-    await permissionRepository.save(permissions);
-    console.log(`Successfully added event permissions for ${numUsers} users`);
 
     const teams: TeamEntity[] = [];
     for (let i = 1; i <= numTeams; i++) {

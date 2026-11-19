@@ -41,14 +41,14 @@ function isHighlighted(match: Match, highlightedMatchId?: string) {
 interface BracketGraphViewProps {
   matches: Match[]
   teamCount: number
-  isEventAdmin: boolean
+  canViewUnrevealedResults: boolean
   highlightedMatchId?: string
 }
 
 export function BracketGraphView({
   matches,
   teamCount,
-  isEventAdmin,
+  canViewUnrevealedResults,
   highlightedMatchId,
 }: BracketGraphViewProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
@@ -142,7 +142,8 @@ export function BracketGraphView({
               isHighlighted: isHighlighted(match, highlightedMatchId),
               onClick: (clickedMatch: Match) => {
                 if (
-                  (match.state === MatchState.FINISHED || isEventAdmin) &&
+                  (match.state === MatchState.FINISHED ||
+                    canViewUnrevealedResults) &&
                   clickedMatch.id
                 ) {
                   router.push(`/events/${eventId}/match/${clickedMatch.id}`)
@@ -177,7 +178,7 @@ export function BracketGraphView({
               onClick: (clickedMatch: Match) => {
                 if (
                   (placementMatch.state === MatchState.FINISHED ||
-                    isEventAdmin) &&
+                    canViewUnrevealedResults) &&
                   clickedMatch.id
                 ) {
                   router.push(`/events/${eventId}/match/${clickedMatch.id}`)
@@ -220,7 +221,7 @@ export function BracketGraphView({
   }, [
     matches,
     teamCount,
-    isEventAdmin,
+    canViewUnrevealedResults,
     highlightedMatchId,
     router,
     eventId,
