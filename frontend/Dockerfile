@@ -34,7 +34,7 @@ RUN --mount=type=secret,id=github_token \
     VITE_MEDIA_URL="${VITE_MEDIA_URL}" \
     bun run build
 
-FROM nginx:1.31.8-alpine AS runner
+FROM nginx:1.31.9-alpine AS runner
 
 EXPOSE 3000
 
