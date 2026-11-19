@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { ImagePlus, Pencil } from 'lucide-react'
+import type { ProfileUser } from '@/app/actions/profile'
 import { removeUserImage, saveUserImage } from '@/app/actions/user'
 import { AppearanceImageEditor } from '@/components/media/AppearanceImageEditor'
 import type { ImageKind } from '@/components/media/AppearanceImageEditor'
-import { TeamCover, TeamCoverStripe } from '@/components/team/TeamAppearance'
-import type { ClientUser } from '@/lib/auth'
-import { userAvatarSrc } from '@/lib/user-avatar'
+import { TeamCover } from '@/components/team/TeamAppearance'
 import {
   Dialog,
   DialogContent,
@@ -14,27 +13,25 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { UserPicture } from './UserPicture'
+
+type AppearanceUser = Pick<
+  ProfileUser,
+  'id' | 'name' | 'username' | 'profilePicture' | 'picture' | 'background'
+>
 
 const backgroundButtonClass =
   'flex items-center gap-2 rounded-lg border border-white/20 bg-black/65 px-3 py-2 text-sm font-medium text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-black/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
 
-function UserPicture({ user }: { user: ClientUser }) {
-  return (
-    <Avatar className="size-20 shrink-0 rounded-xl border-2 border-background">
-      <AvatarImage
-        src={userAvatarSrc(user, true)}
-        alt=""
-        className="object-cover"
-      />
-      <AvatarFallback className="rounded-md bg-primary/15 font-semibold text-foreground">
-        {(user.name || user.username).slice(0, 2).toUpperCase()}
-      </AvatarFallback>
-    </Avatar>
-  )
-}
-
-function Trigger({ user, kind }: { user: ClientUser; kind: ImageKind }) {
+function Trigger({
+  user,
+  kind,
+  coverHasImage,
+}: {
+  user: AppearanceUser
+  kind: ImageKind
+  coverHasImage: boolean
+}) {
   if (kind === 'picture') {
     return (
       <DialogTrigger asChild>
@@ -55,24 +52,16 @@ function Trigger({ user, kind }: { user: ClientUser; kind: ImageKind }) {
   const verb = user.background ? 'Edit' : 'Add'
   const label = `${verb} background`
   const Icon = user.background ? Pencil : ImagePlus
-  const button = (
+  return (
     <DialogTrigger asChild>
       <button
         type="button"
         title={`${verb} profile background`}
-        className={`${user.background ? 'absolute right-3 bottom-3 z-20 ' : ''}${backgroundButtonClass}`}
+        className={`absolute right-3 z-20 ${coverHasImage ? 'bottom-3' : 'top-1/2 -translate-y-1/2'} ${backgroundButtonClass}`}
       >
         <Icon className="size-3.5" /> {label}
       </button>
     </DialogTrigger>
-  )
-  return user.background ? (
-    <div className="relative">
-      <TeamCover team={user} className="rounded-xl" />
-      {button}
-    </div>
-  ) : (
-    <TeamCoverStripe className="rounded-xl">{button}</TeamCoverStripe>
   )
 }
 
@@ -80,9 +69,11 @@ function Trigger({ user, kind }: { user: ClientUser; kind: ImageKind }) {
 export function UserAppearanceEditor({
   user,
   kind = 'picture',
+  coverHasImage = Boolean(user.background),
 }: {
-  user: ClientUser
+  user: AppearanceUser
   kind?: ImageKind
+  coverHasImage?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -95,7 +86,7 @@ export function UserAppearanceEditor({
         setOpen(next)
       }}
     >
-      <Trigger user={user} kind={kind} />
+      <Trigger user={user} kind={kind} coverHasImage={coverHasImage} />
       <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-2xl p-5 sm:p-6">
         <DialogHeader className="pr-6 text-left">
           <DialogTitle>

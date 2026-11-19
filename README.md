@@ -82,6 +82,14 @@ The local PostgreSQL connection string is:
 postgresql://postgres:postgres@localhost:5432/postgres
 ```
 
+On first startup, the local API container applies migrations and then adds ten
+sample events if the database has no events. The sample events cover all five
+lifecycle states and include team rosters, match history, and standings. Event
+schedules are relative to the first startup and advance as time passes. The
+seed remembers its first run per database schema. To opt out, set
+`SEED_LOCAL_DATABASE` to `"false"` in [the local API values](local-setup/local-values/api.yaml)
+before starting Tilt.
+
 ### OAuth setup
 
 The application can start without OAuth credentials, but login will not work until at least one provider is configured. On the first `make dev`, the setup script can collect the credentials and save them in the gitignored `.env.tilt` file.
@@ -145,11 +153,11 @@ For issues and questions:
 
 ### Team and profile pictures and backgrounds
 
-Team members can upload, crop, replace, and remove artwork in **My Team → edit icon on the team picture or Edit background on the cover**, including while the roster is locked. Users manage their own profile picture
-and background in **Settings → Profile Appearance**; without an uploaded
-picture, the GitHub avatar is shown. JPEG, PNG, static WebP, and animated GIF
+Team members can upload, crop, replace, and remove artwork in **My Team → edit icon on the team picture or Edit background on the cover**, including while the roster is locked. On your **Profile** page, use the edit icon on your picture
+or the background button on the cover. Your GitHub avatar is shown until you
+upload a picture. JPEG, PNG, static WebP, and animated GIF
 uploads are limited to 10 MB and 25 megapixels. The API generates square WebP
-pictures (128/512 px) and a single wide cover (1600×600 px), without enlarging
+pictures (128/512 px) and a single 10:3 cover up to 1600 px wide, without enlarging
 small inputs. GIF animation, frame timing, and looping are preserved in WebP output.
 GIFs are limited to 200 frames and 25 million total pixels across all frames,
 with a 15-second processing timeout per output. Original uploads are discarded; metadata is stripped.

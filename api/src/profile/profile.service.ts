@@ -59,7 +59,7 @@ export class ProfileService {
   ) {}
 
   async getProfile(
-    username: string,
+    username: string | null,
     viewerId: string,
     now = new Date(),
   ): Promise<ProfileResponse> {
@@ -175,7 +175,7 @@ export class ProfileService {
 
   /** One page of the player's match history, newest first. */
   async getMatches(
-    username: string,
+    username: string | null,
     viewerId: string,
     query: ProfileMatchesQueryDto,
   ): Promise<ProfileMatchesResponse> {
@@ -238,18 +238,23 @@ export class ProfileService {
   }
 
   private async resolve(
-    username: string,
+    username: string | null,
     viewerId: string,
   ): Promise<ResolvedProfile> {
-    const user = await joinArtwork(
+    const userQuery = joinArtwork(
       this.userRepository
         .createQueryBuilder("user")
         .leftJoinAndSelect("user.socialAccounts", "socialAccount"),
       "user",
-    )
-      .where("LOWER(user.username) = LOWER(:username)", { username })
-      .orderBy("user.updatedAt", "DESC")
-      .getOne();
+    );
+    // The personal profile resolves by account ID because usernames can be reused.
+    const user = await (
+      username === null
+        ? userQuery.where("user.id = :viewerId", { viewerId })
+        : userQuery
+            .where("LOWER(user.username) = LOWER(:username)", { username })
+            .orderBy("user.updatedAt", "DESC")
+    ).getOne();
     if (!user) throw new NotFoundException("User not found");
 
     const [allTeams, viewerTeams, viewerEventIds] = await Promise.all([

@@ -21,6 +21,20 @@ import type {
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
+  @Get("me/details")
+  getOwnProfile(@UserId() viewerId: string): Promise<ProfileResponse> {
+    return this.profileService.getProfile(null, viewerId);
+  }
+
+  @Get("me/details/matches")
+  getOwnMatches(
+    @UserId() viewerId: string,
+    @Query(new ValidationPipe({ transform: true }))
+    query: ProfileMatchesQueryDto,
+  ): Promise<ProfileMatchesResponse> {
+    return this.profileService.getMatches(null, viewerId, query);
+  }
+
   @Get(":username")
   getProfile(
     @Param("username") username: string,

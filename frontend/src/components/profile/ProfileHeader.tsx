@@ -3,14 +3,14 @@ import type { BracketFinish, UserProfile } from '@/app/actions/profile'
 import { format } from 'date-fns'
 import { Share2, Trophy } from 'lucide-react'
 import { toast } from 'sonner'
-import { userAvatarSrc } from '@/lib/user-avatar'
 import { GithubIcon } from '@/components/icons'
 import LocationTags from '@/components/team/LocationTags'
 import { TeamCover, TeamCoverStripe } from '@/components/team/TeamAppearance'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { UserAppearanceEditor } from './UserAppearanceEditor'
+import { UserPicture } from './UserPicture'
 import {
   finishLabel,
   formatPercent,
@@ -35,9 +35,17 @@ function placeLabel(finish: BracketFinish) {
 }
 
 /** Identity and career numbers, laid out like a team's public profile. */
-export function ProfileHeader({ profile }: { profile: UserProfile }) {
+export function ProfileHeader({
+  profile,
+  viewerId,
+}: {
+  profile: UserProfile
+  viewerId: string
+}) {
   const { user, teams, summary } = profile
-  const cover = user.background ? user : teams.find((team) => team.background)
+  const canEdit = viewerId === user.id
+  const background =
+    user.background ?? teams.find((team) => team.background)?.background
   const { record, streaks } = summary
   const formWins = summary.form.filter((match) => match.result === 'WIN').length
   const best = getBestFinish(teams)
@@ -59,29 +67,34 @@ export function ProfileHeader({ profile }: { profile: UserProfile }) {
 
   return (
     <Card className="gap-0 overflow-hidden pt-0">
-      {cover ? (
-        <div className="relative">
-          <TeamCover team={cover} className="aspect-auto h-20 sm:h-28" />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/20" />
-        </div>
-      ) : (
-        <TeamCoverStripe />
-      )}
-      <CardHeader className="relative -mt-2 flex flex-col gap-4 space-y-0 pt-0 pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative">
+        {background ? (
+          <>
+            <TeamCover team={{ background }} />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/20" />
+          </>
+        ) : (
+          <TeamCoverStripe />
+        )}
+        {canEdit && (
+          <UserAppearanceEditor
+            key={user.id}
+            user={user}
+            kind="background"
+            coverHasImage={Boolean(background)}
+          />
+        )}
+      </div>
+      <CardHeader className="pointer-events-none relative -mt-2 flex flex-col gap-4 space-y-0 pt-0 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="shrink-0 rounded-2xl bg-card p-1 shadow-sm">
-            <Avatar className="size-20 shrink-0 rounded-xl border-2 border-background">
-              <AvatarImage
-                src={userAvatarSrc(user, true)}
-                alt=""
-                className="object-cover"
-              />
-              <AvatarFallback className="rounded-md bg-primary/15 text-xl font-semibold text-foreground">
-                {(user.name || user.username).slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+          <div className="pointer-events-auto shrink-0 rounded-2xl bg-card p-1 shadow-sm">
+            {canEdit ? (
+              <UserAppearanceEditor key={user.id} user={user} />
+            ) : (
+              <UserPicture user={user} />
+            )}
           </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div className="pointer-events-auto flex min-w-0 flex-1 flex-col gap-1.5">
             <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
               <CardTitle className="text-2xl font-bold break-words sm:text-3xl">
                 {user.name || user.username}
@@ -103,7 +116,7 @@ export function ProfileHeader({ profile }: { profile: UserProfile }) {
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="pointer-events-auto flex shrink-0 gap-2">
           <Button variant="outline" size="sm" asChild>
             <a
               href={`https://github.com/${encodeURIComponent(user.username)}`}
