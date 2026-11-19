@@ -8,10 +8,19 @@ const REQUIRED_PERMISSIONS: Record<string, readonly string[]> = {
   members: ["read", "write"],
 };
 
+/** Each required permission, the least access it needs, and whether it is granted. */
+export function permissionChecks(granted: Record<string, string>) {
+  return Object.entries(REQUIRED_PERMISSIONS).map(([name, levels]) => ({
+    name,
+    access: levels[0],
+    granted: levels.includes(granted[name]),
+  }));
+}
+
 export function missingPermissions(granted: Record<string, string>) {
-  return Object.entries(REQUIRED_PERMISSIONS)
-    .filter(([name, levels]) => !levels.includes(granted[name]))
-    .map(([name]) => name);
+  return permissionChecks(granted)
+    .filter((check) => !check.granted)
+    .map((check) => check.name);
 }
 
 /** Shared by create, share, and the existing event connection flow. */

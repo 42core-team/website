@@ -326,7 +326,11 @@ describe("GithubAppService", () => {
         installationId: 77,
         eventCount: 1,
         events: [{ id: "event", name: "CORE Berlin", state: "COMPLETED" }],
-        missingPermissions: [],
+        permissions: [
+          { name: "administration", access: "write", granted: true },
+          { name: "contents", access: "write", granted: true },
+          { name: "members", access: "read", granted: true },
+        ],
       });
     });
 
@@ -334,7 +338,7 @@ describe("GithubAppService", () => {
       const { service, appAuth } = setupDetail({ deletedAt: new Date() });
       await expect(service.getAdminDetail("row")).resolves.toMatchObject({
         status: "uninstalled",
-        missingPermissions: null,
+        permissions: null,
       });
       expect(appAuth.getInstallation).not.toHaveBeenCalled();
     });
@@ -343,7 +347,7 @@ describe("GithubAppService", () => {
       const { service, appAuth } = setupDetail();
       appAuth.getInstallation.mockRejectedValue(new Error("down"));
       await expect(service.getAdminDetail("row")).resolves.toMatchObject({
-        missingPermissions: null,
+        permissions: null,
       });
     });
 

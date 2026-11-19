@@ -17,6 +17,7 @@ import { GithubInstallationEntity } from "../github-api/entities/github-installa
 import {
   GithubInstallationOwner,
   missingPermissions,
+  permissionChecks,
 } from "../github-api/github-installation-owner";
 import { isSharedInstallation } from "../github-api/installation-sharing";
 import {
@@ -80,8 +81,8 @@ export interface AdminGithubInstallation {
 
 export interface AdminGithubInstallationDetail extends AdminGithubInstallation {
   events: { id: string; name: string; state: EventState; startDate: Date }[];
-  /** Required permissions GitHub has not granted; null if not checked. */
-  missingPermissions: string[] | null;
+  /** The permissions the App needs and whether each is granted; null if not checked. */
+  permissions: { name: string; access: string; granted: boolean }[] | null;
 }
 
 function toAdminRow(
@@ -337,6 +338,39 @@ export class GithubAppService {
   }
 
   /**
+   * Fetches the installation from GitHub and checks it can be used: not
+   * suspended, on an account, and with the permissions the App needs. The
+   * permissions come first: checking ownership needs Members access.
+   */
+  private async usableInstallation(installationId: number) {
+    if (!this.githubAppAuth.isEnabled())
+      throw new ServiceUnavailableException(APP_NOT_CONFIGURED);
+    const installation = await this.fetchInstallation(installationId);
+    if (installation.suspended_at)
+      throw new BadRequestException("The GitHub installation is suspended.");
+    const account = installation.account;
+    if (!account)
+      throw new BadRequestException("The installation has no GitHub account.");
+    const missing = missingPermissions(installation.permissions);
+    if (missing.length)
+      throw new BadRequestException(
+        `The installation on ${account.login} lacks these permissions: ${missing.join(", ")}. An owner must accept the App's requested permissions on GitHub.`,
+      );
+    return { installation, account };
+  }
+
+  /** The user must own the installation's organization, or be its account. */
+  private async assertOwnsAccount(
+    principal: Principal,
+    installation: GithubAppInstallation,
+  ) {
+    const user = await this.dataSource
+      .getRepository(UserEntity)
+      .findOneByOrFail({ id: principal.id });
+    await this.owner.assertCanManageAccount(installation, user.githubId);
+  }
+
+  /**
    * Records an installation a global admin made without an event, after the
    * same checks sharing runs, so it is listed and can be shared.
    */
@@ -352,23 +386,9 @@ export class GithubAppService {
       ))
     )
       throw new ForbiddenException("Only global admins can add installations.");
-    if (!this.githubAppAuth.isEnabled())
-      throw new ServiceUnavailableException(APP_NOT_CONFIGURED);
-    const installation = await this.fetchInstallation(installationId);
-    if (installation.suspended_at)
-      throw new BadRequestException("The GitHub installation is suspended.");
-    const account = installation.account;
-    if (!account)
-      throw new BadRequestException("The installation has no GitHub account.");
-    const missing = missingPermissions(installation.permissions);
-    if (missing.length)
-      throw new BadRequestException(
-        `The installation on ${account.login} lacks these permissions: ${missing.join(", ")}. An owner must accept the App's requested permissions on GitHub.`,
-      );
-    const user = await this.dataSource
-      .getRepository(UserEntity)
-      .findOneByOrFail({ id: admin.id });
-    await this.owner.assertCanManageAccount(installation, user.githubId);
+    const { installation, account } =
+      await this.usableInstallation(installationId);
+    await this.assertOwnsAccount(admin, installation);
 
     const installations = this.dataSource.getRepository(
       GithubInstallationEntity,
@@ -407,33 +427,15 @@ export class GithubAppService {
   ) {
     await this.assertEventAdmin(eventId, principal);
     const userId = principal.id;
-    if (!this.githubAppAuth.isEnabled())
-      throw new ServiceUnavailableException(APP_NOT_CONFIGURED);
-
-    const installation = await this.fetchInstallation(installationId);
-    if (installation.suspended_at)
-      throw new BadRequestException("The GitHub installation is suspended.");
-    const account = installation.account;
-    if (!account)
-      throw new BadRequestException("The installation has no GitHub account.");
-    // Checked first: the ownership check below needs Members access.
-    const missing = missingPermissions(installation.permissions);
-    if (missing.length)
-      throw new BadRequestException(
-        `The installation on ${account.login} lacks these permissions: ${missing.join(", ")}. An owner must accept the App's requested permissions on GitHub.`,
-      );
+    const { installation, account } =
+      await this.usableInstallation(installationId);
     const known = await this.dataSource
       .getRepository(GithubInstallationEntity)
       .findOneBy({ installationId });
     const ownershipChecked =
       !isSharedInstallation(known) ||
       !(await this.authorization.can(PlatformPolicy, "createEvent", principal));
-    if (ownershipChecked) {
-      const user = await this.dataSource
-        .getRepository(UserEntity)
-        .findOneByOrFail({ id: userId });
-      await this.owner.assertCanManageAccount(installation, user.githubId);
-    }
+    if (ownershipChecked) await this.assertOwnsAccount(principal, installation);
     // Fetched before the transaction so no GitHub call runs under its locks.
     const accessibleRepositories =
       installation.repository_selection === "selected"
@@ -558,13 +560,13 @@ export class GithubAppService {
       order: { startDate: "DESC" },
     });
     const admin = toAdminRow(row, events.length);
-    let missing: string[] | null = null;
+    let permissions: AdminGithubInstallationDetail["permissions"] = null;
     if (admin.status === "active" && this.githubAppAuth.isEnabled())
       try {
         const installation = await this.githubAppAuth.getInstallation(
           row.installationId,
         );
-        missing = missingPermissions(installation.permissions);
+        permissions = permissionChecks(installation.permissions);
       } catch (error) {
         this.logger.warn({
           action: "github_installation_permission_check_failed",
@@ -580,7 +582,7 @@ export class GithubAppService {
         state: getEventState(event),
         startDate: event.startDate,
       })),
-      missingPermissions: missing,
+      permissions,
     };
   }
 
@@ -598,22 +600,10 @@ export class GithubAppService {
       throw new BadRequestException(
         `The App was uninstalled from ${row.accountLogin}, so it cannot be shared.`,
       );
-    if (!this.githubAppAuth.isEnabled())
-      throw new ServiceUnavailableException(APP_NOT_CONFIGURED);
-    const installation = await this.fetchInstallation(row.installationId);
-    if (row.suspendedAt || installation.suspended_at)
+    if (row.suspendedAt)
       throw new BadRequestException("The GitHub installation is suspended.");
-    if (!installation.account)
-      throw new BadRequestException("The installation has no GitHub account.");
-    const missing = missingPermissions(installation.permissions);
-    if (missing.length)
-      throw new BadRequestException(
-        `The installation on ${installation.account.login} lacks these permissions: ${missing.join(", ")}. An owner must accept the App's requested permissions on GitHub.`,
-      );
-    const user = await this.dataSource
-      .getRepository(UserEntity)
-      .findOneByOrFail({ id: admin.id });
-    await this.owner.assertCanManageAccount(installation, user.githubId);
+    const { installation } = await this.usableInstallation(row.installationId);
+    await this.assertOwnsAccount(admin, installation);
     // Sharing again keeps who shared it first.
     await installations.update(
       { id, sharedAt: IsNull() },
