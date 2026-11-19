@@ -82,6 +82,14 @@ The local PostgreSQL connection string is:
 postgresql://postgres:postgres@localhost:5432/postgres
 ```
 
+On first startup, the local API container applies migrations and then adds ten
+sample events if the database has no events. The sample events cover all five
+lifecycle states and include team rosters, match history, and standings. Event
+schedules are relative to the first startup and advance as time passes. The
+seed remembers its first run per database schema. To opt out, set
+`SEED_LOCAL_DATABASE` to `"false"` in [the local API values](local-setup/local-values/api.yaml)
+before starting Tilt.
+
 ### OAuth setup
 
 The application can start without OAuth credentials, but login will not work until at least one provider is configured. On the first `make dev`, the setup script can collect the credentials and save them in the gitignored `.env.tilt` file.
