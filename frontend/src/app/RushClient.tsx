@@ -1,5 +1,6 @@
 'use client'
 
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { DownloadIcon } from '@/components/icons'
@@ -14,19 +15,21 @@ export default function RushClient() {
   }, [])
 
   return (
-    <main className="page-frame py-8">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="page-title">Rush Subject</h1>
-        <Button asChild>
-          <a href={pdfUrl} download="rush-02.pdf">
-            <DownloadIcon aria-hidden="true" />
-            Download PDF
-          </a>
-        </Button>
-      </header>
+    <PageLayout>
+      <PageHeader
+        title="Rush Subject"
+        actions={
+          <Button asChild>
+            <a href={pdfUrl} download="rush-02.pdf">
+              <DownloadIcon aria-hidden="true" />
+              Download PDF
+            </a>
+          </Button>
+        }
+      />
 
       {mounted && (
-        <div className="h-[75vh] w-full overflow-hidden rounded-xl border bg-black">
+        <div className="h-[75dvh] w-full overflow-hidden rounded-xl border bg-black">
           <iframe
             src={pdfUrl}
             className="h-full w-full"
@@ -34,6 +37,6 @@ export default function RushClient() {
           />
         </div>
       )}
-    </main>
+    </PageLayout>
   )
 }

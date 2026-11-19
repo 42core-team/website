@@ -1,3 +1,4 @@
+import { PageHeader } from '@/layouts/page-layout'
 import type { GamblingPhase, GamblingSnapshot } from '@/app/actions/gambling'
 import { Clock3 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -37,37 +38,41 @@ export default function GamblingHeader({
   const copy = phaseCopy[round.phase]
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <div className="mb-2 flex items-center gap-2">
-          <Badge>{copy.label}</Badge>
-          <span className="text-sm text-muted-foreground">
-            Round pool: {formatGamblingCredits(round.totalPool)} credits
-          </span>
-        </div>
-        <h1 className="page-title">Gambling</h1>
-        <p className="mt-1 text-muted-foreground">{copy.description}</p>
-      </div>
-      <Card className="min-w-52">
-        <CardContent className="flex items-center gap-3 px-5 py-4">
-          <Clock3 className="size-5 text-muted-foreground" />
-          <div>
-            <p className="text-xs text-muted-foreground">
-              {round.phase === 'JOINING'
-                ? 'Team draw in'
-                : round.phase === 'BETTING'
-                  ? 'Match starts in'
-                  : 'Current state'}
-            </p>
-            <p className="text-2xl font-semibold">
-              <GamblingCountdown
-                endsAt={round.phaseEndsAt}
-                onComplete={onCountdownComplete}
-              />
-            </p>
+    <PageHeader
+      title="Gambling"
+      description={
+        <div className="space-y-2">
+          <p>{copy.description}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge>{copy.label}</Badge>
+            <span className="text-sm text-muted-foreground">
+              Round pool: {formatGamblingCredits(round.totalPool)} credits
+            </span>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      }
+      actions={
+        <Card className="w-full min-w-52">
+          <CardContent className="flex items-center gap-3 px-5 py-4">
+            <Clock3 className="size-5 text-muted-foreground" />
+            <div>
+              <p className="text-xs text-muted-foreground">
+                {round.phase === 'JOINING'
+                  ? 'Team draw in'
+                  : round.phase === 'BETTING'
+                    ? 'Match starts in'
+                    : 'Current state'}
+              </p>
+              <p className="text-2xl font-semibold">
+                <GamblingCountdown
+                  endsAt={round.phaseEndsAt}
+                  onComplete={onCountdownComplete}
+                />
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      }
+    />
   )
 }

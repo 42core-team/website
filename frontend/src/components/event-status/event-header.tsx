@@ -219,13 +219,22 @@ const px = (value: string) => Number.parseFloat(value) || 0
  * ever cut off.
  */
 function useSingleRowFit() {
+  const headerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const identityRef = useRef<HTMLDivElement>(null)
   const tabsRef = useRef<HTMLUListElement>(null)
   const [fits, setFits] = useState(true)
 
   useLayoutEffect(() => {
+    const header = headerRef.current
+    const shell = header?.parentElement
     const measure = () => {
+      if (header && shell) {
+        shell.style.setProperty(
+          '--event-header-height',
+          `${header.offsetHeight}px`,
+        )
+      }
       const container = containerRef.current
       const identity = identityRef.current
       const tabs = tabsRef.current
@@ -273,10 +282,13 @@ function useSingleRowFit() {
       ...(identityRef.current?.querySelectorAll('[data-measure]') ?? []),
     ])
       if (element) observer.observe(element)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      shell?.style.removeProperty('--event-header-height')
+    }
   }, [])
 
-  return { containerRef, identityRef, tabsRef, fits }
+  return { headerRef, containerRef, identityRef, tabsRef, fits }
 }
 
 /**
@@ -304,6 +316,7 @@ export default function EventHeader({
 
   return (
     <div
+      ref={singleRow.headerRef}
       className={cn(
         'sticky top-(--navbar-height) z-40 border-b bg-background/95 backdrop-blur',
         needsAttention && tone.border,
@@ -356,12 +369,12 @@ export default function EventHeader({
           </Link>
           <div
             aria-hidden="true"
-            className="invisible absolute top-0 left-0 flex flex-col items-start whitespace-nowrap"
+            className="invisible absolute top-0 left-0 flex size-0 flex-col items-start overflow-hidden whitespace-nowrap"
           >
-            <span data-measure className="text-sm font-semibold">
+            <span data-measure className="w-max text-sm font-semibold">
               {eventName}
             </span>
-            <span data-measure className="text-xs">
+            <span data-measure className="w-max text-xs">
               {status.label}
               {status.detail && (
                 <span className="font-mono"> · {status.detail}</span>

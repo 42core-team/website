@@ -1,3 +1,4 @@
+import { PageLayout } from '@/layouts/page-layout'
 import { MatchTeamHeader } from '@/components/match/MatchTeamHeader'
 import { MatchVisualizerFrame } from '@/components/match/MatchVisualizerFrame'
 import { ScrollToLogsButton } from '@/components/match/ScrollToLogsButton'
@@ -18,7 +19,7 @@ import {
 import { MatchPhase } from '@/app/actions/tournament-model'
 import MatchLogsDisplay from '@/components/match/MatchLogsDisplay'
 import { PageError } from '@/components/ui/page-error'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/page-loader'
 import { useHideSiteNav } from '@/contexts/NavbarContext'
 import { useEventAbilities } from '@/hooks/use-event-abilities'
 import Navbar from '@/layouts/basic-navbar'
@@ -92,11 +93,7 @@ function MatchRoute() {
   useHideSiteNav(!isLoading && !isError)
 
   if (isLoading) {
-    return (
-      <main className="page-frame page-state">
-        <Spinner />
-      </main>
-    )
+    return <PageLoader />
   }
 
   if (isError) {
@@ -128,14 +125,14 @@ function MatchRoute() {
           visualizerUrl && hasLogs && <ScrollToLogsButton logsRef={logsRef} />
         }
       />
-      <main>
+      <PageLayout frame="full" className="max-sm:scroll-mt-0">
         <h1 className="sr-only">Match</h1>
         {visualizerUrl && (
           // The visualizer sizes its board from its height alone. Fill the
-          // viewport below the navbar (4rem and a 1px border), but stay short
+          // viewport below the navbar, but stay short
           // enough on narrow screens that the board, 79px shorter than the
           // iframe, still fits.
-          <div className="h-[min(calc(100dvh-4rem-1px),calc(100vw+4rem))] overflow-hidden bg-black">
+          <div className="h-[min(calc(100dvh-var(--navbar-height)),calc(100vw+4rem))] overflow-hidden bg-black">
             <MatchVisualizerFrame src={visualizerUrl} />
           </div>
         )}
@@ -144,12 +141,12 @@ function MatchRoute() {
             ref={logsRef}
             tabIndex={-1}
             // Clears the navbar, which is only sticky from sm up.
-            className="page-frame py-8 outline-none focus-visible:ring-1 focus-visible:ring-ring sm:scroll-mt-16"
+            className="page-frame page-content outline-none focus-visible:ring-1 focus-visible:ring-ring sm:scroll-mt-(--navbar-height)"
           >
             <MatchLogsDisplay logs={logsQuery.data} />
           </div>
         )}
-      </main>
+      </PageLayout>
     </>
   )
 }

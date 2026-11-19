@@ -1,3 +1,4 @@
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { getEvents, getEventsOverview } from '@/app/actions/event'
@@ -5,7 +6,7 @@ import EventsView from '@/app/events/EventsView'
 import Link from '@/components/app-link'
 import { Button } from '@/components/ui/button'
 import { PageError } from '@/components/ui/page-error'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/page-loader'
 import { useSession } from '@/lib/auth'
 import { EVENTS_LIST_REFETCH_INTERVAL_MS } from '@/lib/query-intervals'
 
@@ -38,11 +39,7 @@ function EventsRoute() {
   }
 
   if (eventsQuery.isPending) {
-    return (
-      <main className="page-frame page-state">
-        <Spinner />
-      </main>
-    )
+    return <PageLoader />
   }
 
   if (eventsQuery.isError) {
@@ -60,27 +57,23 @@ function EventsRoute() {
   }
 
   return (
-    <main className="page-frame py-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-2">
-          <h1 className="page-title">Events</h1>
-          <p className="text-muted-foreground">
-            Discover and join upcoming coding competitions
-          </p>
-        </div>
-        {session?.user.abilities.createEvent && (
-          <Button asChild>
-            <Link href="/events/create">Create event</Link>
-          </Button>
-        )}
-      </header>
-      <div className="mt-6">
-        <EventsView
-          myEvents={eventsQuery.data.myEvents}
-          allEvents={eventsQuery.data.allEvents}
-          isLoggedIn={isLoggedIn}
-        />
-      </div>
-    </main>
+    <PageLayout>
+      <PageHeader
+        title="Events"
+        description="Discover and join upcoming coding competitions"
+        actions={
+          session?.user.abilities.createEvent && (
+            <Button asChild>
+              <Link href="/events/create">Create event</Link>
+            </Button>
+          )
+        }
+      />
+      <EventsView
+        myEvents={eventsQuery.data.myEvents}
+        allEvents={eventsQuery.data.allEvents}
+        isLoggedIn={isLoggedIn}
+      />
+    </PageLayout>
   )
 }

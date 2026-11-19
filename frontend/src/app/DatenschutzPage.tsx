@@ -1,8 +1,10 @@
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
+
 export default function DatenschtutzPage() {
   return (
-    <main className="page-frame py-12">
-      <div className="prose prose-lg reading-column">
-        <h1>Datenschutz&shy;erkl&auml;rung</h1>
+    <PageLayout frame="reading">
+      <PageHeader title="Datenschutz&shy;erkl&auml;rung" />
+      <article className="prose prose-lg max-w-none">
         <h2>1. Datenschutz auf einen Blick</h2>
         <h3>Allgemeine Hinweise</h3>{' '}
         <p>
@@ -423,7 +425,7 @@ export default function DatenschtutzPage() {
           Quelle:{' '}
           <a href="https://www.e-recht24.de">https://www.e-recht24.de</a>
         </p>
-      </div>
-    </main>
+      </article>
+    </PageLayout>
   )
 }

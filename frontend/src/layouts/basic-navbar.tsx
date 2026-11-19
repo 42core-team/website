@@ -123,7 +123,7 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
         )}
         {...props}
       >
-        <div className="page-frame page-workspace flex min-h-(--navbar-height) flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2 sm:py-0">
+        <div className="page-frame page-workspace flex min-h-[calc(var(--navbar-height)-1px)] flex-wrap items-center justify-between gap-x-2 gap-y-2 py-2 sm:gap-x-4 sm:py-0">
           {/* Left side */}
           <div className="flex shrink-0 items-center gap-2">
             {/* Mobile menu trigger */}

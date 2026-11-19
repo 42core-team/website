@@ -2,6 +2,7 @@
 
 import type { WikiNavItem, WikiVersion } from '@/lib/markdown'
 import { Menu } from 'lucide-react'
+import { PageLayout } from '@/layouts/page-layout'
 import { useRouter } from '@/lib/router-hooks'
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -263,7 +264,7 @@ export function WikiLayout({
   }, [router])
 
   return (
-    <div className="relative flex h-[calc(100vh-var(--navbar-height))] overflow-hidden">
+    <div className="page-frame page-workspace relative flex h-[calc(100dvh-var(--navbar-height))] overflow-hidden px-0!">
       <div
         className={cn(
           'fixed inset-0 z-40 bg-background/50 transition-opacity duration-300 lg:hidden',
@@ -274,9 +275,12 @@ export function WikiLayout({
 
       <aside
         ref={sidebarRef}
+        id="wiki-navigation"
         className={cn(
-          'fixed top-(--navbar-height) left-0 z-50 h-[calc(100vh-var(--navbar-height))] w-(--sidebar-width) overflow-x-hidden overflow-y-auto overscroll-contain border-r bg-sidebar transition-transform duration-300 ease-in-out lg:static lg:z-0 lg:translate-x-0 lg:shrink-0',
-          isMobileNavOpen ? 'translate-x-0' : '-translate-x-full',
+          'fixed top-(--navbar-height) left-0 z-50 h-[calc(100dvh-var(--navbar-height))] w-(--sidebar-width) max-w-[85vw] overflow-x-hidden overflow-y-auto overscroll-contain border-r bg-sidebar transition-transform duration-300 ease-in-out lg:static lg:z-0 lg:translate-x-0 lg:shrink-0',
+          isMobileNavOpen
+            ? 'translate-x-0'
+            : 'invisible -translate-x-full lg:visible',
         )}
       >
         <WikiNavigation
@@ -291,13 +295,13 @@ export function WikiLayout({
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header
           className={cn(
-            'shrink-0 z-40 border-b bg-card p-4 transition-opacity duration-300 sm:px-6',
+            'shrink-0 z-40 border-b bg-card transition-opacity duration-300',
             isBasicNavbarMenuOpen
               ? 'pointer-events-none opacity-0 lg:pointer-events-auto lg:opacity-100'
               : 'opacity-100',
           )}
         >
-          <div className="flex items-center justify-between gap-4">
+          <div className="page-frame flex flex-wrap items-center gap-2 py-3 sm:gap-4">
             <Button
               variant="ghost"
               size="icon"
@@ -305,10 +309,11 @@ export function WikiLayout({
               className="lg:hidden"
               aria-label="Toggle navigation"
               aria-expanded={isMobileNavOpen}
+              aria-controls="wiki-navigation"
             >
               <Menu className="size-5" />
             </Button>
-            <div className="max-w-md flex-1">
+            <div className="min-w-32 max-w-md flex-1">
               <WikiSearch currentVersion={currentVersion} />
             </div>
             {versions.length > 1 && (
@@ -320,17 +325,18 @@ export function WikiLayout({
           </div>
         </header>
 
-        <main
+        <PageLayout
+          frame="full"
           data-wiki-lang={language}
-          className="main-wiki-content min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain py-6"
+          className="main-wiki-content min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [--page-scroll-offset:calc(var(--navbar-height)+3.5rem)]"
         >
           <div
-            className="page-frame"
+            className="page-frame page-content"
             style={{ viewTransitionName: 'wiki-content' }}
           >
             {children}
           </div>
-        </main>
+        </PageLayout>
       </div>
     </div>
   )

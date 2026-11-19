@@ -38,17 +38,9 @@ Use `--primary` and `--primary-foreground` for the filled main action. Keep `--s
 
 ## Layout and typography
 
-| Page frame | Width | Typical use |
-| --- | --- | --- |
-| Reading | Up to `72ch` for prose | Wiki articles, changelog entries, and legal pages |
-| Form | Up to `48rem` | Settings, event creation, and single-column forms |
-| Standard | Up to `72rem` | Event overview, team and player profiles, and queue |
-| Workspace | Up to `80rem` | Standings, dashboards, and unit builder |
-| Immersive | Full available width | Match replay and expanded bracket graphs |
+Use the shared page frames, spacing, navigation, and scrolling rules in the [Core Circuit layout guidelines](core-circuit-layout.md).
 
-- Use 16 px horizontal gutters on phones, 24 px at medium widths, and 32 px on wide screens. Start with 24 px between sections, 16–24 px inside panels, and 8–12 px between related controls. Use 12 px corners for panels and 6–8 px for everyday controls.
-- Use the shared sans-serif for interface and reading text. Start at 28–36 px for page titles, 20–24 px for section headings, 14–16 px for UI text, and 16–18 px for prose. Feature mastheads may use larger titles. Use tabular numerals for timers and standings, and monospace for code, logs, and identifiers.
-- Stack side panels on phones. Keep horizontal scrolling inside dense tables and graphs. Use stacked event cards where records can be scanned individually, and keep a table for standings and other cross-row comparisons.
+Use the shared sans-serif for interface and reading text. Start at 28–36 px for page titles, 20–24 px for section headings, 14–16 px for UI text, and 16–18 px for prose. Feature mastheads may use larger titles. Use tabular numerals for timers and standings, and monospace for code, logs, and identifiers. Use 12 px corners for panels and 6–8 px for everyday controls.
 
 ## Component patterns
 

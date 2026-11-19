@@ -1,3 +1,4 @@
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { getTeamsForEventTable } from '@/app/actions/team'
@@ -8,7 +9,7 @@ import {
 import { AdminRevealSwitch } from '@/components/tournament/admin-reveal-switch'
 import { BracketTabs } from '@/components/tournament/tournament-tabs'
 import { PageError } from '@/components/ui/page-error'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/page-loader'
 import { useEventAbilities } from '@/hooks/use-event-abilities'
 import { useSearchParams } from '@/lib/router-hooks'
 
@@ -61,11 +62,7 @@ function BracketRoute() {
     teamsQuery.isPending ||
     abilitiesPending
   ) {
-    return (
-      <main className="page-frame page-state">
-        <Spinner />
-      </main>
-    )
+    return <PageLoader frame="workspace" />
   }
 
   if (matchesQuery.isError || teamCountQuery.isError || teamsQuery.isError) {
@@ -78,32 +75,20 @@ function BracketRoute() {
   }
 
   return (
-    <main className="page-frame page-workspace py-8">
-      <div className="flex flex-col gap-4 pb-8 md:gap-8">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-          <div className="space-y-1.5 md:space-y-2">
-            <h1 className="page-title">Tournament Tree</h1>
-            <p className="max-w-3xl text-base leading-relaxed text-muted-foreground md:text-lg">
-              Follow the elimination bracket to see which teams advance and
-              ultimately compete in the finals.
-            </p>
-          </div>
-          {abilities.viewUnrevealedResults && (
-            <div className="flex-shrink-0">
-              <AdminRevealSwitch />
-            </div>
-          )}
-        </div>
-
-        <BracketTabs
-          eventId={id}
-          matches={matchesQuery.data}
-          teams={teamsQuery.data}
-          abilities={abilities}
-          teamCount={teamCountQuery.data}
-          isAdminReveal={isAdminReveal}
-        />
-      </div>
-    </main>
+    <PageLayout frame="workspace">
+      <PageHeader
+        title="Tournament Tree"
+        description="Follow the elimination bracket to see which teams advance and ultimately compete in the finals."
+        actions={abilities.viewUnrevealedResults && <AdminRevealSwitch />}
+      />
+      <BracketTabs
+        eventId={id}
+        matches={matchesQuery.data}
+        teams={teamsQuery.data}
+        abilities={abilities}
+        teamCount={teamCountQuery.data}
+        isAdminReveal={isAdminReveal}
+      />
+    </PageLayout>
   )
 }

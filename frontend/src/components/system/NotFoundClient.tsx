@@ -1,12 +1,13 @@
 'use client'
 
+import { PageLayout } from '@/layouts/page-layout'
 import Link from '@/components/app-link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 
 export default function NotFoundClient() {
   return (
-    <main className="page-frame page-form py-16">
+    <PageLayout frame="form" centered>
       <Card className="mx-auto w-full max-w-lg">
         <CardHeader className="flex flex-col items-center gap-3">
           <span className="text-sm font-semibold text-link">404</span>
@@ -66,6 +67,6 @@ export default function NotFoundClient() {
           </Button>
         </CardFooter>
       </Card>
-    </main>
+    </PageLayout>
   )
 }

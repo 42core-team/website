@@ -57,7 +57,7 @@ export default function GlobalStats() {
   ]
 
   return (
-    <section className="relative isolate overflow-hidden border-y bg-gradient-to-b from-muted/50 via-background to-muted/30 py-16 sm:py-24">
+    <section className="relative isolate overflow-hidden border-y bg-gradient-to-b from-muted/50 via-background to-muted/30 py-10 md:py-14">
       <div
         className="pointer-events-none absolute -left-24 top-10 -z-10 h-64 w-64 rounded-full bg-brand-orange/5 blur-3xl"
         aria-hidden="true"
@@ -68,7 +68,7 @@ export default function GlobalStats() {
       />
 
       <div className="page-frame">
-        <div className="mx-auto mb-10 max-w-2xl text-center sm:mb-12">
+        <div className="mx-auto mb-6 max-w-2xl text-center">
           <h2 className="section-title text-balance">Live from the Arena</h2>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
             Every match runs tick by tick on a 2D grid—here is what player-coded

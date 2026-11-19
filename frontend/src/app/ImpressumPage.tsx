@@ -1,8 +1,10 @@
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
+
 export default function ImpressumPage() {
   return (
-    <main className="page-frame py-12">
-      <div className="prose prose-lg reading-column">
-        <h1>Impressum</h1>
+    <PageLayout frame="reading">
+      <PageHeader title="Impressum" />
+      <article className="prose prose-lg max-w-none">
         <h2>Angaben gemäß § 5 DDG</h2>
         <p>
           Paul Großmann
@@ -137,7 +139,7 @@ export default function ImpressumPage() {
           </a>
           .
         </p>
-      </div>
-    </main>
+      </article>
+    </PageLayout>
   )
 }

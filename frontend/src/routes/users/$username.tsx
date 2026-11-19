@@ -1,3 +1,4 @@
+import { PageLayout } from '@/layouts/page-layout'
 import { createFileRoute } from '@tanstack/react-router'
 import GithubLoginButton from '@/components/github'
 import { ProfileView } from '@/components/profile/ProfileView'
@@ -15,14 +16,14 @@ function UserProfileRoute() {
   if (status === 'loading') return <PageLoader />
   if (!session)
     return (
-      <main className="page-frame page-form page-state">
+      <PageLayout frame="form" centered>
         <h1 className="page-title">Sign in to see player profiles</h1>
         <p className="text-muted-foreground">
           Profiles list matches and replays, which are only shown to signed-in
           players.
         </p>
         <GithubLoginButton />
-      </main>
+      </PageLayout>
     )
 
   return <ProfileView key={username} username={username} />

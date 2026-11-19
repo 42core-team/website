@@ -1,3 +1,4 @@
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import { Button } from '@/components/ui/button'
 import { useQuery } from '@tanstack/react-query'
 import type { LucideIcon } from 'lucide-react'
@@ -27,15 +28,9 @@ import {
 } from '@/lib/query-intervals'
 import { useEventAbilities } from '@/hooks/use-event-abilities'
 import { useEventClock } from '@/hooks/use-event-clock'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { PageError } from '@/components/ui/page-error'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/page-loader'
 import { useSession } from '@/lib/auth'
 
 export const Route = createFileRoute('/events/$id')({
@@ -106,28 +101,24 @@ function EventRoute() {
   })
 
   if (status === 'loading' || (userId && eventQuery.isPending)) {
-    return (
-      <main className="page-frame page-state">
-        <Spinner size="lg" />
-      </main>
-    )
+    return <PageLoader />
   }
 
   if (status === 'unauthenticated') {
     return (
-      <main className="page-frame flex min-h-[60vh] items-center justify-center py-16">
-        <Card className="w-full max-w-md">
+      <PageLayout frame="form" centered>
+        <Card className="w-full max-w-md text-left">
           <CardHeader>
-            <CardTitle>Authentication required</CardTitle>
-            <CardDescription>
-              Please log in with GitHub to view this event.
-            </CardDescription>
+            <PageHeader
+              title="Authentication required"
+              description="Please log in with GitHub to view this event."
+            />
           </CardHeader>
           <CardContent>
             <GithubLoginButton />
           </CardContent>
         </Card>
-      </main>
+      </PageLayout>
     )
   }
 
@@ -145,9 +136,7 @@ function EventRoute() {
     )
   }
 
-  if (!eventQuery.data) {
-    return null
-  }
+  if (!eventQuery.data) return <PageLoader />
 
   const event = eventQuery.data
   const isUserRegistered = isUserRegisteredQuery.data ?? false
@@ -171,7 +160,7 @@ function EventRoute() {
     formatTime: (iso) => formatEventTime(iso, now),
   })
   const eventShell = (children: ReactNode) => (
-    <div className="relative flex min-h-lvh flex-col">
+    <div className="relative [--page-scroll-offset:calc(var(--navbar-height)+var(--event-header-height,0px))]">
       {!isSiteNavHidden && (
         <EventHeader
           eventName={event.name}
@@ -189,8 +178,8 @@ function EventRoute() {
   }
 
   return eventShell(
-    <main className="page-frame py-8">
-      <header className="circuit-masthead mb-6 flex items-center justify-between gap-4 rounded-xl p-6 sm:p-8">
+    <PageLayout>
+      <header className="circuit-masthead flex items-center justify-between gap-4 rounded-xl p-6 sm:p-8">
         <h1 className="page-title min-w-0 break-words">{event.name}</h1>
         <CoreLogo
           aria-hidden="true"
@@ -248,6 +237,6 @@ function EventRoute() {
 
         <EventTimelineCard event={event} moment={moment} />
       </div>
-    </main>,
+    </PageLayout>,
   )
 }

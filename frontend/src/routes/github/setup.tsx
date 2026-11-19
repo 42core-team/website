@@ -1,3 +1,4 @@
+import { PageLayout } from '@/layouts/page-layout'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { isAxiosError } from 'axios'
@@ -65,7 +66,7 @@ function GithubSetupRoute() {
   else if (completion.isError) message = getErrorMessage(completion.error)
 
   return (
-    <main className="page-frame page-form page-state">
+    <PageLayout frame="form" centered>
       <Card className="w-full space-y-4 p-6 text-center">
         <h1 className="page-title">Connecting GitHub</h1>
         {message ? (
@@ -82,7 +83,7 @@ function GithubSetupRoute() {
           <Spinner className="mx-auto" />
         )}
       </Card>
-    </main>
+    </PageLayout>
   )
 }
 

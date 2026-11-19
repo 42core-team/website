@@ -1,10 +1,11 @@
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { getEventById } from '@/app/actions/event'
 import UnitBuilder from '@/components/unit-builder/UnitBuilder'
 import { readComponentsConfig } from '@/components/unit-builder/config'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/page-loader'
 
 export const Route = createFileRoute('/events/$id/unit-builder')({
   component: UnitBuilderRoute,
@@ -20,11 +21,7 @@ function UnitBuilderRoute() {
   })
 
   if (eventQuery.isPending) {
-    return (
-      <main className="page-frame page-state">
-        <Spinner />
-      </main>
-    )
+    return <PageLoader frame="workspace" />
   }
 
   if (eventQuery.isError) {
@@ -35,21 +32,21 @@ function UnitBuilderRoute() {
 
   if (!config) {
     return (
-      <main className="page-frame page-workspace space-y-6 py-8">
-        <h1 className="page-title">Unit Builder</h1>
+      <PageLayout frame="workspace">
+        <PageHeader title="Unit Builder" />
         <Alert>
           <AlertTitle>Unit builder not used</AlertTitle>
           <AlertDescription>
             This event does not use the unit builder.
           </AlertDescription>
         </Alert>
-      </main>
+      </PageLayout>
     )
   }
 
   return (
-    <main className="page-frame page-workspace py-8">
+    <PageLayout frame="workspace">
       <UnitBuilder config={config} />
-    </main>
+    </PageLayout>
   )
 }

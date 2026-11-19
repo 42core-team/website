@@ -1,3 +1,4 @@
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { toast } from 'sonner'
@@ -21,7 +22,7 @@ import {
 } from '@/components/gambling'
 import { Lock } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/page-loader'
 
 export const Route = createFileRoute('/events/$id/gambling')({
   component: GamblingRoute,
@@ -80,30 +81,33 @@ function GamblingRoute() {
   })
 
   if (gamblingQuery.isPending) {
-    return (
-      <main className="page-frame page-state">
-        <Spinner size="lg" />
-      </main>
-    )
+    return <PageLoader />
   }
 
   if (gamblingQuery.isError) {
     return (
-      <main className="page-frame py-8">
+      <PageLayout>
+        <PageHeader title="Gambling" />
         <Alert variant="destructive">
           <AlertTitle>Gambling could not be loaded</AlertTitle>
           <AlertDescription>
             {getGamblingErrorMessage(gamblingQuery.error)}
           </AlertDescription>
         </Alert>
-      </main>
+      </PageLayout>
     )
   }
 
   const snapshot = gamblingQuery.data
 
   return (
-    <main className="page-frame space-y-6 py-8">
+    <PageLayout>
+      <GamblingHeader
+        round={snapshot.round}
+        onCountdownComplete={() => {
+          void gamblingQuery.refetch()
+        }}
+      />
       {!canBet && (
         <Alert role="status">
           <Lock className="size-4" aria-hidden="true" />
@@ -113,15 +117,8 @@ function GamblingRoute() {
           </AlertDescription>
         </Alert>
       )}
-      <GamblingHeader
-        round={snapshot.round}
-        onCountdownComplete={() => {
-          void gamblingQuery.refetch()
-        }}
-      />
-
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <GamblingMatchCard
             eventId={id}
             snapshot={snapshot}
@@ -147,6 +144,6 @@ function GamblingRoute() {
           }
         />
       </div>
-    </main>
+    </PageLayout>
   )
 }

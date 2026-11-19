@@ -62,8 +62,21 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ClientProviders>
         <div className="flex min-h-dvh flex-col">
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:rounded-md focus:bg-card focus:px-4 focus:py-2 focus:text-link"
+            onClick={(event) => {
+              const main = document.getElementById('main-content')
+              if (!main) return
+              event.preventDefault()
+              main.focus({ preventScroll: true })
+              main.scrollIntoView({ block: 'start', behavior: 'instant' })
+            }}
+          >
+            Skip to content
+          </a>
           <SiteNavbar />
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <Outlet />
           </div>
           <Footer />

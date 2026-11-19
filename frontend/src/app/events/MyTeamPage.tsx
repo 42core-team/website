@@ -1,3 +1,4 @@
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import type { Team, TeamMember } from '@/app/actions/team'
 import {
   eventState,
@@ -29,7 +30,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/page-loader'
 import { validateTeamName } from '@/lib/utils/validation'
 
 /**
@@ -158,26 +159,23 @@ export function MyTeamPage({
   })
 
   if (eventQuery.isPending || myTeamQuery.isPending) {
-    return (
-      <main className="page-frame page-state">
-        <Spinner />
-      </main>
-    )
+    return <PageLoader />
   }
 
   if (eventQuery.isError) {
     return (
-      <main className="page-frame py-8">
+      <PageLayout>
+        <PageHeader title="My Team" />
         <Alert variant="destructive">
           <AlertTitle>Event unavailable</AlertTitle>
           <AlertDescription>Could not load event details.</AlertDescription>
         </Alert>
-      </main>
+      </PageLayout>
     )
   }
 
   return (
-    <main className="page-frame py-8">
+    <PageLayout>
       {myTeamQuery.data ? (
         <div className="space-y-6">
           <TeamInfoSection
@@ -211,6 +209,7 @@ export function MyTeamPage({
       ) : eventQuery.data.canCreateTeam &&
         registrationOpen(eventQuery.data, now) ? (
         <div className="space-y-6">
+          <PageHeader title="My Team" />
           <TeamCreationSection
             eventId={id}
             newTeamName={newTeamName}
@@ -231,14 +230,17 @@ export function MyTeamPage({
           />
         </div>
       ) : (
-        <Alert>
-          <AlertTitle>Team creation closed</AlertTitle>
-          <AlertDescription>
-            Team creation for this event is currently disabled.
-          </AlertDescription>
-        </Alert>
+        <>
+          <PageHeader title="My Team" />
+          <Alert>
+            <AlertTitle>Team creation closed</AlertTitle>
+            <AlertDescription>
+              Team creation for this event is currently disabled.
+            </AlertDescription>
+          </Alert>
+        </>
       )}
-    </main>
+    </PageLayout>
   )
 }
 

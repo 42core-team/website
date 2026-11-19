@@ -1,3 +1,4 @@
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import { Button } from '@/components/ui/button'
 import { TeamPicture } from '@/components/team/TeamAppearance'
 import type { Team } from '@/app/actions/team'
@@ -14,10 +15,10 @@ import { getTeamsForEventTable } from '@/app/actions/team'
 import type { SortDirection } from '@/components/sortable-table-head'
 import { SortableTableHead } from '@/components/sortable-table-head'
 import { LocationTags } from '@/components/team'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { PageError } from '@/components/ui/page-error'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/page-loader'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
   Table,
@@ -79,11 +80,7 @@ function TeamsRoute() {
   }
 
   if (teamsQuery.isPending) {
-    return (
-      <main className="page-frame page-state">
-        <Spinner />
-      </main>
-    )
+    return <PageLoader frame="workspace" />
   }
 
   if (teamsQuery.isError) {
@@ -101,11 +98,11 @@ function TeamsRoute() {
   }
 
   return (
-    <main className="page-frame page-workspace py-8">
-      <Card>
-        <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="page-title">Teams</h1>
-          <div className="relative w-full sm:max-w-xs">
+    <PageLayout frame="workspace">
+      <PageHeader
+        title="Teams"
+        actions={
+          <div className="relative w-full sm:w-64">
             <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               aria-label="Search teams by name"
@@ -116,7 +113,9 @@ function TeamsRoute() {
               value={searchQuery}
             />
           </div>
-        </CardHeader>
+        }
+      />
+      <Card>
         <CardContent>
           <Table>
             <TableHeader>
@@ -194,6 +193,6 @@ function TeamsRoute() {
           </Table>
         </CardContent>
       </Card>
-    </main>
+    </PageLayout>
   )
 }

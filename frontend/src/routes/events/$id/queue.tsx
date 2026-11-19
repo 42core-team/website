@@ -1,3 +1,5 @@
+import { PageLoader } from '@/components/ui/page-loader'
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import { TeamPicture } from '@/components/team/TeamAppearance'
 import { getEventById } from '@/app/actions/event'
 import { matchmakingOpen } from '@/lib/event-lifecycle'
@@ -121,17 +123,13 @@ function QueueRoute() {
   })
 
   if (queueSummaryQuery.isPending) {
-    return (
-      <main className="page-frame page-state">
-        <Spinner />
-      </main>
-    )
+    return <PageLoader />
   }
 
   if (!queueSummaryQuery.data) {
     return (
-      <main className="page-frame space-y-6 py-8">
-        <h1 className="page-title">Match Making</h1>
+      <PageLayout>
+        <PageHeader title="Match Making" />
         <Card>
           <CardHeader>
             <CardTitle>No team found</CardTitle>
@@ -140,7 +138,7 @@ function QueueRoute() {
             Create or join a team before using match making.
           </CardContent>
         </Card>
-      </main>
+      </PageLayout>
     )
   }
 
@@ -161,8 +159,8 @@ function QueueRoute() {
   )
 
   return (
-    <main className="page-frame space-y-6 py-8">
-      <h1 className="page-title">Match Making</h1>
+    <PageLayout>
+      <PageHeader title="Match Making" />
       {!playable && (
         <Alert role="status">
           <Lock className="size-4" aria-hidden="true" />
@@ -311,7 +309,7 @@ function QueueRoute() {
           matches={finishedQueueMatches}
         />
       </section>
-    </main>
+    </PageLayout>
   )
 }
 

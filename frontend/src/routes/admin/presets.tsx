@@ -1,3 +1,4 @@
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { useStore } from '@tanstack/react-store'
@@ -168,21 +169,25 @@ export function PresetsPage() {
     onSuccess: refresh,
   })
   return (
-    <main className="page-frame page-workspace space-y-6 py-8">
-      <h1 className="page-title">Event presets</h1>
-      <div className="flex gap-4">
-        <Button
-          onClick={() =>
-            openEditor(
-              true,
-              rows.data
-                ? (rows.data.find((row) => row.isDefault)?.id ?? null)
-                : undefined,
-            )
-          }
-        >
-          Create preset
-        </Button>
+    <PageLayout frame="workspace">
+      <PageHeader
+        title="Event presets"
+        actions={
+          <Button
+            onClick={() =>
+              openEditor(
+                true,
+                rows.data
+                  ? (rows.data.find((row) => row.isDefault)?.id ?? null)
+                  : undefined,
+              )
+            }
+          >
+            Create preset
+          </Button>
+        }
+      />
+      <div className="flex flex-wrap items-center gap-2">
         <label htmlFor="include-archived">Include archived</label>
         <Switch
           id="include-archived"
@@ -315,7 +320,7 @@ export function PresetsPage() {
           )}
         </DialogContent>
       </Dialog>
-    </main>
+    </PageLayout>
   )
 }
 export function PresetEditor({

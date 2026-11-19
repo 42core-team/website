@@ -1,3 +1,5 @@
+import { PageLoader } from '@/components/ui/page-loader'
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import { useEffect, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { useStore } from '@tanstack/react-store'
@@ -46,7 +48,7 @@ export const Route = createFileRoute('/events/create')({
 })
 function CreateEventRoute() {
   const { data: session, status } = useSession()
-  if (status === 'loading') return <Spinner />
+  if (status === 'loading') return <PageLoader frame="form" />
   if (!session?.user.abilities.createEvent)
     return <Navigate to="/events" replace />
   return <CreateEventPage />
@@ -68,33 +70,35 @@ export function CreateEventPage() {
   })
   const [dirty, setDirty] = useState(false)
   return (
-    <main className="page-frame page-form space-y-6 py-8">
-      <h1 className="page-title">Create event</h1>
-      <label htmlFor="preset">Preset</label>
-      <select
-        id="preset"
-        className="native-select w-full"
-        value={id}
-        onChange={(e) => {
-          if (
-            dirty &&
-            !window.confirm('Discard your settings edits and switch presets?')
-          )
-            return
-          setDirty(false)
-          setSelected(e.target.value)
-        }}
-      >
-        {presets.data?.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-            {p.isDefault ? ' (default)' : ''}
-          </option>
-        ))}
-      </select>
-      {presets.data?.find((p) => p.id === id)?.description && (
-        <p>{presets.data.find((p) => p.id === id)?.description}</p>
-      )}
+    <PageLayout frame="form">
+      <PageHeader title="Create event" />
+      <div className="grid gap-2">
+        <label htmlFor="preset">Preset</label>
+        <select
+          id="preset"
+          className="native-select w-full"
+          value={id}
+          onChange={(e) => {
+            if (
+              dirty &&
+              !window.confirm('Discard your settings edits and switch presets?')
+            )
+              return
+            setDirty(false)
+            setSelected(e.target.value)
+          }}
+        >
+          {presets.data?.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+              {p.isDefault ? ' (default)' : ''}
+            </option>
+          ))}
+        </select>
+        {presets.data?.find((p) => p.id === id)?.description && (
+          <p>{presets.data.find((p) => p.id === id)?.description}</p>
+        )}
+      </div>
       {presets.isPending || (id && resolved.isPending) ? <Spinner /> : null}
       {presets.isError || resolved.isError ? (
         <p role="alert">
@@ -124,7 +128,7 @@ export function CreateEventPage() {
           onDirty={setDirty}
         />
       )}
-    </main>
+    </PageLayout>
   )
 }
 function CreatePresetForm({
@@ -193,16 +197,18 @@ function CreatePresetForm({
         if (!mutation.isPending) mutation.reset()
       }}
     >
-      <label htmlFor="event-name">Name</label>
-      <Input
-        id="event-name"
-        placeholder="Enter event name"
-        value={values.name}
-        onChange={(e) => {
-          form.setFieldValue('name', e.target.value)
-          onName(e.target.value)
-        }}
-      />
+      <div className="grid gap-2">
+        <label htmlFor="event-name">Name</label>
+        <Input
+          id="event-name"
+          placeholder="Enter event name"
+          value={values.name}
+          onChange={(e) => {
+            form.setFieldValue('name', e.target.value)
+            onName(e.target.value)
+          }}
+        />
+      </div>
       <Button
         type="button"
         variant="outline"

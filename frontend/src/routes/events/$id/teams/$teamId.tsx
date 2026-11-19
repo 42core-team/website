@@ -1,3 +1,6 @@
+import { PageLoader } from '@/components/ui/page-loader'
+import { PageError } from '@/components/ui/page-error'
+import { PageLayout } from '@/layouts/page-layout'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import type { AxiosError } from 'axios'
@@ -69,18 +72,15 @@ function TeamRoute() {
 
   // Wait for the viewer's team too, so their own team never flashes the public view.
   if (teamQuery.isPending || myTeamQuery.isPending) {
-    return (
-      <main className="page-frame page-state">
-        <Spinner />
-      </main>
-    )
+    return <PageLoader />
   }
 
   if (teamQuery.isError || !teamQuery.data) {
     return (
-      <main className="page-frame py-8">
-        <p className="text-center text-destructive">Team not found.</p>
-      </main>
+      <PageError
+        title="Team not found"
+        description="Could not load this team."
+      />
     )
   }
 
@@ -108,7 +108,7 @@ function TeamRoute() {
     Boolean(myTeamQuery.data) && myTeamQuery.data?.id !== teamQuery.data.id
 
   return (
-    <main className="page-frame py-8">
+    <PageLayout>
       <TeamPublicProfile
         team={teamQuery.data}
         members={membersQuery.data ?? []}
@@ -142,16 +142,14 @@ function TeamRoute() {
           ) : undefined
         }
       />
-      <div className="mt-6">
-        <TeamMatchHistory
-          teamId={teamId}
-          eventId={id}
-          matches={matchesQuery.data ?? []}
-          isLoading={matchesQuery.isPending}
-          isError={matchesQuery.isError}
-        />
-      </div>
-    </main>
+      <TeamMatchHistory
+        teamId={teamId}
+        eventId={id}
+        matches={matchesQuery.data ?? []}
+        isLoading={matchesQuery.isPending}
+        isError={matchesQuery.isError}
+      />
+    </PageLayout>
   )
 }
 

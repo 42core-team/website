@@ -1,3 +1,4 @@
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import { createFileRoute } from '@tanstack/react-router'
 import { unified } from 'unified'
 import remarkGfm from 'remark-gfm'
@@ -68,23 +69,25 @@ function ChangelogPage() {
     Route.useLoaderData()
 
   return (
-    <main className="page-frame page-form py-8">
-      <header className="mb-4">
-        <h1 className="page-title">Changelog</h1>
-        <p className="text-muted-foreground">
-          All changes from{' '}
-          <a
-            href="https://github.com/42core-team/monorepo/releases"
-            className="underline hover:no-underline"
-            target="_blank"
-            rel="noreferrer"
-          >
-            42core-team/monorepo
-          </a>
-          . {total} release
-          {total === 1 ? '' : 's'} total.
-        </p>
-      </header>
+    <PageLayout frame="reading">
+      <PageHeader
+        title="Changelog"
+        description={
+          <p>
+            All changes from{' '}
+            <a
+              href="https://github.com/42core-team/monorepo/releases"
+              className="underline hover:no-underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              42core-team/monorepo
+            </a>
+            . {total} release
+            {total === 1 ? '' : 's'} total.
+          </p>
+        }
+      />
 
       <Accordion
         type="multiple"
@@ -141,7 +144,7 @@ function ChangelogPage() {
               <AccordionContent className="px-4">
                 {html.trim() ? (
                   <article
-                    className="prose reading-column max-w-none"
+                    className="prose max-w-none"
                     dangerouslySetInnerHTML={{ __html: html }}
                   />
                 ) : (
@@ -192,6 +195,6 @@ function ChangelogPage() {
           </Button>
         )}
       </nav>
-    </main>
+    </PageLayout>
   )
 }

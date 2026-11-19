@@ -866,7 +866,7 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
 
   return (
     <div className="overflow-hidden">
-      <section className="page-frame space-y-6 pb-16 pt-6 sm:pb-20 sm:pt-10 lg:pb-28">
+      <section className="page-frame page-content">
         <div className="circuit-masthead flex flex-col items-center rounded-xl px-6 py-10 text-center sm:py-16">
           <CoreLogoWhite
             className="h-auto w-40 text-on-brand-dark sm:w-52 md:w-64"
@@ -921,83 +921,78 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
             </Button>
           </div>
         </div>
-        <div className="flex flex-col items-center">
-          {props.currentLiveEvent &&
-            props.currentLiveEvent.state !== 'COMPLETED' && (
-              <motion.div
-                className="w-full max-w-xl"
-                initial={
-                  prefersReducedMotion
-                    ? false
-                    : { scale: 0.95, opacity: 0, y: 10 }
-                }
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: 'easeOut' }}
+        {props.currentLiveEvent &&
+          props.currentLiveEvent.state !== 'COMPLETED' && (
+            <motion.div
+              className="mx-auto w-full max-w-xl"
+              initial={
+                prefersReducedMotion
+                  ? false
+                  : { scale: 0.95, opacity: 0, y: 10 }
+              }
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+            >
+              <Link
+                href={`/events/${props.currentLiveEvent.id}`}
+                className="group block rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
               >
-                <Link
-                  href={`/events/${props.currentLiveEvent.id}`}
-                  className="group block rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
-                >
-                  <Card className="relative overflow-hidden transition-colors group-hover:border-link">
-                    <CardHeader className="flex flex-col gap-5 space-y-0 p-4 text-left sm:flex-row sm:items-center sm:justify-between sm:p-6">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="relative flex h-2 w-2 shrink-0">
-                            <span className="absolute inset-0 rounded-full bg-brand-orange opacity-75 motion-safe:animate-ping" />
-                            <span className="relative h-2 w-2 rounded-full bg-brand-orange" />
-                          </span>
-                          <span className="text-xs font-semibold tracking-widest text-link uppercase">
-                            {
-                              lifecycleLabels[
-                                eventState(
-                                  props.currentLiveEvent,
-                                  now.getTime(),
-                                )
-                              ]
-                            }
-                          </span>
-                        </div>
-                        <CardTitle className="mt-2 text-lg font-bold leading-snug tracking-tight text-foreground transition-colors group-hover:text-link sm:text-2xl">
-                          {props.currentLiveEvent.name}
-                        </CardTitle>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-4 sm:justify-end sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
-                        <div className="flex min-w-0 flex-col sm:items-end sm:text-right">
-                          <span className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
-                            {timeLeftMs > 0 ? 'Coding ends in' : 'Code freeze'}
-                          </span>
-                          <span className="font-mono text-sm font-bold text-foreground tabular-nums sm:text-base">
-                            {timeLeftMs > 0
-                              ? formatTimeLeft(timeLeftMs)
-                              : 'View event'}
-                          </span>
-                        </div>
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-link transition-transform group-hover:scale-105">
-                          <svg
-                            className="h-5 w-5"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden="true"
-                          >
-                            <path d="M5 12h14M12 5l7 7-7 7" />
-                          </svg>
+                <Card className="relative overflow-hidden transition-colors group-hover:border-link">
+                  <CardHeader className="flex flex-col gap-5 space-y-0 p-4 text-left sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="relative flex h-2 w-2 shrink-0">
+                          <span className="absolute inset-0 rounded-full bg-brand-orange opacity-75 motion-safe:animate-ping" />
+                          <span className="relative h-2 w-2 rounded-full bg-brand-orange" />
+                        </span>
+                        <span className="text-xs font-semibold tracking-widest text-link uppercase">
+                          {
+                            lifecycleLabels[
+                              eventState(props.currentLiveEvent, now.getTime())
+                            ]
+                          }
                         </span>
                       </div>
-                    </CardHeader>
-                  </Card>
-                </Link>
-              </motion.div>
-            )}
-        </div>
+                      <CardTitle className="mt-2 text-lg font-bold leading-snug tracking-tight text-foreground transition-colors group-hover:text-link sm:text-2xl">
+                        {props.currentLiveEvent.name}
+                      </CardTitle>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-4 sm:justify-end sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+                      <div className="flex min-w-0 flex-col sm:items-end sm:text-right">
+                        <span className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
+                          {timeLeftMs > 0 ? 'Coding ends in' : 'Code freeze'}
+                        </span>
+                        <span className="font-mono text-sm font-bold text-foreground tabular-nums sm:text-base">
+                          {timeLeftMs > 0
+                            ? formatTimeLeft(timeLeftMs)
+                            : 'View event'}
+                        </span>
+                      </div>
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-link transition-transform group-hover:scale-105">
+                        <svg
+                          className="h-5 w-5"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                      </span>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </Link>
+            </motion.div>
+          )}
 
         {isMounted && visualizerUrl && (
-          <div className="mx-auto mt-10 w-full max-w-6xl sm:mt-14">
+          <div className="w-full">
             <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border bg-muted shadow-lg sm:aspect-video sm:rounded-2xl">
               <iframe
                 key={visualizerUrl}
@@ -1020,11 +1015,11 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
 
       {/* Section 1: What is the Goal of the Game? */}
       <section
-        className="py-16 sm:py-20 lg:py-24"
+        className="py-10 md:py-14"
         aria-labelledby="game-overview-heading"
       >
         <div className="page-frame">
-          <div className="mx-auto mb-14 max-w-2xl text-center sm:mb-20">
+          <div className="mx-auto mb-6 max-w-2xl text-center">
             <h2
               id="game-overview-heading"
               className="section-title text-balance"
@@ -1142,11 +1137,11 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
 
       {/* Section 2: How to Play / Getting Started */}
       <section
-        className="border-t bg-muted py-16 sm:py-20 lg:py-24"
+        className="border-t bg-muted py-10 md:py-14"
         aria-labelledby="how-to-play-heading"
       >
         <div className="page-frame">
-          <div className="mx-auto mb-12 max-w-2xl text-center sm:mb-16">
+          <div className="mx-auto mb-6 max-w-2xl text-center">
             <h2 id="how-to-play-heading" className="section-title text-balance">
               From zero to your first match
             </h2>

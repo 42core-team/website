@@ -1,3 +1,4 @@
+import { PageLayout } from '@/layouts/page-layout'
 import type { ReactNode } from 'react'
 import { AlertCircle } from 'lucide-react'
 
@@ -11,7 +12,7 @@ export function PageError({
   action?: ReactNode
 }) {
   return (
-    <main className="page-frame page-form page-state">
+    <PageLayout frame="form" centered>
       <section
         className="w-full space-y-3 rounded-xl border bg-card p-6"
         role="alert"
@@ -24,6 +25,6 @@ export function PageError({
         <p className="text-muted-foreground">{description}</p>
         {action && <div className="pt-2">{action}</div>}
       </section>
-    </main>
+    </PageLayout>
   )
 }

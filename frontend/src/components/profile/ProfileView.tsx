@@ -1,5 +1,7 @@
+import { PageLayout } from '@/layouts/page-layout'
 import type { AxiosError } from 'axios'
 import { useQuery } from '@tanstack/react-query'
+import { PageError } from '@/components/ui/page-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getUserProfile, profileQueryKeys } from '@/app/actions/profile'
@@ -25,16 +27,16 @@ export function ProfileView({ username }: { username: string }) {
   if (query.isError) {
     const status = (query.error as AxiosError).response?.status
     return (
-      <div className="page-frame max-w-xl py-24 text-center">
-        <h1 className="text-2xl font-bold">
-          {status === 404 ? 'Player not found' : 'Could not load this profile'}
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          {status === 404
+      <PageError
+        title={
+          status === 404 ? 'Player not found' : 'Could not load this profile'
+        }
+        description={
+          status === 404
             ? `Nobody called @${username} has played CORE yet.`
-            : 'Try again in a moment.'}
-        </p>
-      </div>
+            : 'Try again in a moment.'
+        }
+      />
     )
   }
 
@@ -44,43 +46,41 @@ export function ProfileView({ username }: { username: string }) {
     : 'overview'
 
   return (
-    <main className="page-frame py-8">
-      <div className="space-y-6">
-        <ProfileHeader profile={profile} />
-        <Tabs value={tab} onValueChange={onTabChange}>
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="teams">
-              Teams ({profile.teams.length})
-            </TabsTrigger>
-            <TabsTrigger value="matches">
-              Match History ({totalMatches(profile.summary.record)})
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="overview" className="mt-6">
-            <ProfileOverview profile={profile} />
-          </TabsContent>
-          <TabsContent value="teams" className="mt-6">
-            <ProfileTeams profile={profile} />
-          </TabsContent>
-          <TabsContent value="matches" className="mt-6">
-            <ProfileMatches profile={profile} />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </main>
+    <PageLayout>
+      <ProfileHeader profile={profile} />
+      <Tabs value={tab} onValueChange={onTabChange}>
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="teams">
+            Teams ({profile.teams.length})
+          </TabsTrigger>
+          <TabsTrigger value="matches">
+            Match History ({totalMatches(profile.summary.record)})
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview" className="mt-6">
+          <ProfileOverview profile={profile} />
+        </TabsContent>
+        <TabsContent value="teams" className="mt-6">
+          <ProfileTeams profile={profile} />
+        </TabsContent>
+        <TabsContent value="matches" className="mt-6">
+          <ProfileMatches profile={profile} />
+        </TabsContent>
+      </Tabs>
+    </PageLayout>
   )
 }
 
 function ProfileSkeleton() {
   return (
-    <main aria-busy className="page-frame space-y-6 py-8">
+    <PageLayout aria-busy>
       <Skeleton className="h-80 rounded-xl" />
-      <Skeleton className="h-9 w-80 rounded-lg" />
+      <Skeleton className="h-9 w-full max-w-80 rounded-lg" />
       <div className="grid gap-6 lg:grid-cols-3">
         <Skeleton className="h-96 rounded-xl lg:col-span-2" />
         <Skeleton className="h-96 rounded-xl" />
       </div>
-    </main>
+    </PageLayout>
   )
 }

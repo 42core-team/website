@@ -1,3 +1,4 @@
+import { PageHeader } from '@/layouts/page-layout'
 import { createFileRoute, useLocation } from '@tanstack/react-router'
 import { WikiLayout } from '@/components/wiki/WikiLayout'
 import {
@@ -101,10 +102,8 @@ export function WikiPageRoute({ data }: { data: WikiRouteData }) {
         versions={versions}
         currentVersion={version}
       >
-        <article className="prose prose-lg reading-column">
-          <header className="mb-8">
-            <h1 className="page-title mb-2 text-foreground">Page Not Found</h1>
-          </header>
+        <article className="reading-column space-y-6">
+          <PageHeader title="Page Not Found" />
           <p className="text-muted-foreground">
             No wiki page exists for <code>{pathname}</code>.
           </p>
@@ -121,30 +120,31 @@ export function WikiPageRoute({ data }: { data: WikiRouteData }) {
       currentVersion={version}
       pageContent={page.content}
     >
-      <article className="prose prose-lg reading-column">
+      <article className="reading-column space-y-6">
+        <PageHeader
+          title={page.title}
+          description={
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span>
+                Last updated: {page.lastModified.toLocaleDateString()}
+              </span>
+              {version !== defaultVersion && (
+                <span className="rounded bg-accent px-2 py-1 text-xs font-medium text-accent-foreground">
+                  {version}
+                </span>
+              )}
+            </div>
+          }
+        />
         {fallbackMessage && (
-          <div className="mb-6 rounded-lg border border-warning-border bg-warning-surface text-warning p-4">
-            <h3 className="mb-2 font-semibold text-warning">
-              Content Not Available
-            </h3>
-            <p className="text-warning">{fallbackMessage}</p>
+          <div className="rounded-lg border border-warning-border bg-warning-surface p-4 text-warning">
+            <h2 className="mb-2 font-semibold">Content Not Available</h2>
+            <p>{fallbackMessage}</p>
           </div>
         )}
 
-        <header className="mb-8">
-          <h1 className="page-title mb-2 text-foreground">{page.title}</h1>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>Last updated: {page.lastModified.toLocaleDateString()}</span>
-            {version !== defaultVersion && (
-              <span className="rounded bg-accent px-2 py-1 text-xs font-medium text-accent-foreground">
-                {version}
-              </span>
-            )}
-          </div>
-        </header>
-
         <div
-          className="wiki-content"
+          className="wiki-content prose prose-lg max-w-none"
           dangerouslySetInnerHTML={{ __html: page.content }}
         />
       </article>

@@ -24,8 +24,7 @@ export default function ProfileClient() {
     }
   }, [status, router])
 
-  if (status === 'loading') return <PageLoader />
-  if (!session) return null
+  if (!session) return <PageLoader />
 
   return <ProfileView username={session.user.username} />
 }

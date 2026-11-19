@@ -1,3 +1,4 @@
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { getTeamsForEventTable } from '@/app/actions/team'
@@ -8,7 +9,7 @@ import {
 import { AdminRevealSwitch } from '@/components/tournament/admin-reveal-switch'
 import { GroupPhaseTabs } from '@/components/tournament/tournament-tabs'
 import { PageError } from '@/components/ui/page-error'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/page-loader'
 import { useEventAbilities } from '@/hooks/use-event-abilities'
 import { useSearchParams } from '@/lib/router-hooks'
 
@@ -54,11 +55,7 @@ function GroupsRoute() {
     teamsQuery.isPending ||
     advancementCountQuery.isPending
   ) {
-    return (
-      <main className="page-frame page-state">
-        <Spinner />
-      </main>
-    )
+    return <PageLoader frame="workspace" />
   }
 
   if (
@@ -75,31 +72,19 @@ function GroupsRoute() {
   }
 
   return (
-    <main className="page-frame page-workspace py-8">
-      <div className="flex flex-col gap-4 pb-8 md:gap-8">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-          <div className="space-y-1.5 md:space-y-2">
-            <h1 className="page-title">Group Phase</h1>
-            <p className="max-w-3xl text-base leading-relaxed text-muted-foreground md:text-lg">
-              In the group phase, teams compete using the Swiss tournament
-              system, with rankings determined by the Buchholz scoring system.
-            </p>
-          </div>
-          {abilities.viewUnrevealedResults && (
-            <div className="flex-shrink-0">
-              <AdminRevealSwitch />
-            </div>
-          )}
-        </div>
-
-        <GroupPhaseTabs
-          eventId={id}
-          matches={matchesQuery.data}
-          teams={teamsQuery.data}
-          canViewUnrevealedResults={abilities.viewUnrevealedResults}
-          advancementCount={advancementCountQuery.data}
-        />
-      </div>
-    </main>
+    <PageLayout frame="workspace">
+      <PageHeader
+        title="Group Phase"
+        description="In the group phase, teams compete using the Swiss tournament system, with rankings determined by the Buchholz scoring system."
+        actions={abilities.viewUnrevealedResults && <AdminRevealSwitch />}
+      />
+      <GroupPhaseTabs
+        eventId={id}
+        matches={matchesQuery.data}
+        teams={teamsQuery.data}
+        canViewUnrevealedResults={abilities.viewUnrevealedResults}
+        advancementCount={advancementCountQuery.data}
+      />
+    </PageLayout>
   )
 }

@@ -1,10 +1,11 @@
+import { PageLayout } from '@/layouts/page-layout'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { getCurrentLiveEvent } from '@/app/actions/event'
 import HomePageClient from '@/components/HomePageClient'
 import { Button } from '@/components/ui/button'
 import { PageError } from '@/components/ui/page-error'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/page-loader'
 
 export const Route = createFileRoute('/')({
   component: HomeRoute,
@@ -17,11 +18,7 @@ function HomeRoute() {
   })
 
   if (currentEventQuery.isPending) {
-    return (
-      <main className="page-frame page-state">
-        <Spinner />
-      </main>
-    )
+    return <PageLoader />
   }
 
   if (currentEventQuery.isError) {
@@ -42,8 +39,8 @@ function HomeRoute() {
   }
 
   return (
-    <main>
+    <PageLayout frame="full">
       <HomePageClient currentLiveEvent={currentEventQuery.data} />
-    </main>
+    </PageLayout>
   )
 }

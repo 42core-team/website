@@ -1,3 +1,5 @@
+import { PageLoader } from '@/components/ui/page-loader'
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import type { Event } from '@/app/actions/event'
 import { UsersTable } from '@/components/users/users-table'
 import { LifecycleControls } from '@/components/dashboard/lifecycle-controls'
@@ -278,14 +280,6 @@ function DashboardRoute() {
     participantsCountQuery.isPending ||
     abilitiesPending
 
-  if (isLoading || !event) {
-    return (
-      <main className="page-frame page-state">
-        <Spinner />
-      </main>
-    )
-  }
-
   if (eventQuery.isError) {
     return (
       <PageError
@@ -300,11 +294,14 @@ function DashboardRoute() {
     )
   }
 
+  if (isLoading || !event) return <PageLoader frame="workspace" />
+
   if (!abilities.administer) {
     return (
-      <main className="flex min-h-[45vh] items-center justify-center px-4 text-center text-muted-foreground">
-        You are not authorized to access this dashboard.
-      </main>
+      <PageError
+        title="Event dashboard"
+        description="You are not authorized to access this dashboard."
+      />
     )
   }
 
@@ -412,30 +409,32 @@ function DashboardRoute() {
   }
 
   return (
-    <main className="page-frame page-workspace flex flex-col gap-6 py-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="page-title">Event Dashboard: {event.name}</h1>
-        {event.preset && (
-          <p>
-            Created from {event.preset.name}
-            {event.presetVersion != null && ` (v${event.presetVersion})`}
-          </p>
-        )}
-        {hasChanges && (
-          <Button
-            onClick={handleSaveSettings}
-            className="fixed right-8 bottom-8 z-50 shadow-xl"
-            disabled={updateEventSettingsMutation.isPending}
-          >
-            {updateEventSettingsMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
-            Save Changes
-          </Button>
-        )}
-      </div>
+    <PageLayout frame="workspace">
+      <PageHeader
+        title={`Event Dashboard: ${event.name}`}
+        description={
+          event.preset && (
+            <>
+              Created from {event.preset.name}
+              {event.presetVersion != null && ` (v${event.presetVersion})`}
+            </>
+          )
+        }
+      />
+      {hasChanges && (
+        <Button
+          className="fixed right-4 bottom-4 z-50 shadow-xl md:right-8 md:bottom-8"
+          onClick={handleSaveSettings}
+          disabled={updateEventSettingsMutation.isPending}
+        >
+          {updateEventSettingsMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
+          Save Changes
+        </Button>
+      )}
 
       <Tabs value={currentTab} onValueChange={onTabChange} className="w-full">
         <TabsList className="h-auto flex-wrap justify-start">
@@ -504,7 +503,7 @@ function DashboardRoute() {
           <WhitelistManagement eventId={id} />
         </TabsContent>
       </Tabs>
-    </main>
+    </PageLayout>
   )
 }
 

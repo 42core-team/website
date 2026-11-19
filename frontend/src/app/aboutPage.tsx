@@ -1,5 +1,6 @@
 'use client'
 
+import { PageHeader } from '@/layouts/page-layout'
 import { motion } from 'framer-motion'
 import Image from '@/components/app-image'
 import Link from '@/components/app-link'
@@ -100,25 +101,17 @@ const team: TeamMember[] = [
 
 export default function AboutPageClient() {
   return (
-    <div>
-      <section className="flex flex-col items-center justify-center gap-8">
+    <div className="space-y-6">
+      <PageHeader
+        title="About"
+        description="Bringing the world together through code and creativity"
+        actions={
+          <CoreLogoWhite className="h-auto w-16 sm:w-20" aria-hidden="true" />
+        }
+      />
+      <section className="space-y-6">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center"
-        >
-          <div className="flex flex-row items-center justify-center gap-4">
-            <h1 className="page-title">About</h1>
-            <CoreLogoWhite className="h-auto w-20" />
-          </div>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Bringing the world together through code and creativity
-          </p>
-        </motion.div>
-
-        <motion.div
-          className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 md:grid-cols-2"
+          className="grid grid-cols-1 gap-6 md:grid-cols-2"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -188,13 +181,13 @@ export default function AboutPageClient() {
         </motion.div>
 
         <motion.div
-          className="mt-12 text-center"
+          className="rounded-xl border bg-card p-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
           <p className="text-xl">Ready to start your journey with CORE?</p>
-          <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <div className="mt-4 flex flex-wrap gap-3">
             <Button asChild size="lg" className="rounded-full">
               <Link href="/wiki">Get Started Today</Link>
             </Button>
@@ -217,16 +210,14 @@ export default function AboutPageClient() {
         </motion.div>
       </section>
 
-      <section className="py-16">
+      <section>
         <motion.div
           className="mx-auto w-full"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.6 }}
         >
-          <h2 className="mb-12 text-center text-3xl font-bold">
-            Meet Our Team
-          </h2>
+          <h2 className="section-title mb-6">Meet Our Team</h2>
           <div className="grid auto-rows-fr grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
             {team.map((m, i) => (
               <motion.div

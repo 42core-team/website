@@ -1,3 +1,4 @@
+import { PageHeader, PageLayout } from '@/layouts/page-layout'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
@@ -46,8 +47,8 @@ export function InstallationsPage() {
     },
   })
   return (
-    <main className="page-frame page-workspace space-y-6 py-8">
-      <h1 className="page-title">GitHub installations</h1>
+    <PageLayout frame="workspace">
+      <PageHeader title="GitHub installations" />
       {rows.isPending && <Spinner />}
       {rows.isError && (
         <p role="alert">
@@ -121,6 +122,6 @@ export function InstallationsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </main>
+    </PageLayout>
   )
 }

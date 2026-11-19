@@ -1,3 +1,4 @@
+import { PageHeader } from '@/layouts/page-layout'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type {
   ComponentConfig,
@@ -753,10 +754,8 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
       : false
 
   return (
-    <div className="mx-auto mt-3 mb-10">
-      <header className="mb-5 space-y-1">
-        <h1 className="page-title">5-Step Unit Builder</h1>
-      </header>
+    <div className="space-y-6">
+      <PageHeader title="5-Step Unit Builder" />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_18rem] lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-6">
@@ -1088,7 +1087,7 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
           </section>
         </div>
 
-        <Card className="h-fit md:sticky md:top-6">
+        <Card className="h-fit md:sticky md:top-[calc(var(--page-scroll-offset)+1rem)]">
           <CardHeader className="items-center pb-3 text-center">
             <motion.div
               key={assetPath}
