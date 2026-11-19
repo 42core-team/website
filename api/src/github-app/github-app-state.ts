@@ -3,7 +3,8 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 const STATE_TTL_MS = 30 * 60 * 1000;
 
 export interface GithubInstallState {
-  eventId: string;
+  /** Null when a global admin installs the App without an event. */
+  eventId: string | null;
   userId: string;
 }
 
@@ -49,7 +50,8 @@ export class GithubInstallStateSigner {
       const { e, u, x } = JSON.parse(
         Buffer.from(payload, "base64url").toString("utf8"),
       ) as { e?: unknown; u?: unknown; x?: unknown };
-      if (typeof e !== "string" || typeof u !== "string") return null;
+      if ((typeof e !== "string" && e !== null) || typeof u !== "string")
+        return null;
       if (typeof x !== "number" || x < this.now()) return null;
       return { eventId: e, userId: u };
     } catch {

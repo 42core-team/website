@@ -14,6 +14,12 @@ describe("GithubInstallStateSigner", () => {
     expect(signer.verify(signer.sign(state))).toEqual(state);
   });
 
+  it("round-trips a state without an event", () => {
+    const signer = new GithubInstallStateSigner("secret");
+    const admin = { eventId: null, userId: "user" };
+    expect(signer.verify(signer.sign(admin))).toEqual(admin);
+  });
+
   it("rejects a state signed with another secret", () => {
     const value = new GithubInstallStateSigner("other").sign(state);
     expect(new GithubInstallStateSigner("secret").verify(value)).toBeNull();

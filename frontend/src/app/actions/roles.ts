@@ -18,12 +18,12 @@ export interface RoleGrant {
   grantedBy?: { id: string; username: string } | null
   createdAt: string
 }
-export interface GrantRoleParams {
+interface GrantRoleParams {
   userId: string
   role: Role
   eventId?: string
 }
-export interface AdminEventSearchResult {
+interface AdminEventSearchResult {
   id: string
   name: string
   isPrivate: boolean
@@ -73,4 +73,37 @@ export function roleErrorMessage(
   return operation === 'grant'
     ? 'Failed to grant role. Please try again.'
     : 'Failed to remove role. Please try again.'
+}
+
+export async function listRoleUsers(eventId?: string) {
+  const path = eventId
+    ? `/event/${encodeURIComponent(eventId)}/users`
+    : '/admin/users'
+  return (await axiosInstance.get<UserSearchResult[]>(path)).data
+}
+
+export async function getEventRoles(eventId: string) {
+  return (
+    await axiosInstance.get<RoleGrant[]>(
+      `/event/${encodeURIComponent(eventId)}/roles`,
+    )
+  ).data
+}
+
+export async function grantEventRole(
+  eventId: string,
+  params: Omit<GrantRoleParams, 'eventId'>,
+) {
+  return (
+    await axiosInstance.post<RoleGrant>(
+      `/event/${encodeURIComponent(eventId)}/roles`,
+      params,
+    )
+  ).data
+}
+
+export async function removeEventRole(eventId: string, grantId: string) {
+  await axiosInstance.delete(
+    `/event/${encodeURIComponent(eventId)}/roles/${encodeURIComponent(grantId)}`,
+  )
 }

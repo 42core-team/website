@@ -19,6 +19,7 @@ import { GamblingModule } from "./gambling/gambling.module";
 import { ProfileModule } from "./profile/profile.module";
 import { AuthzModule } from "./authz";
 import { RolesModule } from "./roles/roles.module";
+import { EventPresetsModule } from "./event-presets/event-presets.module";
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { RolesModule } from "./roles/roles.module";
     GamblingModule,
     ProfileModule,
     RolesModule,
+    EventPresetsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

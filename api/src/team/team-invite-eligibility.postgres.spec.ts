@@ -25,6 +25,7 @@ import {
   WhitelistPlatform,
 } from "../event/entities/event-whitelist.entity";
 import { EventController } from "../event/event.controller";
+import { EventPresetsService } from "../event-presets/event-presets.service";
 import { EventService } from "../event/event.service";
 import { MatchService } from "../match/match.service";
 import { UserEntity } from "../user/entities/user.entity";
@@ -62,6 +63,7 @@ postgres("team invite eligibility (PostgreSQL)", () => {
       {} as never,
       {} as never,
       database,
+      {} as never,
     );
     const teamService = new TeamService(
       database.getRepository(TeamEntity),
@@ -95,6 +97,7 @@ postgres("team invite eligibility (PostgreSQL)", () => {
         { provide: EventService, useValue: eventService },
         { provide: UserService, useValue: userService },
         { provide: MatchService, useValue: {} },
+        { provide: EventPresetsService, useValue: {} },
       ],
     }).compile();
     app = moduleRef.createNestApplication();

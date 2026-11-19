@@ -1,4 +1,5 @@
 import { EntityManager, IsNull } from "typeorm";
+import { hasGlobal, Principal } from "../authz";
 import { UserRole, UserRoleEntity } from "../user/entities/user-role.entity";
 
 export type AdminRemoval = "removed" | "not-found" | "last-admin";
@@ -9,11 +10,14 @@ export type AdminRemoval = "removed" | "not-found" | "last-admin";
  * transaction. It locks every admin row of the scope (FOR UPDATE) in id order
  * before deciding, so concurrent removals cannot each see another admin left
  * and remove both, and cannot deadlock by locking their targets first.
+ * A global admin `actor` may remove an event's last admin; the platform
+ * always keeps one global admin.
  */
 export async function removeAdminGrant(
   manager: EntityManager,
   eventId: string | null,
   isTarget: (grant: UserRoleEntity) => boolean,
+  actor: Principal,
 ): Promise<AdminRemoval> {
   const admins = await manager.getRepository(UserRoleEntity).find({
     where: { role: UserRole.ADMIN, eventId: eventId ?? IsNull() },
@@ -22,7 +26,8 @@ export async function removeAdminGrant(
   });
   const target = admins.find(isTarget);
   if (!target) return "not-found";
-  if (admins.length <= 1) return "last-admin";
+  const allowLast = eventId !== null && hasGlobal(actor, UserRole.ADMIN);
+  if (admins.length <= 1 && !allowLast) return "last-admin";
   await manager.delete(UserRoleEntity, target.id);
   return "removed";
 }
