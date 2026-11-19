@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useBlocker } from '@tanstack/react-router'
@@ -20,9 +21,10 @@ import type {
   AdminInstallation,
 } from '@/app/actions/presets'
 import * as api from '@/app/actions/presets'
-import { createEvent } from '@/app/actions/event'
+import { createEvent, isGithubAppAvailable } from '@/app/actions/event'
 import { CreateEventPage } from '@/routes/events/create'
-import { PresetEditor, PresetsPage } from '@/routes/admin/presets'
+import { PresetsPage } from '@/routes/admin/presets.index'
+import { PresetEditor, PresetEditorPage } from './preset-editor'
 import { InstallationsPage } from '@/routes/admin/github-installations'
 import { AdminGuard } from '@/components/presets/admin-guard'
 import { useSession } from '@/lib/auth'
@@ -42,9 +44,13 @@ vi.mock('@tanstack/react-router', async (original) => ({
   Navigate: () => <p>Redirected</p>,
   Link: ({
     to,
+    params: _params,
     children,
     ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    to: string
+    params?: unknown
+  }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -62,10 +68,16 @@ vi.mock('@/app/actions/presets', async (original) => ({
   getAdminPresets: vi.fn(),
   getAdminPreset: vi.fn(),
   archivePreset: vi.fn(),
+  duplicatePreset: vi.fn(),
   shareInstallation: vi.fn(),
   unshareInstallation: vi.fn(),
+  getAdminInstallUrl: vi.fn(),
+  getAdminInstallation: vi.fn(),
 }))
-vi.mock('@/app/actions/event', () => ({ createEvent: vi.fn() }))
+vi.mock('@/app/actions/event', () => ({
+  createEvent: vi.fn(),
+  isGithubAppAvailable: vi.fn(async () => true),
+}))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), warning: vi.fn() } }))
 vi.mock('@/lib/auth', () => ({ useSession: vi.fn() }))
 const { schedule: _schedule, ...settings } = defaultSettings
@@ -97,6 +109,7 @@ const preset: PresetDetail = {
 }
 const installation: AdminInstallation = {
   id: 'uuid',
+  installationId: 77,
   accountLogin: 'core',
   accountType: 'Organization',
   status: 'active',
@@ -151,6 +164,18 @@ beforeEach(() => {
   ])
   vi.mocked(api.getAdminPreset).mockResolvedValue(preset)
   vi.mocked(api.getAdminInstallations).mockResolvedValue([installation])
+  vi.mocked(api.getAdminInstallation).mockResolvedValue({
+    ...installation,
+    events: [
+      {
+        id: 'event',
+        name: 'CORE Berlin',
+        state: 'PLAYING',
+        startDate: '2026-11-01T09:00:00Z',
+      },
+    ],
+    missingPermissions: ['members'],
+  })
   vi.mocked(api.getAdminPresets).mockResolvedValue([
     { ...preset, updatedBy: null, eventCount: 0 },
   ])
@@ -504,7 +529,139 @@ describe('preset event creation', () => {
     })
   })
 })
-describe('preset administration', () => {
+const row = (detail: PresetDetail, extra = {}) => ({
+  ...detail,
+  updatedBy: null,
+  eventCount: 0,
+  ...extra,
+})
+const second: PresetDetail = {
+  ...preset,
+  id: 'two',
+  name: 'Second',
+  isDefault: false,
+  version: 7,
+  settings: { ...defaultSettings, location: 'Second venue' },
+}
+function openMenu(name: string) {
+  fireEvent.keyDown(
+    screen.getByRole('button', { name: `Actions for ${name}` }),
+    {
+      key: 'Enter',
+    },
+  )
+}
+describe('preset list', () => {
+  it('splits active and archived presets into tabs', async () => {
+    vi.mocked(api.getAdminPresets).mockResolvedValue([
+      row(preset, { updatedBy: { id: 'u', username: 'paul' } }),
+      row(second, { archivedAt: '2026-11-01' }),
+    ])
+    await mount(<PresetsPage />)
+    expect(api.getAdminPresets).toHaveBeenCalledWith(true)
+    const archivedTab = await screen.findByRole('tab', { name: 'Archived (1)' })
+    expect(screen.getByRole('tab', { name: 'Active (1)' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Default' })).toBeTruthy()
+    expect(screen.getByText(/@paul/)).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Second' })).toBeNull()
+    fireEvent.mouseDown(archivedTab)
+    expect(await screen.findByRole('link', { name: 'Second' })).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Default' })).toBeNull()
+    openMenu('Second')
+    expect(
+      await screen.findByRole('menuitem', { name: 'Unarchive' }),
+    ).toBeTruthy()
+    expect(screen.queryByRole('menuitem', { name: 'Set default' })).toBeNull()
+  })
+  it('opens the editor from a row or its menu', async () => {
+    await mount(<PresetsPage />)
+    const link = await screen.findByRole('link', { name: 'Default' })
+    expect(link.getAttribute('href')).toBe('/admin/presets/$id')
+    expect(
+      screen.getByRole('link', { name: 'New preset' }).getAttribute('href'),
+    ).toBe('/admin/presets/new')
+    fireEvent.click(screen.getByText('v2'))
+    expect(navigate).toHaveBeenCalledWith({
+      to: '/admin/presets/$id',
+      params: { id: 'one' },
+    })
+    navigate.mockClear()
+    openMenu('Default')
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+    expect(navigate).toHaveBeenCalledOnce()
+    expect(navigate).toHaveBeenCalledWith({
+      to: '/admin/presets/$id',
+      params: { id: 'one' },
+    })
+  })
+  it('does not render admin pages or run admin queries for non-admins', async () => {
+    vi.mocked(useSession).mockReturnValue({
+      status: 'authenticated',
+      data: { user: { abilities: { admin: false } } },
+    } as unknown as ReturnType<typeof useSession>)
+    await mount(
+      <AdminGuard>
+        <PresetsPage />
+      </AdminGuard>,
+    )
+    expect(screen.getByText('Redirected')).toBeTruthy()
+    expect(screen.queryByText('Event presets')).toBeNull()
+    expect(api.getAdminPresets).not.toHaveBeenCalled()
+  })
+  it('sets the default using the dedicated action', async () => {
+    vi.mocked(api.getAdminPresets).mockResolvedValue([row(second)])
+    vi.mocked(api.setDefaultPreset).mockResolvedValue(preset)
+    await mount(<PresetsPage />)
+    await screen.findByRole('link', { name: 'Second' })
+    openMenu('Second')
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: 'Set default' }),
+    )
+    await waitFor(() =>
+      expect(api.setDefaultPreset).toHaveBeenCalledWith('two'),
+    )
+    expect(api.updatePreset).not.toHaveBeenCalled()
+    expect(api.getAdminPreset).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
+  })
+  it('duplicates a preset and refreshes the list', async () => {
+    vi.mocked(api.duplicatePreset).mockResolvedValue(second)
+    const client = await mount(<PresetsPage />)
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+    await screen.findByRole('link', { name: 'Default' })
+    openMenu('Default')
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Duplicate' }))
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: ['admin', 'presets'],
+      }),
+    )
+    expect(api.duplicatePreset).toHaveBeenCalledWith('one')
+  })
+  it('shows default archive conflict beside the row', async () => {
+    vi.mocked(api.archivePreset).mockRejectedValue(
+      conflict('Cannot archive the default preset'),
+    )
+    await mount(<PresetsPage />)
+    await screen.findByRole('link', { name: 'Default' })
+    openMenu('Default')
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Archive' }))
+    expect(
+      (await screen.findByText('Cannot archive the default preset')).closest(
+        'tr',
+      )?.textContent,
+    ).toContain('Default')
+  })
+  it('badges presets whose installation is unavailable', async () => {
+    vi.mocked(api.getAdminPresets).mockResolvedValue([
+      row(preset, { warnings: [unavailable] }),
+    ])
+    await mount(<PresetsPage />)
+    const badge = await screen.findByTitle(unavailable)
+    expect(badge.textContent).toBe(`1 warning: ${unavailable}`)
+  })
+})
+describe('preset editor page', () => {
   it('initializes new presets from the default detail without copying identity', async () => {
     const defaults = {
       ...preset,
@@ -523,18 +680,18 @@ describe('preset administration', () => {
       { ...installation, sharedAt: 'now' },
     ])
     vi.mocked(api.createPreset).mockResolvedValue(preset)
-    await mount(<PresetsPage />)
-    fireEvent.click(screen.getByText('Create preset'))
+    await mount(<PresetEditorPage />)
     expect(
       (await screen.findByLabelText<HTMLInputElement>('Location')).value,
     ).toBe('Default venue')
     expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
       '',
     )
+    expect(screen.getByText('0 changes from default')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Preset name'), {
       target: { value: 'New copy' },
     })
-    fireEvent.click(screen.getByText('Save preset'))
+    fireEvent.click(screen.getByRole('button', { name: 'Create preset' }))
     await waitFor(() =>
       expect(api.createPreset).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -556,8 +713,7 @@ describe('preset administration', () => {
       settings: { ...defaultSettings, location: 'Original venue' },
     }
     vi.mocked(api.getAdminPreset).mockResolvedValue(defaults)
-    const client = await mount(<PresetsPage />)
-    fireEvent.click(screen.getByText('Create preset'))
+    const client = await mount(<PresetEditorPage />)
     fireEvent.change(await screen.findByLabelText('Preset name'), {
       target: { value: 'My draft' },
     })
@@ -567,9 +723,7 @@ describe('preset administration', () => {
       id: 'two',
       settings: { ...defaultSettings, location: 'New venue' },
     }
-    vi.mocked(api.getAdminPresets).mockResolvedValue([
-      { ...replacement, updatedBy: null, eventCount: 0 },
-    ])
+    vi.mocked(api.getAdminPresets).mockResolvedValue([row(replacement)])
     vi.mocked(api.getAdminPreset).mockImplementation(async (id) =>
       id === 'one' ? { ...replacement, id, version: 3 } : replacement,
     )
@@ -586,38 +740,30 @@ describe('preset administration', () => {
     )
     expect(api.getAdminPreset).not.toHaveBeenCalledWith('two')
   })
-
-  it('refreshes caches after a late save and keeps the newer editor open', async () => {
+  it('refreshes caches after a late save without leaving the next page', async () => {
     const save = deferred<PresetDetail>()
     vi.mocked(api.updatePreset).mockReturnValue(save.promise)
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-    const client = await mount(<PresetsPage />)
+    const client = await mount(<PresetEditorPage id="one" />)
     const invalidate = vi.spyOn(client, 'invalidateQueries')
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit Default' }))
     fireEvent.change(await screen.findByLabelText('Preset name'), {
       target: { value: 'First draft' },
     })
-    fireEvent.click(screen.getByText('Save preset'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save as v3' }))
     await waitFor(() => expect(api.updatePreset).toHaveBeenCalledOnce())
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
-
-    fireEvent.click(screen.getByText('Create preset'))
-    fireEvent.change(await screen.findByLabelText('Preset name'), {
-      target: { value: 'Second draft' },
-    })
+    cleanup()
     await act(async () => save.resolve({ ...preset, version: 3 }))
 
-    expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
-      'Second draft',
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: ['admin', 'preset'],
+      }),
     )
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['admin', 'presets'] })
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['admin', 'preset'] })
+    expect(navigate).not.toHaveBeenCalled()
   })
-
   it('uses blank values when there is no default preset', async () => {
     vi.mocked(api.getAdminPresets).mockResolvedValue([])
-    await mount(<PresetsPage />)
-    fireEvent.click(screen.getByText('Create preset'))
+    await mount(<PresetEditorPage />)
     expect(
       (await screen.findByLabelText<HTMLInputElement>('Location')).value,
     ).toBe('')
@@ -627,103 +773,149 @@ describe('preset administration', () => {
     vi.mocked(api.getAdminPreset).mockRejectedValueOnce(
       new Error('Unavailable'),
     )
-    await mount(<PresetsPage />)
-    fireEvent.click(screen.getByText('Create preset'))
+    await mount(<PresetEditorPage />)
     await screen.findByText(/Could not load default preset/)
     expect(screen.queryByLabelText('Preset name')).toBeNull()
     fireEvent.click(screen.getByText('Retry'))
     await screen.findByLabelText('Preset name')
   })
-
-  it('does not render admin pages or run admin queries for non-admins', async () => {
-    vi.mocked(useSession).mockReturnValue({
-      status: 'authenticated',
-      data: { user: { abilities: { admin: false } } },
-    } as unknown as ReturnType<typeof useSession>)
-    await mount(
-      <AdminGuard>
-        <PresetsPage />
-      </AdminGuard>,
-    )
-    expect(screen.getByText('Redirected')).toBeTruthy()
-    expect(screen.queryByText('Event presets')).toBeNull()
-    expect(api.getAdminPresets).not.toHaveBeenCalled()
-  })
-  it('sets the default using the dedicated action', async () => {
-    vi.mocked(api.getAdminPresets).mockResolvedValue([
-      {
-        ...preset,
-        id: 'two',
-        isDefault: false,
-        updatedBy: null,
-        eventCount: 0,
-      },
-    ])
-    vi.mocked(api.getAdminPreset).mockResolvedValue({
-      ...preset,
-      id: 'two',
-      isDefault: false,
-      version: 7,
-    })
-    vi.mocked(api.setDefaultPreset).mockResolvedValue(preset)
-    await mount(<PresetsPage />)
-    fireEvent.click(await screen.findByText('Set default'))
-    await waitFor(() =>
-      expect(api.setDefaultPreset).toHaveBeenCalledWith('two'),
-    )
-    expect(api.updatePreset).not.toHaveBeenCalled()
-    expect(api.getAdminPreset).not.toHaveBeenCalled()
-  })
-  it('opens a dialog and preserves unsaved edits when dismissal is rejected', async () => {
-    await mount(<PresetsPage />)
-    fireEvent.click(screen.getByText('Create preset'))
-    expect(screen.getByRole('dialog')).toBeTruthy()
-    fireEvent.change(await screen.findByLabelText('Preset name'), {
+  it('blocks leaving with unsaved edits and discards them only after confirmation', async () => {
+    await mount(<PresetEditorPage />)
+    const discard = await screen.findByRole('button', { name: 'Discard' })
+    expect(discard.hasAttribute('disabled')).toBe(true)
+    fireEvent.change(screen.getByLabelText('Preset name'), {
       target: { value: 'Unsaved' },
     })
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    fireEvent.click(await screen.findByText('Cancel'))
-    expect(confirm).toHaveBeenCalledOnce()
-    expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
-      'Unsaved',
-    )
     const blocker = vi.mocked(useBlocker).mock.calls.at(-1)?.[0] as unknown as {
       shouldBlockFn: () => boolean
       enableBeforeUnload: boolean
     }
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
     expect(blocker.enableBeforeUnload).toBe(true)
     expect(blocker.shouldBlockFn()).toBe(true)
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
-    expect(screen.getByRole('dialog')).toBeTruthy()
+    fireEvent.click(discard)
+    expect(confirm).toHaveBeenCalledTimes(2)
+    expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
+      'Unsaved',
+    )
     confirm.mockReturnValue(true)
-    fireEvent.click(await screen.findByText('Cancel'))
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    fireEvent.click(discard)
+    expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
+      '',
+    )
+    const clean = vi.mocked(useBlocker).mock.calls.at(-1)?.[0] as unknown as {
+      enableBeforeUnload: boolean
+    }
+    expect(clean.enableBeforeUnload).toBe(false)
   })
-  it('closes a clean editor without confirmation and saves edits without a discard prompt', async () => {
+  it('saves without a discard prompt and returns to the list', async () => {
     const confirm = vi.spyOn(window, 'confirm')
-    await mount(<PresetsPage />)
-    fireEvent.click(screen.getByText('Create preset'))
-    fireEvent.click(await screen.findByText('Cancel'))
-    expect(confirm).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByText('Create preset'))
-    fireEvent.change(await screen.findByLabelText('Preset name'), {
-      target: { value: 'New preset' },
-    })
     vi.mocked(api.createPreset).mockResolvedValue({
       ...preset,
       name: 'New preset',
     })
-    fireEvent.click(screen.getByText('Save preset'))
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await mount(<PresetEditorPage />)
+    fireEvent.change(await screen.findByLabelText('Preset name'), {
+      target: { value: 'New preset' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Create preset' }))
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({ to: '/admin/presets' }),
+    )
     expect(api.createPreset).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'New preset' }),
     )
+    expect(toast.success).toHaveBeenCalledWith('Preset saved.')
+    const blocker = vi.mocked(useBlocker).mock.calls.at(-1)?.[0] as unknown as {
+      shouldBlockFn: () => boolean
+    }
+    expect(blocker.shouldBlockFn()).toBe(false)
     expect(confirm).not.toHaveBeenCalled()
   })
-  it('keeps a cleared required schedule offset invalid and suppresses the preview', async () => {
-    await mount(
-      <PresetEditor preset={preset} onSaved={vi.fn()} onCancel={vi.fn()} />,
+  it('counts changes from the default preset and resets a field to it', async () => {
+    vi.mocked(api.getAdminPresets).mockResolvedValue([
+      row(preset),
+      row(second, { eventCount: 4 }),
+    ])
+    vi.mocked(api.getAdminPreset).mockImplementation(async (id) =>
+      id === 'two' ? second : preset,
     )
+    await mount(<PresetEditorPage id="two" />)
+    expect(await screen.findByText('1 change from default')).toBeTruthy()
+    expect(await screen.findByText('v7 · 4 events')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Save as v8' })).toBeTruthy()
+    const nav = screen.getByRole('navigation', { name: 'Sections' })
+    expect(
+      within(nav).getByRole('link', { name: /Event details/ }).textContent,
+    ).toContain('1 change')
+    const location = screen.getByLabelText<HTMLInputElement>('Location')
+    expect(location.closest('[data-changed]')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Max team size'), {
+      target: { value: '6' },
+    })
+    expect(screen.getByText('2 changes from default')).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reset Location to default' }),
+    )
+    expect(location.value).toBe('')
+    expect(location.closest('[data-changed]')).toBeNull()
+    expect(screen.getByText('1 change from default')).toBeTruthy()
+  })
+  it('counts unsaved changes of the default preset against its saved version', async () => {
+    await mount(<PresetEditor preset={preset} onSaved={vi.fn()} />)
+    expect(screen.getByText('0 unsaved changes')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Preset name'), {
+      target: { value: 'Renamed' },
+    })
+    fireEvent.change(screen.getByLabelText('Start time'), {
+      target: { value: '12:00' },
+    })
+    expect(screen.getByText('2 unsaved changes')).toBeTruthy()
+    const nav = screen.getByRole('navigation', { name: 'Sections' })
+    expect(
+      within(nav).getByRole('link', { name: /Schedule/ }).textContent,
+    ).toContain('1 change')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reset Start time to saved value' }),
+    )
+    expect(screen.getByLabelText<HTMLInputElement>('Start time').value).toBe(
+      '10:00',
+    )
+    expect(screen.getByText('1 unsaved change')).toBeTruthy()
+    expect(
+      within(nav)
+        .getByRole('link', { name: /Basics/ })
+        .getAttribute('aria-current'),
+    ).toBe('location')
+  })
+  it('previews the schedule from the current values in Berlin time', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-19T12:00:00Z'))
+    await mount(<PresetEditor preset={preset} onSaved={vi.fn()} />)
+    const card = screen
+      .getByRole('heading', { name: 'Preview · if created today' })
+      .closest('div')!
+    expect(card.textContent).toContain('DateFri, 20 Nov 2026')
+    expect(card.textContent).toContain('IntroductionOff')
+    fireEvent.change(screen.getByLabelText('Start time'), {
+      target: { value: '18:30' },
+    })
+    fireEvent.change(screen.getByLabelText('Submission deadline after hours'), {
+      target: { value: '30' },
+    })
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Optional introduction' }),
+    )
+    expect(card.textContent).toContain('Start18:30')
+    expect(card.textContent).toContain('Introduction18:15')
+    expect(card.textContent).toContain('Submission deadlineSun 22 Nov, 00:30')
+    expect(card.textContent).toContain('Team size1–4')
+    expect(card.textContent).toContain('Game serverdev')
+    expect(card.textContent).toContain('Europe/Berlin')
+    vi.useRealTimers()
+  })
+  it('keeps a cleared required schedule offset invalid and suppresses the preview', async () => {
+    await mount(<PresetEditor preset={preset} onSaved={vi.fn()} />)
     fireEvent.change(screen.getByLabelText('Days from today'), {
       target: { value: '' },
     })
@@ -735,30 +927,32 @@ describe('preset administration', () => {
         /An event created today would start on Enter a valid schedule/,
       ),
     ).toBeTruthy()
-    fireEvent.click(screen.getByText('Save preset'))
+    expect(
+      within(screen.getByRole('navigation', { name: 'Sections' })).getByRole(
+        'link',
+        { name: /Schedule/ },
+      ).textContent,
+    ).toContain('has issues')
+    fireEvent.click(screen.getByRole('button', { name: 'Save as v3' }))
     await screen.findByRole('alert')
     expect(api.updatePreset).not.toHaveBeenCalled()
   })
   it('refuses a submission deadline at the start, as the API does', async () => {
-    await mount(
-      <PresetEditor preset={preset} onSaved={vi.fn()} onCancel={vi.fn()} />,
-    )
+    await mount(<PresetEditor preset={preset} onSaved={vi.fn()} />)
     fireEvent.change(screen.getByLabelText('Submission deadline after hours'), {
       target: { value: '0' },
     })
     expect(
-      screen.getByText(/An event created today would start on \d/),
+      screen.getByText(/An event created today would start on \w/),
     ).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Save preset' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save as v3' }))
     await screen.findByText(
       'Submission deadline after hours: The submission deadline must be after the start',
     )
     expect(api.updatePreset).not.toHaveBeenCalled()
   })
   it('does not let the default preset be unmarked as default', async () => {
-    await mount(
-      <PresetEditor preset={preset} onSaved={vi.fn()} onCancel={vi.fn()} />,
-    )
+    await mount(<PresetEditor preset={preset} onSaved={vi.fn()} />)
     expect(
       screen.getByLabelText<HTMLInputElement>('Default preset').disabled,
     ).toBe(true)
@@ -771,17 +965,12 @@ describe('preset administration conflicts', () => {
     )
     const reload = vi.fn()
     await mount(
-      <PresetEditor
-        preset={preset}
-        onSaved={vi.fn()}
-        onCancel={vi.fn()}
-        onReload={reload}
-      />,
+      <PresetEditor preset={preset} onSaved={vi.fn()} onReload={reload} />,
     )
     fireEvent.change(await screen.findByLabelText('Preset name'), {
       target: { value: 'My changes' },
     })
-    fireEvent.click(screen.getByText('Save preset'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save as v3' }))
     fireEvent.click(await screen.findByText('Reload preset and discard edits'))
     expect(reload).toHaveBeenCalledOnce()
     expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
@@ -793,8 +982,7 @@ describe('preset administration conflicts', () => {
     vi.mocked(api.updatePreset).mockRejectedValue(
       conflict('Preset was changed by someone else'),
     )
-    const client = await mount(<PresetsPage />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Edit Default' }))
+    const client = await mount(<PresetEditorPage id="one" />)
     fireEvent.change(await screen.findByLabelText('Preset name'), {
       target: { value: 'My changes' },
     })
@@ -806,36 +994,27 @@ describe('preset administration conflicts', () => {
     expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
       'My changes',
     )
-    fireEvent.click(screen.getByText('Save preset'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save as v3' }))
     fireEvent.click(await screen.findByText('Reload preset and discard edits'))
     expect(api.updatePreset).toHaveBeenCalledWith(
       'one',
       expect.objectContaining({ name: 'My changes', version: 2 }),
     )
-    await screen.findByRole('heading', { name: 'Edit Server version (v3)' })
+    await screen.findByRole('heading', { level: 1, name: 'Server version' })
     expect(screen.getByLabelText<HTMLInputElement>('Preset name').value).toBe(
       'Server version',
     )
+    expect(screen.getByRole('button', { name: 'Save as v4' })).toBeTruthy()
   })
 
   it('shows name conflicts inline without a version reload prompt', async () => {
     vi.mocked(api.updatePreset).mockRejectedValue(
       conflict('Preset name is already taken'),
     )
-    await mount(
-      <PresetEditor preset={preset} onSaved={vi.fn()} onCancel={vi.fn()} />,
-    )
-    fireEvent.click(screen.getByText('Save preset'))
+    await mount(<PresetEditor preset={preset} onSaved={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Save as v3' }))
     await screen.findByText('Preset name is already taken')
     expect(screen.queryByText('Reload preset and discard edits')).toBeNull()
-  })
-  it('shows default archive conflict beside the row', async () => {
-    vi.mocked(api.archivePreset).mockRejectedValue(
-      conflict('Cannot archive the default preset'),
-    )
-    await mount(<PresetsPage />)
-    fireEvent.click(await screen.findByText('Archive'))
-    await screen.findByText('Cannot archive the default preset')
   })
   it('offers only shared, active installations in the editor', async () => {
     vi.mocked(api.getAdminInstallations).mockResolvedValue([
@@ -854,21 +1033,10 @@ describe('preset administration conflicts', () => {
         status: 'suspended',
       },
     ])
-    await mount(
-      <PresetEditor preset={preset} onSaved={vi.fn()} onCancel={vi.fn()} />,
-    )
+    await mount(<PresetEditor preset={preset} onSaved={vi.fn()} />)
     await screen.findByText('shared-core')
     expect(screen.queryByRole('option', { name: 'core' })).toBeNull()
     expect(screen.queryByRole('option', { name: 'suspended-core' })).toBeNull()
-  })
-  it('badges presets whose installation is unavailable', async () => {
-    vi.mocked(api.getAdminPresets).mockResolvedValue([
-      { ...preset, updatedBy: null, eventCount: 0, warnings: [unavailable] },
-    ])
-    await mount(<PresetsPage />)
-    const badge = await screen.findByText('Warning')
-    expect(badge.getAttribute('title')).toBe(unavailable)
-    expect(screen.getByText(unavailable)).toBeTruthy()
   })
   it('keeps an unavailable installation on save and warns until it is replaced', async () => {
     const stale = {
@@ -877,16 +1045,22 @@ describe('preset administration conflicts', () => {
       warnings: [unavailable],
     }
     vi.mocked(api.updatePreset).mockResolvedValue(stale)
-    await mount(
-      <PresetEditor preset={stale} onSaved={vi.fn()} onCancel={vi.fn()} />,
-    )
+    await mount(<PresetEditor preset={stale} onSaved={vi.fn()} />)
     const option = await screen.findByRole<HTMLOptionElement>('option', {
       name: 'core (unavailable)',
     })
     expect(option.disabled).toBe(true)
-    expect(screen.getByText('Warning')).toBeTruthy()
+    expect(screen.getByText('1 warning').getAttribute('title')).toBe(
+      unavailable,
+    )
     expect(screen.getByRole('status').textContent).toContain(unavailable)
-    fireEvent.click(screen.getByRole('button', { name: 'Save preset' }))
+    expect(
+      within(screen.getByRole('navigation', { name: 'Sections' })).getByRole(
+        'link',
+        { name: /GitHub/ },
+      ).textContent,
+    ).toContain('has issues')
+    fireEvent.click(screen.getByRole('button', { name: 'Save as v3' }))
     await waitFor(() =>
       expect(api.updatePreset).toHaveBeenCalledWith(
         'one',
@@ -900,6 +1074,10 @@ describe('preset administration conflicts', () => {
   })
 })
 describe('installation sharing', () => {
+  const open = async () =>
+    fireEvent.click(await screen.findByRole('button', { name: /^core/ }))
+  const shareSwitch = () =>
+    screen.getByRole('switch', { name: 'Shared with event creators' })
   it('explains and confirms sharing, then refreshes the list', async () => {
     vi.mocked(api.shareInstallation).mockResolvedValue({
       ...installation,
@@ -907,7 +1085,8 @@ describe('installation sharing', () => {
     })
     const client = await mount(<InstallationsPage />)
     const invalidate = vi.spyOn(client, 'invalidateQueries')
-    fireEvent.click(await screen.findByRole('button', { name: 'Share' }))
+    await open()
+    fireEvent.click(shareSwitch())
     expect(screen.getByText(/Sharing lets any event creator/)).toBeTruthy()
     expect(api.shareInstallation).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText('Confirm share'))
@@ -920,21 +1099,88 @@ describe('installation sharing', () => {
       }),
     )
   })
+  it('filters by sharing state and status with counts', async () => {
+    vi.mocked(api.getAdminInstallations).mockResolvedValue([
+      installation,
+      { ...installation, id: 'b', accountLogin: 'berlin', sharedAt: 'now' },
+      { ...installation, id: 'c', accountLogin: 'gone', status: 'uninstalled' },
+    ])
+    await mount(<InstallationsPage />)
+    const chip = await screen.findByRole('button', { name: /^Inactive/ })
+    expect(chip.textContent).toContain('1')
+    fireEvent.click(chip)
+    expect(chip.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: /^gone/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^berlin/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^Shared/ }))
+    expect(screen.getByRole('button', { name: /^berlin/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^core/ })).toBeNull()
+  })
+  it('shows the events, permissions and GitHub link of an installation', async () => {
+    await mount(<InstallationsPage />)
+    await open()
+    expect(
+      (await screen.findByText('CORE Berlin'))
+        .closest('a')
+        ?.getAttribute('href'),
+    ).toBe('/events/$id')
+    expect(screen.getByText('Members (read)').textContent).toContain('Missing')
+    expect(screen.getByText('Contents (write)').textContent).toContain(
+      'Granted',
+    )
+    expect(
+      screen.getByRole('link', { name: 'Open on GitHub' }).getAttribute('href'),
+    ).toBe('https://github.com/organizations/core/settings/installations/77')
+  })
+  it('sends the admin to GitHub to install the App on an organization', async () => {
+    const assign = vi.fn()
+    vi.stubGlobal('location', { ...window.location, assign })
+    vi.mocked(api.getAdminInstallUrl).mockResolvedValue(
+      'https://github.com/apps/core/installations/new?state=s',
+    )
+    await mount(<InstallationsPage />)
+    const button = await screen.findByRole('button', {
+      name: 'Install on an organization',
+    })
+    await waitFor(() => expect(button.hasAttribute('disabled')).toBe(false))
+    fireEvent.click(button)
+    await waitFor(() =>
+      expect(assign).toHaveBeenCalledWith(
+        'https://github.com/apps/core/installations/new?state=s',
+      ),
+    )
+    vi.unstubAllGlobals()
+  })
+  it('disables installing when the App is not configured', async () => {
+    vi.mocked(isGithubAppAvailable).mockResolvedValueOnce(false)
+    await mount(<InstallationsPage />)
+    expect(
+      await screen.findByText(/not configured on this server/),
+    ).toBeTruthy()
+    expect(
+      screen
+        .getByRole('button', { name: 'Install on an organization' })
+        .hasAttribute('disabled'),
+    ).toBe(true)
+  })
   it('shows when an installation is no longer active', async () => {
     vi.mocked(api.getAdminInstallations).mockResolvedValue([
       { ...installation, sharedAt: 'now', status: 'suspended' },
     ])
     await mount(<InstallationsPage />)
-    expect((await screen.findByText(/Shared by/)).textContent).toContain(
-      'Suspended',
-    )
+    await open()
+    expect(
+      screen.getByText(/Not checked while the App is suspended/),
+    ).toBeTruthy()
+    expect(api.getAdminInstallation).toHaveBeenCalledWith('uuid')
   })
   it('unshares only after confirmation', async () => {
     vi.mocked(api.getAdminInstallations).mockResolvedValue([
       { ...installation, sharedAt: 'now' },
     ])
     await mount(<InstallationsPage />)
-    fireEvent.click(await screen.findByText('Unshare'))
+    await open()
+    fireEvent.click(shareSwitch())
     expect(screen.getByText(/Existing events stay linked/)).toBeTruthy()
     fireEvent.click(screen.getByText('Confirm unshare'))
     await waitFor(() =>

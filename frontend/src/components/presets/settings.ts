@@ -236,3 +236,49 @@ export function schedulePreview(schedule: Schedule, now = new Date()): Date {
       candidates[0],
   )
 }
+const HOUR = 3600000
+/** Preview of the dates a schedule gives an event created `now`, with the API's fallbacks. */
+export function scheduleDates(schedule: Schedule, now = new Date()) {
+  const start = schedulePreview(schedule, now).getTime()
+  const scheduledEnd =
+    schedule.scheduledEndAfterHours ?? schedule.endAfterHours ?? 2
+  const after = (hours: number) => new Date(start + Math.round(hours * HOUR))
+  return {
+    start: new Date(start),
+    submissionDeadline: after(
+      schedule.submissionDeadlineAfterHours ?? schedule.endAfterHours ?? 1,
+    ),
+    scheduledEnd: after(scheduledEnd),
+    end: after(schedule.endAfterHours ?? scheduledEnd),
+  }
+}
+/** Editor values keyed per field, such as `settings.schedule.startTime`. */
+export function fieldValues({
+  settings: { schedule, ...settings },
+  ...rest
+}: { settings: PresetSettings } & Record<string, unknown>) {
+  const prefixed = (prefix: string, values: object) =>
+    Object.entries(values).map(([key, v]) => [prefix + key, v] as const)
+  return Object.fromEntries([
+    ...Object.entries(rest),
+    ...prefixed('settings.', settings),
+    ...prefixed('settings.schedule.', schedule),
+  ]) as Record<string, unknown>
+}
+/** The field keys whose values differ between two editor values. */
+export function changedFields(
+  value: { settings: PresetSettings } & Record<string, unknown>,
+  baseline: { settings: PresetSettings } & Record<string, unknown>,
+) {
+  const a = fieldValues(value)
+  const b = fieldValues(baseline)
+  return [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(
+    (key) => !same(a[key], b[key]),
+  )
+}
+/** The field key a validation issue belongs to. */
+export function issueField(path: readonly PropertyKey[]) {
+  const keys = path.map(String)
+  const depth = keys[0] !== 'settings' ? 1 : keys[1] === 'schedule' ? 3 : 2
+  return keys.slice(0, depth).join('.')
+}

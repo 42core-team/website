@@ -84,11 +84,28 @@ export interface PresetInput {
 }
 /** id is the installation entity UUID; installationId in older event routes is GitHub's numeric ID. */
 export interface AdminInstallation extends InstallationRef {
+  /** GitHub's numeric ID, for links to the installation's settings. */
+  installationId: number
   accountType: string
   status: 'active' | 'suspended' | 'uninstalled'
   sharedAt: string | null
   sharedBy: { id: string; username: string } | null
   eventCount: number
+}
+export interface AdminInstallationDetail extends AdminInstallation {
+  events: {
+    id: string
+    name: string
+    state:
+      | 'REGISTRATION'
+      | 'PLAYING'
+      | 'SUBMISSIONS_CLOSED'
+      | 'SHOWCASE'
+      | 'COMPLETED'
+    startDate: string
+  }[]
+  /** Required permissions GitHub has not granted; null if not checked. */
+  missingPermissions: string[] | null
 }
 export interface CreateInstallation extends InstallationRef {
   accountType: string
@@ -146,6 +163,21 @@ export async function getAdminInstallations() {
   return (
     await axiosInstance.get<AdminInstallation[]>('/admin/github-installations')
   ).data
+}
+export async function getAdminInstallation(id: string) {
+  return (
+    await axiosInstance.get<AdminInstallationDetail>(
+      `/admin/github-installations/${encodeURIComponent(id)}`,
+    )
+  ).data
+}
+/** The GitHub page where an admin installs the App on an organization. */
+export async function getAdminInstallUrl() {
+  return (
+    await axiosInstance.post<{ url: string }>(
+      '/admin/github-installations/install',
+    )
+  ).data.url
 }
 export async function shareInstallation(id: string) {
   return (

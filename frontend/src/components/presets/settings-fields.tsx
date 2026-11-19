@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
 
 export const labels: Record<string, string> = {
   description: 'Description',
@@ -73,6 +74,63 @@ export function Reset({
     </span>
   ) : null
 }
+/** Outline of a field that differs from its baseline in the preset editor. */
+export const changedRing = '-m-2 rounded-md p-2 ring-2 ring-info/60'
+export function ResetLink({
+  label,
+  resetTo,
+  onReset,
+}: {
+  label: string
+  resetTo: string
+  onReset: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className="ml-2 text-xs text-info underline-offset-2 hover:underline"
+      aria-label={`Reset ${label} to ${resetTo}`}
+      onClick={onReset}
+    >
+      Reset
+    </button>
+  )
+}
+/** A labelled preset editor field, outlined with a reset while it differs. */
+export function FieldFrame({
+  label,
+  htmlFor,
+  changed,
+  resetTo,
+  onReset,
+  className,
+  children,
+}: {
+  label: string
+  htmlFor?: string
+  changed: boolean
+  resetTo: string
+  onReset: () => void
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <div
+      className={cn('space-y-2', changed && changedRing, className)}
+      data-changed={changed || undefined}
+    >
+      {(htmlFor || changed) && (
+        <div>
+          {htmlFor && <label htmlFor={htmlFor}>{label}</label>}
+          {changed && (
+            <ResetLink label={label} resetTo={resetTo} onReset={onReset} />
+          )}
+        </div>
+      )}
+      {children}
+    </div>
+  )
+}
 const hints: Record<string, [string, string?]> = {
   description: ['Enter event description'],
   location: ['e.g., Paris, France'],
@@ -114,14 +172,19 @@ const hints: Record<string, [string, string?]> = {
 }
 
 export function SettingsSection({
+  id,
   title,
   children,
 }: {
+  id?: string
   title: string
   children: ReactNode
 }) {
   return (
-    <Card className="space-y-4 p-6">
+    <Card
+      id={id}
+      className={cn('space-y-4 p-6', id && 'scroll-mt-(--sticky-offset)')}
+    >
       <h2 className="text-xl font-semibold">{title}</h2>
       {children}
     </Card>
@@ -208,11 +271,14 @@ export function SettingsFields<T extends EventSettings | PresetSettings>({
   onChange,
   baseline,
   scheduleFields,
+  admin,
 }: {
   value: T
   onChange: (next: T) => void
   baseline?: T
   scheduleFields?: ReactNode
+  /** The preset editor: anchored sections, streams apart from the schedule, and outlined changes reset to `resetTo`. */
+  admin?: { resetTo: string }
 }) {
   const listId = useId()
   let repo: string | undefined
@@ -261,17 +327,29 @@ export function SettingsFields<T extends EventSettings | PresetSettings>({
     )
     const id = `setting-${key}`
     const [placeholder, description] = hints[key] ?? []
+    const changed = Boolean(baseline) && !same(current, baseline?.[key])
     return (
-      <div key={key} className="space-y-2">
+      <div
+        key={key}
+        className={cn('space-y-2', admin && changed && changedRing)}
+        data-changed={(admin && changed) || undefined}
+      >
         <div>
           <label htmlFor={id}>
             {labels[key]}
             {date && ' (your local time)'}
           </label>
-          {baseline && (
+          {baseline && admin && changed && (
+            <ResetLink
+              label={labels[key]}
+              resetTo={admin.resetTo}
+              onReset={() => change(baseline[key])}
+            />
+          )}
+          {baseline && !admin && (
             <Reset
               label={labels[key]}
-              changed={!same(current, baseline[key])}
+              changed={changed}
               onReset={() => change(baseline[key])}
             />
           )}
@@ -327,12 +405,20 @@ export function SettingsFields<T extends EventSettings | PresetSettings>({
   }
   const fields = (keys: string[]) =>
     keys.map((key) => field(key as keyof T & string))
+  const section = (id: string) => (admin ? `preset-${id}` : undefined)
+  const streams = fields([
+    'introEnabled',
+    'introLeadMinutes',
+    'streamUrl',
+    'showtimeStreamUrl',
+  ])
   return (
     <div className="space-y-6">
-      <SettingsSection title="Event Details">
+      <SettingsSection id={section('details')} title="Event Details">
         {fields(['description', 'location'])}
       </SettingsSection>
       <SettingsSection
+        id={section('schedule')}
         title={scheduleFields ? 'Schedule (Europe/Berlin)' : 'Schedule'}
       >
         {scheduleFields ?? (
@@ -345,19 +431,19 @@ export function SettingsFields<T extends EventSettings | PresetSettings>({
             ])}
           </div>
         )}
-        {fields([
-          'introEnabled',
-          'introLeadMinutes',
-          'streamUrl',
-          'showtimeStreamUrl',
-        ])}
+        {!admin && streams}
       </SettingsSection>
-      <SettingsSection title="Team Settings">
+      {admin && (
+        <SettingsSection id={section('streams')} title="Streams & Introduction">
+          {streams}
+        </SettingsSection>
+      )}
+      <SettingsSection id={section('teams')} title="Team Settings">
         <div className="grid gap-4 md:grid-cols-2">
           {fields(['minTeamSize', 'maxTeamSize'])}
         </div>
       </SettingsSection>
-      <SettingsSection title="Version Configuration">
+      <SettingsSection id={section('versions')} title="Version Configuration">
         <div className="grid gap-4 md:grid-cols-2">
           {fields(['monorepoUrl', 'monorepoVersion'])}
         </div>

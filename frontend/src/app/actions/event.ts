@@ -190,12 +190,16 @@ export async function linkGithubInstallation(
 export async function completeGithubAppInstallation(
   installationId: number,
   state: string,
-): Promise<{ eventId: string }> {
+): Promise<{ eventId: string | null }> {
+  // eventId is null when a global admin installed the App without an event.
   return (
-    await axiosInstance.post<{ eventId: string }>('github/installations', {
-      installationId,
-      state,
-    })
+    await axiosInstance.post<{ eventId: string | null }>(
+      'github/installations',
+      {
+        installationId,
+        state,
+      },
+    )
   ).data
 }
 

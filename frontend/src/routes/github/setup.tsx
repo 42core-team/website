@@ -42,8 +42,16 @@ function GithubSetupRoute() {
   })
 
   useEffect(() => {
-    const eventId = completion.data?.eventId
-    if (!eventId) return
+    if (!completion.data) return
+    const { eventId } = completion.data
+    if (eventId === null) {
+      toast.success('GitHub App installed.')
+      void queryClient.invalidateQueries({
+        queryKey: ['admin', 'github-installations'],
+      })
+      void navigate({ to: '/admin/github-installations', replace: true })
+      return
+    }
     toast.success('GitHub connected.')
     void queryClient.invalidateQueries({ queryKey: ['event', eventId] })
     void navigate({
