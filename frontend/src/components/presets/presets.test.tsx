@@ -10,6 +10,7 @@ import {
 } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useBlocker } from '@tanstack/react-router'
+import { useState } from 'react'
 import { AxiosError } from 'axios'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -177,7 +178,11 @@ beforeEach(() => {
         startDate: '2026-11-01T09:00:00Z',
       },
     ],
-    missingPermissions: ['members'],
+    permissions: [
+      { name: 'administration', access: 'write', granted: true },
+      { name: 'contents', access: 'write', granted: true },
+      { name: 'members', access: 'read', granted: false },
+    ],
   })
   vi.mocked(api.getAdminPresets).mockResolvedValue([
     { ...preset, updatedBy: null, eventCount: 0 },
@@ -560,7 +565,7 @@ describe('preset list', () => {
       row(preset, { updatedBy: { id: 'u', username: 'paul' } }),
       row(second, { archivedAt: '2026-11-01' }),
     ])
-    await mount(<PresetsPage />)
+    await mount(<Presets />)
     expect(api.getAdminPresets).toHaveBeenCalledWith(true)
     const archivedTab = await screen.findByRole('tab', { name: 'Archived (1)' })
     expect(screen.getByRole('tab', { name: 'Active (1)' })).toBeTruthy()
@@ -577,7 +582,7 @@ describe('preset list', () => {
     expect(screen.queryByRole('menuitem', { name: 'Set default' })).toBeNull()
   })
   it('opens the editor from a row or its menu', async () => {
-    await mount(<PresetsPage />)
+    await mount(<Presets />)
     const link = await screen.findByRole('link', { name: 'Default' })
     expect(link.getAttribute('href')).toBe('/admin/presets/one')
     expect(
@@ -604,7 +609,7 @@ describe('preset list', () => {
     } as unknown as ReturnType<typeof useSession>)
     await mount(
       <AdminGuard>
-        <PresetsPage />
+        <Presets />
       </AdminGuard>,
     )
     expect(screen.getByText('Redirected')).toBeTruthy()
@@ -614,7 +619,7 @@ describe('preset list', () => {
   it('sets the default using the dedicated action', async () => {
     vi.mocked(api.getAdminPresets).mockResolvedValue([row(second)])
     vi.mocked(api.setDefaultPreset).mockResolvedValue(preset)
-    await mount(<PresetsPage />)
+    await mount(<Presets />)
     await screen.findByRole('link', { name: 'Second' })
     openMenu('Second')
     fireEvent.click(
@@ -629,7 +634,7 @@ describe('preset list', () => {
   })
   it('duplicates a preset and refreshes the list', async () => {
     vi.mocked(api.duplicatePreset).mockResolvedValue(second)
-    const client = await mount(<PresetsPage />)
+    const client = await mount(<Presets />)
     const invalidate = vi.spyOn(client, 'invalidateQueries')
     await screen.findByRole('link', { name: 'Default' })
     openMenu('Default')
@@ -645,7 +650,7 @@ describe('preset list', () => {
     vi.mocked(api.archivePreset).mockRejectedValue(
       conflict('Cannot archive the default preset'),
     )
-    await mount(<PresetsPage />)
+    await mount(<Presets />)
     await screen.findByRole('link', { name: 'Default' })
     openMenu('Default')
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Archive' }))
@@ -659,7 +664,7 @@ describe('preset list', () => {
     vi.mocked(api.getAdminPresets).mockResolvedValue([
       row(preset, { warnings: [unavailable] }),
     ])
-    await mount(<PresetsPage />)
+    await mount(<Presets />)
     const badge = await screen.findByTitle(unavailable)
     expect(badge.textContent).toBe(`1 warning: ${unavailable}`)
   })
@@ -1084,6 +1089,27 @@ describe('preset administration conflicts', () => {
     expect(screen.queryByRole('status')).toBeNull()
   })
 })
+/** Keeps the tab the route keeps in the URL. */
+function Presets() {
+  const [tab, setTab] = useState<'active' | 'archived'>('active')
+  return <PresetsPage tab={tab} onTabChange={setTab} />
+}
+/** Keeps the search state the route keeps in the URL. */
+function Installations() {
+  const [search, setSearch] = useState<
+    Partial<{
+      filter: 'all' | 'shared' | 'private' | 'inactive'
+      installation: string
+    }>
+  >({})
+  return (
+    <InstallationsPage
+      filter={search.filter ?? 'all'}
+      selectedId={search.installation ?? null}
+      onChange={(next) => setSearch((current) => ({ ...current, ...next }))}
+    />
+  )
+}
 describe('installation sharing', () => {
   const open = async () =>
     fireEvent.click(await screen.findByRole('button', { name: /^core/ }))
@@ -1094,7 +1120,7 @@ describe('installation sharing', () => {
       ...installation,
       sharedAt: 'now',
     })
-    const client = await mount(<InstallationsPage />)
+    const client = await mount(<Installations />)
     const invalidate = vi.spyOn(client, 'invalidateQueries')
     await open()
     fireEvent.click(shareSwitch())
@@ -1116,7 +1142,7 @@ describe('installation sharing', () => {
       { ...installation, id: 'b', accountLogin: 'berlin', sharedAt: 'now' },
       { ...installation, id: 'c', accountLogin: 'gone', status: 'uninstalled' },
     ])
-    await mount(<InstallationsPage />)
+    await mount(<Installations />)
     const chip = await screen.findByRole('button', { name: /^Inactive/ })
     expect(chip.textContent).toContain('1')
     fireEvent.click(chip)
@@ -1128,17 +1154,17 @@ describe('installation sharing', () => {
     expect(screen.queryByRole('button', { name: /^core/ })).toBeNull()
   })
   it('shows the events, permissions and GitHub link of an installation', async () => {
-    await mount(<InstallationsPage />)
+    await mount(<Installations />)
     await open()
     expect(
       (await screen.findByText('CORE Berlin'))
         .closest('a')
         ?.getAttribute('href'),
     ).toBe('/events/event')
-    expect(screen.getByText('Members (read)').textContent).toContain('Missing')
-    expect(screen.getByText('Contents (write)').textContent).toContain(
-      'Granted',
-    )
+    const permission = (name: string) =>
+      screen.getByText(name).closest('li')?.textContent
+    expect(permission('members (read)')).toContain('Missing')
+    expect(permission('contents (write)')).toContain('Granted')
     expect(
       screen.getByRole('link', { name: 'Open on GitHub' }).getAttribute('href'),
     ).toBe('https://github.com/organizations/core/settings/installations/77')
@@ -1149,7 +1175,7 @@ describe('installation sharing', () => {
     vi.mocked(api.getAdminInstallUrl).mockResolvedValue(
       'https://github.com/apps/core/installations/new?state=s',
     )
-    await mount(<InstallationsPage />)
+    await mount(<Installations />)
     const button = await screen.findByRole('button', {
       name: 'Install on an organization',
     })
@@ -1164,7 +1190,7 @@ describe('installation sharing', () => {
   })
   it('disables installing when the App is not configured', async () => {
     vi.mocked(isGithubAppAvailable).mockResolvedValueOnce(false)
-    await mount(<InstallationsPage />)
+    await mount(<Installations />)
     expect(
       await screen.findByText(/not configured on this server/),
     ).toBeTruthy()
@@ -1178,7 +1204,7 @@ describe('installation sharing', () => {
     vi.mocked(api.getAdminInstallations).mockResolvedValue([
       { ...installation, sharedAt: 'now', status: 'suspended' },
     ])
-    await mount(<InstallationsPage />)
+    await mount(<Installations />)
     await open()
     expect(
       screen.getByText(/Not checked while the App is suspended/),
@@ -1189,7 +1215,7 @@ describe('installation sharing', () => {
     vi.mocked(api.getAdminInstallations).mockResolvedValue([
       { ...installation, sharedAt: 'now' },
     ])
-    await mount(<InstallationsPage />)
+    await mount(<Installations />)
     await open()
     fireEvent.click(shareSwitch())
     expect(screen.getByText(/Existing events stay linked/)).toBeTruthy()

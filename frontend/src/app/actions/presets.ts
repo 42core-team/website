@@ -101,8 +101,8 @@ export interface AdminInstallationDetail extends AdminInstallation {
     state: Event['state']
     startDate: string
   }[]
-  /** Required permissions GitHub has not granted; null if not checked. */
-  missingPermissions: string[] | null
+  /** The permissions the App needs and whether each is granted; null if not checked. */
+  permissions: { name: string; access: string; granted: boolean }[] | null
 }
 export interface CreateInstallation extends InstallationRef {
   accountType: string

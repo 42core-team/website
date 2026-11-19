@@ -3,7 +3,7 @@ import type {
   PresetSettings,
   StarterTemplate,
 } from '@/app/actions/presets'
-import { same } from './settings'
+import { presetSectionId, same, settingGroups } from './settings'
 import type { ReactNode } from 'react'
 import { useId } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -271,14 +271,14 @@ export function SettingsFields<T extends EventSettings | PresetSettings>({
   onChange,
   baseline,
   scheduleFields,
-  admin,
+  presetEditor,
 }: {
   value: T
   onChange: (next: T) => void
   baseline?: T
   scheduleFields?: ReactNode
   /** The preset editor: anchored sections, streams apart from the schedule, and outlined changes reset to `resetTo`. */
-  admin?: { resetTo: string }
+  presetEditor?: { resetTo: string }
 }) {
   const listId = useId()
   let repo: string | undefined
@@ -331,22 +331,22 @@ export function SettingsFields<T extends EventSettings | PresetSettings>({
     return (
       <div
         key={key}
-        className={cn('space-y-2', admin && changed && changedRing)}
-        data-changed={(admin && changed) || undefined}
+        className={cn('space-y-2', presetEditor && changed && changedRing)}
+        data-changed={(presetEditor && changed) || undefined}
       >
         <div>
           <label htmlFor={id}>
             {labels[key]}
             {date && ' (your local time)'}
           </label>
-          {baseline && admin && changed && (
+          {baseline && presetEditor && changed && (
             <ResetLink
               label={labels[key]}
-              resetTo={admin.resetTo}
+              resetTo={presetEditor.resetTo}
               onReset={() => change(baseline[key])}
             />
           )}
-          {baseline && !admin && (
+          {baseline && !presetEditor && (
             <Reset
               label={labels[key]}
               changed={changed}
@@ -403,19 +403,15 @@ export function SettingsFields<T extends EventSettings | PresetSettings>({
       </div>
     )
   }
-  const fields = (keys: string[]) =>
+  const fields = (keys: readonly string[]) =>
     keys.map((key) => field(key as keyof T & string))
-  const section = (id: string) => (admin ? `preset-${id}` : undefined)
-  const streams = fields([
-    'introEnabled',
-    'introLeadMinutes',
-    'streamUrl',
-    'showtimeStreamUrl',
-  ])
+  const section = (id: string) =>
+    presetEditor ? presetSectionId(id) : undefined
+  const streams = fields(settingGroups.streams)
   return (
     <div className="space-y-6">
       <SettingsSection id={section('details')} title="Event Details">
-        {fields(['description', 'location'])}
+        {fields(settingGroups.details)}
       </SettingsSection>
       <SettingsSection
         id={section('schedule')}
@@ -431,21 +427,21 @@ export function SettingsFields<T extends EventSettings | PresetSettings>({
             ])}
           </div>
         )}
-        {!admin && streams}
+        {!presetEditor && streams}
       </SettingsSection>
-      {admin && (
+      {presetEditor && (
         <SettingsSection id={section('streams')} title="Streams & Introduction">
           {streams}
         </SettingsSection>
       )}
       <SettingsSection id={section('teams')} title="Team Settings">
         <div className="grid gap-4 md:grid-cols-2">
-          {fields(['minTeamSize', 'maxTeamSize'])}
+          {fields(settingGroups.teams)}
         </div>
       </SettingsSection>
       <SettingsSection id={section('versions')} title="Version Configuration">
         <div className="grid gap-4 md:grid-cols-2">
-          {fields(['monorepoUrl', 'monorepoVersion'])}
+          {fields(settingGroups.repository)}
         </div>
         {versions.isFetching && <p role="status">Loading tags and branches…</p>}
         {versions.isError && (
@@ -465,13 +461,9 @@ export function SettingsFields<T extends EventSettings | PresetSettings>({
             <option key={name} value={name} />
           ))}
         </datalist>
-        {fields(['basePath', 'gameConfig', 'serverConfig'])}
+        {fields(settingGroups.versionFiles)}
         <h3 className="text-lg font-semibold">Docker Images Configuration</h3>
-        {fields([
-          'gameServerDockerImage',
-          'myCoreBotDockerImage',
-          'visualizerDockerImage',
-        ])}
+        {fields(settingGroups.images)}
       </SettingsSection>
     </div>
   )

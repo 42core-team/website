@@ -26,7 +26,18 @@ function parseInstallationId(value: unknown) {
 }
 
 function GithubSetupRoute() {
-  const { installationId, setupAction, state } = Route.useSearch()
+  return <GithubSetupPage {...Route.useSearch()} />
+}
+
+export function GithubSetupPage({
+  installationId,
+  setupAction,
+  state,
+}: {
+  installationId: number | null
+  setupAction: string
+  state: string
+}) {
   const { status } = useSession()
   const navigate = useNavigate()
   const queryClient = useQueryClient()

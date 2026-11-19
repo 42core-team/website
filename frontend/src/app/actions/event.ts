@@ -1,4 +1,3 @@
-import type { TeamImage } from '@/app/actions/team'
 import type { EventSettings, StarterTemplate } from './presets'
 import type { WhitelistPlatform } from '@/lib/constants/whitelist'
 
@@ -306,42 +305,6 @@ export async function excludeInactiveTeams(
       { teamIds },
     )
   ).data
-}
-
-export async function getEventAdmins(eventId: string): Promise<
-  {
-    id: string
-    username: string
-    name: string
-    profilePicture?: string
-    picture?: TeamImage | null
-  }[]
-> {
-  return (
-    await axiosInstance.get<
-      {
-        id: string
-        username: string
-        name: string
-        profilePicture?: string
-        picture?: TeamImage | null
-      }[]
-    >(`event/${eventId}/admins`)
-  ).data
-}
-
-export async function addEventAdmin(
-  eventId: string,
-  userId: string,
-): Promise<void> {
-  await axiosInstance.post(`event/${eventId}/admins/${userId}`)
-}
-
-export async function removeEventAdmin(
-  eventId: string,
-  userId: string,
-): Promise<void> {
-  await axiosInstance.delete(`event/${eventId}/admins/${userId}`)
 }
 
 export async function getStarterTemplates(

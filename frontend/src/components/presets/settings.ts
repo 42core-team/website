@@ -282,3 +282,25 @@ export function issueField(path: readonly PropertyKey[]) {
   const depth = keys[0] !== 'settings' ? 1 : keys[1] === 'schedule' ? 3 : 2
   return keys.slice(0, depth).join('.')
 }
+
+/** The settings fields in each section, shared by the forms and the preset editor's nav. */
+export const settingGroups = {
+  details: ['description', 'location'],
+  streams: [
+    'introEnabled',
+    'introLeadMinutes',
+    'streamUrl',
+    'showtimeStreamUrl',
+  ],
+  teams: ['minTeamSize', 'maxTeamSize'],
+  repository: ['monorepoUrl', 'monorepoVersion'],
+  versionFiles: ['basePath', 'gameConfig', 'serverConfig'],
+  images: [
+    'gameServerDockerImage',
+    'myCoreBotDockerImage',
+    'visualizerDockerImage',
+  ],
+} as const
+
+/** The anchor of a preset editor section, for its nav link. */
+export const presetSectionId = (section: string) => `preset-${section}`

@@ -1,13 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, HTMLAttributes, ReactNode } from 'react'
-import { useForm } from '@tanstack/react-form'
-import { useStore } from '@tanstack/react-store'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useBlocker, useNavigate } from '@tanstack/react-router'
 import { TriangleAlert } from 'lucide-react'
@@ -45,6 +37,8 @@ import {
   changedFields,
   defaultSettings,
   issueField,
+  presetSectionId,
+  settingGroups,
   presetSettingsSchema,
   scheduleStartSchema,
   scheduleDates,
@@ -67,7 +61,8 @@ const scheduleKeys = [
   'scheduledEndAfterHours',
   'endAfterHours',
 ] as const
-const settingKeys = (...keys: string[]) => keys.map((key) => `settings.${key}`)
+const settingKeys = (...keys: readonly string[]) =>
+  keys.map((key) => `settings.${key}`)
 /** The editor's sections and the field keys (see `fieldValues`) in each. */
 const editorSections = [
   {
@@ -78,7 +73,7 @@ const editorSections = [
   {
     id: 'details',
     label: 'Event details',
-    fields: settingKeys('description', 'location'),
+    fields: settingKeys(...settingGroups.details),
   },
   {
     id: 'schedule',
@@ -88,30 +83,20 @@ const editorSections = [
   {
     id: 'streams',
     label: 'Streams & intro',
-    fields: settingKeys(
-      'introEnabled',
-      'introLeadMinutes',
-      'streamUrl',
-      'showtimeStreamUrl',
-    ),
+    fields: settingKeys(...settingGroups.streams),
   },
   {
     id: 'teams',
     label: 'Teams',
-    fields: settingKeys('minTeamSize', 'maxTeamSize'),
+    fields: settingKeys(...settingGroups.teams),
   },
   {
     id: 'versions',
     label: 'Game versions',
     fields: settingKeys(
-      'monorepoUrl',
-      'monorepoVersion',
-      'basePath',
-      'gameConfig',
-      'serverConfig',
-      'gameServerDockerImage',
-      'myCoreBotDockerImage',
-      'visualizerDockerImage',
+      ...settingGroups.repository,
+      ...settingGroups.versionFiles,
+      ...settingGroups.images,
     ),
   },
   {
@@ -125,90 +110,78 @@ const presetSchema = z.object({
   settings: presetSettingsSchema,
   starterTemplates: templatesSchema,
 })
-const sectionIds = editorSections.map((s) => `preset-${s.id}`)
+const sectionIds = editorSections.map((s) => presetSectionId(s.id))
 const plural = (count: number, word: string) =>
   `${count} ${word}${count === 1 ? '' : 's'}`
 
-type Snapshot = {
-  token: number
-  snapshot?: PresetDetail | null
-  failed?: boolean
-}
-
 /** Loads a preset, or the default preset as a new preset's start, and edits it. */
 export function PresetEditorPage({ id }: { id?: string }) {
-  const client = useQueryClient()
   const navigate = useNavigate()
   const list = useQuery(adminPresetsQuery)
-  const [load, setLoad] = useState<Snapshot>({ token: 0 })
-  const latest = useRef(0)
-  const mounted = useRef(false)
-  useEffect(() => {
-    mounted.current = true
-    return () => {
-      mounted.current = false
-    }
-  }, [])
-  // The editor keeps its snapshot; refetches only change it on reload.
-  const fetchSnapshot = useCallback(async () => {
-    const token = ++latest.current
-    setLoad((current) => ({ ...current, failed: false }))
-    try {
-      const sourceId =
-        id ??
-        (await client.ensureQueryData(adminPresetsQuery)).find(
-          (row) => row.isDefault,
-        )?.id
-      const snapshot = sourceId
-        ? await client.fetchQuery({
-            queryKey: ['admin', 'preset', sourceId],
-            queryFn: () => getAdminPreset(sourceId),
-            staleTime: 0,
-          })
-        : null
-      if (latest.current === token) setLoad({ token, snapshot })
-    } catch {
-      if (latest.current === token)
-        setLoad((current) => ({ ...current, failed: true }))
-    }
-  }, [client, id])
-  useEffect(() => {
-    void fetchSnapshot()
-  }, [fetchSnapshot])
+  // A new preset starts from the default preset, or blank without one.
+  const sourceId =
+    id ??
+    (list.data
+      ? (list.data.find((row) => row.isDefault)?.id ?? null)
+      : undefined)
+  const source = useQuery({
+    queryKey: ['admin', 'preset', sourceId],
+    queryFn: () => getAdminPreset(sourceId!),
+    enabled: Boolean(sourceId),
+    refetchOnWindowFocus: false,
+  })
+  // The editor keeps the snapshot it opened with, so a refetch cannot move
+  // its baseline under the edits; opening or reloading waits for data
+  // fetched after that moment.
+  const [loadFrom, setLoadFrom] = useState(() => Date.now())
+  const [opened, setOpened] = useState<{
+    at: number
+    snapshot: PresetDetail | null
+  }>()
+  const fresh =
+    sourceId === null
+      ? null
+      : source.data && source.dataUpdatedAt >= loadFrom
+        ? source.data
+        : undefined
+  if (fresh !== undefined && (!opened || opened.at < loadFrom))
+    setOpened({ at: Date.now(), snapshot: fresh })
+  const reload = () => {
+    setLoadFrom(Date.now())
+    void (sourceId ? source.refetch() : list.refetch())
+  }
+
   const defaultId = list.data?.find((row) => row.isDefault)?.id
-  const compare = Boolean(id && load.snapshot && !load.snapshot.isDefault)
+  const snapshot = opened?.snapshot
+  const compare = Boolean(id && snapshot && !snapshot.isDefault)
   const reference = useQuery({
     queryKey: ['admin', 'preset', defaultId],
     queryFn: () => getAdminPreset(defaultId!),
     enabled: compare && Boolean(defaultId),
   })
-  if (load.failed)
+  const failed = sourceId === undefined ? list.isError : source.isError
+  if (!opened && failed)
     return (
       <main className="container mx-auto px-4 py-8">
         <p role="alert">
           {id ? 'Could not load preset.' : 'Could not load default preset.'}{' '}
-          <Button onClick={() => void fetchSnapshot()}>Retry</Button>
+          <Button onClick={reload}>Retry</Button>
         </p>
       </main>
     )
-  if (load.snapshot === undefined) return <Spinner />
+  if (!opened) return <Spinner />
   return (
     <PresetEditor
-      key={load.token}
-      preset={id ? (load.snapshot ?? undefined) : undefined}
-      defaults={id ? undefined : (load.snapshot ?? undefined)}
+      key={opened.at}
+      preset={id ? (opened.snapshot ?? undefined) : undefined}
+      defaults={id ? undefined : (opened.snapshot ?? undefined)}
       reference={compare ? reference.data : undefined}
       referenceFailed={
         compare && (reference.isError || (list.isSuccess && !defaultId))
       }
       eventCount={list.data?.find((row) => row.id === id)?.eventCount}
-      onReload={() => void fetchSnapshot()}
-      onSaved={async () => {
-        await invalidatePresets(client)
-        toast.success('Preset saved.')
-        // A late save must not leave the page the admin moved on to.
-        if (mounted.current) await navigate({ to: '/admin/presets' })
-      }}
+      onReload={reload}
+      onSaved={() => void navigate({ to: '/admin/presets' })}
     />
   )
 }
@@ -230,7 +203,8 @@ export function PresetEditor({
   /** The default preset could not be loaded to compare with. */
   referenceFailed?: boolean
   eventCount?: number
-  onSaved: () => Promise<void>
+  /** Runs only while the editor is still open. */
+  onSaved: () => void
   onReload?: () => void
 }) {
   const installations = useQuery({
@@ -243,6 +217,7 @@ export function PresetEditor({
   )
   const [errors, setErrors] = useState<string[]>([])
   const saved = useRef(false)
+  const client = useQueryClient()
   const mutation = useMutation({
     mutationFn: (input: PresetInput) =>
       preset
@@ -250,7 +225,8 @@ export function PresetEditor({
         : createPreset(input),
     onSuccess: async () => {
       saved.current = true
-      await onSaved()
+      await invalidatePresets(client)
+      toast.success('Preset saved.')
     },
   })
   const source = preset ?? defaults
@@ -263,16 +239,19 @@ export function PresetEditor({
     githubInstallationId:
       source?.githubInstallation?.id ?? (null as string | null),
   }
-  const form = useForm({
-    defaultValues: initialValues,
-    onSubmit: async ({ value }) => {
-      const result = presetSchema.safeParse(value)
-      setErrors(result.success ? [] : issueMessages(result.error.issues))
-      if (result.success)
-        await mutation.mutateAsync(value).catch(() => undefined)
-    },
-  })
-  const values = useStore(form.store, (state) => state.values)
+  type Values = typeof initialValues
+  const [values, setValues] = useState(initialValues)
+  const setField = <TKey extends keyof Values>(
+    key: TKey,
+    value: Values[TKey],
+  ) => setValues((current) => ({ ...current, [key]: value }))
+  const submit = () => {
+    const result = presetSchema.safeParse(values)
+    setErrors(result.success ? [] : issueMessages(result.error.issues))
+    // A per-call callback, so a save that finishes after leaving the
+    // editor does not navigate.
+    if (result.success) mutation.mutate(values, { onSuccess: onSaved })
+  }
   const dirty = !same(values, initialValues)
   useBlocker({
     shouldBlockFn: ({ current, next }) =>
@@ -317,7 +296,7 @@ export function PresetEditor({
 
   const schedule = values.settings.schedule
   const changeSchedule = (key: keyof Schedule, value: unknown) =>
-    form.setFieldValue('settings', {
+    setField('settings', {
       ...values.settings,
       schedule: { ...schedule, [key]: value },
     })
@@ -364,7 +343,7 @@ export function PresetEditor({
       style={{ '--sticky-offset': offset } as CSSProperties}
       onSubmit={(e) => {
         e.preventDefault()
-        void form.handleSubmit()
+        submit()
       }}
     >
       <header
@@ -416,7 +395,7 @@ export function PresetEditor({
               disabled={!dirty || mutation.isPending}
               onClick={() => {
                 if (!window.confirm(DISCARD)) return
-                form.reset()
+                setValues(initialValues)
                 setErrors([])
                 mutation.reset()
               }}
@@ -439,7 +418,7 @@ export function PresetEditor({
         >
           <ul className="flex gap-1 xl:flex-col">
             {sections.map((section) => {
-              const id = `preset-${section.id}`
+              const id = presetSectionId(section.id)
               return (
                 <li key={section.id}>
                   <a
@@ -460,7 +439,7 @@ export function PresetEditor({
                     {section.flagged && (
                       <>
                         <TriangleAlert
-                          className="size-3.5 text-amber-500"
+                          className="size-3.5 text-warning"
                           aria-hidden="true"
                         />
                         <span className="sr-only">, has issues</span>
@@ -487,12 +466,12 @@ export function PresetEditor({
               htmlFor="preset-name"
               changed={isChanged('name')}
               resetTo={resetTo}
-              onReset={() => form.setFieldValue('name', baseline.name)}
+              onReset={() => setField('name', baseline.name)}
             >
               <Input
                 id="preset-name"
                 value={values.name}
-                onChange={(e) => form.setFieldValue('name', e.target.value)}
+                onChange={(e) => setField('name', e.target.value)}
               />
             </FieldFrame>
             <FieldFrame
@@ -500,16 +479,12 @@ export function PresetEditor({
               htmlFor="preset-description"
               changed={isChanged('description')}
               resetTo={resetTo}
-              onReset={() =>
-                form.setFieldValue('description', baseline.description)
-              }
+              onReset={() => setField('description', baseline.description)}
             >
               <Textarea
                 id="preset-description"
                 value={values.description}
-                onChange={(e) =>
-                  form.setFieldValue('description', e.target.value)
-                }
+                onChange={(e) => setField('description', e.target.value)}
               />
             </FieldFrame>
             <FieldFrame
@@ -517,9 +492,7 @@ export function PresetEditor({
               htmlFor="preset-default"
               changed={isChanged('isDefault')}
               resetTo={resetTo}
-              onReset={() =>
-                form.setFieldValue('isDefault', baseline.isDefault)
-              }
+              onReset={() => setField('isDefault', baseline.isDefault)}
             >
               <Switch
                 id="preset-default"
@@ -527,17 +500,15 @@ export function PresetEditor({
                 // Creation without a preset needs a default, so the default is
                 // only moved by marking another preset as default.
                 disabled={preset?.isDefault}
-                onCheckedChange={(checked) =>
-                  form.setFieldValue('isDefault', checked)
-                }
+                onCheckedChange={(checked) => setField('isDefault', checked)}
               />
             </FieldFrame>
           </SettingsSection>
           <SettingsFields
             value={values.settings}
             baseline={baseline.settings}
-            admin={{ resetTo }}
-            onChange={(next) => form.setFieldValue('settings', next)}
+            presetEditor={{ resetTo }}
+            onChange={(next) => setField('settings', next)}
             scheduleFields={
               <div className="grid gap-4 md:grid-cols-2">
                 {scheduleKeys.map((key) => (
@@ -579,17 +550,12 @@ export function PresetEditor({
               changed={isChanged('starterTemplates')}
               resetTo={resetTo}
               onReset={() =>
-                form.setFieldValue(
-                  'starterTemplates',
-                  baseline.starterTemplates,
-                )
+                setField('starterTemplates', baseline.starterTemplates)
               }
             >
               <TemplatesFields
                 value={values.starterTemplates}
-                onChange={(next) =>
-                  form.setFieldValue('starterTemplates', next)
-                }
+                onChange={(next) => setField('starterTemplates', next)}
               />
             </FieldFrame>
             <FieldFrame
@@ -598,10 +564,7 @@ export function PresetEditor({
               changed={isChanged('githubInstallationId')}
               resetTo={resetTo}
               onReset={() =>
-                form.setFieldValue(
-                  'githubInstallationId',
-                  baseline.githubInstallationId,
-                )
+                setField('githubInstallationId', baseline.githubInstallationId)
               }
             >
               <select
@@ -609,10 +572,7 @@ export function PresetEditor({
                 className="w-full rounded border bg-background p-2"
                 value={values.githubInstallationId ?? ''}
                 onChange={(e) =>
-                  form.setFieldValue(
-                    'githubInstallationId',
-                    e.target.value || null,
-                  )
+                  setField('githubInstallationId', e.target.value || null)
                 }
               >
                 <option value="">None</option>
@@ -676,8 +636,7 @@ function Pill({
       className={cn(
         'rounded-full border px-2.5 py-0.5 text-xs font-medium',
         tone === 'info' && 'border-info/40 bg-info/10 text-info',
-        tone === 'warning' &&
-          'border-amber-500/50 text-amber-700 dark:text-amber-400',
+        tone === 'warning' && 'border-warning/50 text-warning',
         className,
       )}
       {...props}
@@ -827,7 +786,7 @@ function PresetPreview({
         Times in Europe/Berlin, like the schedule.
       </p>
       {(warnings.length > 0 || invalid.length > 0) && (
-        <ul className="space-y-1 text-sm text-amber-700 dark:text-amber-400">
+        <ul className="space-y-1 text-sm text-warning">
           {warnings.map((warning) => (
             <li key={warning}>{warning}</li>
           ))}

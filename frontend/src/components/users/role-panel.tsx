@@ -1,11 +1,10 @@
-import { useId, useRef, useState } from 'react'
-import type { KeyboardEvent } from 'react'
+import { useId, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
 import { ROLE_LABELS, searchAdminEvents } from '@/app/actions/roles'
 import type { Role, RoleGrant } from '@/app/actions/roles'
 import type { UserSearchResult } from '@/app/actions/user'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { EntityAvatar, initials } from '@/components/admin/list-detail'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -52,16 +51,6 @@ export function eventLevel(grants: RoleGrant[]): Level {
   return 'NONE'
 }
 
-function initials(user: UserSearchResult) {
-  return (user.name || user.username)
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join('')
-    .toUpperCase()
-}
-
 export function UserAvatar({
   user,
   className,
@@ -70,10 +59,11 @@ export function UserAvatar({
   className?: string
 }) {
   return (
-    <Avatar aria-hidden className={cn('size-8 text-xs', className)}>
-      <AvatarImage src={userAvatarSrc(user)} alt="" />
-      <AvatarFallback>{initials(user)}</AvatarFallback>
-    </Avatar>
+    <EntityAvatar
+      src={userAvatarSrc(user)}
+      fallback={initials(user.name || user.username)}
+      className={className}
+    />
   )
 }
 
@@ -282,14 +272,20 @@ function GlobalSwitch({
         id={id}
         aria-describedby={`${id}-description`}
         checked={checked}
-        disabled={disabled}
-        onCheckedChange={onCheckedChange}
+        // Not `disabled`: that would drop keyboard focus while saving.
+        aria-disabled={disabled || undefined}
+        className="aria-disabled:opacity-50"
+        onCheckedChange={(next) => !disabled && onCheckedChange(next)}
       />
     </div>
   )
 }
 
-/** Radio group of buttons; arrows move focus, Enter/Space saves. */
+/**
+ * Toggle buttons for one event's role; pressing one saves. Toggle buttons,
+ * not radios, because moving through radios with arrow keys would select,
+ * and so save, each role on the way.
+ */
 function Segmented({
   label,
   value,
@@ -301,39 +297,25 @@ function Segmented({
   disabled: boolean
   onChange: (value: Level) => void
 }) {
-  const buttons = useRef<(HTMLButtonElement | null)[]>([])
-  function onKeyDown(event: KeyboardEvent, index: number) {
-    const step = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 }[
-      event.key
-    ]
-    if (!step) return
-    event.preventDefault()
-    buttons.current[(index + step + LEVELS.length) % LEVELS.length]?.focus()
-  }
   return (
     <div
-      role="radiogroup"
+      role="group"
       aria-label={label}
       className="inline-flex rounded-md border bg-muted p-0.5"
     >
-      {LEVELS.map((level, index) => {
-        const checked = level.value === value
+      {LEVELS.map((level) => {
+        const pressed = level.value === value
         return (
           <button
             key={level.value}
-            ref={(button) => {
-              buttons.current[index] = button
-            }}
             type="button"
-            role="radio"
-            aria-checked={checked}
-            tabIndex={checked ? 0 : -1}
-            disabled={disabled}
-            onKeyDown={(event) => onKeyDown(event, index)}
-            onClick={() => onChange(level.value)}
+            aria-pressed={pressed}
+            // Not `disabled`: that would drop keyboard focus while saving.
+            aria-disabled={disabled || undefined}
+            onClick={() => !disabled && onChange(level.value)}
             className={cn(
-              'rounded px-3 py-1 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50',
-              checked
+              'rounded px-3 py-1 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-disabled:opacity-50',
+              pressed
                 ? 'bg-background font-medium shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',
             )}

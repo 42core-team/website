@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { formatDistanceToNow } from 'date-fns'
@@ -34,13 +33,33 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Spinner } from '@/components/ui/spinner'
 
+type Tab = 'active' | 'archived'
+
+// The tab lives in the URL, so Back from the editor returns to it.
 export const Route = createFileRoute('/admin/presets/')({
-  component: () => (
-    <AdminGuard>
-      <PresetsPage />
-    </AdminGuard>
-  ),
+  validateSearch: (search: Record<string, unknown>): { tab?: Tab } => ({
+    tab: search.tab === 'archived' ? 'archived' : undefined,
+  }),
+  component: PresetsRoute,
 })
+
+function PresetsRoute() {
+  const { tab } = Route.useSearch()
+  const navigate = Route.useNavigate()
+  return (
+    <AdminGuard>
+      <PresetsPage
+        tab={tab ?? 'active'}
+        onTabChange={(next) =>
+          void navigate({
+            search: { tab: next === 'active' ? undefined : next },
+            replace: true,
+          })
+        }
+      />
+    </AdminGuard>
+  )
+}
 
 type Operation = 'duplicate' | 'archive' | 'unarchive' | 'default'
 
@@ -51,10 +70,15 @@ function updated(row: AdminPresetSummary) {
     : formatDistanceToNow(date, { addSuffix: true })
 }
 
-export function PresetsPage() {
+export function PresetsPage({
+  tab,
+  onTabChange,
+}: {
+  tab: Tab
+  onTabChange: (tab: Tab) => void
+}) {
   const client = useQueryClient()
   const navigate = useNavigate()
-  const [tab, setTab] = useState<'active' | 'archived'>('active')
   const rows = useQuery(adminPresetsQuery)
   const active = rows.data?.filter((row) => !row.archivedAt) ?? []
   const archived = rows.data?.filter((row) => row.archivedAt) ?? []
@@ -84,173 +108,178 @@ export function PresetsPage() {
           <Link to="/admin/presets/new">New preset</Link>
         </Button>
       </div>
-      <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
+      <Tabs value={tab} onValueChange={(value) => onTabChange(value as Tab)}>
         <TabsList>
           <TabsTrigger value="active">Active ({active.length})</TabsTrigger>
           <TabsTrigger value="archived">
             Archived ({archived.length})
           </TabsTrigger>
         </TabsList>
-        <TabsContent value={tab} className="space-y-4">
-          {rows.isPending && <Spinner />}
-          {rows.isError && (
-            <p role="alert">
-              Could not load presets.{' '}
-              <Button onClick={() => void rows.refetch()}>Retry</Button>
-            </p>
-          )}
-          {rows.data && shown.length === 0 && (
-            <p className="text-muted-foreground">
-              {tab === 'active' ? 'No active presets.' : 'No archived presets.'}
-            </p>
-          )}
-          {shown.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Preset</TableHead>
-                  <TableHead>Version</TableHead>
-                  <TableHead>Events</TableHead>
-                  <TableHead>Updated</TableHead>
-                  <TableHead>Warnings</TableHead>
-                  <TableHead>
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {shown.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className="cursor-pointer"
-                    onClick={(e) => {
-                      // Menu items are portaled but still bubble here.
-                      if (
-                        !(e.target as Element).closest(
-                          'a, button, [role=menuitem]',
+        {(['active', 'archived'] as const).map((value) => (
+          // One panel per tab, so each trigger's aria-controls resolves.
+          <TabsContent key={value} value={value} className="space-y-4">
+            {rows.isPending && <Spinner />}
+            {rows.isError && (
+              <p role="alert">
+                Could not load presets.{' '}
+                <Button onClick={() => void rows.refetch()}>Retry</Button>
+              </p>
+            )}
+            {rows.data && shown.length === 0 && (
+              <p className="text-muted-foreground">
+                {tab === 'active'
+                  ? 'No active presets.'
+                  : 'No archived presets.'}
+              </p>
+            )}
+            {shown.length > 0 && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Preset</TableHead>
+                    <TableHead>Version</TableHead>
+                    <TableHead>Events</TableHead>
+                    <TableHead>Updated</TableHead>
+                    <TableHead>Warnings</TableHead>
+                    <TableHead>
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {shown.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className="cursor-pointer"
+                      onClick={(e) => {
+                        // Menu items are portaled but still bubble here.
+                        if (
+                          !(e.target as Element).closest(
+                            'a, button, [role=menuitem]',
+                          )
                         )
-                      )
-                        edit(row.id)
-                    }}
-                  >
-                    <TableCell className="max-w-md">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          to="/admin/presets/$id"
-                          params={{ id: row.id }}
-                          className="font-medium hover:underline"
-                        >
-                          {row.name}
-                        </Link>
-                        {row.isDefault && (
-                          <Badge variant="secondary">Default</Badge>
-                        )}
-                      </div>
-                      {row.description && (
-                        <p className="truncate text-muted-foreground">
-                          {row.description}
-                        </p>
-                      )}
-                      {action.isError && action.variables.id === row.id && (
-                        <p role="alert" className="text-destructive">
-                          {presetError(action.error)}
-                        </p>
-                      )}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      v{row.version}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {row.eventCount}
-                    </TableCell>
-                    <TableCell
-                      className="whitespace-nowrap text-muted-foreground"
-                      title={new Date(row.updatedAt).toLocaleString()}
+                          edit(row.id)
+                      }}
                     >
-                      {updated(row)}
-                      {row.updatedBy && ` · @${row.updatedBy.username}`}
-                    </TableCell>
-                    <TableCell>
-                      {row.warnings.length > 0 && (
-                        <Badge
-                          variant="outline"
-                          className="gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400"
-                          title={row.warnings.join(' ')}
-                        >
-                          <TriangleAlert
-                            className="size-3"
-                            aria-hidden="true"
-                          />
-                          {row.warnings.length}
-                          <span className="sr-only">
-                            {row.warnings.length === 1
-                              ? ' warning'
-                              : ' warnings'}
-                            : {row.warnings.join(' ')}
-                          </span>
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Actions for ${row.name}`}
-                            disabled={action.isPending}
+                      <TableCell className="max-w-md">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to="/admin/presets/$id"
+                            params={{ id: row.id }}
+                            className="font-medium hover:underline"
                           >
-                            <MoreHorizontal />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => edit(row.id)}>
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() =>
-                              action.mutate({
-                                id: row.id,
-                                operation: 'duplicate',
-                              })
-                            }
+                            {row.name}
+                          </Link>
+                          {row.isDefault && (
+                            <Badge variant="secondary">Default</Badge>
+                          )}
+                        </div>
+                        {row.description && (
+                          <p className="truncate text-muted-foreground">
+                            {row.description}
+                          </p>
+                        )}
+                        {action.isError && action.variables.id === row.id && (
+                          <p role="alert" className="text-destructive">
+                            {presetError(action.error)}
+                          </p>
+                        )}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        v{row.version}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {row.eventCount}
+                      </TableCell>
+                      <TableCell
+                        className="whitespace-nowrap text-muted-foreground"
+                        title={new Date(row.updatedAt).toLocaleString()}
+                      >
+                        {updated(row)}
+                        {row.updatedBy && ` · @${row.updatedBy.username}`}
+                      </TableCell>
+                      <TableCell>
+                        {row.warnings.length > 0 && (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 border-warning/50 text-warning"
+                            title={row.warnings.join(' ')}
                           >
-                            Duplicate
-                          </DropdownMenuItem>
-                          {!row.isDefault && !row.archivedAt && (
+                            <TriangleAlert
+                              className="size-3"
+                              aria-hidden="true"
+                            />
+                            {row.warnings.length}
+                            <span className="sr-only">
+                              {row.warnings.length === 1
+                                ? ' warning'
+                                : ' warnings'}
+                              : {row.warnings.join(' ')}
+                            </span>
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Actions for ${row.name}`}
+                              disabled={action.isPending}
+                            >
+                              <MoreHorizontal />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => edit(row.id)}>
+                              Edit
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               onSelect={() =>
                                 action.mutate({
                                   id: row.id,
-                                  operation: 'default',
+                                  operation: 'duplicate',
                                 })
                               }
                             >
-                              Set default
+                              Duplicate
                             </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onSelect={() =>
-                              action.mutate({
-                                id: row.id,
-                                operation: row.archivedAt
-                                  ? 'unarchive'
-                                  : 'archive',
-                              })
-                            }
-                          >
-                            {row.archivedAt ? 'Unarchive' : 'Archive'}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </TabsContent>
+                            {!row.isDefault && !row.archivedAt && (
+                              <DropdownMenuItem
+                                onSelect={() =>
+                                  action.mutate({
+                                    id: row.id,
+                                    operation: 'default',
+                                  })
+                                }
+                              >
+                                Set default
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                action.mutate({
+                                  id: row.id,
+                                  operation: row.archivedAt
+                                    ? 'unarchive'
+                                    : 'archive',
+                                })
+                              }
+                            >
+                              {row.archivedAt ? 'Unarchive' : 'Archive'}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </TabsContent>
+        ))}
       </Tabs>
     </main>
   )

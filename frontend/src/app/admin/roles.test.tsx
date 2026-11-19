@@ -242,13 +242,13 @@ describe('roles administration', () => {
         .getByRole('switch', { name: 'Moderator' })
         .getAttribute('aria-checked'),
     ).toBe('false')
-    const winter = screen.getByRole('radiogroup', {
+    const winter = screen.getByRole('group', {
       name: 'Role in Winter Cup',
     })
     expect(
       within(winter)
-        .getByRole('radio', { name: 'Moderator' })
-        .getAttribute('aria-checked'),
+        .getByRole('button', { name: 'Moderator' })
+        .getAttribute('aria-pressed'),
     ).toBe('true')
   })
 
@@ -284,10 +284,10 @@ describe('roles administration', () => {
   it('promotes an event moderator by granting Admin before removing Moderator, and undoes in reverse', async () => {
     await setup()
     await selectUser('Ada')
-    const winter = screen.getByRole('radiogroup', {
+    const winter = screen.getByRole('group', {
       name: 'Role in Winter Cup',
     })
-    fireEvent.click(within(winter).getByRole('radio', { name: 'Admin' }))
+    fireEvent.click(within(winter).getByRole('button', { name: 'Admin' }))
     await waitFor(() => expect(removeRole).toHaveBeenCalledWith('scoped'))
     expect(grantRole).toHaveBeenCalledWith({
       userId: 'ada',
@@ -318,15 +318,33 @@ describe('roles administration', () => {
       .mockResolvedValue(undefined)
     await setup()
     await selectUser('Ada')
-    const winter = screen.getByRole('radiogroup', {
+    const winter = screen.getByRole('group', {
       name: 'Role in Winter Cup',
     })
-    fireEvent.click(within(winter).getByRole('radio', { name: 'Admin' }))
+    fireEvent.click(within(winter).getByRole('button', { name: 'Admin' }))
     expect(await screen.findByRole('alert')).toBeTruthy()
     // The Admin grant that went through is removed again.
     expect(removeRole).toHaveBeenNthCalledWith(1, 'scoped')
     expect(removeRole).toHaveBeenNthCalledWith(2, 'new-ADMIN')
     expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('keeps controls focusable but inert while a change saves', async () => {
+    vi.mocked(grantRole).mockReturnValue(new Promise(() => undefined))
+    await setup()
+    await selectUser('Ada')
+    const winter = screen.getByRole('group', { name: 'Role in Winter Cup' })
+    const admin = within(winter).getByRole('button', { name: 'Admin' })
+    admin.focus()
+    fireEvent.click(admin)
+    await waitFor(() =>
+      expect(admin.getAttribute('aria-disabled')).toBe('true'),
+    )
+    expect(admin.hasAttribute('disabled')).toBe(false)
+    expect(document.activeElement).toBe(admin)
+    fireEvent.click(within(winter).getByRole('button', { name: 'None' }))
+    expect(removeRole).not.toHaveBeenCalled()
+    expect(grantRole).toHaveBeenCalledTimes(1)
   })
 
   it('removes every grant for an event when set to None', async () => {
@@ -337,15 +355,15 @@ describe('roles administration', () => {
     ])
     await setup()
     await selectUser('Ada')
-    const winter = screen.getByRole('radiogroup', {
+    const winter = screen.getByRole('group', {
       name: 'Role in Winter Cup',
     })
     expect(
       within(winter)
-        .getByRole('radio', { name: 'Admin' })
-        .getAttribute('aria-checked'),
+        .getByRole('button', { name: 'Admin' })
+        .getAttribute('aria-pressed'),
     ).toBe('true')
-    fireEvent.click(within(winter).getByRole('radio', { name: 'None' }))
+    fireEvent.click(within(winter).getByRole('button', { name: 'None' }))
     await waitFor(() => expect(removeRole).toHaveBeenCalledTimes(2))
     expect(removeRole).toHaveBeenCalledWith('scoped')
     expect(removeRole).toHaveBeenCalledWith('scoped-admin')
@@ -368,10 +386,10 @@ describe('roles administration', () => {
     vi.mocked(removeRole).mockRejectedValue(httpError(404))
     await setup()
     await selectUser('Ada')
-    const winter = screen.getByRole('radiogroup', {
+    const winter = screen.getByRole('group', {
       name: 'Role in Winter Cup',
     })
-    fireEvent.click(within(winter).getByRole('radio', { name: 'None' }))
+    fireEvent.click(within(winter).getByRole('button', { name: 'None' }))
     await screen.findByText(/no longer exists/)
     await waitFor(() => expect(getRoles).toHaveBeenCalledTimes(2))
   })
@@ -396,13 +414,13 @@ describe('roles administration', () => {
     expect(axiosInstance.get).toHaveBeenLastCalledWith('/admin/events', {
       params: { q: 'cup', limit: 20 },
     })
-    const row = screen.getByRole('radiogroup', { name: 'Role in Private Cup' })
+    const row = screen.getByRole('group', { name: 'Role in Private Cup' })
     expect(
       within(row)
-        .getByRole('radio', { name: 'None' })
-        .getAttribute('aria-checked'),
+        .getByRole('button', { name: 'None' })
+        .getAttribute('aria-pressed'),
     ).toBe('true')
-    fireEvent.click(within(row).getByRole('radio', { name: 'Moderator' }))
+    fireEvent.click(within(row).getByRole('button', { name: 'Moderator' }))
     await waitFor(() =>
       expect(grantRole).toHaveBeenCalledWith({
         userId: 'grace',
@@ -439,8 +457,8 @@ describe('roles administration', () => {
     expect(screen.queryByText('Global roles')).toBeNull()
     expect(screen.queryByRole('switch')).toBeNull()
     expect(screen.queryByLabelText('Add to event…')).toBeNull()
-    expect(screen.getAllByRole('radiogroup')).toHaveLength(1)
-    fireEvent.click(screen.getByRole('radio', { name: 'Moderator' }))
+    expect(screen.getAllByRole('group', { name: /^Role in/ })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Moderator' }))
     await waitFor(() =>
       expect(grantEventRole).toHaveBeenCalledWith('winter', {
         userId: 'grace',

@@ -31,6 +31,14 @@ import {
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
+import {
+  Dot,
+  FilterChips,
+  ListEmpty,
+  ListRow,
+  RowText,
+  listDetailGrid,
+} from '@/components/admin/list-detail'
 import { RolePanel, UserAvatar, eventLevel } from './role-panel'
 import type { RoleChange, RoleOp } from './role-panel'
 import { RoleSearch } from './role-search'
@@ -46,11 +54,11 @@ const CHIP_LABELS: Record<Chip, string> = {
   none: 'No role',
 }
 const DOTS: Record<Exclude<Chip, 'all' | 'none'>, string> = {
-  ADMIN: 'bg-red-500',
-  MODERATOR: 'bg-blue-500',
-  PUBLIC_EVENT_CREATOR: 'bg-emerald-500',
-  PRIVATE_EVENT_CREATOR: 'bg-amber-500',
-  staff: 'bg-violet-500',
+  ADMIN: 'bg-role-admin',
+  MODERATOR: 'bg-role-moderator',
+  PUBLIC_EVENT_CREATOR: 'bg-role-public-creator',
+  PRIVATE_EVENT_CREATOR: 'bg-role-private-creator',
+  staff: 'bg-role-staff',
 }
 const ADMIN_CHIPS: Chip[] = [
   'all',
@@ -243,33 +251,17 @@ export function UsersManager({
         )}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <div
-          role="group"
-          aria-label="Filter by role"
-          className="flex flex-wrap gap-2"
-        >
-          {(event ? EVENT_CHIPS : ADMIN_CHIPS).map((value) => (
-            <Button
-              key={value}
-              size="sm"
-              variant={chip === value ? 'default' : 'outline'}
-              className="rounded-full"
-              aria-pressed={chip === value}
-              onClick={() => setChip(value)}
-            >
-              {value !== 'all' && value !== 'none' && (
-                <span
-                  aria-hidden
-                  className={cn('size-2 rounded-full', DOTS[value])}
-                />
-              )}
-              {CHIP_LABELS[value]}{' '}
-              <span className="tabular-nums opacity-70">
-                {candidates.filter(({ chips }) => chips.has(value)).length}
-              </span>
-            </Button>
-          ))}
-        </div>
+        <FilterChips
+          label="Filter by role"
+          options={event ? EVENT_CHIPS : ADMIN_CHIPS}
+          value={chip}
+          onChange={setChip}
+          labels={CHIP_LABELS}
+          dots={DOTS}
+          count={(value) =>
+            candidates.filter(({ chips }) => chips.has(value)).length
+          }
+        />
         {!event && (
           <select
             aria-label="Event"
@@ -305,7 +297,12 @@ export function UsersManager({
         <Spinner />
       ) : (
         // Both columns share one height on large screens; the list scrolls.
-        <div className="grid gap-4 lg:h-[calc(100dvh-14rem)] lg:min-h-[28rem] lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+        <div
+          className={cn(
+            listDetailGrid,
+            'lg:h-[calc(100dvh-14rem)] lg:min-h-[28rem]',
+          )}
+        >
           <div className="flex min-h-0 flex-col overflow-hidden rounded-md border">
             <div className="space-y-1 border-b p-2">
               <Input
@@ -324,35 +321,25 @@ export function UsersManager({
               className="max-h-[60dvh] min-h-0 flex-1 divide-y overflow-y-auto lg:max-h-none"
             >
               {filtered.map(({ user, chips }) => (
-                <li key={user.id}>
-                  <button
-                    type="button"
-                    aria-current={selected?.id === user.id || undefined}
-                    onClick={() => select(user)}
-                    className={cn(
-                      'flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-muted/50 focus-visible:bg-muted focus-visible:outline-none',
-                      selected?.id === user.id && 'bg-muted',
-                    )}
-                  >
-                    <UserAvatar user={user} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">
-                        {user.name || user.username}
-                      </span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        @{user.username}
-                      </span>
-                    </span>
-                    <RoleDots chips={chips} />
-                  </button>
-                </li>
+                <ListRow
+                  key={user.id}
+                  selected={selected?.id === user.id}
+                  onSelect={() => select(user)}
+                >
+                  <UserAvatar user={user} />
+                  <RowText
+                    title={user.name || user.username}
+                    detail={`@${user.username}`}
+                  />
+                  <RoleDots chips={chips} />
+                </ListRow>
               ))}
               {!filtered.length && (
-                <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+                <ListEmpty>
                   {event && users.data.length === 0
                     ? 'No users have joined this event.'
                     : 'No users match these filters.'}
-                </li>
+                </ListEmpty>
               )}
             </ul>
           </div>
@@ -415,11 +402,9 @@ function RoleDots({ chips }: { chips: Set<Chip> }) {
   return (
     <span className="flex gap-1">
       {roles.map((role) => (
-        <span
-          key={role}
-          title={CHIP_LABELS[role]}
-          className={cn('size-2 rounded-full', DOTS[role])}
-        />
+        <span key={role} title={CHIP_LABELS[role]}>
+          <Dot className={DOTS[role]} />
+        </span>
       ))}
       <span className="sr-only">
         {roles.map((role) => CHIP_LABELS[role]).join(', ')}

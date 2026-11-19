@@ -13,7 +13,14 @@ import {
 } from '@/app/actions/presets'
 import type { AdminInstallation } from '@/app/actions/presets'
 import { AdminGuard } from '@/components/presets/admin-guard'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+  EntityAvatar,
+  FilterChips,
+  ListEmpty,
+  ListRow,
+  RowText,
+  listDetailGrid,
+} from '@/components/admin/list-detail'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
@@ -29,38 +36,55 @@ import {
 import { lifecycleLabels } from '@/lib/event-lifecycle'
 import { cn } from '@/lib/utils'
 
+const FILTERS = ['all', 'shared', 'private', 'inactive'] as const
+type Filter = (typeof FILTERS)[number]
+type InstallationsSearch = { filter?: Filter; installation?: string }
+
+// The filter and the selected installation live in the URL, so Back and
+// shared links keep them.
 export const Route = createFileRoute('/admin/github-installations')({
-  component: () => (
-    <AdminGuard>
-      <InstallationsPage />
-    </AdminGuard>
-  ),
+  validateSearch: (search: Record<string, unknown>): InstallationsSearch => ({
+    filter: FILTERS.find((filter) => filter === search.filter),
+    installation:
+      typeof search.installation === 'string' ? search.installation : undefined,
+  }),
+  component: InstallationsRoute,
 })
 
-type Filter = 'all' | 'shared' | 'private' | 'inactive'
-const FILTERS: Filter[] = ['all', 'shared', 'private', 'inactive']
+function InstallationsRoute() {
+  const search = Route.useSearch()
+  const navigate = Route.useNavigate()
+  return (
+    <AdminGuard>
+      <InstallationsPage
+        filter={search.filter ?? 'all'}
+        selectedId={search.installation ?? null}
+        onChange={(next) =>
+          void navigate({
+            search: (current) => ({ ...current, ...next }),
+            replace: true,
+          })
+        }
+      />
+    </AdminGuard>
+  )
+}
 const FILTER_LABELS: Record<Filter, string> = {
   all: 'All',
   shared: 'Shared',
   private: 'Not shared',
   inactive: 'Inactive',
 }
-const DOTS: Record<Exclude<Filter, 'all'>, string> = {
-  shared: 'bg-emerald-500',
-  private: 'bg-blue-500',
-  inactive: 'bg-amber-500',
+const DOTS: Partial<Record<Filter, string>> = {
+  shared: 'bg-success',
+  private: 'bg-info',
+  inactive: 'bg-warning',
 }
 const STATUS_LABELS: Record<AdminInstallation['status'], string> = {
   active: 'Active',
   suspended: 'Suspended',
   uninstalled: 'Uninstalled',
 }
-// Mirrors the API's REQUIRED_PERMISSIONS.
-const PERMISSIONS = [
-  ['administration', 'Administration (write)'],
-  ['contents', 'Contents (write)'],
-  ['members', 'Members (read)'],
-] as const
 
 function matches(row: AdminInstallation, filter: Filter) {
   const active = row.status === 'active'
@@ -85,15 +109,12 @@ function AccountAvatar({
   className?: string
 }) {
   return (
-    <Avatar aria-hidden className={cn('size-8 rounded-md text-xs', className)}>
-      <AvatarImage
-        src={`https://github.com/${encodeURIComponent(row.accountLogin)}.png?size=80`}
-        alt=""
-      />
-      <AvatarFallback className="rounded-md">
-        {row.accountLogin.slice(0, 2).toUpperCase()}
-      </AvatarFallback>
-    </Avatar>
+    <EntityAvatar
+      src={`https://github.com/${encodeURIComponent(row.accountLogin)}.png?size=80`}
+      fallback={row.accountLogin.slice(0, 2).toUpperCase()}
+      square
+      className={className}
+    />
   )
 }
 
@@ -103,10 +124,16 @@ function summary(row: AdminInstallation) {
   return `${row.sharedAt ? 'Shared' : 'Not shared'} · ${events}`
 }
 
-export function InstallationsPage() {
+export function InstallationsPage({
+  filter,
+  selectedId,
+  onChange,
+}: {
+  filter: Filter
+  selectedId: string | null
+  onChange: (next: InstallationsSearch) => void
+}) {
   const client = useQueryClient()
-  const [filter, setFilter] = useState<Filter>('all')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<AdminInstallation | null>(null)
   // Kept after closing, so the dialog's text holds while it animates out.
   const [shown, setShown] = useState<AdminInstallation | null>(null)
@@ -160,33 +187,17 @@ export function InstallationsPage() {
         </p>
       )}
       {install.isError && <p role="alert">{presetError(install.error)}</p>}
-      <div
-        role="group"
-        aria-label="Filter installations"
-        className="flex flex-wrap gap-2"
-      >
-        {FILTERS.map((value) => (
-          <Button
-            key={value}
-            size="sm"
-            variant={filter === value ? 'default' : 'outline'}
-            className="rounded-full"
-            aria-pressed={filter === value}
-            onClick={() => setFilter(value)}
-          >
-            {value !== 'all' && (
-              <span
-                aria-hidden
-                className={cn('size-2 rounded-full', DOTS[value])}
-              />
-            )}
-            {FILTER_LABELS[value]}{' '}
-            <span className="tabular-nums opacity-70">
-              {(rows.data ?? []).filter((row) => matches(row, value)).length}
-            </span>
-          </Button>
-        ))}
-      </div>
+      <FilterChips
+        label="Filter installations"
+        options={FILTERS}
+        value={filter}
+        onChange={(value) => onChange({ filter: value })}
+        labels={FILTER_LABELS}
+        dots={DOTS}
+        count={(value) =>
+          (rows.data ?? []).filter((row) => matches(row, value)).length
+        }
+      />
       {rows.isPending && <Spinner />}
       {rows.isError && (
         <p role="alert">
@@ -195,46 +206,33 @@ export function InstallationsPage() {
         </p>
       )}
       {rows.data && (
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+        <div className={cn(listDetailGrid, 'items-start')}>
           <ul
             aria-label="Installations"
             className="max-h-[60dvh] divide-y overflow-y-auto rounded-md border lg:max-h-[calc(100dvh-16rem)]"
           >
             {filtered.map((row) => (
-              <li key={row.id}>
-                <button
-                  type="button"
-                  aria-current={row.id === selectedId || undefined}
-                  onClick={() => setSelectedId(row.id)}
-                  className={cn(
-                    'flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-muted/50 focus-visible:bg-muted focus-visible:outline-none',
-                    row.id === selectedId && 'bg-muted',
+              <ListRow
+                key={row.id}
+                selected={row.id === selectedId}
+                onSelect={() => onChange({ installation: row.id })}
+              >
+                <AccountAvatar row={row} />
+                <RowText
+                  title={row.accountLogin}
+                  detail={summary(row)}
+                  detailClassName={cn(
+                    row.status !== 'active' && 'text-warning',
                   )}
-                >
-                  <AccountAvatar row={row} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
-                      {row.accountLogin}
-                    </span>
-                    <span
-                      className={cn(
-                        'block truncate text-xs text-muted-foreground',
-                        row.status !== 'active' &&
-                          'text-amber-700 dark:text-amber-400',
-                      )}
-                    >
-                      {summary(row)}
-                    </span>
-                  </span>
-                </button>
-              </li>
+                />
+              </ListRow>
             ))}
             {!filtered.length && (
-              <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+              <ListEmpty>
                 {rows.data.length
                   ? 'No installations match this filter.'
                   : 'The App is not installed anywhere yet.'}
-              </li>
+              </ListEmpty>
             )}
           </ul>
           <div className="rounded-md border p-4">
@@ -330,7 +328,7 @@ function InstallationPanel({
               {row.accountType === 'Organization' ? 'Organization' : 'User'} ·
               installation #{row.installationId}
               {!active && (
-                <span className="text-amber-700 dark:text-amber-400">
+                <span className="text-warning">
                   {' '}
                   · {STATUS_LABELS[row.status]}
                 </span>
@@ -383,25 +381,27 @@ function InstallationPanel({
           </p>
         ) : detail.isPending ? (
           <Spinner />
-        ) : detail.data?.missingPermissions ? (
+        ) : detail.data?.permissions ? (
           <ul className="space-y-1 text-sm">
-            {PERMISSIONS.map(([key, label]) => {
-              const missing = detail.data.missingPermissions!.includes(key)
-              return (
-                <li key={key} className="flex items-center justify-between">
-                  {label}
-                  {missing ? (
-                    <span className="flex items-center gap-1 text-destructive">
-                      <X aria-hidden className="size-4" /> Missing
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                      <Check aria-hidden className="size-4" /> Granted
-                    </span>
-                  )}
-                </li>
-              )
-            })}
+            {detail.data.permissions.map((permission) => (
+              <li
+                key={permission.name}
+                className="flex items-center justify-between"
+              >
+                <span className="capitalize">
+                  {permission.name} ({permission.access})
+                </span>
+                {permission.granted ? (
+                  <span className="flex items-center gap-1 text-success">
+                    <Check aria-hidden className="size-4" /> Granted
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-destructive">
+                    <X aria-hidden className="size-4" /> Missing
+                  </span>
+                )}
+              </li>
+            ))}
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">
