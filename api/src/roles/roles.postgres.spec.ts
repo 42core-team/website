@@ -21,6 +21,9 @@ import {
 } from "./roles.controller";
 import { RolesService } from "./roles.service";
 
+/** Not a global admin, so the last-admin rule applies. */
+const ORGANIZER = { id: "organizer", roles: [] };
+
 // A dedicated test database is required; each run owns only its random schema.
 const databaseUrl = process.env.SESSION_TEST_DATABASE_URL;
 const postgres = databaseUrl ? describe : describe.skip;
@@ -387,8 +390,8 @@ postgres("role admin API (PostgreSQL)", () => {
     );
     // Both revocations read their target before proceeding, forcing the race.
     const results = await Promise.allSettled([
-      concurrentService.revoke(own.id),
-      concurrentService.revoke(second.id),
+      concurrentService.revoke(own.id, ORGANIZER),
+      concurrentService.revoke(second.id, ORGANIZER),
     ]);
     expect(
       results.filter((result) => result.status === "fulfilled"),
@@ -406,7 +409,7 @@ postgres("role admin API (PostgreSQL)", () => {
     ).toBe(1);
   });
 
-  it("revokes event admins but never the last admin of an event", async () => {
+  it("lets a global admin revoke the last admin of an event", async () => {
     const otherEvent = await database.getRepository(EventEntity).save({
       name: "Other",
       githubOrg: "org",
@@ -441,12 +444,12 @@ postgres("role admin API (PostgreSQL)", () => {
       })
       .expect(201);
 
-    await as(actor)
-      .delete(`/admin/roles/${firstGrant.id}`)
-      .expect(409, /last admin of an event/);
-    const secondGrant = (await grantAdmin(second)).body;
     await as(actor).delete(`/admin/roles/${firstGrant.id}`).expect(204);
-    await as(actor).delete(`/admin/roles/${secondGrant.id}`).expect(409);
+    expect(
+      await database
+        .getRepository(UserRoleEntity)
+        .countBy({ role: UserRole.ADMIN, eventId: otherEvent.id }),
+    ).toBe(0);
   });
 
   it("keeps an event admin when the role API and the event remove the last two at once", async () => {
@@ -507,8 +510,8 @@ postgres("role admin API (PostgreSQL)", () => {
     );
 
     const results = await Promise.allSettled([
-      concurrentRoles.revoke(firstGrant.id),
-      events.removeEventAdmin(otherEvent.id, second.id),
+      concurrentRoles.revoke(firstGrant.id, ORGANIZER),
+      events.removeEventAdmin(otherEvent.id, second.id, ORGANIZER),
     ]);
     expect(
       results.filter((result) => result.status === "fulfilled"),

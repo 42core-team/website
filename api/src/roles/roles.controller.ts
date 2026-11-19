@@ -12,7 +12,8 @@ import {
   Query,
   ValidationPipe,
 } from "@nestjs/common";
-import { Can, EventPolicy, param, PlatformPolicy } from "../authz";
+import { Can, CurrentUser, EventPolicy, param, PlatformPolicy } from "../authz";
+import { UserEntity } from "../user/entities/user.entity";
 import { UserId } from "../guards/UserGuard";
 import { EVENT_SCOPED_ROLES } from "../user/entities/user-role.entity";
 import { GrantRoleDto } from "./dtos/grant-role.dto";
@@ -51,9 +52,10 @@ export class RolesController {
   @HttpCode(204)
   async revoke(
     @UserId() userId: string,
+    @CurrentUser() user: UserEntity,
     @Param("id", new ParseUUIDPipe()) id: string,
   ): Promise<void> {
-    await this.rolesService.revoke(id);
+    await this.rolesService.revoke(id, user);
     this.logger.log({ action: "revoke_role", userId, roleId: id });
   }
 }
@@ -113,8 +115,9 @@ export class EventUsersController {
     @Param("id", ParseUUIDPipe) eventId: string,
     @Param("roleId", ParseUUIDPipe) roleId: string,
     @UserId() actorId: string,
+    @CurrentUser() user: UserEntity,
   ) {
-    await this.rolesService.revoke(roleId, eventId);
+    await this.rolesService.revoke(roleId, user, eventId);
     this.logger.log({ action: "revoke_role", actorId, eventId, roleId });
   }
 }

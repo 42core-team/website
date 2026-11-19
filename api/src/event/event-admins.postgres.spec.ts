@@ -22,6 +22,9 @@ import {
   WhitelistPlatform,
 } from "./entities/event-whitelist.entity";
 
+/** Not a global admin, so the last-admin rule applies. */
+const ORGANIZER = { id: "organizer", roles: [] };
+
 // A dedicated test database is required; each run owns only its random schema.
 const databaseUrl = process.env.SESSION_TEST_DATABASE_URL;
 const postgres = databaseUrl ? describe : describe.skip;
@@ -175,7 +178,7 @@ postgres("event admins in user_roles (PostgreSQL)", () => {
       }),
     ).toMatchObject({ role: UserRole.ADMIN, grantedById: first.id });
 
-    await service.removeEventAdmin(event.id, second.id);
+    await service.removeEventAdmin(event.id, second.id, ORGANIZER);
     expect(
       (await service.getEventAdmins(event.id)).map((admin) => admin.id),
     ).toEqual([first.id]);
@@ -188,8 +191,8 @@ postgres("event admins in user_roles (PostgreSQL)", () => {
     await service.addEventAdmin(event.id, second.id, first.id);
 
     const results = await Promise.allSettled([
-      service.removeEventAdmin(event.id, first.id),
-      service.removeEventAdmin(event.id, second.id),
+      service.removeEventAdmin(event.id, first.id, ORGANIZER),
+      service.removeEventAdmin(event.id, second.id, ORGANIZER),
     ]);
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     expect(await service.getEventAdmins(event.id)).toHaveLength(1);
@@ -197,6 +200,7 @@ postgres("event admins in user_roles (PostgreSQL)", () => {
       service.removeEventAdmin(
         event.id,
         (await service.getEventAdmins(event.id))[0].id,
+        ORGANIZER,
       ),
     ).rejects.toMatchObject({
       status: 409,
@@ -204,12 +208,23 @@ postgres("event admins in user_roles (PostgreSQL)", () => {
     });
   });
 
+  it("lets a global admin remove the last admin of an event", async () => {
+    const admin = await createUser();
+    const event = await createEvent();
+    await service.addEventAdmin(event.id, admin.id, admin.id);
+    await service.removeEventAdmin(event.id, admin.id, {
+      id: "global-admin",
+      roles: [{ role: UserRole.ADMIN, eventId: null }],
+    });
+    expect(await service.getEventAdmins(event.id)).toEqual([]);
+  });
+
   it("answers 404 for a user who is not an admin of the event", async () => {
     const user = await createUser();
     const event = await createEvent();
-    await expect(service.removeEventAdmin(event.id, user.id)).rejects.toThrow(
-      "Admin permission not found",
-    );
+    await expect(
+      service.removeEventAdmin(event.id, user.id, ORGANIZER),
+    ).rejects.toThrow("Admin permission not found");
   });
 
   it("ignores global and moderator roles when listing admins", async () => {

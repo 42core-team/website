@@ -9,11 +9,13 @@ export type AdminRemoval = "removed" | "not-found" | "last-admin";
  * transaction. It locks every admin row of the scope (FOR UPDATE) in id order
  * before deciding, so concurrent removals cannot each see another admin left
  * and remove both, and cannot deadlock by locking their targets first.
+ * `allowLast` lets a global admin remove an event's last admin.
  */
 export async function removeAdminGrant(
   manager: EntityManager,
   eventId: string | null,
   isTarget: (grant: UserRoleEntity) => boolean,
+  { allowLast = false }: { allowLast?: boolean } = {},
 ): Promise<AdminRemoval> {
   const admins = await manager.getRepository(UserRoleEntity).find({
     where: { role: UserRole.ADMIN, eventId: eventId ?? IsNull() },
@@ -22,7 +24,7 @@ export async function removeAdminGrant(
   });
   const target = admins.find(isTarget);
   if (!target) return "not-found";
-  if (admins.length <= 1) return "last-admin";
+  if (admins.length <= 1 && !allowLast) return "last-admin";
   await manager.delete(UserRoleEntity, target.id);
   return "removed";
 }

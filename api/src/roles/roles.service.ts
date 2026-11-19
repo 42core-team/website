@@ -17,6 +17,7 @@ import { GrantRoleDto } from "./dtos/grant-role.dto";
 import { ListRolesQueryDto } from "./dtos/list-roles-query.dto";
 import { RoleResponse, toRoleResponse } from "./role-response";
 import { removeAdminGrant } from "./admin-grants";
+import { hasGlobal, Principal } from "../authz";
 
 const POSTGRES_UNIQUE_VIOLATION_CODE = "23505";
 const RELATIONS = { user: true, event: true, grantedBy: true } as const;
@@ -106,7 +107,7 @@ export class RolesService {
     );
   }
 
-  async revoke(id: string, eventId?: string): Promise<void> {
+  async revoke(id: string, actor: Principal, eventId?: string): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       const roles = manager.getRepository(UserRoleEntity);
       const row = await roles.findOne({
@@ -116,10 +117,15 @@ export class RolesService {
 
       if (row.role === UserRole.ADMIN) {
         // The same rule and lock order as removing an event's admin.
+        // Global admins may leave an event without admins, but the platform
+        // always keeps one global admin.
         const outcome = await removeAdminGrant(
           manager,
           row.eventId,
           (admin) => admin.id === id,
+          {
+            allowLast: row.eventId !== null && hasGlobal(actor, UserRole.ADMIN),
+          },
         );
         if (outcome === "not-found")
           throw new NotFoundException("Role not found.");

@@ -355,6 +355,7 @@ export class EventController {
     @Param("id", new ParseUUIDPipe()) eventId: string,
     @Param("adminId", new ParseUUIDPipe()) adminIdToRemove: string,
     @UserId() userId: string,
+    @CurrentUser() user: UserEntity,
   ) {
     this.logger.log({
       action: "attempt_remove_event_admin",
@@ -362,7 +363,7 @@ export class EventController {
       eventId,
       removedAdminId: adminIdToRemove,
     });
-    return this.eventService.removeEventAdmin(eventId, adminIdToRemove);
+    return this.eventService.removeEventAdmin(eventId, adminIdToRemove, user);
   }
 
   @SignedIn()

@@ -43,6 +43,7 @@ import { lockEvent } from "./event-lock";
 import { toPublicUsers } from "../user/dtos/public-user.dto";
 import { USER_ARTWORK_RELATIONS } from "../media/artwork-relations";
 import { removeAdminGrant } from "../roles/admin-grants";
+import { hasGlobal, Principal } from "../authz";
 import { EventSettingsDto } from "./dtos/eventSettingsDto";
 import { GithubInstallationEntity } from "../github-api/entities/github-installation.entity";
 import {
@@ -1147,9 +1148,12 @@ export class EventService {
       .execute();
   }
 
-  async removeEventAdmin(eventId: string, userId: string) {
+  async removeEventAdmin(eventId: string, userId: string, actor: Principal) {
+    // Global admins may leave an event without admins.
     const outcome = await this.dataSource.transaction((manager) =>
-      removeAdminGrant(manager, eventId, (admin) => admin.userId === userId),
+      removeAdminGrant(manager, eventId, (admin) => admin.userId === userId, {
+        allowLast: hasGlobal(actor, UserRole.ADMIN),
+      }),
     );
     if (outcome === "not-found")
       throw new NotFoundException("Admin permission not found");
