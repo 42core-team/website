@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { UserAppearanceEditor } from '@/components/profile/UserAppearanceEditor'
-import { title } from '@/components/primitives'
 import SocialAccountsDisplay from '@/components/social-accounts-display'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageLoader } from '@/components/ui/page-loader'
@@ -24,10 +23,10 @@ export default function SettingsClient() {
   if (!session) return null
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mx-auto max-w-2xl space-y-6">
+    <main className="page-frame page-form py-8">
+      <div className="space-y-6">
         <div className="text-center">
-          <h1 className={title()}>Settings</h1>
+          <h1 className="page-title">Settings</h1>
           <p className="mt-4 text-lg text-muted-foreground">
             Manage your account and linked social platforms
           </p>
@@ -71,6 +70,6 @@ export default function SettingsClient() {
 
         <SignOutEverywhereCard />
       </div>
-    </div>
+    </main>
   )
 }

@@ -172,15 +172,15 @@ export function TeamInfoSection({
                   <span className="truncate">{myTeam.repo}</span>
                 </span>
               ) : isRepoPending ? (
-                <p className="text-sm text-gray-200">
+                <p className="text-sm text-muted-foreground">
                   Repository will be created when the event starts.
                 </p>
               ) : isRepoCreating ? (
-                <p className="text-sm text-gray-200">
+                <p className="text-sm text-muted-foreground">
                   Repository is being created...
                 </p>
               ) : (
-                <Skeleton className="m-2 h-5 w-72 rounded-md" />
+                <Skeleton className="my-2 h-5 w-full max-w-72 rounded-md" />
               )}
             </div>
           </div>
@@ -217,7 +217,7 @@ export function TeamInfoSection({
         {/* Team Management Compartment */}
         <div>
           {leaveError && (
-            <div className="bg-danger-50 text-destructive-700 border-danger-200 mb-4 rounded-md border px-4 py-3">
+            <div className="bg-destructive-surface text-destructive border-destructive-border mb-4 rounded-md border px-4 py-3">
               {leaveError}
             </div>
           )}

@@ -42,7 +42,7 @@ export default function GamblingLatestResult({
       <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="flex items-center gap-2 font-semibold">
-            <Trophy className="size-4 text-amber-500" />
+            <Trophy className="size-4 text-warning" />
             {result.winner?.name ?? 'No winner'}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -54,8 +54,7 @@ export default function GamblingLatestResult({
             <p
               className={cn(
                 'mt-2 text-sm font-semibold',
-                result.myBet.net > 0 &&
-                  'text-emerald-600 dark:text-emerald-400',
+                result.myBet.net > 0 && 'text-success',
                 result.myBet.net < 0 && 'text-destructive',
                 result.myBet.net === 0 && 'text-muted-foreground',
               )}

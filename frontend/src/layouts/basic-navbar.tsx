@@ -25,11 +25,11 @@ import { cn } from '@/lib/utils'
 function Logo(props: SVGAttributes<SVGElement>) {
   return (
     <svg viewBox="0 0 42 85" xmlns="http://www.w3.org/2000/svg" {...props}>
-      <g fill="#a2a2a2">
+      <g className="fill-link">
         <path d="M13 29L21 21V67L13 59V29Z" />
         <path d="M8 26L21 13V0L0 21V64L21 85V75L8 62L8 26Z" />
       </g>
-      <g fill="#747474">
+      <g className="fill-link/70">
         <path d="M29 29L21 21V67L29 59V29Z" />
         <path d="M42 64L21 85V75L34 62L34 54L42 46V64Z" />
         <path d="M42 21V30L34 39L34 26L21 13V0L42 21Z" />
@@ -118,12 +118,12 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
       <header
         ref={ref}
         className={cn(
-          'sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 px-4 md:px-6 **:no-underline',
+          'sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur **:no-underline',
           className,
         )}
         {...props}
       >
-        <div className="container mx-auto flex min-h-16 max-w-(--breakpoint-2xl) flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 sm:py-0">
+        <div className="page-frame page-workspace flex min-h-(--navbar-height) flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2 sm:py-0">
           {/* Left side */}
           <div className="flex shrink-0 items-center gap-2">
             {/* Mobile menu trigger */}
@@ -137,7 +137,8 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
               >
                 <PopoverTrigger asChild>
                   <Button
-                    className="group h-9 w-9 hover:bg-accent hover:text-accent-foreground"
+                    className="group"
+                    aria-label="Site navigation"
                     variant="ghost"
                     size="icon"
                   >
@@ -151,9 +152,11 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
                         key={link.href}
                         className={cn(
                           'rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                          isActive(link.href) && 'font-bold text-foreground',
+                          isActive(link.href) &&
+                            'bg-accent font-semibold text-accent-foreground',
                         )}
                         href={link.href}
+                        aria-current={isActive(link.href) ? 'page' : undefined}
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
                         {link.label}
@@ -165,7 +168,7 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
             </div>
             {/* Brand */}
             <Link href="/" className="flex items-center">
-              <Logo className="light:invert size-6" />
+              <Logo className="size-7" aria-hidden="true" />
               <span className="ml-1 text-sm font-bold text-foreground">
                 CORE
               </span>
@@ -181,10 +184,11 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
                   <NavigationMenuItem key={link.href}>
                     <Link
                       href={link.href}
+                      aria-current={isActive(link.href) ? 'page' : undefined}
                       className={cn(
-                        'inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
+                        'inline-flex min-h-11 items-center justify-center rounded-md border-b-2 border-transparent px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
                         isActive(link.href)
-                          ? 'bg-accent text-accent-foreground'
+                          ? 'border-link text-link'
                           : 'text-foreground/80 hover:text-foreground',
                       )}
                     >
@@ -203,7 +207,10 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
             {user?.id ? (
               <Popover open={isProfileOpen} onOpenChange={setIsProfileOpen}>
                 <PopoverTrigger asChild>
-                  <button className="rounded-full outline-none">
+                  <button
+                    className="grid size-11 place-items-center rounded-full"
+                    aria-label="Account menu"
+                  >
                     <Avatar className="size-10 transition-transform">
                       <AvatarImage
                         src={userAvatarSrc(user)}

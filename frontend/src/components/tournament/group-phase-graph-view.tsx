@@ -406,7 +406,7 @@ function TeamCell({
         {isMyTeam && (
           <Badge
             variant="outline"
-            className="shrink-0 border-primary/30 bg-primary/10 px-1.5 py-0 text-[10px] text-primary"
+            className="shrink-0 border-primary/30 bg-primary/10 px-1.5 py-0 text-[10px] text-link"
           >
             You
           </Badge>
@@ -507,7 +507,7 @@ function MatchStateBadge({ state }: { state: MatchState }) {
       className={cn(
         'whitespace-nowrap',
         state === MatchState.IN_PROGRESS &&
-          'border-orange-600/30 bg-orange-500/10 text-orange-700 dark:text-orange-400',
+          'border-warning-border bg-warning-surface text-warning',
         state === MatchState.PLANNED && 'text-muted-foreground',
       )}
     >

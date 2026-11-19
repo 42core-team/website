@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { Team } from '@/app/actions/team'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { CardHeader, CardTitle } from '@/components/ui/card'
+import { CardHeader } from '@/components/ui/card'
 import { useRouter } from '@/lib/router-hooks'
 import { TeamCover, TeamCoverStripe, TeamPicture } from './TeamAppearance'
 import LocationTags from './LocationTags'
@@ -25,7 +25,8 @@ export function TeamProfileHeader({
 }) {
   const router = useRouter()
   // Without a background the cover area uses a gradient of the site's neutral colors.
-  const coverContent = cover ?? (team.background ? <TeamCover team={team} /> : null)
+  const coverContent =
+    cover ?? (team.background ? <TeamCover team={team} /> : null)
   return (
     <>
       {coverContent ? (
@@ -65,9 +66,7 @@ export function TeamProfileHeader({
             {picture ?? <TeamPicture team={team} large />}
           </div>
           <div className="pointer-events-auto flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
-            <CardTitle className="break-words text-2xl font-bold sm:text-3xl">
-              {team.name}
-            </CardTitle>
+            <h1 className="page-title break-words">{team.name}</h1>
             {(team.tags.length > 0 || badge) && (
               <div className="flex flex-wrap items-center gap-2">
                 <LocationTags tags={team.tags} />

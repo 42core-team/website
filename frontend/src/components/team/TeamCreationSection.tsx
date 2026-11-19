@@ -66,14 +66,14 @@ export function TeamCreationSection({
 
             <div className="space-y-4">
               <Feature
-                icon={<Terminal className="h-4 w-4 text-primary" />}
+                icon={<Terminal className="h-4 w-4 text-link" />}
                 title="Immediate Git Access"
               >
                 Instantly receive a repository with boilerplate code and a
                 ready-to-use devcontainer to start your development.
               </Feature>
               <Feature
-                icon={<CheckCircle2 className="h-4 w-4 text-primary" />}
+                icon={<CheckCircle2 className="h-4 w-4 text-link" />}
                 title="Join the Competition"
               >
                 Invite your team members, push your changes, and start testing

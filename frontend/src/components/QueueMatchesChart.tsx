@@ -1,11 +1,6 @@
 'use client'
 
-import type {
-  ChartData,
-  ChartDataset,
-  ChartOptions,
-  ScriptableContext,
-} from 'chart.js'
+import type { ChartData, ChartDataset, ChartOptions } from 'chart.js'
 import type { QueueMatchesTimeBucket } from '@/app/actions/stats'
 import {
   BarElement,
@@ -16,6 +11,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
+import { useChartTheme } from '@/hooks/use-chart-theme'
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
@@ -26,6 +22,7 @@ export default function QueueMatchesChart({
   data: QueueMatchesTimeBucket[]
   title?: string
 }) {
+  const theme = useChartTheme()
   // Format labels more compactly: e.g., 09/07/25, 14:30
   const formatter = new Intl.DateTimeFormat(undefined, {
     year: '2-digit',
@@ -37,31 +34,11 @@ export default function QueueMatchesChart({
   const labels = data.map((d) => formatter.format(new Date(d.bucket)))
   const counts = data.map((d) => d.count)
 
-  // Create a vertical gradient fill; fall back to a flat color before chart area is ready
-  const gradientBackground = (
-    ctx: ScriptableContext<'bar'>,
-  ): string | CanvasGradient => {
-    const { chart } = ctx
-    const { ctx: canvasCtx, chartArea } = chart || ({} as any)
-    if (!chartArea) {
-      return 'rgba(59, 130, 246, 0.6)' // fallback before layout
-    }
-    const gradient = canvasCtx.createLinearGradient(
-      0,
-      chartArea.top,
-      0,
-      chartArea.bottom,
-    )
-    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.9)') // blue-500/90
-    gradient.addColorStop(1, 'rgba(147, 51, 234, 0.6)') // purple-600/60
-    return gradient
-  }
-
   const dataset: ChartDataset<'bar'> = {
     label: 'Matches',
     data: counts,
-    backgroundColor: gradientBackground,
-    borderColor: 'rgba(59, 130, 246, 0.9)',
+    backgroundColor: theme.series[0],
+    borderColor: theme.series[0],
     borderWidth: 0,
     borderRadius: 6,
     borderSkipped: 'top',
@@ -70,7 +47,7 @@ export default function QueueMatchesChart({
     clip: 0,
     maxBarThickness: 30,
     minBarLength: 2,
-    hoverBackgroundColor: 'rgba(59, 130, 246, 1)',
+    hoverBackgroundColor: theme.series[0],
   }
 
   const chartData: ChartData<'bar'> = {
@@ -93,18 +70,14 @@ export default function QueueMatchesChart({
       title: {
         display: true,
         text: title,
-        color: '#111827',
+        color: theme.foreground,
         font: { size: 16, weight: 600 },
         padding: { bottom: 10 },
       },
       tooltip: {
         mode: 'index',
         intersect: false,
-        backgroundColor: 'rgba(17, 24, 39, 0.9)',
-        titleColor: '#fff',
-        bodyColor: '#e5e7eb',
-        borderColor: 'rgba(255,255,255,0.08)',
-        borderWidth: 1,
+        ...theme.tooltip,
         padding: 10,
         displayColors: false,
         callbacks: {
@@ -124,36 +97,32 @@ export default function QueueMatchesChart({
         },
       },
     },
-    animations: {
-      y: { from: 0, duration: 800, easing: 'easeOutQuart' },
-      x: { duration: 600, easing: 'easeOutQuad' },
-    },
     scales: {
       x: {
         // add edge padding so first/last bars don't cut off
         offset: true,
-        border: { display: true, color: 'rgba(107, 114, 128, 0.3)' },
+        border: { display: true, color: theme.border },
         grid: {
           display: true,
-          color: 'rgba(107, 114, 128, 0.15)',
+          color: theme.border,
         },
         ticks: {
           maxRotation: 45,
           minRotation: 0,
-          color: '#6b7280',
+          color: theme.mutedForeground,
           autoSkip: true,
           maxTicksLimit: 12,
         },
       },
       y: {
         beginAtZero: true,
-        border: { display: true, color: 'rgba(107, 114, 128, 0.3)' },
+        border: { display: true, color: theme.border },
         grid: {
-          color: 'rgba(107, 114, 128, 0.15)',
+          color: theme.border,
         },
         ticks: {
           precision: 0 as number | undefined,
-          color: '#6b7280',
+          color: theme.mutedForeground,
           callback: (value) => {
             const n = typeof value === 'number' ? value : Number(value)
             return Number.isFinite(n) ? n.toLocaleString() : (value as any)
@@ -165,7 +134,7 @@ export default function QueueMatchesChart({
 
   return (
     <div className="h-72 w-full">
-      <Bar data={chartData} options={options} />
+      <Bar aria-label={title} role="img" data={chartData} options={options} />
     </div>
   )
 }

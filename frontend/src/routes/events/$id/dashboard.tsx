@@ -62,6 +62,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { PageError } from '@/components/ui/page-error'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -279,7 +280,7 @@ function DashboardRoute() {
 
   if (isLoading || !event) {
     return (
-      <main className="flex min-h-[45vh] items-center justify-center">
+      <main className="page-frame page-state">
         <Spinner />
       </main>
     )
@@ -287,11 +288,15 @@ function DashboardRoute() {
 
   if (eventQuery.isError) {
     return (
-      <main className="container mx-auto max-w-7xl px-4 py-8">
-        <p className="text-center text-destructive">
-          Failed to load dashboard.
-        </p>
-      </main>
+      <PageError
+        title="Event dashboard"
+        description="Failed to load dashboard."
+        action={
+          <Button variant="outline" onClick={() => void eventQuery.refetch()}>
+            Try again
+          </Button>
+        }
+      />
     )
   }
 
@@ -407,9 +412,9 @@ function DashboardRoute() {
   }
 
   return (
-    <main className="container mx-auto flex min-h-lvh max-w-7xl flex-col gap-6 px-4 py-6">
+    <main className="page-frame page-workspace flex flex-col gap-6 py-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">Event Dashboard: {event.name}</h1>
+        <h1 className="page-title">Event Dashboard: {event.name}</h1>
         {event.preset && (
           <p>
             Created from {event.preset.name}

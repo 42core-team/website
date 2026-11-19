@@ -16,7 +16,7 @@ export function MarkdownContent({
 }: MarkdownContentProps) {
   return (
     <article
-      className={cn('prose max-w-none dark:prose-invert', className)}
+      className={cn('prose max-w-none', className)}
       dangerouslySetInnerHTML={{ __html: markdownToHtml(content) }}
       {...props}
     />

@@ -13,32 +13,32 @@ const statStyles = [
     title: 'Total Damage',
     description: 'Dealt by units to enemy troops, walls, and opposing Cores',
     icon: Flame,
-    accent: 'text-orange-600 dark:text-orange-400',
-    iconBackground: 'bg-orange-500/10',
-    hoverBorder: 'hover:border-orange-500/40',
-    glow: 'bg-orange-500/15',
-    line: 'from-orange-500 via-red-500 to-transparent',
+    accent: 'text-link',
+    iconBackground: 'bg-highlight',
+    hoverBorder: 'hover:border-highlight-border',
+    glow: 'bg-brand-orange/15',
+    line: 'from-brand-orange via-brand-dark-orange to-transparent',
   },
   {
     title: 'Gems Gained',
     description:
       'Mined from deposits and collected from gem piles to fund new units',
     icon: Gem,
-    accent: 'text-sky-600 dark:text-sky-400',
-    iconBackground: 'bg-sky-500/10',
-    hoverBorder: 'hover:border-sky-500/40',
-    glow: 'bg-sky-500/15',
-    line: 'from-sky-500 via-cyan-400 to-transparent',
+    accent: 'text-info',
+    iconBackground: 'bg-info-surface',
+    hoverBorder: 'hover:border-info-border',
+    glow: 'bg-info/15',
+    line: 'from-info via-info-border to-transparent',
   },
   {
     title: 'Units Spawned',
     description: 'Custom-built units assembled and deployed from player Cores',
     icon: Users,
-    accent: 'text-emerald-600 dark:text-emerald-400',
-    iconBackground: 'bg-emerald-500/10',
-    hoverBorder: 'hover:border-emerald-500/40',
-    glow: 'bg-emerald-500/15',
-    line: 'from-emerald-500 via-green-400 to-transparent',
+    accent: 'text-success',
+    iconBackground: 'bg-success-surface',
+    hoverBorder: 'hover:border-success-border',
+    glow: 'bg-success/15',
+    line: 'from-success via-success-border to-transparent',
   },
 ]
 
@@ -57,21 +57,19 @@ export default function GlobalStats() {
   ]
 
   return (
-    <section className="relative isolate overflow-hidden border-y bg-gradient-to-b from-muted/50 via-background to-muted/30 px-4 py-16 sm:py-24">
+    <section className="relative isolate overflow-hidden border-y bg-gradient-to-b from-muted/50 via-background to-muted/30 py-16 sm:py-24">
       <div
-        className="pointer-events-none absolute -left-24 top-10 -z-10 h-64 w-64 rounded-full bg-orange-500/5 blur-3xl"
+        className="pointer-events-none absolute -left-24 top-10 -z-10 h-64 w-64 rounded-full bg-brand-orange/5 blur-3xl"
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute -right-24 bottom-0 -z-10 h-72 w-72 rounded-full bg-sky-500/5 blur-3xl"
+        className="pointer-events-none absolute -right-24 bottom-0 -z-10 h-72 w-72 rounded-full bg-primary/5 blur-3xl"
         aria-hidden="true"
       />
 
-      <div className="mx-auto max-w-6xl">
+      <div className="page-frame">
         <div className="mx-auto mb-10 max-w-2xl text-center sm:mb-12">
-          <h2 className="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-            Live from the Arena
-          </h2>
+          <h2 className="section-title text-balance">Live from the Arena</h2>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
             Every match runs tick by tick on a 2D grid—here is what player-coded
             bots have done across all games so far.
@@ -90,7 +88,7 @@ export default function GlobalStats() {
             >
               <Card
                 className={cn(
-                  'group relative h-full overflow-hidden bg-card/80 shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:shadow-xl',
+                  'group relative h-full overflow-hidden transition-colors',
                   stat.hoverBorder,
                 )}
               >

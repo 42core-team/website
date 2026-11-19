@@ -236,7 +236,7 @@ export function RoleEditor({
                 <label className="grid gap-2 text-sm">
                   Role
                   <select
-                    className="h-9 rounded-md border bg-background px-2"
+                    className="native-select"
                     value={role}
                     disabled={mutation.isPending}
                     onChange={(change) =>

@@ -1,7 +1,7 @@
 'use client'
 
 import type { Match } from '@/app/actions/tournament-model'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Trophy } from 'lucide-react'
 import { useParams, useRouter } from '@/lib/router-hooks'
 import { memo } from 'react'
@@ -24,32 +24,14 @@ interface MatchNodeProps {
   data: MatchNodeData
 }
 
-function getMatchStateStyles(state: MatchState) {
+function getMatchStateClass(state: MatchState) {
   switch (state) {
     case MatchState.FINISHED:
-      return {
-        backgroundColor: '#dcfce7',
-        borderColor: '#16a34a',
-        textColor: '#15803d',
-      }
-    case MatchState.PLANNED:
-      return {
-        backgroundColor: '#f8fafc',
-        borderColor: '#64748b',
-        textColor: '#475569',
-      }
+      return 'border-success-border bg-success-surface text-success'
     case MatchState.IN_PROGRESS:
-      return {
-        backgroundColor: '#fff7ed',
-        borderColor: '#ea580c',
-        textColor: '#c2410c',
-      }
+      return 'border-info-border bg-info-surface text-info'
     default:
-      return {
-        backgroundColor: '#f8fafc',
-        borderColor: '#64748b',
-        textColor: '#475569',
-      }
+      return 'border-input bg-card text-muted-foreground'
   }
 }
 
@@ -82,7 +64,7 @@ function MatchNode({ data }: MatchNodeProps) {
     hideScore = false,
     isHighlighted = false,
   } = data
-  const styles = getMatchStateStyles(match.state)
+  const prefersReducedMotion = useReducedMotion()
   const icon = getMatchStateIcon(match.state)
   const router = useRouter()
   const params = useParams()
@@ -103,12 +85,13 @@ function MatchNode({ data }: MatchNodeProps) {
     <motion.div
       className={cn(
         'relative cursor-pointer rounded-lg border-2 shadow-xs transition-all duration-200 hover:shadow-sm',
+        getMatchStateClass(match.state),
         isHighlighted &&
-          'ring-4 ring-primary/35 ring-offset-2 ring-offset-background',
+          'ring-4 ring-ring ring-offset-2 ring-offset-background',
       )}
       aria-current={isHighlighted ? 'step' : undefined}
       animate={
-        isHighlighted
+        isHighlighted && !prefersReducedMotion
           ? {
               scale: [1, 1.055, 1],
               boxShadow: [
@@ -120,20 +103,17 @@ function MatchNode({ data }: MatchNodeProps) {
           : { scale: 1, boxShadow: '0 0 0 0 transparent' }
       }
       transition={
-        isHighlighted
+        isHighlighted && !prefersReducedMotion
           ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' }
           : { duration: 0.2 }
       }
       style={{
         width,
         height,
-        backgroundColor: styles.backgroundColor,
-        borderColor: styles.borderColor,
-        color: styles.textColor,
       }}
       onClick={handleClick}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={prefersReducedMotion ? undefined : { scale: 1.02 }}
+      whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
     >
       {showTargetHandle && (
         <Handle
@@ -155,11 +135,15 @@ function MatchNode({ data }: MatchNodeProps) {
       {/* Animated progress indicator for IN_PROGRESS matches */}
       {match.state === MatchState.IN_PROGRESS && (
         <motion.div
-          className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-orange-500"
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.8, 1, 0.8],
-          }}
+          className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-info"
+          animate={
+            prefersReducedMotion
+              ? undefined
+              : {
+                  scale: [1, 1.3, 1],
+                  opacity: [0.8, 1, 0.8],
+                }
+          }
           transition={{
             duration: 1.5,
             repeat: Infinity,

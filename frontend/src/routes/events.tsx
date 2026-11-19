@@ -3,7 +3,8 @@ import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { getEvents, getEventsOverview } from '@/app/actions/event'
 import EventsView from '@/app/events/EventsView'
 import Link from '@/components/app-link'
-import { title } from '@/components/primitives'
+import { Button } from '@/components/ui/button'
+import { PageError } from '@/components/ui/page-error'
 import { Spinner } from '@/components/ui/spinner'
 import { useSession } from '@/lib/auth'
 import { EVENTS_LIST_REFETCH_INTERVAL_MS } from '@/lib/query-intervals'
@@ -38,7 +39,7 @@ function EventsRoute() {
 
   if (eventsQuery.isPending) {
     return (
-      <main className="flex min-h-[60vh] items-center justify-center">
+      <main className="page-frame page-state">
         <Spinner />
       </main>
     )
@@ -46,28 +47,34 @@ function EventsRoute() {
 
   if (eventsQuery.isError) {
     return (
-      <main className="container mx-auto px-4 py-16">
-        <p className="text-center text-destructive">Failed to load events.</p>
-      </main>
+      <PageError
+        title="Events"
+        description="Failed to load events."
+        action={
+          <Button variant="outline" onClick={() => void eventsQuery.refetch()}>
+            Try again
+          </Button>
+        }
+      />
     )
   }
 
   return (
-    <main className="container mx-auto min-h-screen px-4 py-8">
-      <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-        <div className="flex flex-row items-center justify-center">
-          <h1 className={title()}>Events</h1>
+    <main className="page-frame py-8">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-2">
+          <h1 className="page-title">Events</h1>
+          <p className="text-muted-foreground">
+            Discover and join upcoming coding competitions
+          </p>
         </div>
-        <p className="text-lg text-muted-foreground">
-          Discover and join upcoming coding competitions
-        </p>
         {session?.user.abilities.createEvent && (
-          <Link className="text-primary underline" href="/events/create">
-            Create Event
-          </Link>
+          <Button asChild>
+            <Link href="/events/create">Create event</Link>
+          </Button>
         )}
-      </div>
-      <div className="mt-8">
+      </header>
+      <div className="mt-6">
         <EventsView
           myEvents={eventsQuery.data.myEvents}
           allEvents={eventsQuery.data.allEvents}

@@ -7,7 +7,7 @@ export const Route = createFileRoute('/about')({
 
 function AboutRoute() {
   return (
-    <main className="container mx-auto px-4 py-12">
+    <main className="page-frame py-12">
       <AboutPageClient />
     </main>
   )

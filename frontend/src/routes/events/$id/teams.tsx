@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button'
 import { TeamPicture } from '@/components/team/TeamAppearance'
 import type { Team } from '@/app/actions/team'
 import { useQuery } from '@tanstack/react-query'
@@ -13,8 +14,9 @@ import { getTeamsForEventTable } from '@/app/actions/team'
 import type { SortDirection } from '@/components/sortable-table-head'
 import { SortableTableHead } from '@/components/sortable-table-head'
 import { LocationTags } from '@/components/team'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { PageError } from '@/components/ui/page-error'
 import { Spinner } from '@/components/ui/spinner'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
@@ -78,7 +80,7 @@ function TeamsRoute() {
 
   if (teamsQuery.isPending) {
     return (
-      <main className="flex min-h-[45vh] items-center justify-center">
+      <main className="page-frame page-state">
         <Spinner />
       </main>
     )
@@ -86,17 +88,23 @@ function TeamsRoute() {
 
   if (teamsQuery.isError) {
     return (
-      <main className="container mx-auto max-w-7xl px-4 py-8">
-        <p className="text-center text-destructive">Failed to load teams.</p>
-      </main>
+      <PageError
+        title="Teams"
+        description="Failed to load teams."
+        action={
+          <Button variant="outline" onClick={() => void teamsQuery.refetch()}>
+            Try again
+          </Button>
+        }
+      />
     )
   }
 
   return (
-    <main className="container mx-auto max-w-7xl px-4 py-8">
+    <main className="page-frame page-workspace py-8">
       <Card>
         <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Teams</CardTitle>
+          <h1 className="page-title">Teams</h1>
           <div className="relative w-full sm:max-w-xs">
             <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input

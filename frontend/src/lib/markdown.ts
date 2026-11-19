@@ -354,23 +354,20 @@ function getEffectiveSlug(file: WikiFile): string[] {
 
 function transformCallouts(htmlContent: string): string {
   return htmlContent.replace(
-    /<blockquote>\s*<p>\s*\[!(WARNING|INFO|NOTE|TIP|IMPORTANT|CAUTION)\]\s*(.*?)<\/p>\s*([\s\S]*?)<\/blockquote>/g,
-    (_match: string, type: string, title: string, content: string) => {
-      const typeClass = type.toLowerCase()
+    /<blockquote>\s*<p>\s*\[!(WARNING|INFO|NOTE|TIP|IMPORTANT|CAUTION)\]([\s\S]*?)<\/p>\s*([\s\S]*?)<\/blockquote>/g,
+    (_match: string, type: string, firstParagraph: string, content: string) => {
+      const [title, ...bodyLines] = firstParagraph.split('\n')
+      const body = bodyLines.join('\n').trim()
+      const titleText =
+        title.trim() || `${type[0]}${type.slice(1).toLowerCase()}`
       const icon = getCalloutIcon(type)
-      const titleText = title.trim() || type
 
-      let cleanContent = content.trim()
-      if (cleanContent.startsWith('<p>') && cleanContent.endsWith('</p>')) {
-        cleanContent = cleanContent.slice(3, -4)
-      }
-
-      return `<div class="callout callout-${typeClass}">
+      return `<div class="callout callout-${type.toLowerCase()}">
         <div class="callout-header">
-          <span class="callout-icon">${icon}</span>
+          ${icon ? `<span class="callout-icon" aria-hidden="true">${icon}</span>` : ''}
           <span class="callout-title">${titleText}</span>
         </div>
-        <div class="callout-content">${cleanContent}</div>
+        <div class="callout-content">${body ? `<p>${body}</p>` : ''}${content.trim()}</div>
       </div>`
     },
   )
@@ -511,7 +508,7 @@ function getCalloutIcon(type: string): string {
     case 'NOTE':
       return 'N'
     case 'TIP':
-      return 'Tip'
+      return ''
     case 'IMPORTANT':
       return '!'
     case 'CAUTION':

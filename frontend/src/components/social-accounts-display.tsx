@@ -194,7 +194,7 @@ export default function SocialAccountsDisplay() {
         )}
 
         {message && message.type === 'error' && (
-          <div className="bg-danger-50 border-danger-200 dark:bg-danger-100/10 rounded-lg border p-4">
+          <div className="bg-destructive-surface border-destructive-border rounded-lg border p-4">
             <div className="flex items-start gap-3">
               <span className="mt-0.5 shrink-0 text-lg text-destructive">
                 ⚠️
@@ -203,7 +203,7 @@ export default function SocialAccountsDisplay() {
                 <p className="text-sm font-medium text-destructive">
                   Connection Failed
                 </p>
-                <p className="text-destructive-600 mt-1 text-xs wrap-break-word">
+                <p className="text-destructive mt-1 text-xs wrap-break-word">
                   {message.text}
                 </p>
                 <div className="mt-3 flex gap-2">

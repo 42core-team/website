@@ -68,12 +68,12 @@ export function CreateEventPage() {
   })
   const [dirty, setDirty] = useState(false)
   return (
-    <main className="container mx-auto max-w-4xl space-y-6 px-4 py-8">
-      <h1 className="text-3xl font-bold">Create event</h1>
+    <main className="page-frame page-form space-y-6 py-8">
+      <h1 className="page-title">Create event</h1>
       <label htmlFor="preset">Preset</label>
       <select
         id="preset"
-        className="w-full rounded border bg-background p-2"
+        className="native-select w-full"
         value={id}
         onChange={(e) => {
           if (
@@ -260,7 +260,7 @@ function CreatePresetForm({
             />
             <select
               id="installation"
-              className="w-full rounded border bg-background p-2"
+              className="native-select w-full"
               value={values.githubInstallationId ?? ''}
               onChange={(e) => {
                 const id = e.target.value || null

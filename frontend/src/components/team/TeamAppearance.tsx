@@ -55,7 +55,7 @@ export function TeamCover({
   return (
     <div
       className={cn(
-        'relative aspect-[10/3] w-full overflow-hidden rounded-t-xl bg-gradient-to-br from-primary/25 via-muted to-primary/5',
+        'relative aspect-[10/3] w-full overflow-hidden rounded-t-xl bg-gradient-to-br from-accent via-muted to-card',
         className,
       )}
     >

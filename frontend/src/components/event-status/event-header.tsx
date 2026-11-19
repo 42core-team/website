@@ -78,7 +78,7 @@ function TabLink({
   // Tooltips do not open on tap, so a tap on a disabled tab opens it instead.
   const [reasonOpen, setReasonOpen] = useState(false)
   const tabClassName = cn(
-    'flex h-9 items-center gap-1.5 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors',
+    'flex min-h-10 items-center gap-1.5 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors',
     active
       ? 'bg-accent text-accent-foreground'
       : 'text-foreground/80 hover:bg-accent hover:text-accent-foreground',
@@ -152,7 +152,7 @@ function EventTabsMenu({
           variant="outline"
           size="sm"
           aria-label={`Event sections${activeTab ? `, current: ${activeTab.name}` : ''}`}
-          className="shrink-0 sm:hidden"
+          className="min-h-11 shrink-0 sm:hidden"
         >
           {activeTab?.name ?? 'Menu'}
           <ChevronDown aria-hidden="true" />
@@ -166,8 +166,14 @@ function EventTabsMenu({
             )}
             <DropdownMenuItem
               asChild={!tab.disabled}
-              disabled={tab.disabled}
-              className={cn(tab === activeTab && 'bg-accent font-medium')}
+              aria-disabled={tab.disabled || undefined}
+              onSelect={
+                tab.disabled ? (event) => event.preventDefault() : undefined
+              }
+              className={cn(
+                tab === activeTab && 'bg-accent font-medium',
+                tab.disabled && 'text-muted-foreground',
+              )}
             >
               {tab.disabled ? (
                 <TabsMenuLabel tab={tab} />
@@ -193,7 +199,7 @@ function TabsMenuLabel({ tab }: Readonly<{ tab: EventTab }>) {
       {tab.lockedReason && <Lock className="size-3.5" aria-hidden="true" />}
       <span>{tab.name}</span>
       {tab.lockedReason && (
-        <span className="ml-auto text-xs text-muted-foreground">
+        <span className="ml-auto text-right text-xs text-muted-foreground">
           {tab.lockedReason}
         </span>
       )}
@@ -299,7 +305,7 @@ export default function EventHeader({
   return (
     <div
       className={cn(
-        'sticky top-16 z-40 border-b bg-background/95 px-4 backdrop-blur md:px-6',
+        'sticky top-(--navbar-height) z-40 border-b bg-background/95 backdrop-blur',
         needsAttention && tone.border,
       )}
     >
@@ -313,7 +319,7 @@ export default function EventHeader({
       <div
         ref={singleRow.containerRef}
         className={cn(
-          'relative container mx-auto grid max-w-(--breakpoint-2xl) gap-x-3',
+          'page-frame page-workspace relative grid gap-x-3',
           singleRow.fits
             ? 'grid-cols-[minmax(0,max-content)_minmax(0,max-content)] justify-center'
             : 'grid-cols-1',
@@ -374,7 +380,7 @@ export default function EventHeader({
               ? 'flex items-center'
               : // Phones use the menu; wider screens wrap the tabs, so none
                 // is ever cut off or needs horizontal scrolling.
-                '-mx-4 hidden border-t px-4 py-2 sm:block md:-mx-6 md:px-6',
+                'hidden border-t py-2 sm:block',
           )}
         >
           <TooltipProvider delayDuration={0}>

@@ -19,6 +19,8 @@ export function scrollToWikiHeading(element: HTMLElement) {
 
   container.scrollTo({
     top: Math.max(0, Math.min(targetScroll, maxScroll)),
-    behavior: 'smooth',
+    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'auto'
+      : 'smooth',
   })
 }

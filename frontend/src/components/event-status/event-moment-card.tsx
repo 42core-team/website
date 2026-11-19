@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge'
 import type { Event } from '@/app/actions/event'
 import type { EventMoment } from '@/lib/event-moment'
 import {
@@ -48,21 +49,24 @@ export default function EventMomentCard({
     <section
       aria-labelledby="event-moment-heading"
       className={cn(
-        'flex h-full flex-col justify-between gap-4 rounded-xl border p-6 sm:p-8',
-        toneStyles[moment.tone].panel,
+        'flex h-full flex-col justify-between gap-4 rounded-xl border bg-card p-6 sm:p-8',
+        (moment.tone === 'warning' || moment.tone === 'danger') &&
+          toneStyles[moment.tone].border,
       )}
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
-          <p
-            className={cn('text-sm font-medium', toneStyles[moment.tone].text)}
+          <Badge
+            variant={moment.tone === 'active' ? 'featured' : 'outline'}
+            className={
+              moment.tone === 'active'
+                ? undefined
+                : toneStyles[moment.tone].text
+            }
           >
             {moment.kicker}
-          </p>
-          <h2
-            id="event-moment-heading"
-            className="text-2xl font-semibold tracking-tight"
-          >
+          </Badge>
+          <h2 id="event-moment-heading" className="section-title">
             {moment.headline}
           </h2>
         </div>

@@ -640,7 +640,7 @@ function EconomyAndUnitBuilderVisual() {
               <span className="mt-1.5 max-w-full truncate text-[11px] font-semibold">
                 {comp.label}
               </span>
-              <span className="max-w-full truncate font-mono text-[9px] text-emerald-600 dark:text-emerald-400">
+              <span className="max-w-full truncate font-mono text-[9px] text-success">
                 {comp.stat}
               </span>
             </div>
@@ -707,7 +707,7 @@ function AutonomousCodeVisual() {
               <span className="text-sky-300">t_obj</span> *enemy ={' '}
               <span className="text-purple-300">ft_get_core_opponent</span>();
               {'\n\n    '}
-              <span className="text-zinc-500">
+              <span className="text-zinc-400">
                 // 1. Spawn custom units when ready
               </span>
               {'\n    '}
@@ -720,7 +720,7 @@ function AutonomousCodeVisual() {
               <span className="text-emerald-300">&quot;unit_attack&quot;</span>,{' '}
               <span className="text-orange-300">NULL</span>);
               {'\n\n    '}
-              <span className="text-zinc-500">
+              <span className="text-zinc-400">
                 // 2. Steer every warrior toward the enemy Core
               </span>
               {'\n    '}
@@ -751,7 +751,7 @@ function AutonomousCodeVisual() {
               {'\n    '}
               enemy := <span className="text-purple-300">opponentCore</span>()
               {'\n\n    '}
-              <span className="text-zinc-500">
+              <span className="text-zinc-400">
                 // 1. Spawn custom units when ready
               </span>
               {'\n    '}
@@ -765,7 +765,7 @@ function AutonomousCodeVisual() {
               <span className="text-emerald-300">&quot;unit_attack&quot;</span>,{' '}
               <span className="text-emerald-300">&quot;core_attack&quot;</span>)
               {'\n    }\n\n    '}
-              <span className="text-zinc-500">
+              <span className="text-zinc-400">
                 // 2. Steer every warrior toward the enemy Core
               </span>
               {'\n    '}
@@ -787,15 +787,13 @@ function AutonomousCodeVisual() {
 
       <div className="grid grid-cols-3 gap-2 text-center text-xs">
         <div className="rounded-xl border bg-background/70 p-2.5">
-          <span className="font-mono font-semibold text-primary">
-            Read State
-          </span>
+          <span className="font-mono font-semibold text-link">Read State</span>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             Receive full grid & object data each tick
           </p>
         </div>
         <div className="rounded-xl border bg-background/70 p-2.5">
-          <span className="font-mono font-semibold text-primary">
+          <span className="font-mono font-semibold text-link">
             Compute Logic
           </span>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -803,7 +801,7 @@ function AutonomousCodeVisual() {
           </p>
         </div>
         <div className="rounded-xl border bg-background/70 p-2.5">
-          <span className="font-mono font-semibold text-primary">
+          <span className="font-mono font-semibold text-link">
             Send Actions
           </span>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -847,6 +845,8 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
 
   const visualizerUrl = useMemo(() => {
     const base = getVisualizerUrl()
+    if (!base) return null
+
     const params = new URLSearchParams({
       autoplay: 'true',
       speed: '5',
@@ -866,17 +866,17 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
 
   return (
     <div className="overflow-hidden">
-      <section className="px-4 pb-16 pt-6 sm:pb-20 sm:pt-10 lg:pb-28">
-        <div className="mx-auto flex max-w-6xl flex-col items-center text-center">
+      <section className="page-frame space-y-6 pb-16 pt-6 sm:pb-20 sm:pt-10 lg:pb-28">
+        <div className="circuit-masthead flex flex-col items-center rounded-xl px-6 py-10 text-center sm:py-16">
           <CoreLogoWhite
-            className="h-auto w-40 text-foreground sm:w-52 md:w-64"
+            className="h-auto w-40 text-on-brand-dark sm:w-52 md:w-64"
             aria-label="CORE Game"
           />
-          <h1 className="mt-5 max-w-3xl text-2xl font-bold leading-tight text-balance sm:text-3xl md:text-4xl">
+          <h1 className="page-title mt-5 max-w-3xl text-balance">
             Imagine a game contest that brings people from around the world
             together for fun and learning.
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-brand-masthead-muted sm:text-lg">
             CORE is a strategy game you can only play by programming. Write a
             bot that mines gems, spawns custom units, and destroys the enemy
             Core.
@@ -920,11 +920,12 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
               </Link>
             </Button>
           </div>
-
+        </div>
+        <div className="flex flex-col items-center">
           {props.currentLiveEvent &&
             props.currentLiveEvent.state !== 'COMPLETED' && (
               <motion.div
-                className="mt-7 w-full max-w-xl sm:mt-9"
+                className="w-full max-w-xl"
                 initial={
                   prefersReducedMotion
                     ? false
@@ -935,18 +936,17 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
               >
                 <Link
                   href={`/events/${props.currentLiveEvent.id}`}
-                  className="group block rounded-xl focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+                  className="group block rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
                 >
-                  <Card className="relative overflow-hidden border-white/10 bg-background/60 shadow-xl backdrop-blur-xl transition-all duration-300 group-hover:border-primary/50 group-hover:bg-background/80 group-hover:shadow-2xl group-active:scale-[0.99] motion-safe:sm:group-hover:-translate-y-1">
-                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50 transition-opacity group-hover:opacity-100" />
+                  <Card className="relative overflow-hidden transition-colors group-hover:border-link">
                     <CardHeader className="flex flex-col gap-5 space-y-0 p-4 text-left sm:flex-row sm:items-center sm:justify-between sm:p-6">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="relative flex h-2 w-2 shrink-0">
-                            <span className="absolute inset-0 animate-ping rounded-full bg-destructive opacity-75" />
-                            <span className="relative h-2 w-2 rounded-full bg-destructive" />
+                            <span className="absolute inset-0 rounded-full bg-brand-orange opacity-75 motion-safe:animate-ping" />
+                            <span className="relative h-2 w-2 rounded-full bg-brand-orange" />
                           </span>
-                          <span className="text-xs font-semibold tracking-widest text-destructive uppercase">
+                          <span className="text-xs font-semibold tracking-widest text-link uppercase">
                             {
                               lifecycleLabels[
                                 eventState(
@@ -957,7 +957,7 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
                             }
                           </span>
                         </div>
-                        <CardTitle className="mt-2 text-lg font-bold leading-snug tracking-tight text-foreground transition-colors group-hover:text-primary sm:text-2xl">
+                        <CardTitle className="mt-2 text-lg font-bold leading-snug tracking-tight text-foreground transition-colors group-hover:text-link sm:text-2xl">
                           {props.currentLiveEvent.name}
                         </CardTitle>
                       </div>
@@ -973,7 +973,7 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
                               : 'View event'}
                           </span>
                         </div>
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-105">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-link transition-transform group-hover:scale-105">
                           <svg
                             className="h-5 w-5"
                             xmlns="http://www.w3.org/2000/svg"
@@ -996,9 +996,9 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
             )}
         </div>
 
-        <div className="mx-auto mt-10 w-full max-w-6xl sm:mt-14">
-          <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border bg-muted shadow-lg sm:aspect-video sm:rounded-2xl">
-            {isMounted && (
+        {isMounted && visualizerUrl && (
+          <div className="mx-auto mt-10 w-full max-w-6xl sm:mt-14">
+            <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border bg-muted shadow-lg sm:aspect-video sm:rounded-2xl">
               <iframe
                 key={visualizerUrl}
                 src={visualizerUrl}
@@ -1008,9 +1008,9 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
                 referrerPolicy="no-referrer"
                 title="CORE Game Replay"
               />
-            )}
+            </div>
           </div>
-        </div>
+        )}
         <noscript>
           <div className="p-4 text-center">JavaScript is disabled</div>
         </noscript>
@@ -1020,14 +1020,14 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
 
       {/* Section 1: What is the Goal of the Game? */}
       <section
-        className="px-4 py-20 sm:py-24 lg:py-32"
+        className="py-16 sm:py-20 lg:py-24"
         aria-labelledby="game-overview-heading"
       >
-        <div className="mx-auto max-w-6xl">
+        <div className="page-frame">
           <div className="mx-auto mb-14 max-w-2xl text-center sm:mb-20">
             <h2
               id="game-overview-heading"
-              className="text-3xl font-bold tracking-tight text-balance sm:text-4xl"
+              className="section-title text-balance"
             >
               What is CORE all about?
             </h2>
@@ -1142,15 +1142,12 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
 
       {/* Section 2: How to Play / Getting Started */}
       <section
-        className="border-t bg-muted/25 px-4 py-20 sm:py-24 lg:py-32"
+        className="border-t bg-muted py-16 sm:py-20 lg:py-24"
         aria-labelledby="how-to-play-heading"
       >
-        <div className="mx-auto max-w-6xl">
+        <div className="page-frame">
           <div className="mx-auto mb-12 max-w-2xl text-center sm:mb-16">
-            <h2
-              id="how-to-play-heading"
-              className="text-3xl font-bold tracking-tight text-balance sm:text-4xl"
-            >
+            <h2 id="how-to-play-heading" className="section-title text-balance">
               From zero to your first match
             </h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground sm:text-lg">
@@ -1169,14 +1166,14 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
                 transition={{ duration: 0.5, delay: index * 0.08 }}
                 className="h-full"
               >
-                <Card className="flex h-full flex-col justify-between border bg-card/85 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+                <Card className="flex h-full flex-col justify-between border transition-colors hover:border-link">
                   <CardContent className="flex h-full flex-col justify-between p-6">
                     <div>
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-bold tracking-widest text-primary uppercase">
+                        <span className="font-mono text-xs font-bold tracking-widest text-link uppercase">
                           Step {item.step}
                         </span>
-                        <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <div className="flex size-10 items-center justify-center rounded-xl bg-accent text-link">
                           <item.icon className="size-5" aria-hidden="true" />
                         </div>
                       </div>
@@ -1191,7 +1188,7 @@ export default function HomePageClient(props: { currentLiveEvent?: Event }) {
 
                     <div className="mt-5 border-t pt-3">
                       <span className="inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
-                        <GitBranch className="size-3.5 text-primary" />
+                        <GitBranch className="size-3.5 text-link" />
                         {item.badge}
                       </span>
                     </div>

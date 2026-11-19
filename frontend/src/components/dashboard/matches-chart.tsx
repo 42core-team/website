@@ -12,81 +12,21 @@ import {
   LinearScale,
   Tooltip,
 } from 'chart.js'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useChartTheme } from '@/hooks/use-chart-theme'
 import { Bar } from 'react-chartjs-2'
 import type { MatchTimeBucket, MatchTimeInterval } from '@/app/actions/stats'
 import { MatchPhase } from '@/app/actions/tournament-model'
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
-const PHASE_DETAILS: Record<
-  MatchPhase,
-  { label: string; background: string; border: string }
-> = {
-  [MatchPhase.QUEUE]: {
-    label: 'Match making',
-    background: 'rgba(37, 99, 235, 0.78)',
-    border: 'rgb(37, 99, 235)',
-  },
-  [MatchPhase.SWISS]: {
-    label: 'Group phase',
-    background: 'rgba(5, 150, 105, 0.78)',
-    border: 'rgb(5, 150, 105)',
-  },
-  [MatchPhase.ELIMINATION]: {
-    label: 'Tournament',
-    background: 'rgba(124, 58, 237, 0.78)',
-    border: 'rgb(124, 58, 237)',
-  },
-  [MatchPhase.GAMBLING]: {
-    label: 'Gambling',
-    background: 'rgba(217, 119, 6, 0.78)',
-    border: 'rgb(217, 119, 6)',
-  },
-  [MatchPhase.MANUAL]: {
-    label: 'Manual',
-    background: 'rgba(100, 116, 139, 0.78)',
-    border: 'rgb(100, 116, 139)',
-  },
-}
-
-interface ChartTheme {
-  foreground: string
-  mutedForeground: string
-  border: string
-}
-
-function getChartTheme(): ChartTheme {
-  if (typeof document === 'undefined') {
-    return {
-      foreground: '#18181b',
-      mutedForeground: '#71717a',
-      border: 'rgba(113, 113, 122, 0.2)',
-    }
-  }
-
-  const styles = window.getComputedStyle(document.documentElement)
-  return {
-    foreground: styles.getPropertyValue('--foreground').trim(),
-    mutedForeground: styles.getPropertyValue('--muted-foreground').trim(),
-    border: styles.getPropertyValue('--border').trim(),
-  }
-}
-
-function useChartTheme() {
-  const [theme, setTheme] = useState<ChartTheme>(getChartTheme)
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => setTheme(getChartTheme()))
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class'],
-    })
-    return () => observer.disconnect()
-  }, [])
-
-  return theme
-}
+const PHASE_DETAILS = {
+  [MatchPhase.QUEUE]: { label: 'Match making', series: 0 },
+  [MatchPhase.SWISS]: { label: 'Group phase', series: 2 },
+  [MatchPhase.ELIMINATION]: { label: 'Tournament', series: 3 },
+  [MatchPhase.GAMBLING]: { label: 'Gambling', series: 1 },
+  [MatchPhase.MANUAL]: { label: 'Manual', series: 4 },
+} as const satisfies Record<MatchPhase, { label: string; series: number }>
 
 function getLabelFormatter(interval: MatchTimeInterval) {
   if (interval === 'day') {
@@ -131,8 +71,8 @@ export function MatchesChart({
       (phase) => ({
         label: PHASE_DETAILS[phase].label,
         data: buckets.map((bucket) => counts.get(`${bucket}:${phase}`) ?? 0),
-        backgroundColor: PHASE_DETAILS[phase].background,
-        borderColor: PHASE_DETAILS[phase].border,
+        backgroundColor: theme.series[PHASE_DETAILS[phase].series],
+        borderColor: theme.series[PHASE_DETAILS[phase].series],
         borderWidth: 1,
         borderRadius: 4,
         borderSkipped: false,
@@ -144,7 +84,7 @@ export function MatchesChart({
       labels: buckets.map((bucket) => formatter.format(new Date(bucket))),
       datasets,
     }
-  }, [buckets, data, formatter, selectedPhases])
+  }, [buckets, data, formatter, selectedPhases, theme])
 
   const options = useMemo<ChartOptions<'bar'>>(
     () => ({
@@ -170,6 +110,7 @@ export function MatchesChart({
         tooltip: {
           mode: 'index',
           intersect: false,
+          ...theme.tooltip,
           callbacks: {
             title: (items: TooltipItem<'bar'>[]) => {
               const bucket = buckets[items[0]?.dataIndex ?? 0]
@@ -219,7 +160,12 @@ export function MatchesChart({
 
   return (
     <div className="h-80 w-full md:h-96">
-      <Bar data={chartData} options={options} />
+      <Bar
+        aria-label="Matches played by phase over time"
+        role="img"
+        data={chartData}
+        options={options}
+      />
     </div>
   )
 }

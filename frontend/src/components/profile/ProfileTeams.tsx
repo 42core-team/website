@@ -36,7 +36,7 @@ function FinishBadge({ team }: { team: ProfileTeam }) {
     return (
       <Badge variant="outline" className="gap-1">
         {PODIUM.has(team.finish.kind) && (
-          <Trophy className="size-3.5 text-amber-500" aria-hidden />
+          <Trophy className="size-3.5 text-warning" aria-hidden />
         )}
         {finishLabel(team.finish)}
       </Badge>

@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { getCurrentLiveEvent } from '@/app/actions/event'
 import HomePageClient from '@/components/HomePageClient'
+import { Button } from '@/components/ui/button'
+import { PageError } from '@/components/ui/page-error'
 import { Spinner } from '@/components/ui/spinner'
 
 export const Route = createFileRoute('/')({
@@ -16,7 +18,7 @@ function HomeRoute() {
 
   if (currentEventQuery.isPending) {
     return (
-      <main className="flex min-h-[60vh] items-center justify-center">
+      <main className="page-frame page-state">
         <Spinner />
       </main>
     )
@@ -24,11 +26,18 @@ function HomeRoute() {
 
   if (currentEventQuery.isError) {
     return (
-      <main className="container mx-auto px-4 py-16">
-        <p className="text-center text-destructive">
-          Failed to load the CORE dashboard.
-        </p>
-      </main>
+      <PageError
+        title="CORE Game"
+        description="Failed to load the CORE dashboard."
+        action={
+          <Button
+            variant="outline"
+            onClick={() => void currentEventQuery.refetch()}
+          >
+            Try again
+          </Button>
+        }
+      />
     )
   }
 

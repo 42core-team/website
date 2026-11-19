@@ -122,7 +122,7 @@ export function UsersTable({
         {!event && (
           <select
             aria-label="Event"
-            className="h-9 max-w-full rounded-md border bg-background px-2 text-sm"
+            className="native-select"
             value={eventFilter}
             onChange={(change) => setEventFilter(change.target.value)}
           >
@@ -289,7 +289,7 @@ function RoleFilter({
   return (
     <select
       aria-label={label}
-      className="h-9 rounded-md border bg-background px-2 text-sm"
+      className="native-select"
       value={value}
       onChange={(event) => onChange(event.target.value)}
     >

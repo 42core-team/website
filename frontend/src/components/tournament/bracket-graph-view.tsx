@@ -207,7 +207,7 @@ export function BracketGraphView({
             type: 'smoothstep',
             animated: false,
             style: {
-              stroke: '#64748b',
+              stroke: 'var(--muted-foreground)',
               strokeWidth: 2,
               opacity: 0.5,
             },

@@ -15,8 +15,8 @@ function UsersRoute() {
     )
   if (!session?.user.abilities.admin) return <Navigate to="/" replace />
   return (
-    <main className="container mx-auto space-y-4 px-4 py-8">
-      <h1 className="text-3xl font-bold">Users</h1>
+    <main className="page-frame page-workspace space-y-4 py-8">
+      <h1 className="page-title">Users</h1>
       <UsersTable />
     </main>
   )

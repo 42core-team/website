@@ -2,26 +2,15 @@
 
 import Link from '@/components/app-link'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 
 export default function NotFoundClient() {
   return (
-    <div className="flex w-full items-center justify-center p-6 pt-40">
-      <Card className="w-full max-w-lg shadow-lg">
+    <main className="page-frame page-form py-16">
+      <Card className="mx-auto w-full max-w-lg">
         <CardHeader className="flex flex-col items-center gap-3">
-          <CardTitle className="text-5xl font-bold text-destructive">
-            404
-          </CardTitle>
-          <CardDescription className="text-xl font-medium">
-            Page Not Found
-          </CardDescription>
+          <span className="text-sm font-semibold text-link">404</span>
+          <h1 className="page-title">Page Not Found</h1>
         </CardHeader>
         <CardContent className="gap-2 text-center">
           <p>Oops! The page you are looking for doesn&apos;t exist.</p>
@@ -29,7 +18,7 @@ export default function NotFoundClient() {
             You can check{' '}
             <Link
               href="https://status.coregame.sh"
-              className="text-primary hover:underline"
+              className="text-link hover:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -38,9 +27,12 @@ export default function NotFoundClient() {
             for any known issues.
           </p>
         </CardContent>
-        <CardFooter className="flex justify-center">
+        <CardFooter className="flex flex-wrap justify-center gap-2">
+          <Button asChild>
+            <Link href="/">Back to home</Link>
+          </Button>
           <Button
-            variant="destructive"
+            variant="outline"
             onClick={() => {
               const base =
                 'https://github.com/42core-team/website_relaunch/issues/new'
@@ -74,6 +66,6 @@ export default function NotFoundClient() {
           </Button>
         </CardFooter>
       </Card>
-    </div>
+    </main>
   )
 }

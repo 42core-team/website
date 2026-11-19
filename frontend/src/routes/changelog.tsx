@@ -68,9 +68,9 @@ function ChangelogPage() {
     Route.useLoaderData()
 
   return (
-    <main className="container mx-auto px-4 py-10">
+    <main className="page-frame page-form py-8">
       <header className="mb-4">
-        <h1 className="pb-2 text-4xl font-bold">Changelog</h1>
+        <h1 className="page-title">Changelog</h1>
         <p className="text-muted-foreground">
           All changes from{' '}
           <a
@@ -141,7 +141,7 @@ function ChangelogPage() {
               <AccordionContent className="px-4">
                 {html.trim() ? (
                   <article
-                    className="prose max-w-none dark:prose-invert"
+                    className="prose reading-column max-w-none"
                     dangerouslySetInnerHTML={{ __html: html }}
                   />
                 ) : (

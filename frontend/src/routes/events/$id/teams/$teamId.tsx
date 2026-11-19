@@ -70,7 +70,7 @@ function TeamRoute() {
   // Wait for the viewer's team too, so their own team never flashes the public view.
   if (teamQuery.isPending || myTeamQuery.isPending) {
     return (
-      <main className="flex min-h-[45vh] items-center justify-center">
+      <main className="page-frame page-state">
         <Spinner />
       </main>
     )
@@ -78,7 +78,7 @@ function TeamRoute() {
 
   if (teamQuery.isError || !teamQuery.data) {
     return (
-      <main className="container mx-auto max-w-5xl px-4 py-8">
+      <main className="page-frame py-8">
         <p className="text-center text-destructive">Team not found.</p>
       </main>
     )
@@ -108,7 +108,7 @@ function TeamRoute() {
     Boolean(myTeamQuery.data) && myTeamQuery.data?.id !== teamQuery.data.id
 
   return (
-    <main className="container mx-auto max-w-5xl px-4 py-8">
+    <main className="page-frame py-8">
       <TeamPublicProfile
         team={teamQuery.data}
         members={membersQuery.data ?? []}

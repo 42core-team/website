@@ -218,7 +218,7 @@ export function AppearanceImageEditor({
           </button>
         )}
         {dragging && (
-          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/90 text-sm font-medium text-primary">
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/90 text-sm font-medium text-link">
             Drop image here
           </div>
         )}

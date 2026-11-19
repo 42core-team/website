@@ -1,11 +1,5 @@
 .wikiHighlightTemp {
-  background-color: #fef3c7;
-  color: #92400e;
-  transition: all 0.3s ease;
-  border-radius: 4px;
-}
-
-:global(.dark) .wikiHighlightTemp {
-  background-color: #78350f;
-  color: #fef3c7;
+  background-color: var(--highlight);
+  color: var(--foreground);
+  border-radius: var(--radius-sm);
 }

@@ -51,7 +51,7 @@ function FeaturedEvent({
     live: {
       eyebrow: 'Happening now',
       label: 'Live',
-      variant: 'default' as const,
+      variant: 'featured' as const,
     },
     completed: {
       eyebrow: 'Recently active',
@@ -70,8 +70,8 @@ function FeaturedEvent({
         aria-label={`View details for ${event.name}`}
         className="group block rounded-xl no-underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
       >
-        <Card className="overflow-hidden border-primary/30 bg-linear-to-br from-primary/10 via-card to-card shadow-md transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-primary/50 group-hover:shadow-lg">
-          <CardHeader className="gap-5 md:flex-row md:items-start md:justify-between md:space-y-0">
+        <Card className="overflow-hidden transition-colors group-hover:border-link">
+          <CardHeader className="circuit-masthead gap-5 md:flex-row md:items-start md:justify-between md:space-y-0">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={presentation.variant}>
@@ -82,18 +82,18 @@ function FeaturedEvent({
               <div>
                 <CardTitle
                   id="featured-event-heading"
-                  className="text-2xl md:text-3xl"
+                  className="section-title"
                 >
                   {event.name}
                 </CardTitle>
                 {description && (
-                  <CardDescription className="mt-2 line-clamp-2 max-w-3xl text-base">
+                  <CardDescription className="mt-2 line-clamp-2 max-w-3xl text-base text-brand-masthead-muted">
                     {description}
                   </CardDescription>
                 )}
               </div>
             </div>
-            <span className="flex shrink-0 items-center gap-2 font-medium text-primary transition-colors group-hover:text-primary/80">
+            <span className="flex shrink-0 items-center gap-2 font-semibold text-on-brand-dark group-hover:underline">
               View event details
               <ArrowRight
                 aria-hidden="true"
@@ -101,7 +101,7 @@ function FeaturedEvent({
               />
             </span>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-6">
+          <CardContent className="flex flex-col gap-3 pt-4 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-6">
             <span className="flex items-center gap-2">
               <CalendarDays aria-hidden="true" />
               {formatDateRange(event)}

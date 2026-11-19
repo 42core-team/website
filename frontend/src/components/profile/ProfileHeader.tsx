@@ -10,7 +10,7 @@ import { TeamCover, TeamCoverStripe } from '@/components/team/TeamAppearance'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
   finishLabel,
   formatPercent,
@@ -83,14 +83,14 @@ export function ProfileHeader({ profile }: { profile: UserProfile }) {
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
-              <CardTitle className="text-2xl font-bold break-words sm:text-3xl">
+              <h1 className="page-title break-words">
                 {user.name || user.username}
-              </CardTitle>
+              </h1>
               <div className="flex flex-wrap items-center gap-2">
                 <LocationTags tags={user.tags} />
                 {onPodium && (
                   <Badge variant="outline" className="gap-1">
-                    <Trophy className="size-3.5 text-amber-500" aria-hidden />
+                    <Trophy className="size-3.5 text-warning" aria-hidden />
                     {finishLabel(best.finish)} · {best.team.event.name}
                   </Badge>
                 )}
@@ -149,7 +149,7 @@ export function ProfileHeader({ profile }: { profile: UserProfile }) {
                 best ? (
                   <span className="inline-flex items-center gap-1.5">
                     {onPodium && (
-                      <Trophy className="size-5 text-amber-500" aria-hidden />
+                      <Trophy className="size-5 text-warning" aria-hidden />
                     )}
                     {placeLabel(best.finish)}
                   </span>

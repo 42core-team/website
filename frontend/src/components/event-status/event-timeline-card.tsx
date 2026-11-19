@@ -34,10 +34,7 @@ export default function EventTimelineCard({
     >
       <div className="space-y-8 p-6 sm:p-8">
         <div className="flex items-center justify-between gap-4">
-          <h2
-            id="event-timeline-heading"
-            className="text-2xl font-semibold tracking-tight"
-          >
+          <h2 id="event-timeline-heading" className="section-title">
             Event timeline
           </h2>
           <span className="shrink-0 rounded-full border px-3 py-1 text-sm">
@@ -64,8 +61,9 @@ export default function EventTimelineCard({
                     'flex size-8 shrink-0 items-center justify-center rounded-full text-sm tabular-nums',
                     active
                       ? cn(
-                          'text-white ring-4',
-                          toneStyles[moment.tone].dot,
+                          'ring-2',
+                          toneStyles[moment.tone].panel,
+                          toneStyles[moment.tone].text,
                           toneStyles[moment.tone].ring,
                         )
                       : done

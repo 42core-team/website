@@ -17,6 +17,7 @@ import {
 } from '@/app/actions/tournament'
 import { MatchPhase } from '@/app/actions/tournament-model'
 import MatchLogsDisplay from '@/components/match/MatchLogsDisplay'
+import { PageError } from '@/components/ui/page-error'
 import { Spinner } from '@/components/ui/spinner'
 import { useHideSiteNav } from '@/contexts/NavbarContext'
 import { useEventAbilities } from '@/hooks/use-event-abilities'
@@ -92,18 +93,14 @@ function MatchRoute() {
 
   if (isLoading) {
     return (
-      <main className="flex min-h-[45vh] items-center justify-center">
+      <main className="page-frame page-state">
         <Spinner />
       </main>
     )
   }
 
   if (isError) {
-    return (
-      <main className="container mx-auto max-w-7xl px-4 py-8">
-        <p className="text-center text-destructive">Match not found.</p>
-      </main>
-    )
+    return <PageError title="Match" description="Match not found." />
   }
 
   return (
@@ -147,7 +144,7 @@ function MatchRoute() {
             ref={logsRef}
             tabIndex={-1}
             // Clears the navbar, which is only sticky from sm up.
-            className="container mx-auto max-w-7xl px-4 py-8 outline-none focus-visible:ring-1 focus-visible:ring-ring sm:scroll-mt-16"
+            className="page-frame py-8 outline-none focus-visible:ring-1 focus-visible:ring-ring sm:scroll-mt-16"
           >
             <MatchLogsDisplay logs={logsQuery.data} />
           </div>

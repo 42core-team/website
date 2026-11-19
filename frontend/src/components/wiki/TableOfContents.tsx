@@ -81,9 +81,9 @@ export function TableOfContents({ content }: TableOfContentsProps) {
               <button
                 type="button"
                 onClick={(event) => handleHeadingClick(item.id, event)}
-                className={`block text-left text-sm transition-colors hover:text-primary ${
+                className={`block text-left text-sm transition-colors hover:text-link ${
                   activeId === item.id
-                    ? 'font-medium text-primary'
+                    ? 'font-medium text-link'
                     : 'text-muted-foreground'
                 }`}
                 style={{ paddingLeft: `${(item.level - 1) * 12}px` }}

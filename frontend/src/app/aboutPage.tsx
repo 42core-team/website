@@ -3,7 +3,6 @@
 import { motion } from 'framer-motion'
 import Image from '@/components/app-image'
 import Link from '@/components/app-link'
-import { title } from '@/components/primitives'
 import {
   CoreLogoWhite,
   DiscordIcon,
@@ -110,7 +109,7 @@ export default function AboutPageClient() {
           className="text-center"
         >
           <div className="flex flex-row items-center justify-center gap-4">
-            <h1 className={title()}>About</h1>
+            <h1 className="page-title">About</h1>
             <CoreLogoWhite className="h-auto w-20" />
           </div>
           <p className="mt-4 text-lg text-muted-foreground">
@@ -125,7 +124,7 @@ export default function AboutPageClient() {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <div className="space-y-4 [&_p]:text-muted-foreground">
-            <h2 className="text-2xl font-bold">The Minds Behind CORE Game</h2>
+            <h2 className="section-title">The Minds Behind CORE Game</h2>
             <p>
               At CORE Game, we're coders, innovators, challengers, and problem
               solvers. What started as a passion project among students at 42
@@ -154,7 +153,7 @@ export default function AboutPageClient() {
           </div>
 
           <div className="space-y-4 [&_p]:text-muted-foreground">
-            <h2 className="text-2xl font-bold">Our Vision</h2>
+            <h2 className="section-title">Our Vision</h2>
             <p>
               We envision a world where coding is accessible, engaging, and fun
               for everyone. By combining gaming elements with programming
@@ -165,7 +164,7 @@ export default function AboutPageClient() {
           </div>
 
           <div className="space-y-4 [&_p]:text-muted-foreground">
-            <h2 className="text-2xl font-bold">What We Do</h2>
+            <h2 className="section-title">What We Do</h2>
             <p>
               We organize international coding competitions that feel like
               gaming tournaments. Participants write the complete behavior of
@@ -178,7 +177,7 @@ export default function AboutPageClient() {
           </div>
 
           <div className="space-y-4 [&_p]:text-muted-foreground">
-            <h2 className="text-2xl font-bold">Join Our Community</h2>
+            <h2 className="section-title">Join Our Community</h2>
             <p>
               Whether you&rsquo;re a beginner taking your first steps in coding
               or an experienced developer looking for new challenges, CORE
@@ -220,7 +219,7 @@ export default function AboutPageClient() {
 
       <section className="py-16">
         <motion.div
-          className="container mx-auto px-4"
+          className="mx-auto w-full"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.6 }}

@@ -107,10 +107,8 @@ function impactForCost(delta: number) {
 }
 
 function impactBorder(tone: ImpactTone | undefined) {
-  if (tone === 'positive')
-    return 'border-emerald-500/70 text-emerald-700 dark:text-emerald-300'
-  if (tone === 'negative')
-    return 'border-red-500/70 text-red-700 dark:text-red-300'
+  if (tone === 'positive') return 'border-success-border text-success'
+  if (tone === 'negative') return 'border-destructive-border text-destructive'
   return ''
 }
 
@@ -757,18 +755,18 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
   return (
     <div className="mx-auto mt-3 mb-10">
       <header className="mb-5 space-y-1">
-        <h1 className="text-3xl font-bold">5-Step Unit Builder</h1>
+        <h1 className="page-title">5-Step Unit Builder</h1>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem] lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_18rem] lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-6">
           <section className="space-y-3">
             <h2 className="text-lg font-semibold">
               Step 1: Understand Unit Building
             </h2>
-            <Button asChild>
+            <Button asChild className="max-w-full whitespace-normal text-left">
               <a href={UNIT_BUILDER_WIKI_URL} target="_blank" rel="noreferrer">
-                Read the unit builder documentation
+                <span>Read the unit builder documentation</span>
                 <ExternalLink />
               </a>
             </Button>
@@ -816,10 +814,10 @@ export default function UnitBuilder({ config }: UnitBuilderProps) {
                   'min-h-52 rounded-xl border-2 border-dashed p-4 transition-colors',
                   activeDrag?.target === 'assembly'
                     ? assemblyDropViolation
-                      ? 'border-red-500 bg-red-500/5'
-                      : 'border-emerald-500 bg-muted/30'
+                      ? 'border-destructive-border bg-destructive-surface'
+                      : 'border-success-border bg-success-surface'
                     : currentViolations.length > 0
-                      ? 'border-red-500 bg-red-500/5'
+                      ? 'border-destructive-border bg-destructive-surface'
                       : 'border-border bg-muted/30',
                 )}
               >

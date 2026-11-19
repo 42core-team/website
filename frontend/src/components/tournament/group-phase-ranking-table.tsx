@@ -138,11 +138,11 @@ export function GroupPhaseRankingTable({
                     <TableRow>
                       <TableCell colSpan={6} className="text-center">
                         <div className="flex h-full w-full items-center gap-4 px-4">
-                          <div className="h-px flex-1 bg-emerald-500/50" />
-                          <span className="text-[10px] font-bold tracking-widest text-emerald-500/80 uppercase">
+                          <div className="h-px flex-1 bg-success-border" />
+                          <span className="text-[10px] font-bold tracking-widest text-success uppercase">
                             Advancement Cutoff
                           </span>
-                          <div className="h-px flex-1 bg-emerald-500/50" />
+                          <div className="h-px flex-1 bg-success-border" />
                         </div>
                       </TableCell>
                     </TableRow>

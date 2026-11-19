@@ -1,7 +1,7 @@
 export default function DatenschtutzPage() {
   return (
-    <div className="container mx-auto max-w-4xl px-8 py-12">
-      <div className="prose prose-lg max-w-none dark:prose-invert">
+    <main className="page-frame py-12">
+      <div className="prose prose-lg reading-column">
         <h1>Datenschutz&shy;erkl&auml;rung</h1>
         <h2>1. Datenschutz auf einen Blick</h2>
         <h3>Allgemeine Hinweise</h3>{' '}
@@ -424,6 +424,6 @@ export default function DatenschtutzPage() {
           <a href="https://www.e-recht24.de">https://www.e-recht24.de</a>
         </p>
       </div>
-    </div>
+    </main>
   )
 }

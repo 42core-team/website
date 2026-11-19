@@ -122,7 +122,7 @@ function QueueRoute() {
 
   if (queueSummaryQuery.isPending) {
     return (
-      <main className="flex min-h-[45vh] items-center justify-center">
+      <main className="page-frame page-state">
         <Spinner />
       </main>
     )
@@ -130,7 +130,8 @@ function QueueRoute() {
 
   if (!queueSummaryQuery.data) {
     return (
-      <main className="container mx-auto max-w-3xl px-4 py-8">
+      <main className="page-frame space-y-6 py-8">
+        <h1 className="page-title">Match Making</h1>
         <Card>
           <CardHeader>
             <CardTitle>No team found</CardTitle>
@@ -160,7 +161,8 @@ function QueueRoute() {
   )
 
   return (
-    <main className="container mx-auto max-w-4xl space-y-6 px-4 py-8">
+    <main className="page-frame space-y-6 py-8">
+      <h1 className="page-title">Match Making</h1>
       {!playable && (
         <Alert role="status">
           <Lock className="size-4" aria-hidden="true" />
@@ -292,7 +294,7 @@ function QueueRoute() {
 
       {activeQueueMatches.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-xl font-semibold">Currently playing</h2>
+          <h2 className="section-title">Currently playing</h2>
           <MatchesList
             eventId={id}
             teamId={queueSummaryQuery.data.id}
@@ -302,7 +304,7 @@ function QueueRoute() {
       )}
 
       <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Your match history</h2>
+        <h2 className="section-title">Your match history</h2>
         <MatchesList
           eventId={id}
           teamId={queueSummaryQuery.data.id}

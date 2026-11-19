@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CORE Circuit · Event design draft</title>
+<style>
+  :root { font-family: var(--font-sans, system-ui, sans-serif); }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; }
+  .circuit {
+    --purple: #a214d5; --dark-purple: #4d0e64; --orange: #ff8200; --dark-orange: #e56000;
+    --gray: #a2a2a2; --dark-gray: #747474; --white: #fff; --black: #17131a;
+    --canvas: #f7f4f8; --surface: #fff; --ink: var(--black); --muted-ink: #626262;
+    --line: #e2dae6; --accent-ink: var(--dark-purple); --focus: var(--purple);
+    --selected: #f5e7fa; --note: #fff2e5; --note-edge: var(--dark-orange);
+    --action-hover: var(--dark-purple); --mono: var(--font-mono, ui-monospace, monospace);
+    color: var(--ink); color-scheme: light; font-size: 14px; line-height: 1.5;
+  }
+  .circuit[data-theme="dark"] {
+    --canvas: #17131a; --surface: #231a27; --ink: #faf2fd; --muted-ink: var(--gray);
+    --line: #44364a; --accent-ink: #e4a8f7; --focus: #e4a8f7;
+    --selected: #36213e; --note: #392514; --note-edge: var(--orange);
+    --action-hover: #8613ad; color-scheme: dark;
+  }
+  h1, h2, p, dl, dd { margin: 0; }
+  a { color: inherit; }
+  a:focus-visible, button:focus-visible, section:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  .workspace { background: var(--canvas); border-radius: var(--radius, 16px); padding: 16px; }
+  .shell { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; padding-bottom: 10px; }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 900; letter-spacing: .12em; }
+  .mark { width: 21px; aspect-ratio: 1; background: var(--purple); display: grid; place-items: center; clip-path: polygon(50% 0,100% 50%,50% 100%,0 50%); }
+  .mark::after { content: ''; width: 9px; aspect-ratio: 1; background: var(--white); transform: rotate(45deg); }
+  .theme, .button { min-height: 44px; padding: 0 12px; border: 1px solid var(--dark-gray); border-radius: 7px; background: var(--surface); color: var(--ink); font: inherit; font-weight: 650; }
+  .theme { cursor: pointer; }
+  .theme:hover, .button:hover { background: var(--selected); }
+  .site-nav { display: flex; min-width: 0; gap: 4px; }
+  .site-nav a { display: inline-flex; min-height: 44px; align-items: center; padding: 0 8px; color: var(--muted-ink); text-decoration: none; }
+  .site-nav a[aria-current] { color: var(--accent-ink); box-shadow: inset 0 -2px var(--focus); font-weight: 700; }
+  .site-nav a:hover { color: var(--accent-ink); }
+  .hero { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(130px, .65fr); gap: 18px; align-items: center; padding: clamp(16px, 4vw, 30px); border-radius: 12px 12px 0 0; background: var(--dark-purple); color: var(--white); }
+  .hero::before { content: ''; position: absolute; inset: 0; z-index: -1; background-image: linear-gradient(#ffffff12 1px, transparent 1px), linear-gradient(90deg, #ffffff12 1px, transparent 1px); background-size: 21px 21px; mask-image: linear-gradient(90deg, transparent 25%, black); }
+  .hero :focus-visible { outline-color: var(--orange); }
+  .phase { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 5px; background: var(--orange); color: var(--black); font-weight: 750; font-size: 12px; }
+  .phase::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  h1 { font-size: clamp(32px, 6.3vw, 51px); line-height: 1; letter-spacing: -.055em; margin: 10px 0; }
+  .hero p { color: #f5dcfa; max-width: 36ch; }
+  .board { display: grid; place-items: center; min-height: 130px; }
+  .board-map { position: relative; width: min(108px, 76%); aspect-ratio: 1; transform: rotate(45deg); border: 1px solid #fff8; background: repeating-linear-gradient(0deg, transparent 0 13px, #fff3 13px 14px), repeating-linear-gradient(90deg, transparent 0 13px, #fff3 13px 14px), #2f0a3e; box-shadow: 8px 8px 0 #290637, 0 0 30px #c935ff55; }
+  .board-map i { position: absolute; width: 15%; aspect-ratio: 1; background: var(--orange); box-shadow: 0 0 12px var(--orange); }
+  .board-map i:first-child { inset: 15% auto auto 15%; }
+  .board-map i:nth-child(2) { inset: auto 15% 15% auto; background: #e4a8f7; box-shadow: 0 0 12px var(--purple); }
+  .board-map i:last-child { inset: 43% auto auto 43%; border-radius: 50%; background: var(--white); box-shadow: none; width: 11%; }
+  .event-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 12px 12px; }
+  .facts, .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .facts > div + div { border-left: 1px solid var(--gray); padding-left: 14px; }
+  .facts dt { font-size: 12px; color: var(--muted-ink); }
+  .facts dd { font: 700 16px/1.4 var(--mono); font-variant-numeric: tabular-nums; }
+  .button { display: inline-flex; align-items: center; text-decoration: none; }
+  .button.primary { background: var(--purple); border-color: transparent; color: var(--white); }
+  .button.primary:hover { background: var(--action-hover); }
+  .content-grid { display: grid; grid-template-columns: minmax(0, 1.17fr) minmax(0, 1fr); gap: 12px; margin-top: 12px; }
+  .panel { padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  h2 { font-size: 19px; line-height: 1.2; letter-spacing: -.02em; }
+  table { width: 100%; margin-top: 8px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { padding: 6px; text-align: left; border-bottom: 1px solid var(--line); }
+  th { font-size: 12px; color: var(--muted-ink); }
+  tr:last-child td { border-bottom: 0; }
+  tr > :last-child { text-align: right; }
+  tbody tr:first-child { background: var(--selected); }
+  tbody tr:first-child td:last-child { color: var(--accent-ink); font-weight: 800; }
+  .guide p { color: var(--muted-ink); margin: 8px 0; }
+  .callout { background: var(--note); border-left: 3px solid var(--note-edge); border-radius: 0 7px 7px 0; padding: 8px 10px; }
+  .callout strong { display: block; }
+  code { font-family: var(--mono); }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(91px, 1fr)); gap: 8px; padding: 0; margin: 12px 0 0; list-style: none; }
+  .swatches li { min-width: 0; font-size: 12px; }
+  .swatches i { display: block; height: 13px; border-radius: 3px; background: var(--swatch); margin-bottom: 3px; }
+  .swatches code { display: block; color: var(--muted-ink); font-size: 11px; }
+  @media (max-width: 520px) {
+    .shell { column-gap: 10px; }
+    .site-nav { order: 1; flex-basis: 100%; }
+    .hero { grid-template-columns: minmax(0, 1fr) 66px; gap: 9px; }
+    .board { min-height: 0; }
+    .content-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+<main class="circuit">
+  <div class="workspace">
+    <header class="shell">
+      <div class="brand"><span class="mark" aria-hidden="true"></span>CORE</div>
+      <nav class="site-nav" aria-label="Event sections">
+        <a href="#overview" aria-current="location">Overview</a>
+        <a href="#standings">Standings</a>
+        <a href="#guide">Wiki</a>
+      </nav>
+      <button class="theme" type="button" aria-pressed="false">Dark mode</button>
+    </header>
+    <section id="overview" aria-labelledby="title" tabindex="-1">
+      <div class="hero">
+        <div>
+          <span class="phase">Coding phase</span>
+          <h1 id="title">CORE Spring Cup</h1>
+          <p>Build a bot, test it in the queue, and compete with your team.</p>
+        </div>
+        <div class="board" aria-hidden="true"><div class="board-map"><i></i><i></i><i></i></div></div>
+      </div>
+      <div class="event-bar">
+        <dl class="facts">
+          <div><dt>Submissions close in</dt><dd>02h 41m</dd></div>
+          <div><dt>Registered teams</dt><dd>24</dd></div>
+        </dl>
+        <div class="actions">
+          <a class="button primary" href="#standings">View standings</a>
+          <a class="button" href="#guide">Read the guide</a>
+        </div>
+      </div>
+    </section>
+    <div class="content-grid">
+      <section class="panel" id="standings" aria-labelledby="standings-title" tabindex="-1">
+        <h2 id="standings-title">Group A standings</h2>
+        <table aria-labelledby="standings-title">
+          <thead><tr><th scope="col">Rank</th><th scope="col">Team</th><th scope="col">Points</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Gem Runners</td><td>12</td></tr>
+            <tr><td>2</td><td>Null Forge</td><td>9</td></tr>
+            <tr><td>3</td><td>Stack Wolves</td><td>6</td></tr>
+          </tbody>
+        </table>
+      </section>
+      <section class="panel guide" id="guide" tabindex="-1">
+        <h2>Test your bot</h2>
+        <p>Run a local match before you enter the queue.</p>
+        <aside class="callout"><strong>Replay tip</strong>Record the <code>seed</code> so you can replay the same map.</aside>
+      </section>
+    </div>
+    <ul class="swatches" aria-label="CORE brand palette">
+      <li><i aria-hidden="true" style="--swatch:var(--purple)"></i>Purple<code>#a214d5</code></li>
+      <li><i aria-hidden="true" style="--swatch:var(--dark-purple)"></i>Dark Purple<code>#4d0e64</code></li>
+      <li><i aria-hidden="true" style="--swatch:var(--orange)"></i>Orange<code>#ff8200</code></li>
+      <li><i aria-hidden="true" style="--swatch:var(--dark-orange)"></i>Dark Orange<code>#e56000</code></li>
+      <li><i aria-hidden="true" style="--swatch:var(--gray)"></i>Light Gray<code>#a2a2a2</code></li>
+      <li><i aria-hidden="true" style="--swatch:var(--dark-gray)"></i>Dark Gray<code>#747474</code></li>
+    </ul>
+  </div>
+</main>
+<script>
+  const draft = document.querySelector('.circuit');
+  const toggle = draft.querySelector('.theme');
+  const themePreference = matchMedia('(prefers-color-scheme: dark)');
+  function setDarkMode(dark) {
+    draft.dataset.theme = dark ? 'dark' : 'light';
+    toggle.setAttribute('aria-pressed', String(dark));
+  }
+  setDarkMode(themePreference.matches);
+  toggle.addEventListener('click', () => setDarkMode(draft.dataset.theme !== 'dark'));
+  draft.addEventListener('click', (event) => {
+    const link = event.target.closest('a[href^="#"]');
+    if (!link) return;
+    const section = document.getElementById(link.hash.slice(1));
+    if (!section) return;
+    event.preventDefault();
+    for (const item of draft.querySelectorAll('.site-nav a')) {
+      if (item.hash === link.hash) item.setAttribute('aria-current', 'location');
+      else item.removeAttribute('aria-current');
+    }
+    section.focus();
+  });
+</script>
+</body>
+</html>

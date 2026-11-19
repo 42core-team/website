@@ -21,7 +21,7 @@ function UnitBuilderRoute() {
 
   if (eventQuery.isPending) {
     return (
-      <main className="flex min-h-[45vh] items-center justify-center">
+      <main className="page-frame page-state">
         <Spinner />
       </main>
     )
@@ -35,7 +35,8 @@ function UnitBuilderRoute() {
 
   if (!config) {
     return (
-      <main className="container mx-auto max-w-4xl px-4 py-8">
+      <main className="page-frame page-workspace space-y-6 py-8">
+        <h1 className="page-title">Unit Builder</h1>
         <Alert>
           <AlertTitle>Unit builder not used</AlertTitle>
           <AlertDescription>
@@ -47,7 +48,7 @@ function UnitBuilderRoute() {
   }
 
   return (
-    <main className="container mx-auto max-w-7xl px-4 py-8">
+    <main className="page-frame page-workspace py-8">
       <UnitBuilder config={config} />
     </main>
   )

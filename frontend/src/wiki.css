@@ -25,13 +25,13 @@
   }
 }
 
-/* GitHub-style callouts */
+/* Wiki callouts */
 .wiki-content .callout {
   margin: 1rem 0 !important;
   padding: 1rem !important;
-  border-left: 4px solid !important;
+  border-left: 3px solid var(--callout-border, var(--input)) !important;
   border-radius: 0.5rem !important;
-  background: #00000005 !important;
+  background: var(--callout-background, var(--muted)) !important;
 }
 
 .wiki-content .callout-header {
@@ -39,10 +39,13 @@
   align-items: center !important;
   gap: 0.5rem !important;
   font-weight: 600 !important;
+  color: var(--callout-text, var(--foreground)) !important;
   margin-bottom: 0.5rem !important;
 }
 
 .wiki-content .callout-icon {
+  flex: none;
+  white-space: nowrap;
   font-size: 1.2em !important;
 }
 
@@ -58,88 +61,34 @@
   margin-bottom: 0 !important;
 }
 
-/* Callout type-specific styling */
 .wiki-content .callout-warning {
-  border-color: #f59e0b !important;
-  background: rgba(245, 158, 11, 0.1) !important;
-}
-
-.wiki-content .callout-warning .callout-title {
-  color: #d97706 !important;
+  --callout-background: var(--warning-surface);
+  --callout-border: var(--warning-border);
+  --callout-text: var(--warning);
 }
 
 .wiki-content .callout-info {
-  border-color: #3b82f6 !important;
-  background: rgba(59, 130, 246, 0.1) !important;
-}
-
-.wiki-content .callout-info .callout-title {
-  color: #2563eb !important;
-}
-
-.wiki-content .callout-note {
-  border-color: #6b7280 !important;
-  background: rgba(107, 114, 128, 0.1) !important;
-}
-
-.wiki-content .callout-note .callout-title {
-  color: #4b5563 !important;
+  --callout-background: var(--info-surface);
+  --callout-border: var(--info-border);
+  --callout-text: var(--info);
 }
 
 .wiki-content .callout-tip {
-  border-color: #10b981 !important;
-  background: rgba(16, 185, 129, 0.1) !important;
-}
-
-.wiki-content .callout-tip .callout-title {
-  color: #059669 !important;
+  --callout-background: var(--highlight);
+  --callout-border: var(--highlight-border);
+  --callout-text: var(--foreground);
 }
 
 .wiki-content .callout-important {
-  border-color: #8b5cf6 !important;
-  background: rgba(139, 92, 246, 0.1) !important;
-}
-
-.wiki-content .callout-important .callout-title {
-  color: #7c3aed !important;
+  --callout-background: var(--accent);
+  --callout-border: var(--ring);
+  --callout-text: var(--link);
 }
 
 .wiki-content .callout-caution {
-  border-color: #ef4444 !important;
-  background: rgba(239, 68, 68, 0.1) !important;
-}
-
-.wiki-content .callout-caution .callout-title {
-  color: #dc2626 !important;
-}
-
-/* Dark mode support for callouts — uses .dark class to match the app's theme system */
-.dark .wiki-content .callout {
-  background: rgba(255, 255, 255, 0.05) !important;
-}
-
-.dark .wiki-content .callout-warning {
-  background: rgba(245, 158, 11, 0.15) !important;
-}
-
-.dark .wiki-content .callout-info {
-  background: rgba(59, 130, 246, 0.15) !important;
-}
-
-.dark .wiki-content .callout-note {
-  background: rgba(107, 114, 128, 0.15) !important;
-}
-
-.dark .wiki-content .callout-tip {
-  background: rgba(16, 185, 129, 0.15) !important;
-}
-
-.dark .wiki-content .callout-important {
-  background: rgba(139, 92, 246, 0.15) !important;
-}
-
-.dark .wiki-content .callout-caution {
-  background: rgba(239, 68, 68, 0.15) !important;
+  --callout-background: var(--destructive-surface);
+  --callout-border: var(--destructive-border);
+  --callout-text: var(--destructive);
 }
 
 /* ── Tabbed code groups (rehype-code-group) ────────────────────────────── */
@@ -180,12 +129,12 @@
 
 .wiki-content .rcg-tab:hover {
   color: var(--foreground);
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--accent);
 }
 
 .wiki-content .rcg-tab.active {
-  color: var(--foreground);
-  border-bottom-color: var(--primary);
+  color: var(--link);
+  border-bottom-color: var(--link);
   /* Override plugin default bold */
   font-weight: 600;
 }
@@ -218,11 +167,6 @@
   border: none !important;
 }
 
-/* Dark-mode hover tweak */
-.dark .wiki-content .rcg-tab:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-
 /* Wiki content styles */
 .wiki-content {
   @apply text-base text-foreground;
@@ -244,7 +188,7 @@
 }
 
 .wiki-content h2 {
-  @apply text-3xl mt-6 mb-3;
+  @apply section-title mt-6 mb-3;
 }
 
 .wiki-content h3 {
@@ -281,7 +225,7 @@
 }
 
 .wiki-content a {
-  @apply underline;
+  @apply text-link underline underline-offset-2;
 }
 
 .wiki-content code {
@@ -366,4 +310,11 @@
 [data-wiki-lang='c'] .wiki-content .lang-block:not([data-lang='c']),
 [data-wiki-lang='go'] .wiki-content .lang-block:not([data-lang='go']) {
   display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(wiki-content),
+  ::view-transition-new(wiki-content) {
+    animation: none;
+  }
 }

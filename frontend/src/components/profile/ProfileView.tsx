@@ -25,7 +25,7 @@ export function ProfileView({ username }: { username: string }) {
   if (query.isError) {
     const status = (query.error as AxiosError).response?.status
     return (
-      <div className="container mx-auto max-w-xl px-4 py-24 text-center">
+      <div className="page-frame max-w-xl py-24 text-center">
         <h1 className="text-2xl font-bold">
           {status === 404 ? 'Player not found' : 'Could not load this profile'}
         </h1>
@@ -44,7 +44,7 @@ export function ProfileView({ username }: { username: string }) {
     : 'overview'
 
   return (
-    <main className="container mx-auto max-w-7xl px-4 py-8">
+    <main className="page-frame py-8">
       <div className="space-y-6">
         <ProfileHeader profile={profile} />
         <Tabs value={tab} onValueChange={onTabChange}>
@@ -74,7 +74,7 @@ export function ProfileView({ username }: { username: string }) {
 
 function ProfileSkeleton() {
   return (
-    <main aria-busy className="container mx-auto max-w-7xl space-y-6 px-4 py-8">
+    <main aria-busy className="page-frame space-y-6 py-8">
       <Skeleton className="h-80 rounded-xl" />
       <Skeleton className="h-9 w-80 rounded-lg" />
       <div className="grid gap-6 lg:grid-cols-3">

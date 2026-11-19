@@ -34,9 +34,9 @@ export function MatchHistoryBadges({
           }}
           className={cn(
             'w-6 h-6 rounded flex items-center justify-center text-[11px] shadow-sm cursor-pointer hover:opacity-80 transition-opacity',
-            match.result === 'W' && 'bg-emerald-500 text-white',
-            match.result === 'L' && 'bg-destructive text-white',
-            match.result === 'T' && 'bg-muted-foreground text-white',
+            match.result === 'W' && 'bg-success-surface text-success',
+            match.result === 'L' && 'bg-destructive-surface text-destructive',
+            match.result === 'T' && 'bg-muted text-muted-foreground',
           )}
         >
           {match.result}

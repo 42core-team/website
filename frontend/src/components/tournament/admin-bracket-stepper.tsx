@@ -167,7 +167,7 @@ export function AdminBracketStepper({
 
       <div className="h-1 overflow-hidden rounded-full bg-muted">
         <motion.div
-          className="h-full rounded-full bg-linear-to-r from-primary/70 via-primary to-emerald-500"
+          className="h-full rounded-full bg-primary"
           initial={false}
           animate={{
             width: `${((safeIndex + 1) / orderedMatches.length) * 100}%`,
@@ -216,7 +216,7 @@ export function AdminBracketStepper({
               <span className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span>Round {match.round + 1}</span>
                 {match.isRevealed && (
-                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                  <span className="inline-flex items-center gap-1 text-success">
                     <Check className="size-3" />
                     Revealed
                   </span>
@@ -253,7 +253,7 @@ export function AdminBracketStepper({
                 {getCompetitors(currentMatch)}
               </p>
               {!currentMatch.isRevealed && !canReveal && (
-                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                <p className="mt-1 text-xs text-warning">
                   This match can be revealed after it has finished.
                 </p>
               )}

@@ -27,10 +27,10 @@ export function ResultPill({
     <span
       title={title ? `${NAMES[result]} ${title}` : NAMES[result]}
       className={cn(
-        'flex h-6 w-6 shrink-0 items-center justify-center rounded text-[11px] text-white shadow-sm',
-        result === 'WIN' && 'bg-emerald-500',
-        result === 'LOSS' && 'bg-destructive',
-        result === 'DRAW' && 'bg-muted-foreground',
+        'flex h-6 w-6 shrink-0 items-center justify-center rounded text-[11px] font-semibold',
+        result === 'WIN' && 'bg-success-surface text-success',
+        result === 'LOSS' && 'bg-destructive-surface text-destructive',
+        result === 'DRAW' && 'bg-muted text-muted-foreground',
         className,
       )}
     >

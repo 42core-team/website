@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button'
 import { useQuery } from '@tanstack/react-query'
 import type { LucideIcon } from 'lucide-react'
 import { MapPin, UserRound, Users, UsersRound } from 'lucide-react'
@@ -11,6 +12,7 @@ import {
 } from '@/app/actions/event'
 import { myTeamQueryFn, myTeamQueryKey } from '@/app/events/my-team-queries'
 import { useNavbar } from '@/contexts/NavbarContext'
+import CoreLogo from '@/components/CoreLogo'
 import GithubLoginButton from '@/components/github'
 import EventHeader from '@/components/event-status/event-header'
 import EventMomentCard from '@/components/event-status/event-moment-card'
@@ -32,6 +34,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { PageError } from '@/components/ui/page-error'
 import { Spinner } from '@/components/ui/spinner'
 import { useSession } from '@/lib/auth'
 
@@ -50,7 +53,7 @@ function EventFact({
         <Icon className="size-4" aria-hidden="true" />
         {label}
       </dt>
-      <dd className="text-right font-medium">{value}</dd>
+      <dd className="text-right font-semibold tabular-nums">{value}</dd>
     </div>
   )
 }
@@ -104,7 +107,7 @@ function EventRoute() {
 
   if (status === 'loading' || (userId && eventQuery.isPending)) {
     return (
-      <main className="flex min-h-[60vh] items-center justify-center">
+      <main className="page-frame page-state">
         <Spinner size="lg" />
       </main>
     )
@@ -112,7 +115,7 @@ function EventRoute() {
 
   if (status === 'unauthenticated') {
     return (
-      <main className="container mx-auto flex min-h-[60vh] items-center justify-center px-4 py-16">
+      <main className="page-frame flex min-h-[60vh] items-center justify-center py-16">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Authentication required</CardTitle>
@@ -130,9 +133,15 @@ function EventRoute() {
 
   if (eventQuery.isError) {
     return (
-      <main className="container mx-auto px-4 py-16">
-        <p className="text-center text-destructive">No event data found.</p>
-      </main>
+      <PageError
+        title="Event unavailable"
+        description="No event data found."
+        action={
+          <Button variant="outline" onClick={() => void eventQuery.refetch()}>
+            Try again
+          </Button>
+        }
+      />
     )
   }
 
@@ -180,9 +189,14 @@ function EventRoute() {
   }
 
   return eventShell(
-    <main className="container mx-auto max-w-7xl px-4 py-8">
-      {/* The event name is shown in the event header. */}
-      <h1 className="sr-only">{event.name}</h1>
+    <main className="page-frame py-8">
+      <header className="circuit-masthead mb-6 flex items-center justify-between gap-4 rounded-xl p-6 sm:p-8">
+        <h1 className="page-title min-w-0 break-words">{event.name}</h1>
+        <CoreLogo
+          aria-hidden="true"
+          className="size-14 shrink-0 text-brand-masthead-muted sm:size-20"
+        />
+      </header>
 
       <div className="space-y-6">
         <div className="grid gap-6 lg:grid-cols-3">

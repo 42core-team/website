@@ -159,7 +159,7 @@ export function MyTeamPage({
 
   if (eventQuery.isPending || myTeamQuery.isPending) {
     return (
-      <main className="flex min-h-[45vh] items-center justify-center">
+      <main className="page-frame page-state">
         <Spinner />
       </main>
     )
@@ -167,7 +167,7 @@ export function MyTeamPage({
 
   if (eventQuery.isError) {
     return (
-      <main className="container mx-auto max-w-5xl px-4 py-8">
+      <main className="page-frame py-8">
         <Alert variant="destructive">
           <AlertTitle>Event unavailable</AlertTitle>
           <AlertDescription>Could not load event details.</AlertDescription>
@@ -177,7 +177,7 @@ export function MyTeamPage({
   }
 
   return (
-    <main className="container mx-auto max-w-5xl px-4 py-8">
+    <main className="page-frame py-8">
       {myTeamQuery.data ? (
         <div className="space-y-6">
           <TeamInfoSection

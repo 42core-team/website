@@ -93,9 +93,9 @@ export default function MatchesList(props: MatchesListProps) {
                   className={cn(
                     'text-[10px] uppercase font-bold px-1.5',
                     match.state === MatchState.FINISHED &&
-                      'bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-400 border-success-200/50',
+                      'bg-success-surface text-success border-success-border',
                     match.state === MatchState.IN_PROGRESS &&
-                      'bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-400 border-warning-200/50',
+                      'bg-info-surface text-info border-info-border',
                   )}
                 >
                   {match.state}
@@ -154,7 +154,7 @@ export default function MatchesList(props: MatchesListProps) {
                         <Trophy
                           aria-label="Winner"
                           className={cn(
-                            'size-4 shrink-0 text-amber-500',
+                            'size-4 shrink-0 text-warning',
                             side === 0 && 'order-first',
                           )}
                         />
@@ -197,7 +197,7 @@ export default function MatchesList(props: MatchesListProps) {
                                 href={`/events/${matchEventId}/teams/${team.id}`}
                                 className={cn(
                                   nameClassName,
-                                  'transition-colors hover:text-primary hover:underline',
+                                  'transition-colors hover:text-link hover:underline',
                                   isWinner
                                     ? 'text-foreground'
                                     : 'text-muted-foreground',

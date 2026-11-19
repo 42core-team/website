@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CORE design directions</title>
+<style>
+  :root { font-family: var(--font-sans, system-ui, sans-serif); color: var(--foreground, #18181b); }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; }
+  button, select { font: inherit; }
+  .controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 0 0 14px; font-size: 14px; }
+  .controls label { display: grid; gap: 4px; font-weight: 600; }
+  .controls select, .controls button {
+    min-height: 44px; border-radius: 8px; border: 1px solid var(--border, #8b8b96);
+    background: var(--secondary, #f1f1f4); color: var(--foreground, #18181b); padding: 0 12px;
+  }
+  .controls button { cursor: pointer; }
+  .controls :focus-visible { outline: 2px solid var(--ring, #6949e8); outline-offset: 3px; }
+  .sample {
+    --sans: system-ui, sans-serif; --mono: ui-monospace, 'Courier New', monospace;
+    --heading: var(--sans); --radius-panel: 12px; --radius-control: 7px;
+    --layout: 'hero hero' 'standings wiki'; --columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    display: grid; grid-template-areas: 'nav nav' var(--layout) 'palette palette';
+    grid-template-columns: var(--columns); gap: 14px; overflow: hidden;
+    background: var(--canvas); color: var(--ink); padding: 16px; border-radius: 14px;
+    font: 14px/1.5 var(--sans);
+  }
+  .sample :focus-visible { outline: 2px solid var(--accent-ink, var(--action)); outline-offset: 3px; }
+  .sample h1, .sample h2, .sample p, .sample dl, .sample dd { margin: 0; }
+  .sample h1, .sample h2 { font-family: var(--heading); }
+  .sample h1 { font-size: clamp(26px, 6vw, 42px); line-height: 1.05; letter-spacing: -.035em; }
+  .sample h2 { font-size: 19px; line-height: 1.25; }
+  .sample a { color: inherit; }
+  .spec-nav { grid-area: nav; display: flex; flex-wrap: wrap; gap: 0 16px; align-items: center; border-bottom: 1px solid var(--edge); }
+  .brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 850; letter-spacing: .1em; min-height: 44px; }
+  .brand::before { content: ''; width: 12px; height: 12px; transform: rotate(45deg); border: 2px solid var(--action); }
+  .spec-nav a { display: inline-flex; min-height: 44px; align-items: center; text-decoration: none; color: var(--quiet); }
+  .spec-nav a[aria-current] { color: var(--ink); box-shadow: inset 0 -2px var(--action); }
+  .panel { border: 1px solid var(--edge); border-radius: var(--radius-panel); background: var(--surface); min-width: 0; }
+  .hero {
+    grid-area: hero; padding: clamp(14px, 3vw, 24px); display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(140px, .55fr); align-items: center; gap: 18px;
+    background-image: linear-gradient(to right, var(--grid, var(--edge)) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid, var(--edge)) 1px, transparent 1px);
+    background-size: 24px 24px; background-position: right top;
+  }
+  .hero-core { display: grid; justify-items: start; gap: 10px; }
+  .hero-core > p, .wiki > p { color: var(--quiet); }
+  .phase {
+    border: 1px solid var(--edge); color: var(--status); background: var(--surface);
+    border-radius: 999px; font-size: 12px; font-weight: 750; padding: 3px 9px;
+  }
+  .phase::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px; background: currentColor; border-radius: 50%; }
+  .fact-list { padding: 12px; border: 1px solid var(--edge); border-radius: var(--radius-control); background: var(--canvas); }
+  .fact-list > div { padding: 8px 0; }
+  .fact-list > div + div { border-top: 1px solid var(--edge); }
+  .fact-list dt { font-size: 12px; color: var(--quiet); }
+  .fact-list dd { font-size: 16px; font-weight: 750; font-variant-numeric: tabular-nums; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .actions a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: var(--radius-control); font-weight: 700; text-decoration: none; }
+  .actions .primary { background: var(--action); color: var(--on-action); }
+  .actions .secondary { background: var(--surface); border: 1px solid var(--edge); }
+  .sample a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .standings, .wiki { padding: 14px; }
+  .standings { grid-area: standings; }
+  .standings table { border-collapse: collapse; width: 100%; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .standings th, .standings td { padding: 6px 4px; text-align: left; border-bottom: 1px solid var(--edge); }
+  .standings th { color: var(--quiet); font-size: 12px; }
+  .standings tr:last-child td { border-bottom: 0; }
+  .standings tr > :last-child { text-align: right; }
+  .standings tbody tr:first-child td:last-child { font-weight: 800; color: var(--accent-ink, var(--action)); }
+  .wiki { grid-area: wiki; display: grid; align-content: start; gap: 9px; }
+  .note { border-left: 3px solid var(--callout-edge, var(--action)); padding: 8px 10px; background: var(--tint); }
+  .note strong { display: block; margin-bottom: 2px; }
+  code { font: .95em var(--mono); overflow-wrap: anywhere; }
+  .palette { grid-area: palette; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+  .swatch {
+    display: inline-flex; gap: 5px; align-items: center; font: 11px/1.4 var(--mono); color: var(--quiet);
+  }
+  .swatch i { display: block; width: 13px; height: 13px; border-radius: 3px; border: 1px solid var(--edge); background: var(--swatch); }
+
+  .brand-palette { grid-area: palette; display: none; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 8px; }
+  .brand-palette .swatch { display: grid; gap: 3px; }
+  .brand-palette .swatch i { width: 100%; height: 16px; }
+  .brand-palette .swatch strong { color: var(--ink); }
+  .sample[data-direction="circuit"] {
+    --grid: color-mix(in srgb, var(--edge) 28%, transparent);
+    --accent-ink: #a214d5;
+    --callout-edge: #e56000;
+  }
+  .sample[data-direction="circuit"][data-mode="dark"] {
+    --accent-ink: #e4a8f7;
+    --callout-edge: #ff8200;
+  }
+  .sample[data-direction="circuit"] .palette { display: none; }
+  .sample[data-direction="circuit"] .brand-palette { display: grid; }
+  .sample[data-direction="circuit"] .actions .secondary { border-color: #747474; }
+
+  .sample[data-direction="manual"] { --heading: Georgia, serif; --radius-control: 2px; --radius-panel: 0px; --columns: minmax(0, 1.25fr) minmax(0, 1fr); --layout: 'hero hero' 'wiki standings'; }
+  .sample[data-direction="manual"] .panel { border-width: 1px 0 0; background: var(--canvas); }
+  .sample[data-direction="manual"] .hero { grid-template-columns: minmax(0, 1fr) minmax(130px, .43fr); border-top: 3px double var(--edge); background-image: none; }
+  .sample[data-direction="manual"] .fact-list { border-width: 0 0 0 1px; padding-left: 16px; }
+  .sample[data-direction="manual"] .wiki p { font: 16px/1.5 Georgia, serif; }
+  .sample[data-direction="manual"] .note { border-left-style: double; }
+
+  .sample[data-direction="matchday"] { --heading: 'Arial Black', system-ui, sans-serif; --radius-panel: 2px; --radius-control: 3px; --layout: 'hero hero' 'standings standings' 'wiki wiki'; gap: 10px; }
+  .sample[data-direction="matchday"] .hero {
+    background-image: linear-gradient(123deg, var(--surface) 63%, var(--action) 63% 64%, var(--tint) 64%);
+    border-top: 4px solid var(--action);
+  }
+  .sample[data-direction="matchday"] h1 { text-transform: uppercase; font-weight: 950; }
+  .sample[data-direction="matchday"] .fact-list { text-align: right; }
+  .sample[data-direction="matchday"] .fact-list dd { font-size: clamp(17px, 4.1vw, 28px); }
+  .sample[data-direction="matchday"] .standings thead { background: var(--tint); }
+  .sample[data-direction="matchday"] .standings :is(th, td) { padding-inline: 10px; }
+  .sample[data-direction="matchday"] .wiki { background: var(--canvas); }
+
+  .sample[data-direction="console"] { --heading: var(--mono); --radius-panel: 0px; --radius-control: 0px; gap: 10px; }
+  .sample[data-direction="console"] .hero { grid-template-columns: minmax(0, 1fr); background-image: none; border-left: 3px solid var(--action); }
+  .sample[data-direction="console"] :is(.brand, .spec-nav a, .phase, dt) { font-family: var(--mono); }
+  .sample[data-direction="console"] .phase { border-radius: 0; }
+  .sample[data-direction="console"] .fact-list { display: grid; grid-template-columns: 1fr 1fr; padding: 0; }
+  .sample[data-direction="console"] .fact-list > div { padding: 8px 10px; }
+  .sample[data-direction="console"] .fact-list > div + div { border-top: 0; border-left: 1px solid var(--edge); }
+  .sample[data-direction="console"] .fact-list dd { font-family: var(--mono); }
+
+  .sample[data-direction="guild"] { --radius-panel: 22px; --radius-control: 18px; --columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .sample[data-direction="guild"] .hero { background-image: radial-gradient(ellipse at 88% 8%, var(--tint), var(--surface) 65%); }
+  .sample[data-direction="guild"] h1 { letter-spacing: -.06em; }
+  .sample[data-direction="guild"] .fact-list { display: grid; gap: 6px; border: 0; padding: 0; background: transparent; }
+  .sample[data-direction="guild"] .fact-list > div { border: 1px solid var(--edge); border-radius: 14px; background: var(--surface); padding: 8px 12px; }
+  .sample[data-direction="guild"] .note { border: 1px solid var(--edge); border-radius: 12px; }
+
+  @media (max-width: 500px) {
+    .sample { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'nav' 'hero' 'standings' 'wiki' 'palette'; padding: 12px; }
+    .sample[data-direction] .hero { grid-template-columns: minmax(0, 1fr); }
+    .sample .fact-list { display: grid; grid-template-columns: 1fr 1fr; }
+    .sample .fact-list > div { padding: 4px 8px; }
+    .sample .fact-list > div + div { border-top: 0; border-left: 1px solid var(--edge); }
+    .sample[data-direction="guild"] .fact-list > div + div { border-top: 1px solid var(--edge); }
+    .sample[data-direction="matchday"] .fact-list { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="controls">
+    <label for="direction">Design direction
+      <select id="direction">
+        <option value="circuit">Core Circuit</option>
+        <option value="manual">Field Manual</option>
+        <option value="matchday">Matchday</option>
+        <option value="console">Bot Console</option>
+        <option value="guild">Guild Hall</option>
+      </select>
+    </label>
+    <button id="mode" type="button" aria-pressed="false">Dark mode</button>
+  </div>
+  <div class="sample" data-direction="circuit">
+    <nav class="spec-nav" aria-label="Sample navigation">
+      <span class="brand">CORE</span>
+      <a href="#event" aria-current="location">Event</a>
+      <a href="#standings">Standings</a>
+      <a href="#wiki">Wiki</a>
+    </nav>
+    <section id="event" class="panel hero" tabindex="-1">
+      <div class="hero-core">
+        <span class="phase">Coding phase</span>
+        <h1>CORE Spring Cup</h1>
+        <p>Build a bot, test it in the queue, and compete with your team.</p>
+        <div class="actions">
+          <a class="primary" href="#standings">View standings</a>
+          <a class="secondary" href="#wiki">Read the guide</a>
+        </div>
+      </div>
+      <dl class="fact-list">
+        <div><dt>Submissions close in</dt><dd>02h 41m</dd></div>
+        <div><dt>Registered teams</dt><dd>24</dd></div>
+      </dl>
+    </section>
+    <section id="standings" class="panel standings" tabindex="-1">
+      <h2>Group A standings</h2>
+      <table aria-label="Group A standings">
+        <thead><tr><th scope="col">Rank</th><th scope="col">Team</th><th scope="col">Points</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Gem Runners</td><td>12</td></tr>
+          <tr><td>2</td><td>Null Forge</td><td>9</td></tr>
+          <tr><td>3</td><td>Stack Wolves</td><td>6</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section id="wiki" class="panel wiki" tabindex="-1">
+      <h2>Test your bot</h2>
+      <p>Run a local match before you enter the queue.</p>
+      <aside class="note">
+        <strong>Tip</strong>
+        Record the <code>seed</code> so you can replay the same map.
+      </aside>
+    </section>
+    <div class="palette" aria-label="Palette roles"></div>
+    <div class="brand-palette" role="group" aria-label="CORE brand colors">
+      <span class="swatch"><i aria-hidden="true" style="--swatch:#a2a2a2"></i><strong>Light Gray</strong>#a2a2a2</span>
+      <span class="swatch"><i aria-hidden="true" style="--swatch:#747474"></i><strong>Dark Gray</strong>#747474</span>
+      <span class="swatch"><i aria-hidden="true" style="--swatch:#a214d5"></i><strong>Purple</strong>#a214d5</span>
+      <span class="swatch"><i aria-hidden="true" style="--swatch:#4d0e64"></i><strong>Dark Purple</strong>#4d0e64</span>
+      <span class="swatch"><i aria-hidden="true" style="--swatch:#ff8200"></i><strong>Orange</strong>#ff8200</span>
+      <span class="swatch"><i aria-hidden="true" style="--swatch:#e56000"></i><strong>Dark Orange</strong>#e56000</span>
+    </div>
+  </div>
+</main>
+<script>
+  const palettes = {
+    circuit: {
+      light: ['#f8f6f9', '#ffffff', '#17131a', '#626262', '#a214d5', '#ffffff', '#a2a2a2', '#fff1e2', '#4d0e64'],
+      dark: ['#17131a', '#211724', '#f7f0fa', '#a2a2a2', '#a214d5', '#ffffff', '#747474', '#3b240f', '#e4a8f7'],
+    },
+    manual: {
+      light: ['#f7f3e8', '#fffdf5', '#29271e', '#605846', '#315a3f', '#ffffff', '#b9ac8c', '#e9e6d3', '#315a3f'],
+      dark: ['#1f1e19', '#2b2920', '#f4edda', '#d2c6a8', '#afd39c', '#18291b', '#665d47', '#35382a', '#afd39c'],
+    },
+    matchday: {
+      light: ['#eaf0f8', '#ffffff', '#111d30', '#43516a', '#1547c8', '#ffffff', '#a3b4d0', '#dce7ff', '#135c45'],
+      dark: ['#101722', '#1a2739', '#f1f6ff', '#bacbe5', '#8db6ff', '#0e2345', '#4a6083', '#20365b', '#83e3bd'],
+    },
+    console: {
+      light: ['#edf5f4', '#ffffff', '#112b2b', '#3b5e5d', '#006158', '#ffffff', '#91b5b0', '#d9eeea', '#006158'],
+      dark: ['#0b171b', '#12262b', '#e4f5f4', '#abcac9', '#74f0d8', '#0b2a26', '#3d6668', '#1a383c', '#74f0d8'],
+    },
+    guild: {
+      light: ['#f6eff8', '#fffaff', '#321c3e', '#644d6e', '#752e81', '#ffffff', '#c7aecf', '#efd9f5', '#28634f'],
+      dark: ['#201626', '#2d1f37', '#fbecff', '#d6bedd', '#e4abef', '#34153d', '#755681', '#45294f', '#98e0b9'],
+    },
+  };
+  const roles = ['canvas', 'surface', 'ink', 'quiet', 'action', 'on-action', 'edge', 'tint', 'status'];
+  const visibleRoles = { canvas: 'Canvas', surface: 'Surface', ink: 'Text', action: 'Action', status: 'Status' };
+  const sample = document.querySelector('.sample');
+  const chooser = document.querySelector('#direction');
+  const toggle = document.querySelector('#mode');
+  const palette = document.querySelector('.palette');
+  const preferredDark = matchMedia('(prefers-color-scheme: dark)');
+  let dark = preferredDark.matches;
+
+  for (const role of Object.keys(visibleRoles)) {
+    const swatch = document.createElement('span');
+    swatch.className = 'swatch';
+    const chip = document.createElement('i');
+    chip.style.setProperty('--swatch', 'var(--' + role + ')');
+    chip.setAttribute('aria-hidden', 'true');
+    swatch.append(chip, visibleRoles[role]);
+    palette.append(swatch);
+  }
+
+  function renderPalette() {
+    sample.dataset.direction = chooser.value;
+    sample.dataset.mode = dark ? 'dark' : 'light';
+    sample.style.colorScheme = sample.dataset.mode;
+    toggle.setAttribute('aria-pressed', String(dark));
+    const colors = palettes[chooser.value][dark ? 'dark' : 'light'];
+    roles.forEach((role, index) => sample.style.setProperty('--' + role, colors[index]));
+  }
+
+  chooser.addEventListener('change', renderPalette);
+  toggle.addEventListener('click', () => {
+    dark = !dark;
+    renderPalette();
+  });
+  sample.addEventListener('click', (event) => {
+    const link = event.target.closest('a[href^="#"]');
+    if (!link) return;
+    const section = document.getElementById(link.hash.slice(1));
+    if (!section) return;
+    event.preventDefault();
+    for (const item of sample.querySelectorAll('.spec-nav a')) {
+      if (item.hash === link.hash) item.setAttribute('aria-current', 'location');
+      else item.removeAttribute('aria-current');
+    }
+    section.focus();
+  });
+  renderPalette();
+</script>
+</body>
+</html>

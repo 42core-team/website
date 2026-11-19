@@ -81,7 +81,7 @@ function GamblingRoute() {
 
   if (gamblingQuery.isPending) {
     return (
-      <main className="flex min-h-[45vh] items-center justify-center">
+      <main className="page-frame page-state">
         <Spinner size="lg" />
       </main>
     )
@@ -89,7 +89,7 @@ function GamblingRoute() {
 
   if (gamblingQuery.isError) {
     return (
-      <main className="container mx-auto max-w-3xl px-4 py-8">
+      <main className="page-frame py-8">
         <Alert variant="destructive">
           <AlertTitle>Gambling could not be loaded</AlertTitle>
           <AlertDescription>
@@ -103,7 +103,7 @@ function GamblingRoute() {
   const snapshot = gamblingQuery.data
 
   return (
-    <main className="container mx-auto max-w-6xl space-y-6 px-4 py-8">
+    <main className="page-frame space-y-6 py-8">
       {!canBet && (
         <Alert role="status">
           <Lock className="size-4" aria-hidden="true" />

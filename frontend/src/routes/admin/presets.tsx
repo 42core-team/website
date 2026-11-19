@@ -55,7 +55,7 @@ function WarningBadge({ warnings }: { warnings: readonly string[] }) {
   return warnings.length ? (
     <Badge
       variant="outline"
-      className="border-amber-500/50 text-amber-700 dark:text-amber-400"
+      className="border-warning-border bg-warning-surface text-warning"
       title={warnings.join(' ')}
     >
       Warning
@@ -168,8 +168,8 @@ export function PresetsPage() {
     onSuccess: refresh,
   })
   return (
-    <main className="container mx-auto max-w-5xl space-y-6 px-4 py-8">
-      <h1 className="text-3xl font-bold">Event presets</h1>
+    <main className="page-frame page-workspace space-y-6 py-8">
+      <h1 className="page-title">Event presets</h1>
       <div className="flex gap-4">
         <Button
           onClick={() =>
@@ -212,10 +212,7 @@ export function PresetsPage() {
           </p>
           <p>{row.description}</p>
           {row.warnings.map((warning) => (
-            <p
-              key={warning}
-              className="text-sm text-amber-700 dark:text-amber-400"
-            >
+            <p key={warning} className="text-sm text-warning">
               {warning}
             </p>
           ))}
@@ -492,7 +489,7 @@ export function PresetEditor({
           </label>
           <select
             id="shared-installation"
-            className="w-full rounded border bg-background p-2"
+            className="native-select w-full"
             value={values.githubInstallationId ?? ''}
             onChange={(e) =>
               form.setFieldValue('githubInstallationId', e.target.value || null)

@@ -15,14 +15,14 @@ function UserProfileRoute() {
   if (status === 'loading') return <PageLoader />
   if (!session)
     return (
-      <div className="container mx-auto flex max-w-xl flex-col items-center gap-4 px-4 py-24 text-center">
-        <h1 className="text-2xl font-bold">Sign in to see player profiles</h1>
+      <main className="page-frame page-form page-state">
+        <h1 className="page-title">Sign in to see player profiles</h1>
         <p className="text-muted-foreground">
           Profiles list matches and replays, which are only shown to signed-in
           players.
         </p>
         <GithubLoginButton />
-      </div>
+      </main>
     )
 
   return <ProfileView key={username} username={username} />

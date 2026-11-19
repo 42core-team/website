@@ -17,7 +17,9 @@ export interface WikiRouteData {
   fallbackMessage?: string
 }
 
-export async function loadWikiRouteData(pathname: string): Promise<WikiRouteData> {
+export async function loadWikiRouteData(
+  pathname: string,
+): Promise<WikiRouteData> {
   const versions = await getAvailableVersions()
   const defaultVersion = await getDefaultWikiVersion()
   const slug = pathname
@@ -67,7 +69,7 @@ export async function loadWikiRouteData(pathname: string): Promise<WikiRouteData
 
 export const Route = createFileRoute('/wiki/$')({
   params: {
-    parse: (params) => params._splat ? params : false,
+    parse: (params) => (params._splat ? params : false),
   },
   loader: ({ location }) => loadWikiRouteData(location.pathname),
   component: WikiSplatRoute,
@@ -99,11 +101,9 @@ export function WikiPageRoute({ data }: { data: WikiRouteData }) {
         versions={versions}
         currentVersion={version}
       >
-        <article className="prose prose-lg max-w-none dark:prose-invert">
+        <article className="prose prose-lg reading-column">
           <header className="mb-8">
-            <h1 className="mb-2 text-4xl font-bold text-foreground">
-              Page Not Found
-            </h1>
+            <h1 className="page-title mb-2 text-foreground">Page Not Found</h1>
           </header>
           <p className="text-muted-foreground">
             No wiki page exists for <code>{pathname}</code>.
@@ -121,24 +121,22 @@ export function WikiPageRoute({ data }: { data: WikiRouteData }) {
       currentVersion={version}
       pageContent={page.content}
     >
-      <article className="prose prose-lg max-w-none dark:prose-invert">
+      <article className="prose prose-lg reading-column">
         {fallbackMessage && (
-          <div className="mb-6 rounded-lg border border-warning-200 bg-warning-50 p-4">
-            <h3 className="mb-2 font-semibold text-warning-800">
+          <div className="mb-6 rounded-lg border border-warning-border bg-warning-surface text-warning p-4">
+            <h3 className="mb-2 font-semibold text-warning">
               Content Not Available
             </h3>
-            <p className="text-warning-700">{fallbackMessage}</p>
+            <p className="text-warning">{fallbackMessage}</p>
           </div>
         )}
 
         <header className="mb-8">
-          <h1 className="mb-2 text-4xl font-bold text-foreground">
-            {page.title}
-          </h1>
+          <h1 className="page-title mb-2 text-foreground">{page.title}</h1>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span>Last updated: {page.lastModified.toLocaleDateString()}</span>
             {version !== defaultVersion && (
-              <span className="rounded bg-primary-100 px-2 py-1 text-xs font-medium text-primary-700">
+              <span className="rounded bg-accent px-2 py-1 text-xs font-medium text-accent-foreground">
                 {version}
               </span>
             )}

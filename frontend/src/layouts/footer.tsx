@@ -1,6 +1,6 @@
 'use client'
 
-import Image from '@/components/app-image'
+import CoreLogo from '@/components/CoreLogo'
 import Link from '@/components/app-link'
 import { siteConfig } from '@/config/site'
 
@@ -28,19 +28,13 @@ export default function Footer() {
     location.href = `${base}?labels=feedback&title=${title}&body=${body}`
   }
   return (
-    <footer className="w-full border-t">
-      <div className="container mx-auto max-w-7xl px-4 py-10 sm:px-8 sm:py-12">
+    <footer className="w-full border-t bg-card">
+      <div className="page-frame page-workspace py-10 sm:py-12">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           {/* Logo and Description */}
           <div className="col-span-1 md:col-span-2">
             <Link href="/" className="flex items-center gap-2">
-              <Image
-                src="/logo-white.svg"
-                alt="CORE"
-                width={32}
-                height={32}
-                className="size-8"
-              />
+              <CoreLogo className="size-8 text-link" aria-hidden="true" />
               <span className="text-xl font-bold">CORE</span>
             </Link>
             <p className="mt-4 text-muted-foreground">
@@ -54,33 +48,30 @@ export default function Footer() {
           <div>
             <h3 className="mb-4 font-bold">Quick Links</h3>
             <div className="flex flex-col gap-2">
-              <Link
-                href="/"
-                className="text-muted-foreground hover:text-primary"
-              >
+              <Link href="/" className="text-muted-foreground hover:text-link">
                 Home
               </Link>
               <Link
                 href="/events"
-                className="text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-link"
               >
                 Events
               </Link>
               <Link
                 href="/wiki"
-                className="text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-link"
               >
                 Wiki
               </Link>
               <Link
                 href="/changelog"
-                className="text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-link"
               >
                 Changelog
               </Link>
               <Link
                 href="/about"
-                className="text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-link"
               >
                 About Us
               </Link>
@@ -95,7 +86,7 @@ export default function Footer() {
                 href="https://status.coregame.sh"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-link"
               >
                 Status Page
               </Link>
@@ -103,7 +94,7 @@ export default function Footer() {
                 href={siteConfig.links.github}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-link"
               >
                 GitHub
               </Link>
@@ -111,14 +102,14 @@ export default function Footer() {
                 href={siteConfig.links.discord}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-link"
               >
                 Discord
               </Link>
               <a
                 href="#"
                 onClick={handleReportIssue}
-                className="text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-link"
               >
                 Report an issue
               </a>
@@ -135,13 +126,13 @@ export default function Footer() {
             <div className="flex gap-4 text-sm">
               <Link
                 href="/impressum"
-                className="text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-link"
               >
                 Impressum
               </Link>
               <Link
                 href="/datenschutz"
-                className="text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-link"
               >
                 Datenschutz
               </Link>

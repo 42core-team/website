@@ -46,8 +46,8 @@ export function InstallationsPage() {
     },
   })
   return (
-    <main className="container mx-auto space-y-6 px-4 py-8">
-      <h1 className="text-3xl font-bold">GitHub installations</h1>
+    <main className="page-frame page-workspace space-y-6 py-8">
+      <h1 className="page-title">GitHub installations</h1>
       {rows.isPending && <Spinner />}
       {rows.isError && (
         <p role="alert">

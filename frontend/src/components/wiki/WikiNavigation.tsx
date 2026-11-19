@@ -116,15 +116,20 @@ export function WikiNavigation({
         const topOverflow = linkRect.top - sidebarRect.top
         const bottomOverflow = linkRect.bottom - sidebarRect.bottom
 
+        const behavior = window.matchMedia('(prefers-reduced-motion: reduce)')
+          .matches
+          ? 'auto'
+          : 'smooth'
+
         if (topOverflow < 0) {
           sidebar.scrollTo({
             top: sidebar.scrollTop + topOverflow,
-            behavior: 'smooth',
+            behavior,
           })
         } else if (bottomOverflow > 0) {
           sidebar.scrollTo({
             top: sidebar.scrollTop + bottomOverflow,
-            behavior: 'smooth',
+            behavior,
           })
         }
       }
@@ -297,9 +302,9 @@ export function WikiNavigation({
                       handleTocClick(tocItem.id, e)
                       onItemClick?.()
                     }}
-                    className={`block w-full cursor-pointer rounded-xs border-l-2 border-transparent px-2 py-1 text-left text-xs transition-colors hover:bg-default-100 hover:text-primary ${
+                    className={`block w-full cursor-pointer rounded-xs border-l-2 border-transparent px-2 py-1 text-left text-xs transition-colors hover:bg-default-100 hover:text-link ${
                       activeId === tocItem.id
-                        ? 'border-primary bg-primary-50 font-medium text-primary'
+                        ? 'border-primary bg-primary-50 font-medium text-link'
                         : 'text-muted-foreground'
                     }`}
                     style={{

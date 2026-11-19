@@ -65,13 +65,16 @@ function GithubSetupRoute() {
   else if (completion.isError) message = getErrorMessage(completion.error)
 
   return (
-    <div className="container mx-auto flex max-w-xl justify-center py-16">
+    <main className="page-frame page-form page-state">
       <Card className="w-full space-y-4 p-6 text-center">
-        <h1 className="text-xl font-semibold">Connecting GitHub</h1>
+        <h1 className="page-title">Connecting GitHub</h1>
         {message ? (
           <>
             <p className="text-muted-foreground">{message}</p>
-            <Link href="/events" className="underline">
+            <Link
+              href="/events"
+              className="text-link underline underline-offset-2"
+            >
               Back to events
             </Link>
           </>
@@ -79,7 +82,7 @@ function GithubSetupRoute() {
           <Spinner className="mx-auto" />
         )}
       </Card>
-    </div>
+    </main>
   )
 }
 
