@@ -2,7 +2,7 @@
   "projectName": "frontend-vite",
   "mode": "file-router",
   "typescript": true,
-  "packageManager": "bun",
+  "packageManager": "pnpm",
   "includeExamples": true,
   "tailwind": true,
   "addOnOptions": {},
