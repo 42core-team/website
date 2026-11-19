@@ -87,8 +87,6 @@ postgres("event admins in user_roles (PostgreSQL)", () => {
       userId,
       name,
       "Description",
-      undefined,
-      undefined,
       "Location",
       Date.now(),
       Date.now() + 60_000,

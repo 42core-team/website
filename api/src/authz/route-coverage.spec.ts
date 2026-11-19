@@ -139,6 +139,8 @@ const DECISIONS: Record<string, string> = {
   "GET /match/tournament/:eventId/teamCount": "EventPolicy.view",
   "GET /profile/:username": "SessionPolicy.signedIn",
   "GET /profile/:username/matches": "SessionPolicy.signedIn",
+  "GET /profile/me/details": "SessionPolicy.signedIn",
+  "GET /profile/me/details/matches": "SessionPolicy.signedIn",
   "GET /social-accounts": "SessionPolicy.signedIn",
   "GET /stats/global": "public",
   "GET /team/:id": "public",
