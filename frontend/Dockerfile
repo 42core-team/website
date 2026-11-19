@@ -1,19 +1,13 @@
 # syntax=docker/dockerfile:1
 
-FROM oven/bun:1.4.4-alpine AS deps
+FROM node:26.13.0-alpine AS builder
 WORKDIR /app
 
-COPY package.json bun.lock bunfig.toml ./
-COPY patches ./patches
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile
+RUN apk add --no-cache git openssh && npm install -g pnpm@12.18.0
 
-FROM oven/bun:1.4.4-alpine AS builder
-WORKDIR /app
-
-RUN apk add --no-cache git openssh
-
-COPY --from=deps /app/node_modules ./node_modules
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN --mount=type=cache,target=/pnpm/store \
+    pnpm install --frozen-lockfile --store-dir=/pnpm/store
 COPY . .
 
 ARG VITE_BACKEND_PUBLIC_URL
@@ -33,7 +27,7 @@ RUN --mount=type=secret,id=github_token \
     VITE_FORTY_TWO_CLIENT_ID="${VITE_FORTY_TWO_CLIENT_ID}" \
     VITE_S3_REPLAYS_BUCKET_URL="${VITE_S3_REPLAYS_BUCKET_URL}" \
     VITE_MEDIA_URL="${VITE_MEDIA_URL}" \
-    bun run build
+    pnpm run build
 
 FROM nginx:1.31.9-alpine AS runner
 

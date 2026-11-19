@@ -1,10 +1,11 @@
-FROM oven/bun:1.4.4-alpine
+FROM node:26.13.0-alpine
 
 WORKDIR /app
 
-COPY package.json bun.lock bunfig.toml ./
-COPY patches ./patches
-RUN bun install --frozen-lockfile
+RUN npm install -g pnpm@12.18.0
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 
@@ -13,4 +14,4 @@ EXPOSE 3000
 ENV NODE_ENV=development
 ENV HOST=0.0.0.0
 
-CMD ["bun", "run", "dev", "--host", "0.0.0.0"]
+CMD ["pnpm", "run", "dev", "--host", "0.0.0.0"]

@@ -114,7 +114,7 @@ updates:
         update-types:
           - "major"
 
-  - package-ecosystem: "bun"
+  - package-ecosystem: "npm"
     directory: "/frontend"
     multi-ecosystem-group: "frontend"
     patterns:

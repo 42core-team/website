@@ -1,0 +1,5 @@
+allowBuilds:
+  unrs-resolver: true
+
+overrides:
+  follow-redirects: ^1.16.2

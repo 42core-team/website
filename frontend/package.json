@@ -2,14 +2,14 @@
   "name": "frontend-vite",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.4.4",
+  "packageManager": "pnpm@12.18.0",
   "imports": {
     "#/*": "./src/*"
   },
   "scripts": {
-    "prebuild": "bun run clone:wiki && bun scripts/fetch-releases.cjs && bun run fetch:visualizer-assets",
-    "clone:wiki": "bun scripts/clone-wiki-branches.cjs",
-    "fetch:visualizer-assets": "bun scripts/fetch-visualizer-assets.js",
+    "prebuild": "pnpm run clone:wiki && node scripts/fetch-releases.cjs && pnpm run fetch:visualizer-assets",
+    "clone:wiki": "node scripts/clone-wiki-branches.cjs",
+    "fetch:visualizer-assets": "node scripts/fetch-visualizer-assets.cjs",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
     "build": "vite build",
@@ -95,11 +95,5 @@
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.3.6",
     "vitest": "^5.1.0"
-  },
-  "overrides": {
-    "follow-redirects": "^1.16.2"
-  },
-  "patchedDependencies": {
-    "follow-redirects@1.16.2": "patches/follow-redirects@1.16.2.patch"
   }
 }
