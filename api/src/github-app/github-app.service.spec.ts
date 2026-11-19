@@ -194,6 +194,167 @@ describe("GithubAppService", () => {
     });
   });
 
+  describe("admin installations", () => {
+    const adminState = new GithubInstallStateSigner(JWT_SECRET).sign({
+      eventId: null,
+      userId: "user",
+    });
+
+    function setupAdmin(options: Parameters<typeof setup>[0] = {}) {
+      const context = setup(options);
+      const installations = context.repositories.get(GithubInstallationEntity)!;
+      installations.upsert = jest.fn();
+      installations.findOneOrFail = jest.fn().mockResolvedValue({
+        id: "row",
+        installationId: 77,
+        accountLogin: "Core-Org",
+        accountType: "Organization",
+        sharedAt: null,
+        sharedBy: null,
+        suspendedAt: null,
+        deletedAt: null,
+      });
+      context.repositories.get(EventEntity)!.createQueryBuilder = jest.fn(
+        () => {
+          const builder = {
+            select: () => builder,
+            addSelect: () => builder,
+            where: () => builder,
+            groupBy: () => builder,
+            getRawMany: async () => [],
+          };
+          return builder;
+        },
+      );
+      return { ...context, installations };
+    }
+
+    it("links to the App's install page without an event", () => {
+      const { service } = setup();
+      const { url } = service.createAdminInstallUrl(USER);
+      expect(
+        new GithubInstallStateSigner(JWT_SECRET).verify(
+          new URL(url).searchParams.get("state")!,
+        ),
+      ).toEqual({ eventId: null, userId: "user" });
+    });
+
+    it("records the installation without connecting an event", async () => {
+      const { service, installations, repositories } = setupAdmin();
+      await expect(
+        service.completeInstallation(USER, 77, adminState),
+      ).resolves.toEqual({
+        eventId: null,
+        installation: expect.objectContaining({
+          id: "row",
+          accountLogin: "Core-Org",
+          eventCount: 0,
+        }),
+      });
+      expect(installations.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          installationId: 77,
+          accountLogin: "Core-Org",
+          deletedAt: null,
+        }),
+        ["installationId"],
+      );
+      expect(repositories.get(EventEntity)!.update).not.toHaveBeenCalled();
+    });
+
+    it("refuses users who are no longer global admins", async () => {
+      const { service, installations } = setupAdmin({ admin: false });
+      await expect(
+        service.completeInstallation(USER, 77, adminState),
+      ).rejects.toThrow("Only global admins");
+      expect(installations.upsert).not.toHaveBeenCalled();
+    });
+
+    it("refuses accounts the admin cannot manage", async () => {
+      const { service, installations } = setupAdmin({ membership: null });
+      await expect(
+        service.completeInstallation(USER, 77, adminState),
+      ).rejects.toThrow();
+      expect(installations.upsert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getAdminDetail", () => {
+    function setupDetail(row: Partial<GithubInstallationEntity> = {}) {
+      const context = setup();
+      context.repositories.get(GithubInstallationEntity)!.findOne = jest
+        .fn()
+        .mockResolvedValue({
+          id: "row",
+          installationId: 77,
+          accountLogin: "Core-Org",
+          accountType: "Organization",
+          sharedAt: null,
+          sharedBy: null,
+          suspendedAt: null,
+          deletedAt: null,
+          ...row,
+        });
+      const events = context.repositories.get(EventEntity)!;
+      events.find = jest.fn().mockResolvedValue([
+        {
+          id: "event",
+          name: "CORE Berlin",
+          state: "COMPLETED",
+          startDate: new Date("2026-01-01"),
+        },
+      ]);
+      events.createQueryBuilder = jest.fn(() => {
+        const builder = {
+          select: () => builder,
+          addSelect: () => builder,
+          where: () => builder,
+          groupBy: () => builder,
+          getRawMany: async () => [{ id: "row", count: 1 }],
+        };
+        return builder;
+      });
+      return context;
+    }
+
+    it("lists the events and the permissions GitHub reports", async () => {
+      const { service } = setupDetail();
+      await expect(service.getAdminDetail("row")).resolves.toMatchObject({
+        installationId: 77,
+        eventCount: 1,
+        events: [{ id: "event", name: "CORE Berlin", state: "COMPLETED" }],
+        missingPermissions: [],
+      });
+    });
+
+    it("does not check permissions of an uninstalled installation", async () => {
+      const { service, appAuth } = setupDetail({ deletedAt: new Date() });
+      await expect(service.getAdminDetail("row")).resolves.toMatchObject({
+        status: "uninstalled",
+        missingPermissions: null,
+      });
+      expect(appAuth.getInstallation).not.toHaveBeenCalled();
+    });
+
+    it("still answers when GitHub cannot be reached", async () => {
+      const { service, appAuth } = setupDetail();
+      appAuth.getInstallation.mockRejectedValue(new Error("down"));
+      await expect(service.getAdminDetail("row")).resolves.toMatchObject({
+        missingPermissions: null,
+      });
+    });
+
+    it("rejects an unknown installation", async () => {
+      const { service, repositories } = setupDetail();
+      repositories.get(GithubInstallationEntity)!.findOne = jest
+        .fn()
+        .mockResolvedValue(null);
+      await expect(service.getAdminDetail("row")).rejects.toThrow(
+        "Installation not found",
+      );
+    });
+  });
+
   describe("completeInstallation", () => {
     it("connects an org installation for an org owner", async () => {
       const { service, repositories, state } = setup();

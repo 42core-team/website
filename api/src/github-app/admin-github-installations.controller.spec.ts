@@ -24,8 +24,10 @@ describe("AdminGithubInstallationsController authorization", () => {
   let app: INestApplication;
   const service = {
     listForAdmin: jest.fn(async () => []),
+    getAdminDetail: jest.fn(async (id: string) => ({ id })),
     share: jest.fn(async (id: string) => ({ id })),
     unshare: jest.fn(async () => undefined),
+    createAdminInstallUrl: jest.fn(() => ({ url: "https://github.com" })),
   };
 
   beforeAll(async () => {
@@ -46,6 +48,8 @@ describe("AdminGithubInstallationsController authorization", () => {
 
   const routes = [
     ["get", "/admin/github-installations", 200],
+    ["get", `/admin/github-installations/${ID}`, 200],
+    ["post", "/admin/github-installations/install", 200],
     ["post", `/admin/github-installations/${ID}/share`, 200],
     ["delete", `/admin/github-installations/${ID}/share`, 204],
   ] as const;

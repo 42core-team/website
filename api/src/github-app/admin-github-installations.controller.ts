@@ -22,6 +22,18 @@ export class AdminGithubInstallationsController {
     return this.githubAppService.listForAdmin();
   }
 
+  @Get(":id")
+  detail(@Param("id", new ParseUUIDPipe()) id: string) {
+    return this.githubAppService.getAdminDetail(id);
+  }
+
+  /** Installing the App on an organization outside any event. */
+  @Post("install")
+  @HttpCode(200)
+  install(@CurrentUser() user: UserEntity) {
+    return this.githubAppService.createAdminInstallUrl(user);
+  }
+
   @Post(":id/share")
   @HttpCode(200)
   share(

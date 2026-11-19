@@ -11,7 +11,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource, In, IsNull, Not } from "typeorm";
 import { EventEntity } from "../event/entities/event.entity";
-import { isPlaying } from "../event/event-lifecycle";
+import { EventState, getEventState, isPlaying } from "../event/event-lifecycle";
 import { EventService } from "../event/event.service";
 import { GithubInstallationEntity } from "../github-api/entities/github-installation.entity";
 import {
@@ -26,7 +26,10 @@ import {
 } from "../github-api/github-app-auth";
 import { RepositoryStatus, TeamEntity } from "../team/entities/team.entity";
 import { UserEntity } from "../user/entities/user.entity";
-import { GithubInstallStateSigner } from "./github-app-state";
+import {
+  GithubInstallState,
+  GithubInstallStateSigner,
+} from "./github-app-state";
 import {
   AuthorizationService,
   EventPolicy,
@@ -61,6 +64,8 @@ export interface LinkableGithubInstallation {
 /** An installation as global admins manage its sharing. */
 export interface AdminGithubInstallation {
   id: string;
+  /** GitHub's numeric ID, for links to the installation's settings. */
+  installationId: number;
   accountLogin: string;
   accountType: string;
   status: GithubConnectionStatus;
@@ -68,6 +73,12 @@ export interface AdminGithubInstallation {
   sharedBy: { id: string; username: string } | null;
   /** Events linked to the installation. */
   eventCount: number;
+}
+
+export interface AdminGithubInstallationDetail extends AdminGithubInstallation {
+  events: { id: string; name: string; state: EventState; startDate: Date }[];
+  /** Required permissions GitHub has not granted; null if not checked. */
+  missingPermissions: string[] | null;
 }
 
 function connectionStatus(
@@ -146,14 +157,27 @@ export class GithubAppService {
       throw new ServiceUnavailableException(
         "The CORE GitHub App is not configured on this server.",
       );
+    return { url: this.installUrl({ eventId, userId: user.id }) };
+  }
+
+  /**
+   * Where to send a global admin to install the App on an organization
+   * without an event, so it can be shared afterwards.
+   */
+  createAdminInstallUrl(admin: Principal) {
+    if (!this.isAvailable())
+      throw new ServiceUnavailableException(
+        "The CORE GitHub App is not configured on this server.",
+      );
+    return { url: this.installUrl({ eventId: null, userId: admin.id }) };
+  }
+
+  private installUrl(state: GithubInstallState) {
     const url = new URL(
       `https://github.com/apps/${encodeURIComponent(this.appSlug!)}/installations/new`,
     );
-    url.searchParams.set(
-      "state",
-      this.stateSigner.sign({ eventId, userId: user.id }),
-    );
-    return { url: url.toString() };
+    url.searchParams.set("state", this.stateSigner.sign(state));
+    return url.toString();
   }
 
   /**
@@ -286,7 +310,78 @@ export class GithubAppService {
       throw new BadRequestException(
         "This GitHub connection link is invalid or has expired. Start again from the event dashboard.",
       );
+    if (state.eventId === null)
+      return {
+        eventId: null,
+        installation: await this.registerInstallation(user, installationId),
+      };
     return this.connectInstallation(state.eventId, user, installationId);
+  }
+
+  /**
+   * Records an installation a global admin made without an event, after the
+   * same checks sharing runs, so it is listed and can be shared.
+   */
+  private async registerInstallation(
+    admin: Principal,
+    installationId: number,
+  ): Promise<AdminGithubInstallation> {
+    if (
+      !(await this.authorization.can(
+        PlatformPolicy,
+        "manageSharedInstallations",
+        admin,
+      ))
+    )
+      throw new ForbiddenException("Only global admins can add installations.");
+    if (!this.githubAppAuth.isEnabled())
+      throw new ServiceUnavailableException(
+        "The CORE GitHub App is not configured on this server.",
+      );
+    const installation = await this.fetchInstallation(installationId);
+    if (installation.suspended_at)
+      throw new BadRequestException("The GitHub installation is suspended.");
+    const account = installation.account;
+    if (!account)
+      throw new BadRequestException("The installation has no GitHub account.");
+    const missing = missingPermissions(installation.permissions);
+    if (missing.length)
+      throw new BadRequestException(
+        `The installation on ${account.login} lacks these permissions: ${missing.join(", ")}. An owner must accept the App's requested permissions on GitHub.`,
+      );
+    const user = await this.dataSource
+      .getRepository(UserEntity)
+      .findOneByOrFail({ id: admin.id });
+    await this.owner.assertCanManageAccount(installation, user.githubId);
+
+    const installations = this.dataSource.getRepository(
+      GithubInstallationEntity,
+    );
+    // Keeps sharing state; clears an earlier uninstall.
+    await installations.upsert(
+      {
+        installationId,
+        accountId: account.id,
+        accountLogin: account.login,
+        accountType: account.type,
+        suspendedAt: null,
+        deletedAt: null,
+      },
+      ["installationId"],
+    );
+    this.logger.log({
+      action: "github_installation_added",
+      userId: admin.id,
+      installationId,
+      account: account.login,
+    });
+    const [row] = await this.toAdminRows([
+      await installations.findOneOrFail({
+        where: { installationId },
+        relations: { sharedBy: true },
+      }),
+    ]);
+    return row;
   }
 
   /**
@@ -442,6 +537,46 @@ export class GithubAppService {
   }
 
   /**
+   * One installation with the events using it and, while it is active, the
+   * permissions GitHub reports. A failed GitHub check does not fail the page.
+   */
+  async getAdminDetail(id: string): Promise<AdminGithubInstallationDetail> {
+    const row = await this.dataSource
+      .getRepository(GithubInstallationEntity)
+      .findOne({ where: { id }, relations: { sharedBy: true } });
+    if (!row) throw new NotFoundException("Installation not found");
+    const [[admin], events] = await Promise.all([
+      this.toAdminRows([row]),
+      this.dataSource.getRepository(EventEntity).find({
+        where: { githubInstallationId: id },
+        order: { startDate: "DESC" },
+      }),
+    ]);
+    let missing: string[] | null = null;
+    if (admin.status === "active" && this.githubAppAuth.isEnabled())
+      try {
+        const installation = await this.githubAppAuth.getInstallation(
+          row.installationId,
+        );
+        missing = missingPermissions(installation.permissions);
+      } catch (error) {
+        this.logger.warn(
+          `Could not check permissions of installation ${row.installationId}: ${String(error)}`,
+        );
+      }
+    return {
+      ...admin,
+      events: events.map((event) => ({
+        id: event.id,
+        name: event.name,
+        state: getEventState(event),
+        startDate: event.startDate,
+      })),
+      missingPermissions: missing,
+    };
+  }
+
+  /**
    * Lets every event creator link the installation. The sharing admin must
    * pass the owner check that linking then skips.
    */
@@ -522,6 +657,7 @@ export class GithubAppService {
     const eventCounts = new Map(counts.map(({ id, count }) => [id, count]));
     return rows.map((row) => ({
       id: row.id,
+      installationId: row.installationId,
       accountLogin: row.accountLogin,
       accountType: row.accountType,
       status: connectionStatus(row),

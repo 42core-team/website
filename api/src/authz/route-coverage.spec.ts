@@ -97,8 +97,12 @@ const DECISIONS: Record<string, string> = {
   "PUT /admin/event-presets/:id": "PlatformPolicy.managePresets",
   "GET /admin/events": "PlatformPolicy.manageRoles",
   "GET /admin/github-installations": "PlatformPolicy.manageSharedInstallations",
+  "GET /admin/github-installations/:id":
+    "PlatformPolicy.manageSharedInstallations",
   "GET /admin/roles": "PlatformPolicy.manageRoles",
   "POST /admin/github-installations/:id/share":
+    "PlatformPolicy.manageSharedInstallations",
+  "POST /admin/github-installations/install":
     "PlatformPolicy.manageSharedInstallations",
   "POST /admin/roles": "PlatformPolicy.manageRoles",
   "DELETE /event/:id/admins/:adminId": "EventPolicy.administer",
