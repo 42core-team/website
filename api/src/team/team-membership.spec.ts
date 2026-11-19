@@ -140,7 +140,7 @@ describe("team membership under lock", () => {
   it("deletes the last-member team under the lock and dispatches after commit", async () => {
     const { service, team, event, order, manager } = setup();
     team.repo = "repo";
-    Object.assign(event, { githubOrg: "org", githubOrgSecret: "secret" });
+    Object.assign(event, { githubOrg: "org", githubInstallationId: "row" });
     Reflect.set(service, "dataSource", {
       transaction: async (
         action: (value: typeof manager) => Promise<unknown>,
@@ -152,6 +152,9 @@ describe("team membership under lock", () => {
     });
     const deleteRepository = jest.fn(async () => order.push("delete:repo"));
     Reflect.set(service, "githubApiService", { deleteRepository });
+    Reflect.set(service, "githubAuthService", {
+      authFor: async () => ({ installationId: 42 }),
+    });
 
     await expect(service.leaveTeam("team", "member")).resolves.toEqual({
       affected: 1,
@@ -163,7 +166,9 @@ describe("team membership under lock", () => {
       "commit",
       "delete:repo",
     ]);
-    expect(deleteRepository).toHaveBeenCalledWith("repo", "org", "secret");
+    expect(deleteRepository).toHaveBeenCalledWith("repo", "org", {
+      installationId: 42,
+    });
   });
 
   it("does not dispatch repository deletion if the team deletion fails", async () => {

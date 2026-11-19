@@ -1,6 +1,7 @@
+import { userAvatarSrc } from '@/lib/user-avatar'
 import type { Event } from '@/app/actions/event'
 import { LifecycleControls } from '@/components/dashboard/lifecycle-controls'
-import type { Team } from '@/app/actions/team'
+import type { Team, TeamImage } from '@/app/actions/team'
 import type { UserSearchResult } from '@/app/actions/user'
 import type { UseMutationResult } from '@tanstack/react-query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -88,6 +89,7 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { GithubConnection } from '@/components/dashboard/github-connection'
 import { useTabParam } from '@/hooks/useTabParam'
 import { useEventClock } from '@/hooks/use-event-clock'
 import { useSession } from '@/lib/auth'
@@ -132,6 +134,7 @@ interface EventAdmin {
   username: string
   name: string
   profilePicture?: string
+  picture?: TeamImage | null
 }
 
 const SETTINGS_FIELDS = [
@@ -155,8 +158,6 @@ const SETTINGS_FIELDS = [
   'basePath',
   'gameConfig',
   'serverConfig',
-  'githubOrg',
-  'githubOrgSecret',
   'startDate',
   'submissionDeadline',
   'scheduledEndDate',
@@ -514,6 +515,7 @@ function DashboardRoute() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
+          <GithubConnection eventId={id} />
           <OverviewTab
             event={event}
             participantsCount={participantsCountQuery.data ?? 0}
@@ -1151,25 +1153,10 @@ function SettingsTab({
 
       <Card>
         <CardHeader>
-          <CardTitle>Advanced / Secrets</CardTitle>
-          <CardDescription>
-            Sensitive configuration and JSON configs.
-          </CardDescription>
+          <CardTitle>Advanced</CardTitle>
+          <CardDescription>Game and server JSON configs.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <DashboardInput
-            label="GitHub Organization"
-            value={pendingSettings.githubOrg || ''}
-            error={githubConfigErrors.githubOrg}
-            onChange={(value) => updatePendingSetting('githubOrg', value)}
-          />
-          <DashboardInput
-            label="GitHub Organization Secret (Token)"
-            type="password"
-            placeholder="Enter new token to update (leave blank to keep current)"
-            value={pendingSettings.githubOrgSecret || ''}
-            onChange={(value) => updatePendingSetting('githubOrgSecret', value)}
-          />
           <ExpandableJsonTextarea
             label="Game Config (JSON)"
             value={pendingSettings.gameConfig || ''}
@@ -1247,7 +1234,7 @@ function AdminsTab({
                   >
                     <div className="flex items-center gap-2">
                       <img
-                        src={user.profilePicture}
+                        src={userAvatarSrc(user)}
                         alt={user.name}
                         className="h-8 w-8 rounded-full border bg-muted"
                       />
@@ -1298,7 +1285,7 @@ function AdminsTab({
                       <div className="flex items-center gap-3">
                         <img
                           src={
-                            admin.profilePicture || '/placeholder-avatar.png'
+                            userAvatarSrc(admin) || '/placeholder-avatar.png'
                           }
                           alt={admin.name}
                           className="h-10 w-10 rounded-full border bg-background"

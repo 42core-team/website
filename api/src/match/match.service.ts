@@ -32,10 +32,14 @@ import {
   isValidGithubOwner,
   isValidGithubRepoName,
 } from "../common/github-validation";
-import { GithubApiService } from "../github-api/github-api.service";
+import { GithubAuthService } from "../github-api/github-auth";
 import { MatchTeamResultEntity } from "./entites/match.team.result.entity";
 import { GamblingService } from "../gambling/gambling.service";
-import { canViewTeamMatchReplay } from "./team-match-visibility";
+import {
+  canViewTeamMatchReplay,
+  findVisibleTeamMatchIds,
+} from "./team-match-visibility";
+import { addPlacementMatchFlags } from "./placement-matches";
 import { EventState, getEventState } from "../event/event-lifecycle";
 import { lockEvent } from "../event/event-lock";
 import {
@@ -90,7 +94,7 @@ export class MatchService {
     private readonly matchStatsRepository: Repository<MatchStatsEntity>,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
-    private readonly githubApiService: GithubApiService,
+    private readonly githubAuthService: GithubAuthService,
     @Inject(forwardRef(() => GamblingService))
     private readonly gamblingService: GamblingService,
   ) {
@@ -547,9 +551,9 @@ export class MatchService {
       return;
     }
 
-    let message: ReturnType<MatchService["buildNewMatchMessage"]>;
+    let message: Awaited<ReturnType<MatchService["buildNewMatchMessage"]>>;
     try {
-      message = this.buildNewMatchMessage(matchId, match);
+      message = await this.buildNewMatchMessage(matchId, match);
     } catch (error) {
       // No game was started, so put the match back instead of leaving it
       // IN_PROGRESS forever.
@@ -565,7 +569,7 @@ export class MatchService {
     this.gameQueue.emit("new_match", message);
   }
 
-  private buildNewMatchMessage(matchId: string, match: MatchEntity) {
+  private async buildNewMatchMessage(matchId: string, match: MatchEntity) {
     const event = match.teams[0].event;
     const orgName = event.githubOrg;
     if (!isValidGithubOwner(orgName))
@@ -576,10 +580,13 @@ export class MatchService {
       if (!isValidGithubRepoName(team.repo))
         throw new Error(`Team ${team.id} has an invalid repository name.`);
     }
-    // The token is sent separately from the repo URL; the k8s-service passes
-    // it to the clone step through a Kubernetes Secret.
-    const repoToken = this.githubApiService.decryptSecret(
-      event.githubOrgSecret,
+    // Tokens are sent separately from the repo URL; the k8s-service passes
+    // them to the clone step through a Kubernetes Secret. With the GitHub App
+    // each bot gets a short-lived token that can only read its own repository.
+    const [firstRepoToken, secondRepoToken] = await Promise.all(
+      match.teams
+        .slice(0, 2)
+        .map((team) => this.githubAuthService.cloneTokenFor(event, team.repo)),
     );
 
     return {
@@ -592,7 +599,7 @@ export class MatchService {
             match.teams[0].starterTemplate?.myCoreBotDockerImage ??
             event.myCoreBotDockerImage,
           repoURL: `https://github.com/${orgName}/${match.teams[0].repo}`,
-          repoToken,
+          repoToken: firstRepoToken,
           name: match.teams[0].name,
         },
         {
@@ -601,7 +608,7 @@ export class MatchService {
             match.teams[1].starterTemplate?.myCoreBotDockerImage ??
             event.myCoreBotDockerImage,
           repoURL: `https://github.com/${orgName}/${match.teams[1].repo}`,
-          repoToken,
+          repoToken: secondRepoToken,
           name: match.teams[1].name,
         },
       ],
@@ -1094,47 +1101,11 @@ export class MatchService {
       },
     });
 
-    const matchesWithPlacement = this.addPlacementMatchFlags(tournamentMatches);
+    const matchesWithPlacement = addPlacementMatchFlags(tournamentMatches);
     const revealAll = await this.canRevealAll(eventId, userId, adminReveal);
     return matchesWithPlacement.map((match) =>
       toMatchResponse(match, revealAll),
     );
-  }
-
-  private addPlacementMatchFlags(
-    matches: MatchEntity[],
-  ): Array<MatchEntity & { isPlacementMatch?: boolean }> {
-    if (matches.length === 0) return matches;
-
-    const maxRound = Math.max(...matches.map((match) => match.round));
-    if (!Number.isFinite(maxRound)) return matches;
-
-    const previousRoundMatches = matches.filter(
-      (match) => match.round === maxRound - 1,
-    );
-    if (previousRoundMatches.length === 0) return matches;
-
-    const loserIds = new Set<string>();
-    for (const match of previousRoundMatches) {
-      const loser = match.teams?.find((team) => team.id !== match.winner?.id);
-      if (loser) loserIds.add(loser.id);
-    }
-
-    if (loserIds.size < 2) return matches;
-
-    return matches.map((match) => {
-      if (match.round !== maxRound) return match;
-      if (
-        match.teams?.length === 2 &&
-        match.teams.every((team) => loserIds.has(team.id))
-      ) {
-        return {
-          ...match,
-          isPlacementMatch: true,
-        };
-      }
-      return match;
-    });
   }
 
   async getMatchesForTeam(teamId: string, userId: string) {
@@ -1142,27 +1113,9 @@ export class MatchService {
     const viewerTeam = userId
       ? await this.teamService.getTeamOfUserForEvent(team.eventId, userId)
       : null;
-    const matchesToQuery = (
-      await this.matchRepository.find({
-        select: {
-          id: true,
-        },
-        where: [
-          {
-            teams: { id: teamId },
-            state: MatchState.FINISHED,
-            phase: MatchPhase.QUEUE,
-          },
-          {
-            teams: { id: teamId },
-            state: MatchState.FINISHED,
-            isRevealed: true,
-            phase: Not(MatchPhase.MANUAL),
-          },
-        ],
-        withDeleted: true,
-      })
-    ).map((match) => match.id);
+    const matchesToQuery = await findVisibleTeamMatchIds(this.matchRepository, [
+      teamId,
+    ]);
 
     if (matchesToQuery.length === 0) return [];
 
@@ -1519,7 +1472,7 @@ export class MatchService {
         winner: true,
       },
     });
-    const matchWithPlacementFlag = this.addPlacementMatchFlags(
+    const matchWithPlacementFlag = addPlacementMatchFlags(
       tournamentMatches,
     ).find((tournamentMatch) => tournamentMatch.id === match.id);
 

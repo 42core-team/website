@@ -1,5 +1,5 @@
 import { NotFoundException } from "@nestjs/common";
-import type { TeamBackground, TeamImage } from "../team/team-image.service";
+import type { MediaBackground, MediaImage } from "../media/media-artwork";
 import type { TeamEntity } from "../team/entities/team.entity";
 import type { MatchStatsEntity } from "./entites/matchStats.entity";
 import type { MatchEntity } from "./entites/match.entity";
@@ -27,8 +27,8 @@ export interface MatchTeamResponse {
   id: string;
   name: string;
   deletedAt: Date | null;
-  picture: TeamImage | null;
-  background: TeamBackground | null;
+  picture: MediaImage | null;
+  background: MediaBackground | null;
 }
 
 export type MatchStatsResponse = Omit<

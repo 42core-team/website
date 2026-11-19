@@ -9,12 +9,14 @@ import { TeamModule } from "./team/team.module";
 import { MatchModule } from "./match/match.module";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { DatabaseConfig } from "./DatabaseConfig";
+import { GithubAppModule } from "./github-app/github-app.module";
 import { GithubApiModule } from "./github-api/github-api.module";
 import { ScheduleModule } from "@nestjs/schedule";
 import { StatsModule } from "./stats/stats.module";
 import { LoggerModule } from "nestjs-pino";
 import { IncomingMessage } from "http";
 import { GamblingModule } from "./gambling/gambling.module";
+import { ProfileModule } from "./profile/profile.module";
 
 @Module({
   imports: [
@@ -75,8 +77,10 @@ import { GamblingModule } from "./gambling/gambling.module";
     TeamModule,
     MatchModule,
     GithubApiModule,
+    GithubAppModule,
     StatsModule,
     GamblingModule,
+    ProfileModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -34,9 +34,10 @@ RUN --mount=type=secret,id=github_token \
     VITE_MEDIA_URL="${VITE_MEDIA_URL}" \
     bun run build
 
-FROM nginx:1.31.8-alpine AS runner
+FROM nginx:1.31.9-alpine AS runner
 
 EXPOSE 3000
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --chmod=755 assets-archive.sh /docker-entrypoint.d/40-assets-archive.sh
 COPY --from=builder /app/dist/client /usr/share/nginx/html

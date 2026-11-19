@@ -1,3 +1,4 @@
+import type { TeamImage } from '@/app/actions/team'
 import type { WhitelistPlatform } from '@/lib/constants/whitelist'
 
 import axiosInstance from '@/app/actions/axios'
@@ -42,7 +43,6 @@ export interface Event {
   gameConfig?: string
   serverConfig?: string
   isPrivate: boolean
-  githubOrgSecret?: string
   starterTemplates?: EventStarterTemplate[]
 }
 
@@ -113,8 +113,6 @@ export async function joinEvent(eventId: string): Promise<boolean> {
 export interface EventCreateParams {
   name: string
   description?: string
-  githubOrg: string
-  githubOrgSecret: string
   location?: string
   startDate: number
   submissionDeadline: number
@@ -134,6 +132,75 @@ export interface EventCreateParams {
   gameConfig: string
   serverConfig: string
   isPrivate: boolean
+}
+
+export interface EventGithubStatus {
+  appAvailable: boolean
+  githubOrg: string
+  installation: {
+    accountLogin: string
+    status: 'active' | 'suspended' | 'uninstalled'
+  } | null
+}
+
+export async function isGithubAppAvailable(): Promise<boolean> {
+  return (await axiosInstance.get<{ available: boolean }>('github/app')).data
+    .available
+}
+
+export async function getEventGithubStatus(
+  eventId: string,
+): Promise<EventGithubStatus> {
+  return (await axiosInstance.get<EventGithubStatus>(`event/${eventId}/github`))
+    .data
+}
+
+/** The GitHub page where an organization owner installs the App for this event. */
+export async function getGithubAppInstallUrl(eventId: string): Promise<string> {
+  return (
+    await axiosInstance.post<{ url: string }>(`event/${eventId}/github/connect`)
+  ).data.url
+}
+
+/** An installation of the App on an account the user administers. */
+export interface LinkableGithubInstallation {
+  installationId: number
+  accountLogin: string
+  accountType: string
+}
+
+export async function getLinkableGithubInstallations(
+  eventId: string,
+): Promise<LinkableGithubInstallation[]> {
+  return (
+    await axiosInstance.get<LinkableGithubInstallation[]>(
+      `event/${eventId}/github/installations`,
+    )
+  ).data
+}
+
+export async function linkGithubInstallation(
+  eventId: string,
+  installationId: number,
+): Promise<{ eventId: string }> {
+  return (
+    await axiosInstance.post<{ eventId: string }>(
+      `event/${eventId}/github/installations`,
+      { installationId },
+    )
+  ).data
+}
+
+export async function completeGithubAppInstallation(
+  installationId: number,
+  state: string,
+): Promise<{ eventId: string }> {
+  return (
+    await axiosInstance.post<{ eventId: string }>('github/installations', {
+      installationId,
+      state,
+    })
+  ).data
 }
 
 // Create a new event
@@ -163,8 +230,6 @@ export async function updateEventSettings(
     isPrivate?: boolean
     name?: string
     description?: string
-    githubOrg?: string
-    githubOrgSecret?: string
     location?: string
     startDate?: number
     endDate?: number
@@ -246,14 +311,24 @@ export async function excludeInactiveTeams(
   ).data
 }
 
-export async function getEventAdmins(
-  eventId: string,
-): Promise<
-  { id: string; username: string; name: string; profilePicture?: string }[]
+export async function getEventAdmins(eventId: string): Promise<
+  {
+    id: string
+    username: string
+    name: string
+    profilePicture?: string
+    picture?: TeamImage | null
+  }[]
 > {
   return (
     await axiosInstance.get<
-      { id: string; username: string; name: string; profilePicture?: string }[]
+      {
+        id: string
+        username: string
+        name: string
+        profilePicture?: string
+        picture?: TeamImage | null
+      }[]
     >(`event/${eventId}/admins`)
   ).data
 }

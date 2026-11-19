@@ -124,6 +124,10 @@ k8s_yaml(helm(
         'secrets.FORTYTWO_CLIENT_SECRET=' + secret('FORTYTWO_CLIENT_SECRET'),
         'env.CLIENT_GITHUB_ID=' + secret('CLIENT_GITHUB_ID'),
         'env.FORTYTWO_CLIENT_ID=' + secret('FORTYTWO_CLIENT_ID'),
+        'env.GITHUB_APP_ID=' + secret('GITHUB_APP_ID'),
+        'env.GITHUB_APP_SLUG=' + secret('GITHUB_APP_SLUG'),
+        'secrets.GITHUB_APP_PRIVATE_KEY=' + secret('GITHUB_APP_PRIVATE_KEY'),
+        'secrets.GITHUB_APP_WEBHOOK_SECRET=' + secret('GITHUB_APP_WEBHOOK_SECRET'),
     ],
 ))
 k8s_resource('api',
@@ -150,6 +154,10 @@ k8s_yaml(helm(
     name      = 'github-service',
     namespace = NAMESPACE,
     values    = ['local-setup/local-values/github-service.yaml'],
+    set = [
+        'env.GITHUB_APP_ID=' + secret('GITHUB_APP_ID'),
+        'secrets.GITHUB_APP_PRIVATE_KEY=' + secret('GITHUB_APP_PRIVATE_KEY'),
+    ],
 ))
 k8s_resource('github-service',
     resource_deps = ['rabbitmq'],

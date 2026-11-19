@@ -83,7 +83,7 @@ Docker build context.
 ### Required
 
 * `RABBITMQ_URL` - RabbitMQ connection URL for message queue
-* `API_SECRET_ENCRYPTION_KEY` - Key for decrypting encrypted secrets
+* `API_SECRET_ENCRYPTION_KEY` - Key for decrypting users' GitHub access tokens (same as the api)
 
 ## Architecture
 

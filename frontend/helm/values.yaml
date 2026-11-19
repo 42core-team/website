@@ -73,6 +73,9 @@ env:
   # Also required at image build time; runtime env cannot change the static bundle.
   VITE_MEDIA_URL: ""
   AUTH_COOKIE_NAME: "token"
+  # Bucket base URL that nginx falls back to for assets of earlier releases.
+  # Empty means missing assets return 404.
+  ASSETS_ARCHIVE_URL: ""
 
 # Secrets - these should be provided via GitHub secrets during deployment
 secrets:

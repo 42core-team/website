@@ -105,8 +105,7 @@ export class SocialAccountService {
     }
 
     const driverError = error.driverError as
-      | { code?: string; constraint?: string }
-      | undefined;
+      { code?: string; constraint?: string } | undefined;
 
     return (
       driverError?.code === POSTGRES_UNIQUE_VIOLATION_CODE &&

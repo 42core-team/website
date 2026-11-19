@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"go.uber.org/zap"
@@ -128,7 +129,7 @@ func buildGameResources(game *Game, namespace, presignedURL, rabbitMQPublishURL,
 	botIDMapping := make(map[string]string)
 	var playerNameEnvs []corev1.EnvVar
 	for ind := range game.Bots {
-		id, err := generateRandomID(2)
+		id, err := generateBotID(idReader, botIDMapping)
 		if err != nil {
 			return nil, fmt.Errorf("error generating rnd IDs for bots %w", err)
 		}
@@ -325,7 +326,7 @@ func buildGameResources(game *Game, namespace, presignedURL, rabbitMQPublishURL,
 	// Requires NET_ADMIN but runs before app containers start.
 	initContainers = append(initContainers, corev1.Container{
 		Name:  "net-guard",
-		Image: "ghcr.io/paulicstudios/alpine-iptables:latest",
+		Image: netGuardImage,
 		Command: []string{
 			"sh", "-c", fmt.Sprintf(`
 				set -eux;
@@ -414,15 +415,36 @@ func int64Ptr(i int64) *int64 {
 	return &i
 }
 
-func generateRandomID(n int) (string, error) {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
+// Bot IDs are drawn from [minBotID, maxBotID]. The upper bound is set by the C
+// client lib, which sends the ID as a JSON number printed with "%g"
+// (6 significant digits), so only IDs up to 999999 survive the login unchanged.
+// The game server and the client libs would accept up to 2^31-1 otherwise.
+const (
+	minBotID = 1
+	maxBotID = 999999
+)
+
+// idReader is the entropy source for bot IDs, replaceable in tests.
+var idReader io.Reader = rand.Reader
+
+// generateBotID returns a random decimal ID in [minBotID, maxBotID] that is not
+// yet a key of used.
+func generateBotID(r io.Reader, used map[string]string) (string, error) {
+	const span = maxBotID - minBotID + 1
+	// Reject the tail of the uint32 range so every ID is equally likely.
+	const limit = (1 << 32) / span * span
+	var b [4]byte
+	for {
+		if _, err := io.ReadFull(r, b[:]); err != nil {
+			return "", err
+		}
+		v := uint64(b[0])<<24 | uint64(b[1])<<16 | uint64(b[2])<<8 | uint64(b[3])
+		if v >= limit {
+			continue
+		}
+		id := fmt.Sprintf("%d", v%span+minBotID)
+		if _, taken := used[id]; !taken {
+			return id, nil
+		}
 	}
-	var num uint64
-	for i := 0; i < len(b) && i < 8; i++ {
-		num = (num << 8) | uint64(b[i])
-	}
-	return fmt.Sprintf("%d", num), nil
 }

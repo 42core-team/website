@@ -1,0 +1,13 @@
+# Dependabot updates these image references. The service embeds this file when built.
+# Keep both images pinned to multi-architecture digests for amd64 and arm64 nodes.
+apiVersion: v1
+kind: PodTemplate
+metadata:
+  name: game-helper-images
+template:
+  spec:
+    containers:
+      - name: net-guard
+        image: ghcr.io/paulicstudios/alpine-iptables:latest@sha256:3bcd6c8e4661e4987c88b240de32e81045b3d7e323a010f0ab2c07132a5c2f3f
+      - name: clone-repo
+        image: alpine/git:v2.54.1@sha256:2306e2b05ee0ef99f5d25b0779f645b24ae9f91ba187107503592fcdfe78da3a

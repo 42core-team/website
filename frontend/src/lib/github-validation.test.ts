@@ -25,7 +25,6 @@ type PatternName = keyof typeof frontendPatterns
 const patternNames = Object.keys(frontendPatterns) as PatternName[]
 
 const fieldPatterns: Record<GithubConfigField, PatternName> = {
-  githubOrg: 'GITHUB_OWNER_PATTERN',
   monorepoUrl: 'GITHUB_REPO_URL_PATTERN',
   monorepoVersion: 'GIT_REF_PATTERN',
   basePath: 'REPO_RELATIVE_PATH_PATTERN',
@@ -94,9 +93,6 @@ describe('getGithubConfigError', () => {
   )
 
   it('reports required fields', () => {
-    expect(getGithubConfigError('githubOrg', '  ')).toBe(
-      'GitHub organization is required',
-    )
     expect(getGithubConfigError('monorepoUrl', '')).toBe(
       'Monorepo URL is required',
     )
@@ -107,11 +103,6 @@ describe('getGithubConfigError', () => {
   })
 
   it.each([
-    ['githubOrg', 'https://github.com/core', 'not a URL'],
-    ['githubOrg', 'core_team', 'letters, digits and hyphens'],
-    ['githubOrg', '-core', 'start or end with a hyphen'],
-    ['githubOrg', 'co--re', 'consecutive hyphens'],
-    ['githubOrg', 'a'.repeat(40), 'at most 39'],
     ['monorepoUrl', 'http://github.com/a/b', 'Use https'],
     ['monorepoUrl', 'https://gitlab.com/a/b', 'GitHub repository URL'],
     ['monorepoUrl', 'https://github.com/a/b?tab=x', 'query or fragment'],
@@ -138,7 +129,6 @@ describe('getGithubConfigError', () => {
 
 describe('normalization', () => {
   it('accepts harmless input differences', () => {
-    expect(getGithubConfigError('githubOrg', ' core-org ')).toBeUndefined()
     expect(
       getGithubConfigError(
         'monorepoUrl',

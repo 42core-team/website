@@ -3,6 +3,25 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { getFortyTwoAuthUrl } from '@/app/actions/social-accounts'
 import { OAUTH_CONFIG } from '@/lib/constants/oauth'
 
+const LINKING_RETURN_KEY = 'fortytwo_linking_return'
+
+/**
+ * Whether this page load is the return from linking a 42 account: the API
+ * redirects back with `?error=` on failure and without a marker on success,
+ * so the start of the flow leaves one in session storage. Clears it.
+ */
+export function takeFortyTwoLinkingReturn(search: string): boolean {
+  let started = false
+  try {
+    started = window.sessionStorage.getItem(LINKING_RETURN_KEY) !== null
+    window.sessionStorage.removeItem(LINKING_RETURN_KEY)
+  } catch {
+    // Storage can be unavailable; the query still tells errors apart.
+  }
+  const params = new URLSearchParams(search)
+  return started || params.has('error') || params.has('success')
+}
+
 /**
  * Simplified hook for handling 42 School OAuth integration
  *
@@ -71,6 +90,11 @@ export function use42Linking(onSuccess?: () => void): Use42LinkingReturn {
           throw new Error('No auth URL returned from backend')
         }
 
+        try {
+          window.sessionStorage.setItem(LINKING_RETURN_KEY, '1')
+        } catch {
+          // Without storage a successful link returns to the profile.
+        }
         window.location.href = authUrl
       } catch (err: any) {
         console.error('Failed to initiate 42 OAuth via backend:', err)
@@ -83,6 +107,16 @@ export function use42Linking(onSuccess?: () => void): Use42LinkingReturn {
         setIsInitiating(false)
       }
     }, OAUTH_CONFIG.LOADING_DELAY)
+  }, [])
+
+  // The linking result is shown here, so a later /profile visit must not
+  // take the marker for a return from 42.
+  useEffect(() => {
+    try {
+      window.sessionStorage.removeItem(LINKING_RETURN_KEY)
+    } catch {
+      // Nothing to clear without storage.
+    }
   }, [])
 
   // Handle success/error messages from URL parameters

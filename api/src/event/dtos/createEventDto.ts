@@ -5,7 +5,6 @@ import {
   MinLength,
   MaxLength,
   Min,
-  IsNotEmpty,
   IsBoolean,
   IsInt,
   Matches,
@@ -14,8 +13,6 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   GIT_REF_MESSAGE,
   GIT_REF_PATTERN,
-  GITHUB_OWNER_MESSAGE,
-  GITHUB_OWNER_PATTERN,
   GITHUB_REPO_URL_MESSAGE,
   GITHUB_REPO_URL_PATTERN,
   REPO_RELATIVE_PATH_MESSAGE,
@@ -38,18 +35,6 @@ export class CreateEventDto {
   @IsOptional()
   @IsString()
   description: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  @NormalizeGithubConfig("githubOrg")
-  @Matches(GITHUB_OWNER_PATTERN, { message: GITHUB_OWNER_MESSAGE })
-  githubOrg: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  githubOrgSecret: string;
 
   @ApiProperty()
   @IsOptional()

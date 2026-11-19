@@ -34,7 +34,6 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { EventVersionDto } from "./dtos/eventVersionDto";
 import { LockKeys } from "../constants";
 import { WhitelistPlatform } from "./entities/event-whitelist.entity";
-import { encryptSecret } from "../common/encryption";
 import {
   EventState,
   getEventState,
@@ -45,6 +44,7 @@ import { TeamEntity } from "../team/entities/team.entity";
 import { MatchEntity, MatchPhase } from "../match/entites/match.entity";
 import { lockEvent } from "./event-lock";
 import { toPublicUsers } from "../user/dtos/public-user.dto";
+import { USER_ARTWORK_RELATIONS } from "../media/artwork-relations";
 
 @Injectable()
 export class EventService {
@@ -297,8 +297,6 @@ export class EventService {
     userId: string,
     name: string,
     description: string,
-    githubOrg: string,
-    githubOrgSecret: string,
     location: string,
     startDate: number,
     endDate: number | undefined,
@@ -343,16 +341,11 @@ export class EventService {
       ),
     );
 
-    githubOrgSecret = encryptSecret(
-      githubOrgSecret,
-      this.configService.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
-    );
-
     return this.eventRepository.save({
       name,
       description,
-      githubOrg,
-      githubOrgSecret,
+      // Set when the GitHub App is connected.
+      githubOrg: "",
       location,
       minTeamSize,
       maxTeamSize,
@@ -819,8 +812,6 @@ export class EventService {
       isPrivate?: boolean;
       name?: string;
       description?: string;
-      githubOrg?: string;
-      githubOrgSecret?: string;
       location?: string;
       startDate?: number;
       endDate?: number;
@@ -862,7 +853,6 @@ export class EventService {
     const stringFields = [
       "name",
       "description",
-      "githubOrg",
       "location",
       "gameServerDockerImage",
       "myCoreBotDockerImage",
@@ -886,13 +876,6 @@ export class EventService {
         update.visualizerDockerImage,
       ].map(assertImageExists),
     );
-
-    if (settings.githubOrgSecret) {
-      update.githubOrgSecret = encryptSecret(
-        settings.githubOrgSecret,
-        this.configService.getOrThrow("API_SECRET_ENCRYPTION_KEY"),
-      );
-    }
 
     const numberFields = [
       "minTeamSize",
@@ -1016,7 +999,7 @@ export class EventService {
         role: PermissionRole.ADMIN,
       },
       relations: {
-        user: true,
+        user: USER_ARTWORK_RELATIONS,
       },
     });
     return toPublicUsers(permissions.map((p) => p.user));

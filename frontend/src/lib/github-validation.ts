@@ -30,18 +30,15 @@ export const GIT_REF_PATTERN =
 export const REPO_RELATIVE_PATH_PATTERN =
   /^(?=.{1,255}$)(?!\.{1,2}(?:\/|$))[A-Za-z0-9._][A-Za-z0-9._-]*(?:\/(?!\.{1,2}(?:\/|$))[A-Za-z0-9._][A-Za-z0-9._-]*)*\/?$/
 
-export type GithubConfigField =
-  'githubOrg' | 'monorepoUrl' | 'monorepoVersion' | 'basePath'
+export type GithubConfigField = 'monorepoUrl' | 'monorepoVersion' | 'basePath'
 
 export const GITHUB_CONFIG_FIELDS: readonly GithubConfigField[] = [
-  'githubOrg',
   'monorepoUrl',
   'monorepoVersion',
   'basePath',
 ]
 
 export const GITHUB_CONFIG_LABELS: Record<GithubConfigField, string> = {
-  githubOrg: 'GitHub organization',
   monorepoUrl: 'Monorepo URL',
   monorepoVersion: 'Monorepo version',
   basePath: 'Base path',
@@ -74,7 +71,6 @@ export function normalizeBasePath(value: string) {
 }
 
 const normalizers: Record<GithubConfigField, (value: string) => string> = {
-  githubOrg: (value) => value.trim(),
   monorepoUrl: normalizeMonorepoUrl,
   monorepoVersion: (value) => value.trim(),
   basePath: normalizeBasePath,
@@ -88,18 +84,6 @@ export function normalizeGithubConfigValue(
 }
 
 const REPO_URL_FORMAT = 'https://github.com/<owner>/<repo>'
-
-function githubOrgError(value: string): string | undefined {
-  if (!value) return 'GitHub organization is required'
-  if (GITHUB_OWNER_PATTERN.test(value)) return undefined
-  if (value.includes('/') || value.includes(':'))
-    return 'Enter only the organization name (e.g. 42core-team), not a URL or path'
-  if (value.length > 39) return 'Must be at most 39 characters'
-  if (/[^A-Za-z0-9-]/.test(value)) return 'Use only letters, digits and hyphens'
-  if (value.startsWith('-') || value.endsWith('-'))
-    return 'Cannot start or end with a hyphen'
-  return 'Cannot contain consecutive hyphens'
-}
 
 function monorepoUrlError(value: string): string | undefined {
   if (!value) return 'Monorepo URL is required'
@@ -147,7 +131,6 @@ const errorFinders: Record<
   GithubConfigField,
   (value: string) => string | undefined
 > = {
-  githubOrg: githubOrgError,
   monorepoUrl: monorepoUrlError,
   monorepoVersion: monorepoVersionError,
   basePath: basePathError,

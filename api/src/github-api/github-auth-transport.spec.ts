@@ -8,25 +8,25 @@ jest.mock("../main", () => ({
   getRabbitmqConfig: jest.fn().mockReturnValue({}),
 }));
 
-describe("GitHub organization secret transport", () => {
+describe("GitHub credentials transport", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it("sends the encrypted event token unchanged to the GitHub service", async () => {
+  it("sends the event credentials unchanged to the GitHub service", async () => {
     const emit = jest.fn().mockReturnValue(of(undefined));
     jest.spyOn(ClientProxyFactory, "create").mockReturnValue({ emit } as never);
     const service = new GithubApiService({
       getOrThrow: jest.fn().mockReturnValue("https://api.example.com"),
     } as never);
-    const encryptedEventToken = "v2:encrypted-event-token";
+    const githubAuth = { installationId: 42 };
 
     await service.createTeamRepository(
       "repository-name",
       "team-name",
       [],
       "github-org",
-      encryptedEventToken,
+      githubAuth,
       "team-id",
       "https://github.com/example/mono.git",
       "main",
@@ -40,7 +40,7 @@ describe("GitHub organization secret transport", () => {
 
     expect(emit).toHaveBeenCalledWith(
       "create_team_repository",
-      expect.objectContaining({ encryptedSecret: encryptedEventToken }),
+      expect.objectContaining({ githubAuth }),
     );
   });
 });

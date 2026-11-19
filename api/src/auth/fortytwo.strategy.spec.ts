@@ -5,9 +5,7 @@ import {
   getPrimaryCampus,
 } from "./fortytwo.strategy";
 
-function profile(
-  overrides: Partial<FortyTwoProfile> = {},
-): FortyTwoProfile {
+function profile(overrides: Partial<FortyTwoProfile> = {}): FortyTwoProfile {
   return {
     id: 42,
     login: "student",

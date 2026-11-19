@@ -17,9 +17,12 @@ import { Route as EventsRouteImport } from './routes/events'
 import { Route as ImpressumRouteImport } from './routes/impressum'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RushRouteImport } from './routes/rush'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as WikiRouteImport } from './routes/wiki'
 import { Route as EventsIdRouteImport } from './routes/events/$id'
 import { Route as EventsCreateRouteImport } from './routes/events/create'
+import { Route as GithubSetupRouteImport } from './routes/github/setup'
+import { Route as UsersUsernameRouteImport } from './routes/users/$username'
 import { Route as WikiSplatRouteImport } from './routes/wiki.$'
 import { Route as EventsIdBracketRouteImport } from './routes/events/$id/bracket'
 import { Route as EventsIdDashboardRouteImport } from './routes/events/$id/dashboard'
@@ -72,6 +75,11 @@ const RushRoute = RushRouteImport.update({
   path: '/rush',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WikiRoute = WikiRouteImport.update({
   id: '/wiki',
   path: '/wiki',
@@ -86,6 +94,16 @@ const EventsCreateRoute = EventsCreateRouteImport.update({
   id: '/create',
   path: '/create',
   getParentRoute: () => EventsRoute,
+} as any)
+const GithubSetupRoute = GithubSetupRouteImport.update({
+  id: '/github/setup',
+  path: '/github/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UsersUsernameRoute = UsersUsernameRouteImport.update({
+  id: '/users/$username',
+  path: '/users/$username',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const WikiSplatRoute = WikiSplatRouteImport.update({
   id: '/$',
@@ -152,9 +170,12 @@ export interface FileRoutesByFullPath {
   '/impressum': typeof ImpressumRoute
   '/profile': typeof ProfileRoute
   '/rush': typeof RushRoute
+  '/settings': typeof SettingsRoute
   '/wiki': typeof WikiRouteWithChildren
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
+  '/github/setup': typeof GithubSetupRoute
+  '/users/$username': typeof UsersUsernameRoute
   '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
@@ -176,9 +197,12 @@ export interface FileRoutesByTo {
   '/impressum': typeof ImpressumRoute
   '/profile': typeof ProfileRoute
   '/rush': typeof RushRoute
+  '/settings': typeof SettingsRoute
   '/wiki': typeof WikiRouteWithChildren
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
+  '/github/setup': typeof GithubSetupRoute
+  '/users/$username': typeof UsersUsernameRoute
   '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
@@ -201,9 +225,12 @@ export interface FileRoutesById {
   '/impressum': typeof ImpressumRoute
   '/profile': typeof ProfileRoute
   '/rush': typeof RushRoute
+  '/settings': typeof SettingsRoute
   '/wiki': typeof WikiRouteWithChildren
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
+  '/github/setup': typeof GithubSetupRoute
+  '/users/$username': typeof UsersUsernameRoute
   '/wiki/$': typeof WikiSplatRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
@@ -227,9 +254,12 @@ export interface FileRouteTypes {
     | '/impressum'
     | '/profile'
     | '/rush'
+    | '/settings'
     | '/wiki'
     | '/events/$id'
     | '/events/create'
+    | '/github/setup'
+    | '/users/$username'
     | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
@@ -251,9 +281,12 @@ export interface FileRouteTypes {
     | '/impressum'
     | '/profile'
     | '/rush'
+    | '/settings'
     | '/wiki'
     | '/events/$id'
     | '/events/create'
+    | '/github/setup'
+    | '/users/$username'
     | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
@@ -275,9 +308,12 @@ export interface FileRouteTypes {
     | '/impressum'
     | '/profile'
     | '/rush'
+    | '/settings'
     | '/wiki'
     | '/events/$id'
     | '/events/create'
+    | '/github/setup'
+    | '/users/$username'
     | '/wiki/$'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
@@ -300,7 +336,10 @@ export interface RootRouteChildren {
   ImpressumRoute: typeof ImpressumRoute
   ProfileRoute: typeof ProfileRoute
   RushRoute: typeof RushRoute
+  SettingsRoute: typeof SettingsRoute
   WikiRoute: typeof WikiRouteWithChildren
+  GithubSetupRoute: typeof GithubSetupRoute
+  UsersUsernameRoute: typeof UsersUsernameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -361,6 +400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RushRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/wiki': {
       id: '/wiki'
       path: '/wiki'
@@ -381,6 +427,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/events/create'
       preLoaderRoute: typeof EventsCreateRouteImport
       parentRoute: typeof EventsRoute
+    }
+    '/github/setup': {
+      id: '/github/setup'
+      path: '/github/setup'
+      fullPath: '/github/setup'
+      preLoaderRoute: typeof GithubSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/users/$username': {
+      id: '/users/$username'
+      path: '/users/$username'
+      fullPath: '/users/$username'
+      preLoaderRoute: typeof UsersUsernameRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/wiki/$': {
       id: '/wiki/$'
@@ -534,7 +594,10 @@ const rootRouteChildren: RootRouteChildren = {
   ImpressumRoute: ImpressumRoute,
   ProfileRoute: ProfileRoute,
   RushRoute: RushRoute,
+  SettingsRoute: SettingsRoute,
   WikiRoute: WikiRouteWithChildren,
+  GithubSetupRoute: GithubSetupRoute,
+  UsersUsernameRoute: UsersUsernameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

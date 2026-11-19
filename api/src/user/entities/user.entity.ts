@@ -12,9 +12,10 @@ import { EventEntity } from "../../event/entities/event.entity";
 import { TeamEntity } from "../../team/entities/team.entity";
 import { SocialAccountEntity } from "./social-account.entity";
 import { Exclude } from "class-transformer";
+import { LazyMediaArtwork } from "../../media/entities/media-artwork-columns";
 
 @Entity("users")
-export class UserEntity {
+export class UserEntity extends LazyMediaArtwork {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 

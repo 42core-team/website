@@ -2,8 +2,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ClientProxy, ClientProxyFactory } from "@nestjs/microservices";
 import { ConfigService } from "@nestjs/config";
 import { getRabbitmqConfig } from "../main";
-import { decryptSecret } from "../common/encryption";
 import { lastValueFrom, timeout } from "rxjs";
+import { GithubAuth } from "./github-auth";
 
 export type RepositoryActivityStatus = "active" | "inactive" | "unknown";
 
@@ -28,26 +28,19 @@ export class GithubApiService {
     );
   }
 
-  decryptSecret(encryptedSecret: string): string {
-    return decryptSecret(
-      encryptedSecret,
-      this.configService.getOrThrow<string>("API_SECRET_ENCRYPTION_KEY"),
-    );
-  }
-
   async removeWritePermissions(
     username: string,
     githubId: string,
     repoOwner: string,
     repoName: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
   ) {
     this.githubClient.emit("remove_write_permissions", {
       username,
       githubId,
       repoOwner,
       repoName,
-      encryptedSecret,
+      githubAuth,
     });
   }
 
@@ -56,14 +49,14 @@ export class GithubApiService {
     githubId: string,
     repoOwner: string,
     repoName: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
   ) {
     this.githubClient.emit("add_write_permissions", {
       username,
       githubId,
       repoOwner,
       repoName,
-      encryptedSecret,
+      githubAuth,
     });
   }
 
@@ -72,7 +65,7 @@ export class GithubApiService {
     username: string,
     githubId: string,
     githubOrg: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
     githubAccessToken: string,
   ) {
     this.githubClient.emit("add_user_to_repository", {
@@ -80,7 +73,7 @@ export class GithubApiService {
       username,
       githubId,
       githubOrg,
-      encryptedSecret,
+      githubAuth,
       githubAccessToken,
     });
   }
@@ -88,12 +81,12 @@ export class GithubApiService {
   async deleteRepository(
     repositoryName: string,
     githubOrg: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
   ) {
     this.githubClient.emit("delete_repository", {
       repositoryName,
       githubOrg,
-      encryptedSecret,
+      githubAuth,
     });
   }
 
@@ -106,7 +99,7 @@ export class GithubApiService {
       githubAccessToken: string;
     }[],
     githubOrg: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
     teamId: string,
     monoRepoUrl: string,
     monoRepoVersion: string,
@@ -128,7 +121,7 @@ export class GithubApiService {
         teamName,
         githubUsers,
         githubOrg,
-        encryptedSecret,
+        githubAuth,
         teamId,
         monoRepoUrl,
         monoRepoVersion,
@@ -152,7 +145,7 @@ export class GithubApiService {
   async getRepositoryActivity(
     repositoryNames: string[],
     githubOrg: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
   ) {
     const results: RepositoryActivityResult[] = [];
     for (
@@ -170,7 +163,7 @@ export class GithubApiService {
                 start + REPOSITORY_ACTIVITY_BATCH_SIZE,
               ),
               githubOrg,
-              encryptedSecret,
+              githubAuth,
             })
             .pipe(timeout(REPOSITORY_ACTIVITY_TIMEOUT_MS)),
         );
@@ -190,7 +183,7 @@ export class GithubApiService {
     operationId: string;
     repositoryName: string;
     githubOrg: string;
-    encryptedSecret: string;
+    githubAuth: GithubAuth;
     locked: boolean;
     githubUsers: {
       username: string;

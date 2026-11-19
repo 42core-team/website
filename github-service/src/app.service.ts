@@ -8,6 +8,8 @@ import { RepoUtils } from "./repo.utils";
 import { decryptSecret } from "./secret-crypto";
 import { lastValueFrom, timeout } from "rxjs";
 import { isSimulatedRepository } from "./simulated-repository";
+import { GithubAppAuth } from "./github-app-auth";
+import { GithubAuth } from "./github-auth";
 
 export type RepositoryActivityStatus = "active" | "inactive" | "unknown";
 
@@ -83,7 +85,7 @@ export class AppService {
     operationId: string;
     repositoryName: string;
     githubOrg: string;
-    encryptedSecret: string;
+    githubAuth: GithubAuth;
     locked: boolean;
     githubUsers: {
       username: string;
@@ -108,7 +110,7 @@ export class AppService {
       await this.removeFormerCollaborators(
         data.githubOrg,
         data.repositoryName,
-        data.encryptedSecret,
+        data.githubAuth,
         data.githubUsers,
       );
       // Await every collaborator before acknowledging: one failure must not hide
@@ -120,7 +122,7 @@ export class AppService {
             user.githubId,
             data.githubOrg,
             data.repositoryName,
-            data.encryptedSecret,
+            data.githubAuth,
           );
         } else {
           await this.addUserToRepository(
@@ -128,7 +130,7 @@ export class AppService {
             user.username,
             user.githubId,
             data.githubOrg,
-            data.encryptedSecret,
+            data.githubAuth,
             user.githubAccessToken,
           );
         }
@@ -147,7 +149,10 @@ export class AppService {
     });
   }
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private readonly githubAppAuth: GithubAppAuth,
+  ) {
     this.githubServiceResultsClient = ClientProxyFactory.create(
       getRabbitmqConfig(configService, "github-service-results"),
     );
@@ -201,10 +206,19 @@ export class AppService {
     }
   }
 
+  /** An installation token for the event's organization. */
+  async resolveGithubToken(githubAuth: GithubAuth): Promise<string> {
+    if (!this.githubAppAuth.isEnabled())
+      throw new Error(
+        "The CORE GitHub App is not configured on this server.",
+      );
+    return this.githubAppAuth.getInstallationToken(githubAuth.installationId);
+  }
+
   private async executeGitHubAction<T>(
     username: string,
     githubId: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
     actionName: string,
     context: Record<string, unknown>,
     action: (
@@ -215,7 +229,7 @@ export class AppService {
   ): Promise<T> {
     this.logger.log(`${actionName} ${JSON.stringify(context)}`);
     try {
-      const secret = this.decryptSecret(encryptedSecret);
+      const secret = await this.resolveGithubToken(githubAuth);
       const githubApi = new GitHubApiClient({
         token: secret,
         logErrors: false,
@@ -230,7 +244,7 @@ export class AppService {
     } catch (error) {
       if (githubId) {
         try {
-          const secret = this.decryptSecret(encryptedSecret);
+          const secret = await this.resolveGithubToken(githubAuth);
           const githubApi = new GitHubApiClient({ token: secret });
           const userApi = new UserApi(githubApi);
 
@@ -264,14 +278,14 @@ export class AppService {
     githubId: string,
     repoOwner: string,
     repoName: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
   ) {
     if (isSimulatedRepository(repoName))
       return this.logSimulated("remove write permissions", repoName);
     return this.executeGitHubAction(
       username,
       githubId,
-      encryptedSecret,
+      githubAuth,
       "Removing write permissions for user",
       { username, repoOwner, repoName },
       async (user, repositoryApi) => {
@@ -303,14 +317,14 @@ export class AppService {
     githubId: string,
     repoOwner: string,
     repoName: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
   ) {
     if (isSimulatedRepository(repoName))
       return this.logSimulated("add write permissions", repoName);
     return this.executeGitHubAction(
       username,
       githubId,
-      encryptedSecret,
+      githubAuth,
       "Adding write permissions for user",
       { username, repoOwner, repoName },
       async (user, repositoryApi) => {
@@ -329,7 +343,7 @@ export class AppService {
     username: string,
     githubId: string,
     githubOrg: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
     encryptedGithubAccessToken: string,
   ) {
     if (isSimulatedRepository(repositoryName))
@@ -337,7 +351,7 @@ export class AppService {
     return this.executeGitHubAction(
       username,
       githubId,
-      encryptedSecret,
+      githubAuth,
       "Adding user to repository",
       { repositoryName, username, githubOrg },
       async (user, repositoryApi, userApi) => {
@@ -373,7 +387,7 @@ export class AppService {
   async removeFormerCollaborators(
     githubOrg: string,
     repositoryName: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
     githubUsers: { username: string; githubId: string }[],
   ) {
     if (isSimulatedRepository(repositoryName))
@@ -385,7 +399,7 @@ export class AppService {
     const isMember = (user: { id: number; login: string }) =>
       githubIds.has(String(user.id)) || usernames.has(user.login.toLowerCase());
     const repositoryApi = new RepositoryApi(
-      new GitHubApiClient({ token: this.decryptSecret(encryptedSecret) }),
+      new GitHubApiClient({ token: await this.resolveGithubToken(githubAuth) }),
     );
 
     for (let page = 1; ; page++) {
@@ -432,14 +446,14 @@ export class AppService {
     username: string,
     githubId: string,
     githubOrg: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
   ) {
     if (isSimulatedRepository(repositoryName))
       return this.logSimulated("remove user from repository", repositoryName);
     return this.executeGitHubAction(
       username,
       githubId,
-      encryptedSecret,
+      githubAuth,
       "Removing user from repository",
       { repositoryName, username, githubOrg },
       async (user, repositoryApi) => {
@@ -456,7 +470,7 @@ export class AppService {
   async getRepositoryActivity(
     repositoryNames: string[],
     githubOrg: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
   ): Promise<RepositoryActivityResult[]> {
     // An admin is waiting, so a rate limit or an unreachable GitHub must report
     // "unknown" instead of retrying or sleeping until the limit resets.
@@ -464,7 +478,7 @@ export class AppService {
     try {
       repositoryApi = new RepositoryApi(
         new GitHubApiClient({
-          token: this.decryptSecret(encryptedSecret),
+          token: await this.resolveGithubToken(githubAuth),
           maxRetries: 0,
           logErrors: false,
           requestTimeoutMs: REPOSITORY_ACTIVITY_REQUEST_TIMEOUT_MS,
@@ -529,7 +543,7 @@ export class AppService {
   async deleteRepository(
     repositoryName: string,
     githubOrg: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
   ) {
     if (isSimulatedRepository(repositoryName))
       return this.logSimulated("delete repository", repositoryName);
@@ -537,7 +551,7 @@ export class AppService {
       `Deleting repository ${JSON.stringify({ repositoryName, githubOrg })}`,
     );
     try {
-      const secret = this.decryptSecret(encryptedSecret);
+      const secret = await this.resolveGithubToken(githubAuth);
       const githubApi = new GitHubApiClient({
         token: secret,
       });
@@ -568,7 +582,7 @@ export class AppService {
       githubAccessToken: string;
     }[],
     githubOrg: string,
-    encryptedSecret: string,
+    githubAuth: GithubAuth,
     teamId: string,
     monoRepoUrl: string,
     monoRepoVersion: string,
@@ -599,7 +613,7 @@ export class AppService {
         Date.now() >= new Date(submissionDeadline).getTime()
       )
         throw new Error("Repository provisioning deadline has passed.");
-      const secret = this.decryptSecret(encryptedSecret);
+      const secret = await this.resolveGithubToken(githubAuth);
       const githubApi = new GitHubApiClient({
         token: secret,
       });
@@ -664,7 +678,7 @@ export class AppService {
         );
         try {
           if (createdHere)
-            await this.deleteRepository(name, githubOrg, encryptedSecret);
+            await this.deleteRepository(name, githubOrg, githubAuth);
         } catch (cleanupError) {
           this.logger.error(
             `Failed to clean up repository ${name} after setup failed`,
@@ -688,14 +702,14 @@ export class AppService {
                 user.githubId,
                 githubOrg,
                 name,
-                encryptedSecret,
+                githubAuth,
               )
             : this.addUserToRepository(
                 name,
                 user.username,
                 user.githubId,
                 githubOrg,
-                encryptedSecret,
+                githubAuth,
                 user.githubAccessToken,
               ),
         ),

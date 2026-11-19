@@ -69,6 +69,9 @@ jobs:
           bun lint
           git diff --exit-code ..
 
+      - name: Test asset archive fallback
+        run: bash frontend/scripts/test-assets-archive.sh
+
       - name: Cancel workflow on failure
         if: failure()
         run: gh run cancel ${{ github.run_id }}

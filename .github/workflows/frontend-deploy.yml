@@ -174,6 +174,77 @@ jobs:
         run: |
           kubectl create namespace ${{ steps.config.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
+      # Old pods and open tabs keep requesting the hashed assets of their own
+      # release. Upload before the rollout so every pod can fall back to the
+      # bucket. Objects are never deleted here; expire them with a lifecycle rule.
+      - name: Upload assets to the archive bucket
+        id: assets
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.FRONTEND_ASSETS_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.FRONTEND_ASSETS_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ vars.FRONTEND_ASSETS_S3_REGION || 'eu01' }}
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          S3_ENDPOINT: ${{ vars.FRONTEND_ASSETS_S3_ENDPOINT }}
+          S3_BUCKET: ${{ vars.FRONTEND_ASSETS_S3_BUCKET }}
+          NEW_IMAGE: ${{ steps.config.outputs.image_repo }}:${{ steps.config.outputs.image_tag }}
+        run: |
+          set -o pipefail
+
+          if [ -z "$S3_ENDPOINT" ] || [ -z "$S3_BUCKET" ]; then
+            echo "::warning::FRONTEND_ASSETS_S3_ENDPOINT or FRONTEND_ASSETS_S3_BUCKET is not set; skipping the asset archive."
+            echo "archive_url=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u "${{ github.actor }}" --password-stdin
+
+          # Always upload, even unchanged files: the bucket expires objects by
+          # upload date, so this restarts the clock for every release in use.
+          upload_assets() {
+            dir=$(mktemp -d) || return 1
+            # --pull always: a cached image for a branch tag may be an older build.
+            container=$(docker create --pull always "$1") || return 1
+            docker cp "$container:/usr/share/nginx/html/assets" "$dir/assets" || return 1
+            docker rm "$container" > /dev/null || return 1
+            # docker cp keeps symlinks, which would resolve against this runner
+            # (e.g. a link to the kubeconfig) and get published. Allow only
+            # plain files and directories.
+            if [ -L "$dir/assets" ] || [ -n "$(find "$dir/assets" ! -type f ! -type d -print -quit)" ]; then
+              echo "::error::$1 has something other than plain files in its assets directory"
+              return 1
+            fi
+            aws s3 cp "$dir/assets" "s3://$S3_BUCKET/assets" \
+              --recursive \
+              --no-follow-symlinks \
+              --endpoint-url "$S3_ENDPOINT" \
+              --cache-control "public, max-age=31536000, immutable" \
+              --only-show-errors || return 1
+            echo "Uploaded assets of $1"
+          }
+
+          # Archive what the running pods actually serve, by digest: a branch tag
+          # may already point at a newer build than the one they pulled. Pods
+          # mid-rollout can run several releases. No pods means a first deploy.
+          RUNNING_IMAGES=$(kubectl get pods \
+            -n ${{ steps.config.outputs.namespace }} \
+            -l app.kubernetes.io/name=frontend,app.kubernetes.io/instance=${{ steps.config.outputs.release_name }} \
+            -o jsonpath='{range .items[*]}{.status.containerStatuses[0].imageID}{"\n"}{end}' \
+            | sed 's#^docker-pullable://##' | sort -u)
+
+          # These assets have no other copy once the rollout replaces the pods,
+          # so a failure here stops the deploy.
+          for image in $RUNNING_IMAGES; do
+            upload_assets "$image"
+          done
+
+          upload_assets "$NEW_IMAGE"
+
+          {
+            echo "archive_url=${S3_ENDPOINT%/}/$S3_BUCKET"
+            echo "archived_images=$(echo $RUNNING_IMAGES "$NEW_IMAGE" | wc -w | tr -d ' ')"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Validate Helm chart
         run: |
           cd frontend/helm
@@ -204,6 +275,7 @@ jobs:
             --namespace ${{ steps.config.outputs.namespace }} \
             --values ${{ steps.config.outputs.values_file }} \
             --set-string env.VITE_MEDIA_URL="$VITE_MEDIA_URL" \
+            --set-string env.ASSETS_ARCHIVE_URL="${{ steps.assets.outputs.archive_url }}" \
             --set image.tag=${{ steps.config.outputs.image_tag }} \
             --set image.repository=${{ steps.config.outputs.image_repo }} \
             --set secrets.VITE_AUTH_SECRET="${{ secrets.VITE_AUTH_SECRET || secrets.NEXTAUTH_SECRET }}" \
@@ -275,3 +347,8 @@ jobs:
           echo "- **Values file:** ${{ steps.config.outputs.values_file }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Image:** \`${{ steps.config.outputs.image_repo }}:${{ steps.config.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment URL:** ${{ steps.config.outputs.environment_url }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.assets.outputs.archive_url }}" ]; then
+            echo "- **Asset archive:** ${{ steps.assets.outputs.archive_url }} (${{ steps.assets.outputs.archived_images }} images uploaded)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Asset archive:** ⚠️ disabled (FRONTEND_ASSETS_S3_* not set)" >> $GITHUB_STEP_SUMMARY
+          fi

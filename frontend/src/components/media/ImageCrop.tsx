@@ -76,7 +76,7 @@ export function resizeCrop(
   }
 }
 
-export function TeamImageCrop({
+export function ImageCrop({
   src,
   width,
   height,
@@ -86,6 +86,7 @@ export function TeamImageCrop({
   scale = 1,
   onChange,
   disabled = false,
+  instructionsId,
 }: {
   src: string
   width: number
@@ -96,6 +97,8 @@ export function TeamImageCrop({
   scale?: number
   onChange: (x: number, y: number, scale?: number) => void
   disabled?: boolean
+  /** Id of the element that explains how to adjust the crop. */
+  instructionsId?: string
 }) {
   const container = useRef<HTMLDivElement>(null)
   const drag = useRef<{
@@ -178,7 +181,7 @@ export function TeamImageCrop({
           tabIndex={disabled ? -1 : 0}
           aria-disabled={disabled}
           aria-label="Move crop selection"
-          aria-describedby="crop-instructions"
+          aria-describedby={instructionsId}
           className="absolute touch-none cursor-grab border-2 border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] outline-none focus-visible:border-primary active:cursor-grabbing"
           style={{
             width: `${frame.width}%`,

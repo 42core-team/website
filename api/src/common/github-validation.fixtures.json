@@ -121,10 +121,6 @@
   },
   "normalization": {
     "$comment": "Input -> value after normalization. Both the API DTOs and the frontend forms apply these.",
-    "githubOrg": [
-      ["  core-org ", "core-org"],
-      ["core-org", "core-org"]
-    ],
     "monorepoUrl": [
       [
         " https://github.com/42core-team/monorepo ",

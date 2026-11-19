@@ -10,7 +10,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import * as z from 'zod'
 import type { EventCreateParams } from '@/app/actions/event'
-import { canUserCreateEvent, createEvent } from '@/app/actions/event'
+import {
+  canUserCreateEvent,
+  createEvent,
+  isGithubAppAvailable,
+} from '@/app/actions/event'
 import Link from '@/components/app-link'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -46,10 +50,6 @@ const formSchema = z
       if (message) ctx.addIssue({ code: 'custom', message })
     }),
     description: z.string().optional(),
-    githubOrg: githubConfigSchema('githubOrg'),
-    githubOrgSecret: z
-      .string()
-      .min(1, 'GitHub organization secret is required'),
     location: z.string().optional(),
     startDate: z.date({ message: 'Start date is required' }),
     submissionDeadline: z.date({ message: 'Submission deadline is required' }),
@@ -93,8 +93,6 @@ type FormValues = z.infer<typeof formSchema>
 const defaultValues: FormValues = {
   name: '',
   description: '',
-  githubOrg: '',
-  githubOrgSecret: '',
   location: '',
   startDate: new Date(),
   submissionDeadline: new Date(Date.now() + 3600000),
@@ -129,69 +127,6 @@ function parseGitHubRepo(url: string): { owner: string; repo: string } | null {
   } catch {
     return null
   }
-}
-
-async function validateGithubToken(
-  orgName: string,
-  token: string,
-): Promise<string | null> {
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    Accept: 'application/vnd.github.v3+json',
-  }
-
-  try {
-    const orgResponse = await fetch(`https://api.github.com/orgs/${orgName}`, {
-      headers,
-    })
-
-    if (!orgResponse.ok) {
-      const errorMessage = await getGitHubErrorMessage(
-        orgResponse,
-        `Failed to access GitHub organization: ${orgResponse.statusText}`,
-      )
-      if (orgResponse.status === 404) {
-        return `Organization '${orgName}' not found or token has no access. ${errorMessage}`
-      }
-      return errorMessage
-    }
-
-    const reposResponse = await fetch(
-      `https://api.github.com/orgs/${orgName}/repos?type=all`,
-      { headers },
-    )
-    if (!reposResponse.ok) {
-      return getGitHubErrorMessage(
-        reposResponse,
-        `Token lacks permission to list repositories in '${orgName}'. Required: 'repo' scope.`,
-      )
-    }
-
-    const membersResponse = await fetch(
-      `https://api.github.com/orgs/${orgName}/members`,
-      { headers },
-    )
-    if (!membersResponse.ok) {
-      return getGitHubErrorMessage(
-        membersResponse,
-        `Token lacks permission to list members in '${orgName}'. Required: 'admin:org' or 'read:org' scope.`,
-      )
-    }
-
-    return null
-  } catch {
-    return 'An unexpected error occurred during GitHub token validation.'
-  }
-}
-
-async function getGitHubErrorMessage(response: Response, fallback: string) {
-  try {
-    const body = (await response.json()) as { message?: string }
-    if (body.message) return `GitHub API Error: ${body.message}`
-  } catch {
-    return fallback
-  }
-  return fallback
 }
 
 function combineImageAndTag(image: string, tag: string | undefined) {
@@ -232,6 +167,11 @@ function CreateEventRoute() {
     queryFn: canUserCreateEvent,
     enabled: Boolean(session?.user.id),
   })
+  const githubAppQuery = useQuery({
+    queryKey: ['github', 'app-available'],
+    queryFn: isGithubAppAvailable,
+  })
+  const githubAppAvailable = githubAppQuery.data === true
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -264,21 +204,9 @@ function CreateEventRoute() {
       if (!visualizerDockerImage)
         throw new Error('Visualizer image is required')
 
-      const githubOrg = normalizeGithubConfigValue(
-        'githubOrg',
-        values.githubOrg,
-      )
-      const validationError = await validateGithubToken(
-        githubOrg,
-        values.githubOrgSecret,
-      )
-      if (validationError) throw new Error(validationError)
-
       const payload: EventCreateParams = {
         name: values.name.trim(),
         description: values.description?.trim() || '',
-        githubOrg,
-        githubOrgSecret: values.githubOrgSecret,
         location: values.location?.trim() || '',
         startDate: values.startDate.getTime(),
         submissionDeadline: values.submissionDeadline.getTime(),
@@ -311,7 +239,8 @@ function CreateEventRoute() {
     onSuccess: async (event) => {
       toast.success('Event created.')
       await queryClient.invalidateQueries({ queryKey: ['events'] })
-      await navigate({ to: '/events/$id', params: { id: event.id } })
+      // GitHub is connected from the dashboard once the event exists.
+      await navigate({ to: '/events/$id/dashboard', params: { id: event.id } })
     },
     onError: (mutationError) => {
       setError(getErrorMessage(mutationError))
@@ -330,6 +259,7 @@ function CreateEventRoute() {
   })
 
   const formValues = useStore(form.store, (state) => state.values)
+
   const parsedRepo = useMemo(
     () => parseGitHubRepo(formValues.monorepoUrl),
     [formValues.monorepoUrl],
@@ -736,52 +666,13 @@ function CreateEventRoute() {
 
           <Card className="w-full p-6">
             <h2 className="mb-4 text-xl font-semibold">GitHub Integration</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <form.Field
-                name="githubOrg"
-                children={(field) => (
-                  <TextField
-                    errors={field.state.meta.errors}
-                    label="Organization Name *"
-                  >
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                      placeholder="e.g. 42-core-repos"
-                    />
-                  </TextField>
-                )}
-              />
-
-              <form.Field
-                name="githubOrgSecret"
-                children={(field) => (
-                  <TextField
-                    description="Required permissions: Administration and Contents"
-                    errors={field.state.meta.errors}
-                    label="GitHub Organization Secret *"
-                  >
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      type="password"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                      placeholder="github_pat_*"
-                      title="The token needs Administration and Contents permissions."
-                    />
-                  </TextField>
-                )}
-              />
-            </div>
+            <p className="text-sm text-muted-foreground">
+              {githubAppQuery.isPending
+                ? 'Checking the GitHub App…'
+                : githubAppAvailable
+                  ? 'After creating the event, an owner of the GitHub organization that should hold the team repositories connects the CORE GitHub App from the event dashboard.'
+                  : 'The CORE GitHub App is not configured on this server, so teams of this event cannot get repositories.'}
+            </p>
           </Card>
 
           <Card className="w-full p-6">

@@ -2,8 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
+  JoinColumn,
   JoinTable,
   ManyToMany,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -17,6 +20,7 @@ import { Exclude } from "class-transformer";
 import { EventStarterTemplateEntity } from "./event-starter-template.entity";
 import { EventWhitelistEntity } from "./event-whitelist.entity";
 import { EventState } from "../event-lifecycle";
+import { GithubInstallationEntity } from "../../github-api/entities/github-installation.entity";
 
 @Entity("events")
 export class EventEntity {
@@ -33,8 +37,21 @@ export class EventEntity {
   githubOrg: string;
 
   @Exclude()
-  @Column()
-  githubOrgSecret: string;
+  @Column({ type: "uuid", nullable: true })
+  @Index("IDX_events_github_installation_id")
+  githubInstallationId: string | null;
+
+  /** The CORE GitHub App installation that creates the event's repositories. */
+  @Exclude()
+  @ManyToOne(() => GithubInstallationEntity, {
+    nullable: true,
+    onDelete: "SET NULL",
+  })
+  @JoinColumn({
+    name: "githubInstallationId",
+    foreignKeyConstraintName: "FK_events_github_installation",
+  })
+  githubInstallation: GithubInstallationEntity | null;
 
   @Column({ default: "" })
   location: string;

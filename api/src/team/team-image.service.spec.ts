@@ -1,4 +1,5 @@
 import { BadRequestException, Logger } from "@nestjs/common";
+import { resetUploadCooldowns } from "../media/upload-cooldown";
 import { ConfigService } from "@nestjs/config";
 import {
   DeleteObjectsCommand,
@@ -9,8 +10,10 @@ import { EntityManager, Repository } from "typeorm";
 import { LockKeys } from "../constants";
 import sharp from "sharp";
 import { TeamEntity } from "./entities/team.entity";
+import { UserEntity } from "../user/entities/user.entity";
 import { MediaUploadEntity } from "../media/entities/media-upload.entity";
-import { processTeamImage, TeamImageService } from "./team-image.service";
+import { processImage as processTeamImage } from "../media/image-processing";
+import { TeamImageService } from "./team-image.service";
 
 const input = () =>
   sharp({
@@ -19,6 +22,7 @@ const input = () =>
     .png()
     .toBuffer();
 
+beforeEach(resetUploadCooldowns);
 afterEach(() => jest.restoreAllMocks());
 
 describe("team image cleanup locking", () => {
@@ -65,7 +69,7 @@ describe("team image cleanup locking", () => {
     await service.cleanup();
     expect(manager.query).toHaveBeenCalledWith(
       "SELECT pg_try_advisory_xact_lock($1) AS acquired",
-      [LockKeys.TEAM_IMAGE_CLEANUP],
+      [LockKeys.MEDIA_CLEANUP],
     );
     expect(manager.find).not.toHaveBeenCalled();
     expect(send).not.toHaveBeenCalled();
@@ -126,6 +130,92 @@ describe("team image cleanup locking", () => {
     await expect(transaction.mock.results[0].value).resolves.toBeUndefined();
     expect(send).toHaveBeenCalledTimes(3);
     expect(destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps objects referenced by soft-deleted teams", async () => {
+    const { service, manager, send } = setup();
+    manager.find.mockImplementation(async (target: unknown) =>
+      target === TeamEntity
+        ? [
+            {
+              id: "deleted-team",
+              deletedAt: new Date(),
+              pictureSmallUpload: {
+                id: "u1",
+                objectKey: "images/deleted-small",
+              },
+              pictureLargeUpload: {
+                id: "u2",
+                objectKey: "images/deleted-large",
+              },
+              backgroundLargeUpload: {
+                id: "u3",
+                objectKey: "images/deleted-bg",
+              },
+            },
+          ]
+        : [],
+    );
+    const old = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    send.mockImplementation(async (command) =>
+      command instanceof ListObjectsV2Command
+        ? {
+            Contents: [
+              { Key: "images/deleted-small", LastModified: old },
+              { Key: "images/deleted-large", LastModified: old },
+              { Key: "images/deleted-bg", LastModified: old },
+              { Key: "images/orphan", LastModified: old },
+            ],
+          }
+        : {},
+    );
+    await service.cleanup();
+    expect(manager.find).toHaveBeenCalledWith(
+      TeamEntity,
+      expect.objectContaining({ withDeleted: true }),
+    );
+    const deletes = send.mock.calls
+      .map(([command]) => command)
+      .filter((command) => command instanceof DeleteObjectsCommand);
+    expect(deletes).toHaveLength(1);
+    expect((deletes[0] as DeleteObjectsCommand).input.Delete?.Objects).toEqual([
+      { Key: "images/orphan" },
+    ]);
+  });
+
+  it("keeps objects referenced only by users", async () => {
+    const { service, manager, send } = setup();
+    manager.find.mockImplementation(async (target: unknown) =>
+      target === UserEntity
+        ? [
+            {
+              id: "user-1",
+              pictureSmallUpload: { id: "u1", objectKey: "images/user-only" },
+              pictureLargeUpload: null,
+              backgroundLargeUpload: null,
+            },
+          ]
+        : [],
+    );
+    const old = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    send.mockImplementation(async (command) =>
+      command instanceof ListObjectsV2Command
+        ? {
+            Contents: [
+              { Key: "images/user-only", LastModified: old },
+              { Key: "images/orphan", LastModified: old },
+            ],
+          }
+        : {},
+    );
+    await service.cleanup();
+    const deletes = send.mock.calls
+      .map(([command]) => command)
+      .filter((command) => command instanceof DeleteObjectsCommand);
+    expect(deletes).toHaveLength(1);
+    expect((deletes[0] as DeleteObjectsCommand).input.Delete?.Objects).toEqual([
+      { Key: "images/orphan" },
+    ]);
   });
 
   it("propagates storage failure out of the transaction so it rolls back and releases its lock", async () => {
@@ -296,11 +386,18 @@ describe("team image publishing", () => {
         backgroundLargeUploadId: "old-bg",
       }),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
+      find: jest.fn().mockImplementation(async (_entity, options) =>
+        (options.where.id.value as string[]).map((id) => ({
+          id,
+          objectKey: `images/${id}.webp`,
+        })),
+      ),
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
       save: jest
         .fn()
-        .mockImplementation(async (_entity, rows: Array<{ objectKey: string }>) =>
-          rows.map((row, idx) => ({ id: `new-${idx + 1}`, ...row })),
+        .mockImplementation(
+          async (_entity, rows: Array<{ objectKey: string }>) =>
+            rows.map((row, idx) => ({ id: `new-${idx + 1}`, ...row })),
         ),
     };
     const transaction = jest.fn(
@@ -325,7 +422,7 @@ describe("team image publishing", () => {
       50,
       50,
     );
-    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledTimes(2); // upload, then delete of the old object
     expect(Object.keys(result)).toEqual(["large"]);
     expect(result.large).toMatch(/^images\/[\w-]+\/background-large.webp$/);
     expect(manager.save).toHaveBeenCalledWith(MediaUploadEntity, [
@@ -369,7 +466,7 @@ describe("team image publishing", () => {
       50,
       50,
     );
-    expect(send).toHaveBeenCalledTimes(2);
+    expect(send).toHaveBeenCalledTimes(3); // two uploads, then the old keys
     expect(manager.findOneOrFail).toHaveBeenCalledWith(TeamEntity, {
       where: { id: "team" },
       lock: { mode: "pessimistic_write" },
