@@ -2,13 +2,14 @@
   "name": "frontend-vite",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@12.18.0",
   "imports": {
     "#/*": "./src/*"
   },
   "scripts": {
-    "prebuild": "bun scripts/clone-wiki-branches.cjs && bun scripts/fetch-releases.cjs && bun scripts/fetch-visualizer-assets.js",
+    "prebuild": "pnpm run clone:wiki && node scripts/fetch-releases.cjs && pnpm run fetch:visualizer-assets",
     "clone:wiki": "node scripts/clone-wiki-branches.cjs",
-    "fetch:visualizer-assets": "bun scripts/fetch-visualizer-assets.js",
+    "fetch:visualizer-assets": "node scripts/fetch-visualizer-assets.cjs",
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
     "build": "vite build",
@@ -39,7 +40,7 @@
     "@tanstack/react-query": "^5.107.1",
     "@tanstack/react-query-devtools": "^5.107.1",
     "@tanstack/react-router": "^1.170.46",
-    "@tanstack/react-router-devtools": "^1.167.2",
+    "@tanstack/react-router-devtools": "^1.167.3",
     "@tanstack/react-start": "^1.169.4",
     "@tanstack/react-store": "^0.11.2",
     "@tanstack/react-table": "^9.3.1",
@@ -50,16 +51,16 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
-    "framer-motion": "^14.10.1",
+    "framer-motion": "^14.14.0",
     "gray-matter": "^4.0.3",
-    "lucide-react": "^1.70.0",
+    "lucide-react": "^1.73.0",
     "radix-ui": "^1.8.1",
     "react": "^19.3.1",
     "react-chartjs-2": "^5.3.1",
     "react-day-picker": "^10.0.2",
     "react-dom": "^19.3.1",
     "reactflow": "^11.11.4",
-    "rehype-code-group": "^1.0.1",
+    "rehype-code-group": "^2.0.0",
     "rehype-pretty-code": "^0.14.6",
     "rehype-sanitize": "^6.0.0",
     "rehype-stringify": "^10.0.1",
@@ -78,7 +79,7 @@
     "@rolldown/plugin-babel": "^0.3.0",
     "@tailwindcss/typography": "^0.5.20",
     "@tanstack/devtools-vite": "^0.8.6",
-    "@tanstack/eslint-config": "^0.4.0",
+    "@tanstack/eslint-config": "^0.5.0",
     "@tanstack/router-cli": "^1.167.46",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
@@ -88,20 +89,11 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "@vitejs/plugin-react": "^6.2.1",
     "babel-plugin-react-compiler": "^1.0.0",
-    "eslint": "^10.14.0",
-    "jsdom": "^31.0.0",
-    "prettier": "^3.9.10",
+    "eslint": "^10.15.0",
+    "jsdom": "^31.0.1",
+    "prettier": "^3.10.1",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.3.6",
     "vitest": "^5.1.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "lightningcss"
-    ]
-  },
-  "overrides": {
-    "follow-redirects": "^1.16.2"
   }
 }

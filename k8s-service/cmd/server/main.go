@@ -24,7 +24,7 @@ func main() {
 		logger.Infoln(err)
 	}
 
-	// Initialize RabbitMQ connection with auto-reconnect capability
+	// Initialize RabbitMQ connection (no automatic reconnect: if the connection drops, the consumer stops)
 	q, err := queue.Init(cfg.RabbitMQ, logger)
 	if err != nil {
 		logger.Fatalln("Failed to connect to RabbitMQ:", err)

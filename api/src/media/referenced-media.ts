@@ -19,6 +19,7 @@ export async function referencedMediaKeys<
       backgroundLargeUpload: true,
     },
     loadEagerRelations: false,
+    withDeleted: true,
     // TypeORM cannot map the generic T onto these artwork-only select keys.
   } as FindManyOptions<T>;
   const rows = await manager.find(target, options);

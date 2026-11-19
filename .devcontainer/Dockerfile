@@ -37,8 +37,8 @@ elif [ "$ARCH" = "arm64" ]; then GO_ARCH="linux-arm64"; \
 else echo "Unsupported architecture: $ARCH" && exit 1; fi && \
 curl -fsSL https://go.dev/dl/go${GOLANG_VERSION}.${GO_ARCH}.tar.gz | tar -C /usr/local -xzf -
 
-# Install pnpm using npm (more reliable than shell script)
-RUN npm install -g pnpm
+# Install the package manager used by the JavaScript services
+RUN npm install -g pnpm@12.18.0
 
 # Install kind and kubectl
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/${TARGETARCH}/kubectl" && \
