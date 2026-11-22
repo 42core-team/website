@@ -2,6 +2,9 @@ jest.mock("../main", () => ({ getRabbitmqConfig: jest.fn() }));
 
 import { NotFoundException } from "@nestjs/common";
 import { MatchService } from "./match.service";
+import { EventPolicy } from "../authz";
+
+const as = (id: string) => ({ id, roles: [] });
 
 const K8S = "http://k8s.test";
 const TEAM_ONE = "11111111-1111-4111-8111-111111111111";
@@ -49,15 +52,15 @@ function setup(
   });
   global.fetch = fetchMock as unknown as typeof fetch;
 
-  const isEventAdmin = jest.fn().mockResolvedValue(options.admin ?? false);
+  const can = jest.fn().mockResolvedValue(options.admin ?? false);
   const service = Object.create(MatchService.prototype) as MatchService;
   Object.assign(service, {
     k8sServiceUrl: K8S,
     logger: { error: jest.fn(), warn: jest.fn() },
     matchRepository: { findOne: jest.fn().mockResolvedValue(match) },
-    eventService: { isEventAdmin },
+    authorization: { can },
   });
-  return { service, fetchMock, isEventAdmin };
+  return { service, fetchMock, can };
 }
 
 function fetchedContainers(fetchMock: jest.Mock) {
@@ -73,11 +76,16 @@ describe("match logs access", () => {
   });
 
   it("gives event admins the game server and every bot", async () => {
-    const { service, isEventAdmin } = setup({ admin: true });
+    const { service, can } = setup({ admin: true });
 
-    const logs = await service.getMatchLogs("match", "admin");
+    const logs = await service.getMatchLogs("match", as("admin"));
 
-    expect(isEventAdmin).toHaveBeenCalledWith("event", "admin");
+    expect(can).toHaveBeenCalledWith(
+      EventPolicy,
+      "viewUnrevealedResults",
+      as("admin"),
+      "event",
+    );
     expect(logs).toEqual([
       {
         container: "game",
@@ -100,7 +108,7 @@ describe("match logs access", () => {
   it("gives team members only their own bot", async () => {
     const { service, fetchMock } = setup();
 
-    const logs = await service.getMatchLogs("match", "alice");
+    const logs = await service.getMatchLogs("match", as("alice"));
 
     expect(logs).toEqual([
       {
@@ -115,14 +123,14 @@ describe("match logs access", () => {
   it("answers users who are neither admins nor in the match like an unknown match", async () => {
     const { service, fetchMock } = setup();
     const hidden = await service
-      .getMatchLogs("match", "mallory")
+      .getMatchLogs("match", as("mallory"))
       .catch((error: unknown) => error);
 
     Reflect.set(service, "matchRepository", {
       findOne: jest.fn().mockResolvedValue(null),
     });
     const unknown = await service
-      .getMatchLogs("missing", "mallory")
+      .getMatchLogs("missing", as("mallory"))
       .catch((error: unknown) => error);
 
     expect(hidden).toBeInstanceOf(NotFoundException);
@@ -139,7 +147,7 @@ describe("match logs access", () => {
       teamTwoUsers: ["alice"],
     });
 
-    const logs = await service.getMatchLogs("match", "alice");
+    const logs = await service.getMatchLogs("match", as("alice"));
 
     expect(logs.map((log) => log.container)).toEqual([
       `bot-${TEAM_ONE}`,
@@ -150,7 +158,7 @@ describe("match logs access", () => {
   it("gives an admin who is also a member everything", async () => {
     const { service } = setup({ admin: true });
 
-    const logs = await service.getMatchLogs("match", "alice");
+    const logs = await service.getMatchLogs("match", as("alice"));
 
     expect(logs.map((log) => log.container)).toEqual([
       "game",
@@ -169,7 +177,7 @@ describe("match logs access", () => {
       ],
     });
 
-    const logs = await service.getMatchLogs("match", "alice");
+    const logs = await service.getMatchLogs("match", as("alice"));
 
     expect(logs.map((log) => log.container)).toEqual([`bot-${TEAM_ONE}`]);
   });
@@ -177,7 +185,7 @@ describe("match logs access", () => {
   it("treats members of a deleted team as outsiders", async () => {
     const { service } = setup({ teamTwoDeleted: true });
 
-    await expect(service.getMatchLogs("match", "bob")).rejects.toThrow(
+    await expect(service.getMatchLogs("match", as("bob"))).rejects.toThrow(
       NotFoundException,
     );
   });

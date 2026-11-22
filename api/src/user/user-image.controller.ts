@@ -6,18 +6,17 @@ import {
   Param,
   Put,
   UploadedFile,
-  UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { SignedIn } from "../authz";
 import { UserId } from "../guards/UserGuard";
 import { MAX_IMAGE_BYTES } from "../media/image-processing";
 import { cropScale, imageKind, position } from "../media/image-params";
 import { UserImageService } from "./user-image.service";
 
 @Controller("user/me/images")
-@UseGuards(JwtAuthGuard)
+@SignedIn()
 export class UserImageController {
   constructor(private readonly images: UserImageService) {}
 

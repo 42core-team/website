@@ -7,6 +7,7 @@ import { EventController } from "../event/event.controller";
 import { MatchController } from "../match/match.controller";
 import { TeamController } from "../team/team.controller";
 import { SocialAccountController } from "../user/social-account.controller";
+import { UserController } from "../user/user.controller";
 
 function routesOf(controller: Type): string[] {
   const prefix = Reflect.getMetadata(PATH_METADATA, controller) as string;
@@ -31,6 +32,8 @@ describe("removed unused routes", () => {
     [MatchController, "GET match/queue/:eventId/timeseries"],
     [TeamController, "GET team/:id/event-started"],
     [SocialAccountController, "GET social-accounts/:platform"],
+    // Replaced by the abilities of GET /auth/me.
+    [UserController, "GET user/canCreateEvent"],
   ])("%p no longer exposes %s", (controller, route) => {
     expect(routesOf(controller)).not.toContain(route);
   });

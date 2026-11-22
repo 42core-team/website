@@ -133,6 +133,110 @@ the new session survives. They are skipped when the test database URL is absent.
 
   An application token works: `curl -X POST https://api.intra.42.fr/oauth/token -d grant_type=client_credentials -d client_id=<uid> -d client_secret=<secret>`. Requests are spaced to stay within the default limit of 2 per second, and the run stops at once if the token is rejected.
 
+## Roles and authorization
+
+Roles live in `user_roles`: ADMIN, MODERATOR, PUBLIC_EVENT_CREATOR and
+PRIVATE_EVENT_CREATOR globally (no `eventId`), ADMIN and MODERATOR also for a
+single event. Policies in `src/authz` decide every route;
+`src/authz/route-coverage.spec.ts` pins each route's decision.
+
+The frontend only hides what the caller may not do: `/auth/me` reports the
+global abilities and `GET /event/:id/abilities` the abilities within one event
+(`administer`, `viewUnrevealedResults`, `publish`). Each route still checks
+its own ability.
+
+Private events are unlisted: any signed-in user can view one by id and join
+while registration is open. A populated whitelist restricts joins to its users;
+an empty whitelist allows anyone signed in to join. Guests get 404, as for an
+unknown id. Version routes (`/event/:id/version`,
+`/event/:id/templates/:templateId/version` and `/check/:id`) stay public.
+Public listings exclude private events; the overview includes private events
+only among the user's own events.
+
+### Bootstrapping the first global admin
+
+Global admins grant every other role through `/admin/roles`, so the first one
+is inserted by hand, once the user has signed in with GitHub:
+
+```sql
+INSERT INTO user_roles ("userId", role) SELECT id, 'ADMIN' FROM users WHERE username = '<github-login>';
+```
+
+The role API never removes the last global admin, nor the last admin of an
+event.
+
+### The user_roles migration is forward-only
+
+`UserRoles1793050000000` copies `users.canCreateEvent` and the ADMIN rows of
+`user_event_permissions` into `user_roles`. Do not revert it once roles have
+been granted: reverting drops `user_roles`, so the old code reads the legacy
+permissions again and every grant made since the migration is lost.
+
+## Event presets
+
+Global admins manage presets of event settings at `/admin/event-presets`.
+`POST /event` needs only a `name`: the request's other fields are merged onto
+the named preset (`presetId`) or the default one, and the result must pass
+`EventSettingsDto`. Creating copies the values, so editing a preset never
+changes existing events; they keep `presetId` and `presetVersion` for
+provenance. `POST /event` no longer takes an organizer token (`githubOrg`,
+`githubOrgSecret`). GitHub App installations provide repository access.
+
+A preset's schedule is relative: the start is `startTime` (Europe/Berlin
+wall-clock time) `startOffsetDays` after the day of creation, and the other
+dates are hours after the start. `EventPresets1793200000000` seeds the
+"Default" preset with the create form's former defaults and the official
+`42core-team/config` game/server JSON at commit `54f501a`, embedded in the
+migration. It keeps `basePath: bots/c/bot`. Node 26 provides Temporal without
+a flag (there is no `.nvmrc`; engines, Docker and CI specify Node 26).
+If create overrides `startDate`, omitted dates move by the same delta;
+explicit dates are kept. `scheduledEndDate` controls the lifecycle, while
+`endDate` is also stored as sent. `repoLockDate` follows the submission deadline.
+
+Global admins can share a GitHub App installation at
+`/admin/github-installations`, after passing the owner check once. Any event
+creator may then link it, from a preset, on create or from the dashboard,
+without owning its organization. Event admins without creator permission can
+link installations they own through the dashboard. Unshared installations
+require a fresh owner check when linked, including on create. Suspended or
+uninstalled installations are rejected with 400. Unsharing leaves linked events alone.
+
+The create picker requires `PlatformPolicy.createEvent` for
+`GET /github/installations`, returning
+`[{ id, accountLogin, accountType, shared }]`. `id` is our UUID; owned and shared
+installations are deduplicated. The existing event dashboard routes still use
+GitHub's numeric `installationId`, and their list now includes `shared`.
+Presets may only save a shared, active installation. If it later stops being
+shared or active, resolve returns `githubInstallation: null` and omitted links
+on create resolve to none. Resolve, create, the admin list and the admin detail
+report it in `warnings: string[]` when applicable. A PUT may send the unchanged
+stale id back so other edits still save.
+
+Admins set the default with `POST /admin/event-presets/:id/default` (200,
+the same detail shape as GET). It clears the old default and bumps both
+versions in one transaction. Archived presets return 409; setting the current
+default again is a no-op. PUT, POST with `isDefault`, and this endpoint serialize
+default changes together. A stale PUT returns exactly
+`{ "message": "Preset was changed by someone else" }` with status 409.
+Archive/unarchive and losing default status also bump the version when changed.
+
+Create treats omitted `githubInstallationId`/`starterTemplates` as the preset's;
+`null` installation means none, and `[]` templates means none. Unknown body
+properties and null settings return 400. `isPrivate` remains accepted for old
+clients but every event starts private. PUT requires name, settings and version;
+omitted optional fields keep their values. Clear description or installation
+with null and templates with []. Duplicates are named `X (copy)`, then
+`X (copy 2)`, etc.
+
+The admin installation rows additionally expose `status` (`active`, `suspended`,
+`uninstalled`). Preset schedule hour fields are capped at 8784; a resolved
+submission deadline must follow the start. Missing deadline/end offsets fall
+back to `endAfterHours`, then 1h/2h respectively; `endDate` falls back to the
+scheduled end. Saving presets checks public tagged ghcr images. Requests are
+time-bounded, never follow redirects, and skip validation on network errors,
+rate limits and registry outages. Private or unsupported image references are
+left unchecked.
+
 ## API Documentation
 
 When running in development mode, Swagger documentation is available at:

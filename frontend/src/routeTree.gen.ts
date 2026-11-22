@@ -19,11 +19,16 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RushRouteImport } from './routes/rush'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as WikiRouteImport } from './routes/wiki'
+import { Route as AdminGithubInstallationsRouteImport } from './routes/admin/github-installations'
+import { Route as AdminRolesRouteImport } from './routes/admin/roles'
 import { Route as EventsIdRouteImport } from './routes/events/$id'
 import { Route as EventsCreateRouteImport } from './routes/events/create'
 import { Route as GithubSetupRouteImport } from './routes/github/setup'
 import { Route as UsersUsernameRouteImport } from './routes/users/$username'
 import { Route as WikiSplatRouteImport } from './routes/wiki.$'
+import { Route as AdminPresetsIndexRouteImport } from './routes/admin/presets.index'
+import { Route as AdminPresetsIdRouteImport } from './routes/admin/presets.$id'
+import { Route as AdminPresetsNewRouteImport } from './routes/admin/presets.new'
 import { Route as EventsIdBracketRouteImport } from './routes/events/$id/bracket'
 import { Route as EventsIdDashboardRouteImport } from './routes/events/$id/dashboard'
 import { Route as EventsIdGamblingRouteImport } from './routes/events/$id/gambling'
@@ -85,6 +90,17 @@ const WikiRoute = WikiRouteImport.update({
   path: '/wiki',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminGithubInstallationsRoute =
+  AdminGithubInstallationsRouteImport.update({
+    id: '/admin/github-installations',
+    path: '/admin/github-installations',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AdminRolesRoute = AdminRolesRouteImport.update({
+  id: '/admin/roles',
+  path: '/admin/roles',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EventsIdRoute = EventsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -109,6 +125,21 @@ const WikiSplatRoute = WikiSplatRouteImport.update({
   id: '/$',
   path: '/$',
   getParentRoute: () => WikiRoute,
+} as any)
+const AdminPresetsIndexRoute = AdminPresetsIndexRouteImport.update({
+  id: '/admin/presets/',
+  path: '/admin/presets/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPresetsIdRoute = AdminPresetsIdRouteImport.update({
+  id: '/admin/presets/$id',
+  path: '/admin/presets/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPresetsNewRoute = AdminPresetsNewRouteImport.update({
+  id: '/admin/presets/new',
+  path: '/admin/presets/new',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const EventsIdBracketRoute = EventsIdBracketRouteImport.update({
   id: '/bracket',
@@ -172,11 +203,15 @@ export interface FileRoutesByFullPath {
   '/rush': typeof RushRoute
   '/settings': typeof SettingsRoute
   '/wiki': typeof WikiRouteWithChildren
+  '/admin/github-installations': typeof AdminGithubInstallationsRoute
+  '/admin/roles': typeof AdminRolesRoute
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
   '/github/setup': typeof GithubSetupRoute
   '/users/$username': typeof UsersUsernameRoute
   '/wiki/$': typeof WikiSplatRoute
+  '/admin/presets/$id': typeof AdminPresetsIdRoute
+  '/admin/presets/new': typeof AdminPresetsNewRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
   '/events/$id/gambling': typeof EventsIdGamblingRoute
@@ -185,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/events/$id/queue': typeof EventsIdQueueRoute
   '/events/$id/teams': typeof EventsIdTeamsRouteWithChildren
   '/events/$id/unit-builder': typeof EventsIdUnitBuilderRoute
+  '/admin/presets/': typeof AdminPresetsIndexRoute
   '/events/$id/match/$matchId': typeof EventsIdMatchMatchIdRoute
   '/events/$id/teams/$teamId': typeof EventsIdTeamsTeamIdRoute
 }
@@ -199,11 +235,15 @@ export interface FileRoutesByTo {
   '/rush': typeof RushRoute
   '/settings': typeof SettingsRoute
   '/wiki': typeof WikiRouteWithChildren
+  '/admin/github-installations': typeof AdminGithubInstallationsRoute
+  '/admin/roles': typeof AdminRolesRoute
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
   '/github/setup': typeof GithubSetupRoute
   '/users/$username': typeof UsersUsernameRoute
   '/wiki/$': typeof WikiSplatRoute
+  '/admin/presets/$id': typeof AdminPresetsIdRoute
+  '/admin/presets/new': typeof AdminPresetsNewRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
   '/events/$id/gambling': typeof EventsIdGamblingRoute
@@ -212,6 +252,7 @@ export interface FileRoutesByTo {
   '/events/$id/queue': typeof EventsIdQueueRoute
   '/events/$id/teams': typeof EventsIdTeamsRouteWithChildren
   '/events/$id/unit-builder': typeof EventsIdUnitBuilderRoute
+  '/admin/presets': typeof AdminPresetsIndexRoute
   '/events/$id/match/$matchId': typeof EventsIdMatchMatchIdRoute
   '/events/$id/teams/$teamId': typeof EventsIdTeamsTeamIdRoute
 }
@@ -227,11 +268,15 @@ export interface FileRoutesById {
   '/rush': typeof RushRoute
   '/settings': typeof SettingsRoute
   '/wiki': typeof WikiRouteWithChildren
+  '/admin/github-installations': typeof AdminGithubInstallationsRoute
+  '/admin/roles': typeof AdminRolesRoute
   '/events/$id': typeof EventsIdRouteWithChildren
   '/events/create': typeof EventsCreateRoute
   '/github/setup': typeof GithubSetupRoute
   '/users/$username': typeof UsersUsernameRoute
   '/wiki/$': typeof WikiSplatRoute
+  '/admin/presets/$id': typeof AdminPresetsIdRoute
+  '/admin/presets/new': typeof AdminPresetsNewRoute
   '/events/$id/bracket': typeof EventsIdBracketRoute
   '/events/$id/dashboard': typeof EventsIdDashboardRoute
   '/events/$id/gambling': typeof EventsIdGamblingRoute
@@ -240,6 +285,7 @@ export interface FileRoutesById {
   '/events/$id/queue': typeof EventsIdQueueRoute
   '/events/$id/teams': typeof EventsIdTeamsRouteWithChildren
   '/events/$id/unit-builder': typeof EventsIdUnitBuilderRoute
+  '/admin/presets/': typeof AdminPresetsIndexRoute
   '/events/$id/match/$matchId': typeof EventsIdMatchMatchIdRoute
   '/events/$id/teams/$teamId': typeof EventsIdTeamsTeamIdRoute
 }
@@ -256,11 +302,15 @@ export interface FileRouteTypes {
     | '/rush'
     | '/settings'
     | '/wiki'
+    | '/admin/github-installations'
+    | '/admin/roles'
     | '/events/$id'
     | '/events/create'
     | '/github/setup'
     | '/users/$username'
     | '/wiki/$'
+    | '/admin/presets/$id'
+    | '/admin/presets/new'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
     | '/events/$id/gambling'
@@ -269,6 +319,7 @@ export interface FileRouteTypes {
     | '/events/$id/queue'
     | '/events/$id/teams'
     | '/events/$id/unit-builder'
+    | '/admin/presets/'
     | '/events/$id/match/$matchId'
     | '/events/$id/teams/$teamId'
   fileRoutesByTo: FileRoutesByTo
@@ -283,11 +334,15 @@ export interface FileRouteTypes {
     | '/rush'
     | '/settings'
     | '/wiki'
+    | '/admin/github-installations'
+    | '/admin/roles'
     | '/events/$id'
     | '/events/create'
     | '/github/setup'
     | '/users/$username'
     | '/wiki/$'
+    | '/admin/presets/$id'
+    | '/admin/presets/new'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
     | '/events/$id/gambling'
@@ -296,6 +351,7 @@ export interface FileRouteTypes {
     | '/events/$id/queue'
     | '/events/$id/teams'
     | '/events/$id/unit-builder'
+    | '/admin/presets'
     | '/events/$id/match/$matchId'
     | '/events/$id/teams/$teamId'
   id:
@@ -310,11 +366,15 @@ export interface FileRouteTypes {
     | '/rush'
     | '/settings'
     | '/wiki'
+    | '/admin/github-installations'
+    | '/admin/roles'
     | '/events/$id'
     | '/events/create'
     | '/github/setup'
     | '/users/$username'
     | '/wiki/$'
+    | '/admin/presets/$id'
+    | '/admin/presets/new'
     | '/events/$id/bracket'
     | '/events/$id/dashboard'
     | '/events/$id/gambling'
@@ -323,6 +383,7 @@ export interface FileRouteTypes {
     | '/events/$id/queue'
     | '/events/$id/teams'
     | '/events/$id/unit-builder'
+    | '/admin/presets/'
     | '/events/$id/match/$matchId'
     | '/events/$id/teams/$teamId'
   fileRoutesById: FileRoutesById
@@ -338,8 +399,13 @@ export interface RootRouteChildren {
   RushRoute: typeof RushRoute
   SettingsRoute: typeof SettingsRoute
   WikiRoute: typeof WikiRouteWithChildren
+  AdminGithubInstallationsRoute: typeof AdminGithubInstallationsRoute
+  AdminRolesRoute: typeof AdminRolesRoute
   GithubSetupRoute: typeof GithubSetupRoute
   UsersUsernameRoute: typeof UsersUsernameRoute
+  AdminPresetsIdRoute: typeof AdminPresetsIdRoute
+  AdminPresetsNewRoute: typeof AdminPresetsNewRoute
+  AdminPresetsIndexRoute: typeof AdminPresetsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -414,6 +480,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WikiRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/github-installations': {
+      id: '/admin/github-installations'
+      path: '/admin/github-installations'
+      fullPath: '/admin/github-installations'
+      preLoaderRoute: typeof AdminGithubInstallationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/roles': {
+      id: '/admin/roles'
+      path: '/admin/roles'
+      fullPath: '/admin/roles'
+      preLoaderRoute: typeof AdminRolesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/events/$id': {
       id: '/events/$id'
       path: '/$id'
@@ -448,6 +528,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/wiki/$'
       preLoaderRoute: typeof WikiSplatRouteImport
       parentRoute: typeof WikiRoute
+    }
+    '/admin/presets/': {
+      id: '/admin/presets/'
+      path: '/admin/presets'
+      fullPath: '/admin/presets/'
+      preLoaderRoute: typeof AdminPresetsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/presets/$id': {
+      id: '/admin/presets/$id'
+      path: '/admin/presets/$id'
+      fullPath: '/admin/presets/$id'
+      preLoaderRoute: typeof AdminPresetsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/presets/new': {
+      id: '/admin/presets/new'
+      path: '/admin/presets/new'
+      fullPath: '/admin/presets/new'
+      preLoaderRoute: typeof AdminPresetsNewRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/events/$id/bracket': {
       id: '/events/$id/bracket'
@@ -596,8 +697,13 @@ const rootRouteChildren: RootRouteChildren = {
   RushRoute: RushRoute,
   SettingsRoute: SettingsRoute,
   WikiRoute: WikiRouteWithChildren,
+  AdminGithubInstallationsRoute: AdminGithubInstallationsRoute,
+  AdminRolesRoute: AdminRolesRoute,
   GithubSetupRoute: GithubSetupRoute,
   UsersUsernameRoute: UsersUsernameRoute,
+  AdminPresetsIdRoute: AdminPresetsIdRoute,
+  AdminPresetsNewRoute: AdminPresetsNewRoute,
+  AdminPresetsIndexRoute: AdminPresetsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

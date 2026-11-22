@@ -19,6 +19,8 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import cookieParser from "cookie-parser";
 import request from "supertest";
 import { UserService } from "../user/user.service";
+import { AuthzModule, type RoleGrant, UserRole } from "../authz";
+import { EventAudience } from "../authz/event-audience";
 import { SocialAccountService } from "../user/social-account.service";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
@@ -112,9 +114,11 @@ describe("AuthController sessions", () => {
   let backgroundTasks: BackgroundTasks;
   let fetchMock: jest.SpyInstance;
   let recordGithubCheck: jest.Mock;
+  let roles: RoleGrant[];
 
   beforeEach(async () => {
     users = new Map([[USER.id, createUser()]]);
+    roles = [];
     fetchMock = jest
       .spyOn(global, "fetch")
       .mockImplementation(async () => githubResponse(200));
@@ -136,6 +140,10 @@ describe("AuthController sessions", () => {
         if (!user) throw new Error("EntityNotFound");
         return { ...user };
       }),
+      getUserWithRoles: jest.fn(async (id: string) => {
+        const user = users.get(id);
+        return user ? { ...user, roles } : null;
+      }),
       getUserWithSocialAccounts: jest.fn(async (id: string) => users.get(id)),
       recordGithubCheck,
     };
@@ -144,6 +152,7 @@ describe("AuthController sessions", () => {
       imports: [
         PassportModule.register({ session: false }),
         JwtModule.register({ secret: JWT_SECRET }),
+        AuthzModule,
       ],
       controllers: [AuthController],
       providers: [
@@ -178,7 +187,10 @@ describe("AuthController sessions", () => {
           useValue: { authenticate: async () => USER },
         },
       ],
-    }).compile();
+    })
+      .overrideProvider(EventAudience)
+      .useValue({ isPublic: async () => false })
+      .compile();
 
     app = module.createNestApplication();
     app.use(cookieParser());
@@ -240,6 +252,74 @@ describe("AuthController sessions", () => {
       .expect(200);
   });
 
+  it.each<[string, RoleGrant[], Record<string, boolean>]>([
+    [
+      "no role",
+      [],
+      {
+        admin: false,
+        moderator: false,
+        createEvent: false,
+        createPublicEvent: false,
+      },
+    ],
+    [
+      "a private event creator",
+      [{ role: UserRole.PRIVATE_EVENT_CREATOR, eventId: null }],
+      {
+        admin: false,
+        moderator: false,
+        createEvent: true,
+        createPublicEvent: false,
+      },
+    ],
+    [
+      "a global moderator and public event creator",
+      [
+        { role: UserRole.MODERATOR, eventId: null },
+        { role: UserRole.PUBLIC_EVENT_CREATOR, eventId: null },
+      ],
+      {
+        admin: false,
+        moderator: true,
+        createEvent: true,
+        createPublicEvent: true,
+      },
+    ],
+    [
+      "a global admin",
+      [{ role: UserRole.ADMIN, eventId: null }],
+      {
+        admin: true,
+        moderator: true,
+        createEvent: true,
+        createPublicEvent: true,
+      },
+    ],
+    [
+      "only event-scoped roles",
+      [{ role: UserRole.ADMIN, eventId: "event" }],
+      {
+        admin: false,
+        moderator: false,
+        createEvent: false,
+        createPublicEvent: false,
+      },
+    ],
+  ])(
+    "/auth/me reports the global abilities of %s",
+    async (_, granted, abilities) => {
+      roles = granted;
+      const { token } = await login();
+      const response = await request(app.getHttpServer())
+        .get("/auth/me")
+        .set("Cookie", `token=${token}`)
+        .expect(200);
+      expect(response.body).toMatchObject({ id: USER.id, abilities });
+      expect(response.body.roles).toBeUndefined();
+    },
+  );
+
   it("refresh rotates the refresh token and issues a new access token", async () => {
     const session = await login();
 
@@ -265,6 +345,57 @@ describe("AuthController sessions", () => {
       .set("Cookie", `token=${access.value}`)
       .expect(200);
   });
+
+  it.each(["expired", "forged"])(
+    "refresh works with an %s access cookie and a valid refresh cookie",
+    async (kind) => {
+      const session = await login();
+      const access =
+        kind === "expired"
+          ? jwt.sign({ sub: USER.id, fid: "family" }, { expiresIn: -1 })
+          : new JwtService({ secret: "wrong-key" }).sign({
+              sub: USER.id,
+              fid: "family",
+            });
+      const result = await request(app.getHttpServer())
+        .post("/auth/refresh")
+        .set("Cookie", `token=${access}; refresh_token=${session.refreshToken}`)
+        .expect(204);
+      const cookies = parseSetCookies(result);
+      expect(cookies.get("refresh_token")!.value).not.toBe(
+        session.refreshToken,
+      );
+      await request(app.getHttpServer())
+        .get("/auth/me")
+        .set("Cookie", `token=${cookies.get("token")!.value}`)
+        .expect(200);
+    },
+  );
+
+  it.each(["expired", "forged"])(
+    "logout clears both cookies and revokes the session with an %s access cookie",
+    async (kind) => {
+      const session = await login();
+      const access =
+        kind === "expired"
+          ? jwt.sign({ sub: USER.id, fid: "family" }, { expiresIn: -1 })
+          : new JwtService({ secret: "wrong-key" }).sign({
+              sub: USER.id,
+              fid: "family",
+            });
+      const result = await request(app.getHttpServer())
+        .post("/auth/logout")
+        .set("Cookie", `token=${access}; refresh_token=${session.refreshToken}`)
+        .expect(204);
+      const cookies = parseSetCookies(result);
+      expect(isCleared(cookies.get("token"))).toBe(true);
+      expect(isCleared(cookies.get("refresh_token"))).toBe(true);
+      await request(app.getHttpServer())
+        .post("/auth/refresh")
+        .set("Cookie", `refresh_token=${session.refreshToken}`)
+        .expect(401);
+    },
+  );
 
   it("refresh with a just-rotated token (other tab) sets only a new access token", async () => {
     const session = await login();

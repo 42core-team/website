@@ -46,7 +46,7 @@ describe("match response artwork", () => {
         createQueryBuilder: jest.fn().mockReturnValue(pageQuery),
       },
       teamService: {
-        getTeamById: jest.fn().mockResolvedValue(team),
+        getVisibleTeamById: jest.fn().mockResolvedValue(team),
         getTeamOfUserForEvent: jest.fn(async (_eventId, userId: string) =>
           userId === "member" ? team : null,
         ),
@@ -88,7 +88,9 @@ describe("match response artwork", () => {
     "preserves artwork in team history for %s without exposing private fields",
     async (userId) => {
       const { service } = setup();
-      const response = await service.getMatchesForTeam("team", userId);
+      const response = await service.getMatchesForTeam("team", {
+        id: userId,
+      });
       const historyTeam = { ...artworkTeam, deletedAt: null };
       expect(response[0].teams).toEqual([historyTeam]);
       expect(response[0].winner).toEqual(historyTeam);

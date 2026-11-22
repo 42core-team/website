@@ -22,11 +22,8 @@ import {
   type FindOptionsRelations,
   UpdateResult,
 } from "typeorm";
-import {
-  PermissionRole,
-  UserEntity,
-  UserEventPermissionEntity,
-} from "../user/entities/user.entity";
+import { UserEntity } from "../user/entities/user.entity";
+import { UserRole, UserRoleEntity } from "../user/entities/user-role.entity";
 import { SocialPlatform } from "../user/entities/social-account.entity";
 import { ConfigService } from "@nestjs/config";
 import { TeamService } from "../team/team.service";
@@ -45,14 +42,46 @@ import { MatchEntity, MatchPhase } from "../match/entites/match.entity";
 import { lockEvent } from "./event-lock";
 import { toPublicUsers } from "../user/dtos/public-user.dto";
 import { USER_ARTWORK_RELATIONS } from "../media/artwork-relations";
+import { removeAdminGrant } from "../roles/admin-grants";
+import type { Principal } from "../authz";
+import { EventSettingsDto } from "./dtos/eventSettingsDto";
+import { GithubInstallationEntity } from "../github-api/entities/github-installation.entity";
+import {
+  GithubAppAuth,
+  GithubAppInstallation,
+  GithubAppRequestError,
+} from "../github-api/github-app-auth";
+import {
+  GithubInstallationOwner,
+  missingPermissions,
+} from "../github-api/github-installation-owner";
+import { isSharedInstallation } from "../github-api/installation-sharing";
+
+/** Everything a new event is created from; see EventService.createEvent. */
+export interface CreateEventInput {
+  userId: string;
+  /** Merged onto the preset and validated. */
+  settings: EventSettingsDto;
+  presetId: string | null;
+  presetVersion: number | null;
+  starterTemplates: readonly {
+    name: string;
+    basePath: string;
+    myCoreBotDockerImage: string;
+  }[];
+  /** A shared or actively owned installation, checked at create time. */
+  githubInstallationId: string | null;
+  /** An inherited installation can only be linked while it remains shared. */
+  inheritsInstallation?: boolean;
+}
 
 @Injectable()
 export class EventService {
   constructor(
     @InjectRepository(EventEntity)
     private readonly eventRepository: Repository<EventEntity>,
-    @InjectRepository(UserEventPermissionEntity)
-    private readonly permissionRepository: Repository<UserEventPermissionEntity>,
+    @InjectRepository(UserRoleEntity)
+    private readonly roleRepository: Repository<UserRoleEntity>,
     @InjectRepository(EventStarterTemplateEntity)
     private readonly templateRepository: Repository<EventStarterTemplateEntity>,
     @InjectRepository(EventWhitelistEntity)
@@ -61,6 +90,7 @@ export class EventService {
     @Inject(forwardRef(() => TeamService))
     private readonly teamService: TeamService,
     private readonly dataSource: DataSource,
+    private readonly githubAppAuth: GithubAppAuth,
   ) {}
 
   logger = new Logger("EventService");
@@ -137,6 +167,25 @@ export class EventService {
     }
 
     return events;
+  }
+
+  getAdminEvents({
+    q = "",
+    limit = 20,
+  }: {
+    q?: string;
+    limit?: number;
+  }): Promise<Pick<EventEntity, "id" | "name" | "isPrivate" | "startDate">[]> {
+    return this.eventRepository
+      .createQueryBuilder("event")
+      .select(["event.id", "event.name", "event.isPrivate", "event.startDate"])
+      .where("event.name ILIKE :name", {
+        name: `%${q.replace(/[\\%_]/g, "\\$&")}%`,
+      })
+      .orderBy("event.startDate", "DESC")
+      .addOrderBy("event.id", "ASC")
+      .take(limit)
+      .getMany();
   }
 
   async getEventsForUser(userId: string): Promise<EventEntity[]> {
@@ -293,93 +342,194 @@ export class EventService {
     return event.serverConfig;
   }
 
-  async createEvent(
-    userId: string,
-    name: string,
-    description: string,
-    location: string,
-    startDate: number,
-    endDate: number | undefined,
-    minTeamSize: number,
-    maxTeamSize: number,
-    gameServerDockerImage: string,
-    myCoreBotDockerImage: string,
-    visualizerDockerImage: string,
-    monorepoUrl: string,
-    monorepoVersion: string,
-    basePath: string,
-    gameConfig: string,
-    serverConfig: string,
-    isPrivate: boolean = false,
-    lifecycle: {
-      submissionDeadline?: number;
-      scheduledEndDate?: number;
-      introEnabled?: boolean;
-      introLeadMinutes?: number;
-      streamUrl?: string;
-      showtimeStreamUrl?: string;
-    } = {},
-  ) {
+  /**
+   * Creates the event, its starter templates and the creator's event ADMIN
+   * role, and links the installation, all in one transaction. The settings
+   * are already merged and validated; unshared installations need ownership.
+   */
+  async createEvent({
+    userId,
+    settings,
+    presetId,
+    presetVersion,
+    starterTemplates,
+    githubInstallationId,
+    inheritsInstallation,
+  }: CreateEventInput): Promise<EventEntity> {
     const dates = {
-      startDate: new Date(startDate),
-      submissionDeadline: new Date(
-        lifecycle.submissionDeadline ?? endDate ?? NaN,
-      ),
-      scheduledEndDate: new Date(lifecycle.scheduledEndDate ?? endDate ?? NaN),
-      introEnabled: lifecycle.introEnabled ?? false,
-      introLeadMinutes: lifecycle.introLeadMinutes ?? 15,
+      startDate: new Date(settings.startDate),
+      submissionDeadline: new Date(settings.submissionDeadline),
+      scheduledEndDate: new Date(settings.scheduledEndDate),
+      introEnabled: settings.introEnabled,
+      introLeadMinutes: settings.introLeadMinutes,
     };
     this.validateLifecycleDates(dates);
-    const streamUrl = normalizeStreamUrl(lifecycle.streamUrl);
+    const endDate = new Date(settings.endDate);
+    if (!Number.isFinite(endDate.getTime()))
+      throw new BadRequestException("A valid endDate is required");
+    const streamUrl = normalizeStreamUrl(settings.streamUrl);
     const showtimeStreamUrl = normalizeStreamUrl(
-      lifecycle.showtimeStreamUrl,
+      settings.showtimeStreamUrl,
       "showtimeStreamUrl",
     );
-    await Promise.all(
-      [gameServerDockerImage, myCoreBotDockerImage, visualizerDockerImage].map(
-        assertImageExists,
-      ),
-    );
+    const images = new Set([
+      settings.gameServerDockerImage,
+      settings.myCoreBotDockerImage,
+      settings.visualizerDockerImage,
+      ...starterTemplates.map((template) => template.myCoreBotDockerImage),
+    ]);
+    await Promise.all([...images].map(assertImageExists));
 
-    return this.eventRepository.save({
-      name,
-      description,
-      // Set when the GitHub App is connected.
-      githubOrg: "",
-      location,
-      minTeamSize,
-      maxTeamSize,
-      ...dates,
-      streamUrl,
-      showtimeStreamUrl,
-      state: getEventState(dates),
-      canCreateTeam: isRegistrationOpen(dates),
-      processQueue: isRegistrationOpen(dates),
-      gamblingEnabled: isRegistrationOpen(dates),
-      endDate: dates.scheduledEndDate,
-      repoLockDate: dates.submissionDeadline,
-      permissions: [
-        {
-          user: {
-            id: userId,
-          },
-          role: PermissionRole.ADMIN,
-        },
-      ],
-      users: [
-        {
-          id: userId,
-        },
-      ],
-      gameServerDockerImage,
-      myCoreBotDockerImage,
-      visualizerDockerImage,
-      monorepoUrl,
-      monorepoVersion,
-      basePath,
-      gameConfig,
-      serverConfig,
-      isPrivate,
+    // GitHub calls run before the transaction, then local status/sharing are
+    // checked under a row lock. Never reuse the list endpoint's ownership cache.
+    let ownedInstallation:
+      | {
+          id: string;
+          cachedLogin: string;
+          liveLogin: string;
+        }
+      | undefined;
+    if (githubInstallationId && !inheritsInstallation) {
+      const installation = await this.dataSource
+        .getRepository(GithubInstallationEntity)
+        .findOneBy({ id: githubInstallationId });
+      if (!installation || installation.suspendedAt || installation.deletedAt)
+        throw new BadRequestException(
+          "The GitHub installation is unknown, suspended or uninstalled.",
+        );
+      if (!isSharedInstallation(installation)) {
+        let live: GithubAppInstallation;
+        try {
+          live = await this.githubAppAuth.getInstallation(
+            installation.installationId,
+          );
+        } catch (error) {
+          if (error instanceof GithubAppRequestError && error.status === 404)
+            throw new BadRequestException(
+              "The GitHub installation is uninstalled.",
+            );
+          throw error;
+        }
+        if (!live.account || live.suspended_at)
+          throw new BadRequestException(
+            "The GitHub installation is unavailable.",
+          );
+        // As when linking: the owner check below needs Members access.
+        const missing = missingPermissions(live.permissions);
+        if (missing.length)
+          throw new BadRequestException(
+            `The installation on ${live.account.login} lacks these permissions: ${missing.join(", ")}. An owner must accept the App's requested permissions on GitHub.`,
+          );
+        const user = await this.dataSource
+          .getRepository(UserEntity)
+          .findOneByOrFail({ id: userId });
+        await new GithubInstallationOwner(
+          this.githubAppAuth,
+        ).assertCanManageAccount(live, user.githubId);
+        ownedInstallation = {
+          id: installation.id,
+          cachedLogin: installation.accountLogin,
+          liveLogin: live.account.login,
+        };
+      }
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const installations = manager.getRepository(GithubInstallationEntity);
+      const loginChanged =
+        ownedInstallation &&
+        ownedInstallation.cachedLogin !== ownedInstallation.liveLogin;
+      let installation = githubInstallationId
+        ? await installations.findOne({
+            where: { id: githubInstallationId },
+            lock: {
+              mode: loginChanged ? "pessimistic_write" : "pessimistic_read",
+            },
+          })
+        : null;
+      if (inheritsInstallation) {
+        if (!isSharedInstallation(installation)) installation = null;
+      } else {
+        if (
+          githubInstallationId &&
+          (!installation || installation.suspendedAt || installation.deletedAt)
+        )
+          throw new BadRequestException(
+            "The GitHub installation is unknown, suspended or uninstalled.",
+          );
+        if (
+          installation &&
+          !isSharedInstallation(installation) &&
+          ownedInstallation?.id !== installation.id
+        )
+          throw new ConflictException(
+            "This installation is no longer shared. Retry to check ownership.",
+          );
+      }
+
+      // An intervening webhook may already have provided a newer login.
+      let githubOrg = installation?.accountLogin ?? "";
+      if (
+        installation &&
+        ownedInstallation &&
+        loginChanged &&
+        installation.accountLogin === ownedInstallation.cachedLogin
+      ) {
+        githubOrg = ownedInstallation.liveLogin;
+        await installations.update(installation.id, {
+          accountLogin: githubOrg,
+        });
+      }
+
+      const events = manager.getRepository(EventEntity);
+      const event = await events.save(
+        events.create({
+          name: settings.name,
+          description: settings.description,
+          githubOrg,
+          githubInstallationId: installation?.id ?? null,
+          location: settings.location,
+          minTeamSize: settings.minTeamSize,
+          maxTeamSize: settings.maxTeamSize,
+          ...dates,
+          streamUrl,
+          showtimeStreamUrl,
+          state: getEventState(dates),
+          canCreateTeam: isRegistrationOpen(dates),
+          processQueue: isRegistrationOpen(dates),
+          gamblingEnabled: isRegistrationOpen(dates),
+          endDate,
+          repoLockDate: dates.submissionDeadline,
+          users: [{ id: userId }],
+          gameServerDockerImage: settings.gameServerDockerImage,
+          myCoreBotDockerImage: settings.myCoreBotDockerImage,
+          visualizerDockerImage: settings.visualizerDockerImage,
+          monorepoUrl: settings.monorepoUrl,
+          monorepoVersion: settings.monorepoVersion,
+          basePath: settings.basePath,
+          gameConfig: settings.gameConfig,
+          serverConfig: settings.serverConfig,
+          isPrivate: settings.isPrivate,
+          presetId,
+          presetVersion,
+        }),
+      );
+      if (starterTemplates.length)
+        await manager.getRepository(EventStarterTemplateEntity).insert(
+          starterTemplates.map(({ name, basePath, myCoreBotDockerImage }) => ({
+            name,
+            basePath,
+            myCoreBotDockerImage,
+            event: { id: event.id },
+          })),
+        );
+      await manager.getRepository(UserRoleEntity).insert({
+        userId,
+        role: UserRole.ADMIN,
+        eventId: event.id,
+        grantedById: userId,
+      });
+      return event;
     });
   }
 
@@ -500,18 +650,6 @@ export class EventService {
       fortyTwoAccount?.username ?? null,
       manager,
     );
-  }
-
-  isEventAdmin(eventId: string, userId: string): Promise<boolean> {
-    return this.eventRepository.existsBy({
-      id: eventId,
-      permissions: {
-        user: {
-          id: userId,
-        },
-        role: PermissionRole.ADMIN,
-      },
-    });
   }
 
   async lockEvent(eventId: string, scheduled = false): Promise<UpdateResult> {
@@ -993,67 +1131,36 @@ export class EventService {
   }
 
   async getEventAdmins(eventId: string) {
-    const permissions = await this.permissionRepository.find({
-      where: {
-        event: { id: eventId },
-        role: PermissionRole.ADMIN,
-      },
-      relations: {
-        user: USER_ARTWORK_RELATIONS,
-      },
+    const admins = await this.roleRepository.find({
+      where: { eventId, role: UserRole.ADMIN },
+      relations: { user: USER_ARTWORK_RELATIONS },
+      order: { createdAt: "ASC" },
     });
-    return toPublicUsers(permissions.map((p) => p.user));
+    return toPublicUsers(admins.map((admin) => admin.user));
   }
 
-  async addEventAdmin(eventId: string, userId: string) {
-    const existing = await this.permissionRepository.findOne({
-      where: {
-        event: { id: eventId },
-        user: { id: userId },
-      },
-    });
-
-    if (existing) {
-      if (existing.role === PermissionRole.ADMIN) return;
-      existing.role = PermissionRole.ADMIN;
-      await this.permissionRepository.save(existing);
-      return;
-    }
-
-    await this.permissionRepository.save({
-      event: { id: eventId },
-      user: { id: userId },
-      role: PermissionRole.ADMIN,
-    });
+  async addEventAdmin(eventId: string, userId: string, grantedById: string) {
+    await this.roleRepository
+      .createQueryBuilder()
+      .insert()
+      .values({ userId, role: UserRole.ADMIN, eventId, grantedById })
+      .orIgnore()
+      .execute();
   }
 
-  async removeEventAdmin(eventId: string, userId: string) {
-    await this.dataSource.transaction(async (manager) => {
-      // Re-query admin permissions with a row-level lock (FOR UPDATE).
-      // manager.find() with relations produces a LEFT JOIN which PostgreSQL
-      // rejects with FOR UPDATE, so use a query builder with INNER JOIN instead.
-      const admins = await manager
-        .createQueryBuilder(UserEventPermissionEntity, "perm")
-        .innerJoinAndSelect("perm.user", "user")
-        .where("perm.eventId = :eventId", { eventId })
-        .andWhere("perm.role = :role", { role: PermissionRole.ADMIN })
-        .setLock("pessimistic_write")
-        .getMany();
-
-      const permissionToRemove = admins.find((p) => p.user.id === userId);
-
-      if (!permissionToRemove) {
-        throw new NotFoundException("Admin permission not found");
-      }
-
-      if (admins.length <= 1) {
-        throw new BadRequestException(
-          "Cannot remove the last admin of an event",
-        );
-      }
-
-      await manager.remove(permissionToRemove);
-    });
+  async removeEventAdmin(eventId: string, userId: string, actor: Principal) {
+    const outcome = await this.dataSource.transaction((manager) =>
+      removeAdminGrant(
+        manager,
+        eventId,
+        (admin) => admin.userId === userId,
+        actor,
+      ),
+    );
+    if (outcome === "not-found")
+      throw new NotFoundException("Admin permission not found");
+    if (outcome === "last-admin")
+      throw new ConflictException("Cannot remove the last admin of an event");
   }
 
   async getCurrentLiveEvent() {

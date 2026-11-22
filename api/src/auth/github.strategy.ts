@@ -78,7 +78,6 @@ export class GithubOAuthClient {
         profile.avatar_url || "",
         githubId,
         accessToken,
-        false,
       );
     }
 

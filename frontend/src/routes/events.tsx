@@ -1,10 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router'
-import {
-  canUserCreateEvent,
-  getEvents,
-  getEventsOverview,
-} from '@/app/actions/event'
+import { getEvents, getEventsOverview } from '@/app/actions/event'
 import EventsView from '@/app/events/EventsView'
 import Link from '@/components/app-link'
 import { title } from '@/components/primitives'
@@ -34,11 +30,6 @@ function EventsRoute() {
     },
     enabled: status !== 'loading',
     refetchInterval: isEventsIndex ? EVENTS_LIST_REFETCH_INTERVAL_MS : false,
-  })
-  const canCreateQuery = useQuery({
-    queryKey: ['events', 'can-create'],
-    queryFn: canUserCreateEvent,
-    enabled: Boolean(session?.user.id),
   })
 
   if (!isEventsIndex) {
@@ -70,7 +61,7 @@ function EventsRoute() {
         <p className="text-lg text-muted-foreground">
           Discover and join upcoming coding competitions
         </p>
-        {canCreateQuery.data && (
+        {session?.user.abilities.createEvent && (
           <Link className="text-primary underline" href="/events/create">
             Create Event
           </Link>
