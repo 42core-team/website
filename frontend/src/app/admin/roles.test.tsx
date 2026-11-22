@@ -12,7 +12,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router'
 import type * as Router from '@tanstack/react-router'
+import type { RouterHistory } from '@tanstack/react-router'
 import type * as Roles from '@/app/actions/roles'
 import { UsersManager } from '@/components/users/users-manager'
 import { Route } from '@/routes/admin/roles'
@@ -118,18 +125,34 @@ afterEach(() => {
   cleanup()
   vi.resetAllMocks()
 })
-async function setup(event?: { id: string; name: string }) {
+let history: RouterHistory
+async function setup(event?: { id: string; name: string }, url = '/') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
   const Component = Route.options.component!
   await Component.preload?.()
+  history = createMemoryHistory({ initialEntries: [url] })
+  const router = createRouter({
+    routeTree: createRootRoute({
+      component: () => (event ? <UsersManager event={event} /> : <Component />),
+    }),
+    history,
+  })
   await act(async () => {
     render(
       <QueryClientProvider client={client}>
-        {event ? <UsersManager event={event} /> : <Component />}
+        <RouterProvider router={router} />
       </QueryClientProvider>,
     )
+  })
+}
+const search = () => new URLSearchParams(history.location.search)
+/** Runs an interaction and waits for the URL change it makes to render. */
+async function navigated(interaction: () => void) {
+  await act(async () => {
+    interaction()
+    await new Promise((resolve) => setTimeout(resolve))
   })
 }
 const list = () => within(screen.getByRole('list', { name: 'User list' }))
@@ -193,7 +216,9 @@ describe('roles administration', () => {
     expect(
       chips.getByRole('button', { name: 'All 3' }).getAttribute('aria-pressed'),
     ).toBe('true')
-    fireEvent.click(chips.getByRole('button', { name: 'No role 1' }))
+    await navigated(() =>
+      fireEvent.click(chips.getByRole('button', { name: 'No role 1' })),
+    )
     expect(
       chips
         .getByRole('button', { name: 'No role 1' })
@@ -204,20 +229,99 @@ describe('roles administration', () => {
     ).toBe('false')
     expect(list().queryByText('Ada')).toBeNull()
     expect(list().getByText('Grace')).toBeDefined()
-    fireEvent.click(chips.getByRole('button', { name: 'Moderators 1' }))
+    await navigated(() =>
+      fireEvent.click(chips.getByRole('button', { name: 'Moderators 1' })),
+    )
     expect(list().getByText('Linus')).toBeDefined()
     expect(list().queryByText('Grace')).toBeNull()
-    fireEvent.click(chips.getByRole('button', { name: 'All 3' }))
-    fireEvent.change(screen.getByLabelText('Event'), {
-      target: { value: 'event' },
+    await navigated(() => {
+      fireEvent.click(chips.getByRole('button', { name: 'All 3' }))
+      fireEvent.change(screen.getByLabelText('Event'), {
+        target: { value: 'event' },
+      })
     })
     expect(list().getAllByRole('button')).toHaveLength(1)
     expect(chips.getByRole('button', { name: 'All 1' })).toBeDefined()
-    fireEvent.change(screen.getByLabelText('Event'), { target: { value: '' } })
+    await navigated(() =>
+      fireEvent.change(screen.getByLabelText('Event'), {
+        target: { value: '' },
+      }),
+    )
     fireEvent.change(screen.getByLabelText('Search users'), {
       target: { value: 'zzz' },
     })
     expect(screen.getByText('No users match these filters.')).toBeDefined()
+  })
+
+  it('keeps the selected user and filters in the URL', async () => {
+    await setup(undefined, '/?role=ADMIN')
+    await screen.findByText('Ada')
+    expect(list().getAllByRole('button')).toHaveLength(1)
+    const staff = screen.getByRole('button', { name: /^Event staff/ })
+    const ada = list().getByRole('button', { name: /Ada/ })
+    // Set together, before the first navigation lands
+    await navigated(() => {
+      fireEvent.click(staff)
+      fireEvent.click(ada)
+    })
+    await screen.findByRole('heading', { name: 'Ada' })
+    await navigated(() =>
+      fireEvent.change(
+        screen.getByRole('searchbox', { name: 'Search users' }),
+        { target: { value: '1e3' } },
+      ),
+    )
+    expect(Object.fromEntries(search())).toEqual({
+      role: 'staff',
+      user: 'ada',
+      q: '"1e3"',
+    })
+
+    // Opening the link again restores all of it, the text unchanged.
+    const url = history.location.href
+    cleanup()
+    await setup(undefined, url)
+    await screen.findByRole('heading', { name: 'Ada' })
+    expect(
+      screen.getByRole<HTMLInputElement>('searchbox', { name: 'Search users' })
+        .value,
+    ).toBe('1e3')
+    screen.getByRole('button', { name: /^Event staff/, pressed: true })
+  })
+
+  it('takes the search text from the URL on Back', async () => {
+    await setup(undefined, '/?q=gr')
+    await screen.findByText('Grace')
+    await navigated(() => history.push('/?q=lin'))
+    await waitFor(() =>
+      expect(
+        screen.getByRole<HTMLInputElement>('searchbox', {
+          name: 'Search users',
+        }).value,
+      ).toBe('lin'),
+    )
+    await navigated(() => history.back())
+    await waitFor(() =>
+      expect(
+        screen.getByRole<HTMLInputElement>('searchbox', {
+          name: 'Search users',
+        }).value,
+      ).toBe('gr'),
+    )
+    expect(list().getAllByRole('button')).toHaveLength(1)
+  })
+
+  it('keeps the dashboard tab when selecting on the event page', async () => {
+    vi.mocked(getEventRoles).mockResolvedValue([scopedRole])
+    await setup({ id: 'event', name: 'Winter Cup' }, '/?tab=admins')
+    await screen.findByText('Grace')
+    await navigated(() =>
+      fireEvent.click(list().getByRole('button', { name: /Grace/ })),
+    )
+    expect(Object.fromEntries(search())).toEqual({
+      tab: 'admins',
+      user: 'grace',
+    })
   })
 
   it('shows the selected user’s roles in the detail panel', async () => {

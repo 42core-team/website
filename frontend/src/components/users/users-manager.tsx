@@ -20,6 +20,7 @@ import {
 import type { Role, RoleGrant } from '@/app/actions/roles'
 import { searchUsers } from '@/app/actions/user'
 import type { UserSearchResult } from '@/app/actions/user'
+import { useHistoryIndex, useSearchParam } from '@/hooks/useSearchParam'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -121,11 +122,22 @@ export function UsersManager({
 }: {
   event?: { id: string; name: string }
 }) {
-  const [search, setSearch] = useState('')
-  const [chip, setChip] = useState<Chip>('all')
-  const [eventFilterId, setEventFilter] = useState('')
-  // Kept as picked, e.g. from "Search all users", and refreshed from the list.
-  const [picked, setSelected] = useState<UserSearchResult | null>(null)
+  // The filters and the selected user live in the URL, so Back and shared
+  // links keep them. The search box keeps a draft while typing, since the URL
+  // updates after the keystroke, and takes the URL's text on Back or Forward.
+  const [query, setQuery] = useSearchParam('q')
+  const historyIndex = useHistoryIndex()
+  const [draft, setDraft] = useState({ text: query ?? '', historyIndex })
+  if (draft.historyIndex !== historyIndex)
+    setDraft({ text: query ?? '', historyIndex })
+  const search = draft.text
+  const [chipParam, setChip] = useSearchParam('role')
+  const chipOptions = event ? EVENT_CHIPS : ADMIN_CHIPS
+  const chip = chipOptions.find((option) => option === chipParam) ?? 'all'
+  const [eventFilterParam, setEventFilter] = useSearchParam('event')
+  const [selectedId, setSelectedId] = useSearchParam('user')
+  // A user picked from "Search all users" may not be in the list yet.
+  const [picked, setPicked] = useState<UserSearchResult | null>(null)
   const [searchingAccounts, setSearchingAccounts] = useState(false)
   const client = useQueryClient()
   const users = useQuery({
@@ -173,7 +185,8 @@ export function UsersManager({
   })
   function select(user: UserSearchResult) {
     mutation.reset()
-    setSelected(user)
+    setPicked(user)
+    setSelectedId(user.id)
   }
 
   const grantsByUser = new Map<string, RoleGrant[]>()
@@ -186,8 +199,15 @@ export function UsersManager({
     if (grant.event) eventOptions.set(grant.event.id, grant.event.name)
   }
   // An event whose last staff role was removed drops out of the options.
-  const eventFilter = eventOptions.has(eventFilterId) ? eventFilterId : ''
-  const selected = users.data?.find((user) => user.id === picked?.id) ?? picked
+  const eventFilter =
+    eventFilterParam && eventOptions.has(eventFilterParam)
+      ? eventFilterParam
+      : ''
+  // Someone given a role through "Search all users" may not have joined.
+  const selected =
+    users.data?.find((user) => user.id === selectedId) ??
+    roles.data?.find((grant) => grant.user.id === selectedId)?.user ??
+    (picked?.id === selectedId ? picked : null)
   // Roles each user counts toward, matching the chips
   function userChips(user: UserSearchResult) {
     const grants = grantsByUser.get(user.id) ?? []
@@ -253,9 +273,9 @@ export function UsersManager({
       <div className="flex flex-wrap items-center gap-2">
         <FilterChips
           label="Filter by role"
-          options={event ? EVENT_CHIPS : ADMIN_CHIPS}
+          options={chipOptions}
           value={chip}
-          onChange={setChip}
+          onChange={(value) => setChip(value === 'all' ? null : value)}
           labels={CHIP_LABELS}
           dots={DOTS}
           count={(value) =>
@@ -267,7 +287,7 @@ export function UsersManager({
             aria-label="Event"
             className="ml-auto h-8 max-w-full rounded-md border bg-background px-2 text-sm"
             value={eventFilter}
-            onChange={(change) => setEventFilter(change.target.value)}
+            onChange={(change) => setEventFilter(change.target.value || null)}
           >
             <option value="">All events</option>
             {[...eventOptions]
@@ -310,7 +330,10 @@ export function UsersManager({
                 aria-label="Search users"
                 placeholder="Search name or username"
                 value={search}
-                onChange={(change) => setSearch(change.target.value)}
+                onChange={(change) => {
+                  setDraft({ text: change.target.value, historyIndex })
+                  setQuery(change.target.value || null)
+                }}
               />
               <p className="px-1 text-xs text-muted-foreground" role="status">
                 {filtered.length} of {users.data.length} users
