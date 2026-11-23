@@ -1,9 +1,11 @@
-import type { TeamImage } from '@/app/actions/team'
+import type { EventSettings, StarterTemplate } from './presets'
 import type { WhitelistPlatform } from '@/lib/constants/whitelist'
 
 import axiosInstance from '@/app/actions/axios'
 
 export interface Event {
+  preset?: { id: string; name: string } | null
+  presetVersion?: number | null
   state:
     'REGISTRATION' | 'PLAYING' | 'SUBMISSIONS_CLOSED' | 'SHOWCASE' | 'COMPLETED'
   submissionDeadline: string
@@ -74,8 +76,17 @@ export async function isUserRegisteredForEvent(
     .data
 }
 
-export async function isEventAdmin(eventId: string): Promise<boolean> {
-  return (await axiosInstance.get<boolean>(`event/${eventId}/isEventAdmin`))
+/** What the signed-in user may do in one event; the API enforces each. */
+export interface EventAbilities {
+  administer: boolean
+  viewUnrevealedResults: boolean
+  publish: boolean
+}
+
+export async function getEventAbilities(
+  eventId: string,
+): Promise<EventAbilities> {
+  return (await axiosInstance.get<EventAbilities>(`event/${eventId}/abilities`))
     .data
 }
 
@@ -110,28 +121,11 @@ export async function joinEvent(eventId: string): Promise<boolean> {
 }
 
 // Interface for creating events
-export interface EventCreateParams {
+export interface EventCreateParams extends Partial<EventSettings> {
   name: string
-  description?: string
-  location?: string
-  startDate: number
-  submissionDeadline: number
-  scheduledEndDate: number
-  introEnabled: boolean
-  introLeadMinutes: number
-  streamUrl?: string
-  showtimeStreamUrl?: string
-  minTeamSize: number
-  maxTeamSize: number
-  monorepoVersion: string
-  gameServerDockerImage: string
-  myCoreBotDockerImage: string
-  visualizerDockerImage: string
-  monorepoUrl: string
-  basePath: string
-  gameConfig: string
-  serverConfig: string
-  isPrivate: boolean
+  presetId?: string
+  githubInstallationId?: string | null
+  starterTemplates?: StarterTemplate[]
 }
 
 export interface EventGithubStatus {
@@ -164,6 +158,7 @@ export async function getGithubAppInstallUrl(eventId: string): Promise<string> {
 
 /** An installation of the App on an account the user administers. */
 export interface LinkableGithubInstallation {
+  shared?: boolean
   installationId: number
   accountLogin: string
   accountType: string
@@ -194,28 +189,29 @@ export async function linkGithubInstallation(
 export async function completeGithubAppInstallation(
   installationId: number,
   state: string,
-): Promise<{ eventId: string }> {
+): Promise<{ eventId: string | null }> {
+  // eventId is null when a global admin installed the App without an event.
   return (
-    await axiosInstance.post<{ eventId: string }>('github/installations', {
-      installationId,
-      state,
-    })
+    await axiosInstance.post<{ eventId: string | null }>(
+      'github/installations',
+      {
+        installationId,
+        state,
+      },
+    )
   ).data
 }
 
 // Create a new event
 export async function createEvent(
   eventData: EventCreateParams,
-): Promise<Event> {
-  return (await axiosInstance.post<Event>(`event`, eventData)).data
-}
-
-export async function canUserCreateEvent(): Promise<boolean> {
-  try {
-    return (await axiosInstance.get<boolean>('user/canCreateEvent')).data
-  } catch {
-    return false
-  }
+): Promise<Event & { warnings?: string[] }> {
+  return (
+    await axiosInstance.post<Event & { warnings?: string[] }>(
+      `event`,
+      eventData,
+    )
+  ).data
 }
 
 export async function updateEventSettings(
@@ -309,42 +305,6 @@ export async function excludeInactiveTeams(
       { teamIds },
     )
   ).data
-}
-
-export async function getEventAdmins(eventId: string): Promise<
-  {
-    id: string
-    username: string
-    name: string
-    profilePicture?: string
-    picture?: TeamImage | null
-  }[]
-> {
-  return (
-    await axiosInstance.get<
-      {
-        id: string
-        username: string
-        name: string
-        profilePicture?: string
-        picture?: TeamImage | null
-      }[]
-    >(`event/${eventId}/admins`)
-  ).data
-}
-
-export async function addEventAdmin(
-  eventId: string,
-  userId: string,
-): Promise<void> {
-  await axiosInstance.post(`event/${eventId}/admins/${userId}`)
-}
-
-export async function removeEventAdmin(
-  eventId: string,
-  userId: string,
-): Promise<void> {
-  await axiosInstance.delete(`event/${eventId}/admins/${userId}`)
 }
 
 export async function getStarterTemplates(

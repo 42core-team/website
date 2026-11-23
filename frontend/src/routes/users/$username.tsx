@@ -25,5 +25,11 @@ function UserProfileRoute() {
       </div>
     )
 
-  return <ProfileView key={username} username={username} />
+  return (
+    <ProfileView
+      key={username}
+      username={username}
+      viewerId={session.user.id}
+    />
+  )
 }

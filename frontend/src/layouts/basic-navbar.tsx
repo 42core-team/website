@@ -213,7 +213,7 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
                     </Avatar>
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-48 p-2">
+                <PopoverContent align="end" className="w-52 p-2">
                   <button
                     className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
                     onClick={() => {
@@ -232,6 +232,35 @@ export const Navbar = forwardRef<HTMLElement, NavbarProps>(
                   >
                     Settings
                   </button>
+                  {effectiveSession?.user.abilities.admin && (
+                    <div
+                      className="my-1 border-y py-1"
+                      role="group"
+                      aria-label="Administration"
+                    >
+                      <p className="px-3 py-1 text-xs font-medium text-muted-foreground">
+                        Administration
+                      </p>
+                      {[
+                        { href: '/admin/roles', label: 'Users' },
+                        { href: '/admin/presets', label: 'Presets' },
+                        {
+                          href: '/admin/github-installations',
+                          label: 'GitHub installations',
+                        },
+                      ].map(({ href, label }) => (
+                        <Link
+                          key={href}
+                          href={href}
+                          onClick={() => setIsProfileOpen(false)}
+                          aria-current={pathname === href ? 'page' : undefined}
+                          className="block rounded-md px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                        >
+                          {label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                   <button
                     className="w-full rounded-md px-3 py-2 text-left text-sm text-destructive hover:bg-accent hover:text-accent-foreground"
                     onClick={() => {

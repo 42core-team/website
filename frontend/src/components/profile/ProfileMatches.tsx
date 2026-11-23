@@ -66,18 +66,20 @@ function toListedMatch(
 
 function MatchPage({
   username,
+  viewerId,
   teams,
   phase,
   eventId,
 }: {
-  username: string
+  username: string | null
+  viewerId: string
   teams: ProfileTeam[]
   phase?: ProfileMatchPhase
   eventId?: string
 }) {
   const filters = { limit: PAGE_SIZE, phase, eventId }
   const query = useInfiniteQuery({
-    queryKey: profileQueryKeys.matches(username, filters),
+    queryKey: profileQueryKeys.matches(username, viewerId, filters),
     queryFn: ({ pageParam }) =>
       getUserProfileMatches(username, { ...filters, offset: pageParam }),
     initialPageParam: 0,
@@ -129,7 +131,15 @@ function MatchPage({
   )
 }
 
-export function ProfileMatches({ profile }: { profile: UserProfile }) {
+export function ProfileMatches({
+  profile,
+  username,
+  viewerId,
+}: {
+  profile: UserProfile
+  username: string | null
+  viewerId: string
+}) {
   const [phase, setPhase] = useState<string>(ALL)
   const [eventId, setEventId] = useState<string>(ALL)
 
@@ -175,7 +185,8 @@ export function ProfileMatches({ profile }: { profile: UserProfile }) {
         {TABS.map((tab) => (
           <TabsContent key={tab.value} value={tab.value} className="mt-0">
             <MatchPage
-              username={profile.user.username}
+              username={username}
+              viewerId={viewerId}
               teams={profile.teams}
               phase={tab.value === ALL ? undefined : tab.value}
               eventId={eventId === ALL ? undefined : eventId}

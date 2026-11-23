@@ -5,16 +5,17 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import {
   ClassSerializerInterceptor,
-  ExecutionContext,
   INestApplication,
-  UnauthorizedException,
   ValidationPipe,
 } from "@nestjs/common";
 import { HttpAdapterHost, Reflector } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { DataSource } from "typeorm";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import {
+  authzTestingModule,
+  createAuthorizationService,
+} from "../authz/testing";
 import { AllExceptionsFilter } from "../common/AllExceptionsFilter";
 import { TypeormExceptionFilter } from "../common/TypeormExceptionFilter";
 import { EventEntity } from "../event/entities/event.entity";
@@ -24,16 +25,15 @@ import {
   WhitelistPlatform,
 } from "../event/entities/event-whitelist.entity";
 import { EventController } from "../event/event.controller";
+import { EventPresetsService } from "../event-presets/event-presets.service";
 import { EventService } from "../event/event.service";
 import { MatchService } from "../match/match.service";
-import {
-  UserEntity,
-  UserEventPermissionEntity,
-} from "../user/entities/user.entity";
+import { UserEntity } from "../user/entities/user.entity";
 import { UserService } from "../user/user.service";
 import { TeamEntity } from "./entities/team.entity";
 import { TeamController } from "./team.controller";
 import { TeamService } from "./team.service";
+import { UserRoleEntity } from "../user/entities/user-role.entity";
 
 // A dedicated test database is required; each run owns only its random schema.
 const databaseUrl = process.env.SESSION_TEST_DATABASE_URL;
@@ -57,12 +57,13 @@ postgres("team invite eligibility (PostgreSQL)", () => {
 
     const eventService = new EventService(
       database.getRepository(EventEntity),
-      database.getRepository(UserEventPermissionEntity),
+      database.getRepository(UserRoleEntity),
       database.getRepository(EventStarterTemplateEntity),
       database.getRepository(EventWhitelistEntity),
       {} as never,
       {} as never,
       database,
+      {} as never,
     );
     const teamService = new TeamService(
       database.getRepository(TeamEntity),
@@ -71,6 +72,7 @@ postgres("team invite eligibility (PostgreSQL)", () => {
       eventService,
       {} as never,
       database,
+      await createAuthorizationService(database),
     );
     Object.assign(eventService, { teamService });
     const userService = new UserService(
@@ -79,25 +81,25 @@ postgres("team invite eligibility (PostgreSQL)", () => {
     );
 
     const moduleRef = await Test.createTestingModule({
+      imports: [
+        authzTestingModule(
+          (id) =>
+            database.getRepository(UserEntity).findOne({
+              where: { id },
+              relations: { roles: true },
+            }),
+          database,
+        ),
+      ],
       controllers: [TeamController, EventController],
       providers: [
         { provide: TeamService, useValue: teamService },
         { provide: EventService, useValue: eventService },
         { provide: UserService, useValue: userService },
         { provide: MatchService, useValue: {} },
+        { provide: EventPresetsService, useValue: {} },
       ],
-    })
-      .overrideGuard(JwtAuthGuard)
-      .useValue({
-        canActivate: (context: ExecutionContext) => {
-          const req = context.switchToHttp().getRequest();
-          const userId = req.headers["x-test-user"];
-          if (!userId) throw new UnauthorizedException();
-          req.user = { id: userId };
-          return true;
-        },
-      })
-      .compile();
+    }).compile();
     app = moduleRef.createNestApplication();
     // Same global setup as main.ts.
     app.useGlobalPipes(new ValidationPipe());

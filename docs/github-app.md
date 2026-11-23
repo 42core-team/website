@@ -9,6 +9,18 @@ Local URLs used below (see the [README](../README.md#start-the-development-envir
 - Frontend: `http://localhost:3000`
 - API: `http://localhost:4000`
 
+## Quick setup
+
+`make dev` offers to create the App for you when `.env.tilt` has no `GITHUB_APP_ID`. You can also run it on its own at any time:
+
+```bash
+make github-app
+```
+
+It asks for an App name, an optional organization to own the App, and an optional webhook proxy URL (see [step 2](#2-webhooks)). Then it opens GitHub with every setting from [step 1](#1-register-a-development-app) filled in through GitHub's [App manifest flow](https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest). Click **Create GitHub App** and the script writes `GITHUB_APP_ID`, `GITHUB_APP_SLUG`, `GITHUB_APP_PRIVATE_KEY` and `GITHUB_APP_WEBHOOK_SECRET` to `.env.tilt`, replacing any old values and keeping the rest of the file. It creates `.env.tilt` from `.env.tilt.example` if needed. Continue with [step 4](#4-try-it).
+
+To set the App up by hand instead, follow steps 1 to 3.
+
 ## 1. Register a development App
 
 Open [GitHub → Settings → Developer settings → GitHub Apps → New GitHub App](https://github.com/settings/apps/new) and fill in:
@@ -35,7 +47,7 @@ GitHub cannot deliver webhooks to `localhost`. Choose one:
 
 - **No webhooks** (simplest): uncheck **Active** under Webhook and leave `GITHUB_APP_WEBHOOK_SECRET` empty. Connecting works, but changes made on GitHub are not picked up: the dashboard keeps showing an uninstalled or suspended App as connected and keeps the old name of a renamed organization. Repository operations then fail with GitHub's error until the event is reconnected.
 - **Forward with [smee.io](https://smee.io)** or another tunnel:
-  1. Create a channel on smee.io and use its URL as the **Webhook URL**.
+  1. Create a channel on smee.io and use its URL as the **Webhook URL**. With `make github-app`, enter it as the webhook proxy URL instead; the script then also sets the webhook secret and subscribes to the events below.
   2. Set a **Webhook secret**, for example the output of `openssl rand -hex 32`, and put the same value in `GITHUB_APP_WEBHOOK_SECRET`.
   3. Under **Subscribe to events**, check **Installation target** (used for organization renames). Installation events (uninstalled, suspended, unsuspended) are always sent to Apps.
   4. Forward deliveries to the API while you work:
@@ -70,31 +82,42 @@ Tilt watches `.env.tilt` and redeploys the api and github-service when it change
 You need a GitHub organization you own; [create a free one](https://github.com/account/organizations/new) for testing. GitHub login must be set up as described in the [README](../README.md#oauth-setup).
 
 1. Sign in at `http://localhost:3000` with the GitHub account that owns the test organization.
-2. Create an event. With the App configured, the **GitHub Integration** section says that GitHub is connected from the event dashboard, and creating the event opens that dashboard.
+2. Create an event. Leave **GitHub installation** in the **GitHub Integration** section on **Connect later**; creating the event opens its dashboard.
 3. On the event dashboard, click **Connect GitHub App** in the **GitHub Connection** card.
 4. On GitHub, pick the test organization and install the App, on all repositories or a selection.
 5. GitHub redirects to `/github/setup`, which connects the installation and returns to the dashboard. The card shows **Connected**.
 
-To try linking an existing installation, create a second event. Its **GitHub Connection** card shows **Use \<org\>** for the test organization; click it to connect the event without going through GitHub. The card offers this for every organization you are an active owner of that already has the App installed. Personal accounts, suspended installations and installations missing permissions are not offered, and once teams have repositories only the event's own organization is. The list is cached for a minute per user, so a fresh installation can take that long to appear.
+Once the App is installed, you can use the installation without going through GitHub again:
+
+- **When creating an event**: the **GitHub installation** list offers your installations and the shared ones (marked "shared"). A preset can choose one in advance.
+- **On an existing event**: the **GitHub Connection** card shows **Use \<org\>** for the same installations, except the one the event already uses. Shared installations are only offered to event admins who can also create events. Once teams have repositories, only the event's own organization is offered.
+
+Your installations are the ones on organizations you are an active owner of; personal accounts, suspended installations and installations missing permissions are left out. This list is cached for a minute per user, so a fresh installation can take that long to appear. Shared installations are listed unless they are suspended or uninstalled; their permissions were checked when they were shared.
+
+### Shared installations
+
+Global admins manage installations at `http://localhost:3000/admin/github-installations`. **Install on an organization** installs the App without an event; `/github/setup` then registers the installation and returns to that page. The details of an installation show its permissions and the events that use it. **Shared with event creators** lets everyone who can create events use it without being an owner of the organization. Unsharing does not disconnect events that already use it.
 
 Things to know:
 
-- The connect link carries a signed state that expires after 30 minutes and only works for the user who clicked the button. Start again from the dashboard if it expired.
-- Installing the App from its public page (`https://github.com/apps/<slug>`) or from the organization's settings has no state, so `/github/setup` cannot connect anything. Open the event dashboard afterwards and click **Use \<org\>** to link the existing installation.
-- The person connecting must be an owner of the organization. A member who is not an owner can only request the installation; GitHub then asks the owners to approve it, and an owner has to connect it from the dashboard afterwards.
+- The connect link carries a signed state that expires after 30 minutes and only works for the user who clicked the button. Start again from the dashboard or the admin page if it expired.
+- Installing the App from its public page (`https://github.com/apps/<slug>`) or from the organization's settings has no state, so `/github/setup` cannot connect anything. Pick the organization when creating the next event, or click **Use \<org\>** on the event dashboard.
+- Unless the installation is shared, the person connecting must be an owner of the organization. A member who is not an owner can only request the installation; GitHub then asks the owners to approve it, and an owner has to connect it from the dashboard afterwards.
 
 ## Troubleshooting
 
 | Symptom | Cause |
 | --- | --- |
-| The event form says the App is not configured, and there is no GitHub Connection card | The App is not configured: `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY` or `GITHUB_APP_SLUG` is empty. Connecting returns "The CORE GitHub App is not configured on this server." |
+| The event dashboard has no GitHub Connection card (or one without buttons, if the event was connected before), and the admin page says "The CORE GitHub App is not configured on this server." | `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY` or `GITHUB_APP_SLUG` is empty. Run `make github-app` or fill them in by hand. |
+| `make github-app` fails with "Converting the manifest code failed with …" | GitHub's status and message follow. The code is single-use and expires after an hour. Run it again; if GitHub created the App anyway, delete it under GitHub's Developer settings first or pick another name. |
+| `make github-app` stops with "Timed out waiting for GitHub" | The App was not created within 15 minutes. Run it again. |
 | api or github-service does not start | `GITHUB_APP_ID` and `GITHUB_APP_PRIVATE_KEY` are not both set, or the key is not a base64-encoded PEM RSA key. |
 | GitHub shows no organization to install on | The App is private. Set "Where can this GitHub App be installed?" to **Any account**. |
 | GitHub does not redirect back after installing | The Setup URL is missing, or "Request user authorization (OAuth) during installation" is checked. |
-| "This GitHub connection link is invalid or has expired" | The state is older than 30 minutes, or a different user is signed in than the one who clicked the button. |
+| "This GitHub link is invalid or has expired" | The state is older than 30 minutes, or a different user is signed in than the one who clicked the button. |
 | "The installation on … lacks these permissions" | The installation does not have the permissions above. After changing the App's permissions, an organization owner must accept the new permissions under the organization's **Settings → GitHub Apps**. |
 | "Only an owner of … can connect it to an event" | The signed-in user is not an owner of the organization. |
-| No **Use \<org\>** button although the App is installed | You are not an active owner of the organization, the installation is suspended or lacks permissions, teams already have repositories in another organization, or the list is still cached (wait a minute and reload). |
+| The organization is not offered in the event form, and there is no **Use \<org\>** button although the App is installed | You are not an active owner of the organization, the installation is suspended or lacks permissions, teams already have repositories in another organization, or the list is still cached (wait a minute and reload). |
 | "Could not check for existing installations of the App" | GitHub could not be reached while checking ownership; click **Try again**. |
 | Dashboard shows Connected after uninstalling | Webhooks are not delivered; see [step 2](#2-webhooks). |
 

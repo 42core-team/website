@@ -14,4 +14,4 @@ EXPOSE 4000
 ENV NODE_OPTIONS="--max-old-space-size=1536"
 ENV CI=true
 
-CMD ["sh", "-c", "pnpm run migration:run-local && pnpm run start:dev"]
+CMD ["sh", "-c", "pnpm run migration:run-local && { [ \"$SEED_LOCAL_DATABASE\" != true ] || pnpm run seed:local; } && exec pnpm run start:dev"]

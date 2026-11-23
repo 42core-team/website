@@ -1,7 +1,11 @@
 import { Controller } from "@nestjs/common";
 import { EventPattern, MessagePattern } from "@nestjs/microservices";
 import { TeamService } from "./team.service";
+import { Public } from "../authz";
 
+// Messages from our own services over RabbitMQ. The app's global guards
+// never run on this transport; this only records the decision.
+@Public()
 @Controller("team.events")
 export class TeamEventsController {
   constructor(private teamService: TeamService) {}

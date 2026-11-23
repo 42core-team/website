@@ -6,7 +6,7 @@ import { Reflector } from "@nestjs/core";
 import request from "supertest";
 import { UserController } from "./user.controller";
 import { UserService } from "./user.service";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { authzTestingModule } from "../authz/testing";
 import { toPublicUser } from "./dtos/public-user.dto";
 
 const fullUser = {
@@ -31,18 +31,11 @@ describe("UserController", () => {
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       controllers: [UserController],
+      imports: [authzTestingModule(async (id) => ({ id, roles: [] }))],
       providers: [
         { provide: UserService, useValue: { searchUsers, getUserByGithubId } },
       ],
-    })
-      .overrideGuard(JwtAuthGuard)
-      .useValue({
-        canActivate: (context) => {
-          context.switchToHttp().getRequest().user = { id: "caller" };
-          return true;
-        },
-      })
-      .compile();
+    }).compile();
     app = module.createNestApplication();
     // Same serializer setup as main.ts.
     app.useGlobalInterceptors(
@@ -60,7 +53,7 @@ describe("UserController", () => {
         Reflect.getMetadata(PATH_METADATA, UserController.prototype[name]),
       )
       .filter((path) => path !== undefined);
-    expect(paths.sort()).toEqual(["canCreateEvent", "search"]);
+    expect(paths.sort()).toEqual(["search"]);
 
     await request(app.getHttpServer()).get("/user/github/12345").expect(404);
     await request(app.getHttpServer())
@@ -73,6 +66,7 @@ describe("UserController", () => {
     searchUsers.mockResolvedValue([fullUser]);
     const res = await request(app.getHttpServer())
       .get("/user/search?q=some")
+      .set("x-test-user", "caller")
       .expect(200);
 
     expect(searchUsers).toHaveBeenCalledWith("some");

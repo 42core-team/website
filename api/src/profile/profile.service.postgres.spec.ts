@@ -433,4 +433,35 @@ postgres("ProfileService visibility (PostgreSQL)", () => {
       service.getProfile("nobody-by-this-name", users.owner.id),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it("loads the signed-in account and its matches when another account has the same username", async () => {
+    const account = await createUser("old-name");
+    const newerAccount = await createUser("new-owner");
+    await database.getRepository(UserEntity).update(newerAccount.id, {
+      username: account.username,
+      updatedAt: new Date(account.updatedAt.getTime() + 1000),
+    });
+    const team = await createTeam(events.public, [account]);
+    await createMatch(
+      MatchPhase.QUEUE,
+      0,
+      [team, teams.rivalPublic],
+      team,
+      false,
+      "2026-01-06T10:00:00Z",
+    );
+
+    expect(
+      (await service.getProfile(account.username, account.id)).user.id,
+    ).toBe(newerAccount.id);
+    expect((await service.getProfile(null, account.id)).user.id).toBe(
+      account.id,
+    );
+    const history = await service.getMatches(null, account.id, {
+      offset: 0,
+      limit: 25,
+    });
+    expect(history.total).toBe(1);
+    expect(history.matches[0].teamId).toBe(team.id);
+  });
 });

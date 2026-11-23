@@ -82,9 +82,17 @@ The local PostgreSQL connection string is:
 postgresql://postgres:postgres@localhost:5432/postgres
 ```
 
+On first startup, the local API container applies migrations and then adds ten
+sample events if the database has no events. The sample events cover all five
+lifecycle states and include team rosters, match history, and standings. Event
+schedules are relative to the first startup and advance as time passes. The
+seed remembers its first run per database schema. To opt out, set
+`SEED_LOCAL_DATABASE` to `"false"` in [the local API values](local-setup/local-values/api.yaml)
+before starting Tilt.
+
 ### OAuth setup
 
-The application can start without OAuth credentials, but login will not work until at least one provider is configured. On the first `make dev`, the setup script can collect the credentials and save them in the gitignored `.env.tilt` file.
+The application can start without OAuth credentials, but login will not work until at least one provider is configured. While no OAuth credentials are configured, `make dev` offers to collect them and save them in the gitignored `.env.tilt` file.
 
 For GitHub login, create a [GitHub OAuth App](https://github.com/settings/developers) with:
 
@@ -97,13 +105,13 @@ For optional 42 Network login, create an OAuth application with this redirect UR
 http://localhost:4000/auth/42/callback
 ```
 
-To change the credentials later, edit `.env.tilt`, or delete it and run `make dev` again.
+To change the credentials later, edit `.env.tilt`.
 
 ### GitHub App setup
 
 Events create team repositories through the CORE GitHub App ([#798](https://github.com/42core-team/website/issues/798)). An organization owner installs the App from the event dashboard, or, when it is already installed on an organization they own (e.g. for an earlier event), links that installation there with one click; team repositories are then created through the installation, and each match pod gets a short-lived token that can only read its own team's repository. Teams whose repository could not be created before GitHub was connected are retried once it is. Events that used an organization token before keep their organization and must connect the App there. Without an App configured, events cannot create team repositories.
 
-To try it locally, register your own development App and add it to `.env.tilt`; see [GitHub App: local setup](docs/github-app.md).
+To try it locally, run `make github-app` (or accept the prompt in `make dev`) to create your own development App and write its credentials to `.env.tilt`; see [GitHub App: local setup](docs/github-app.md).
 
 Deployed environments read `CORE_APP_ID` and `CORE_APP_SLUG` from GitHub environment variables, and `CORE_APP_PRIVATE_KEY` (single-line base64 of the PEM) and `CORE_APP_WEBHOOK_SECRET` from GitHub environment secrets; GitHub reserves the `GITHUB_` prefix there. The deploy workflows pass them to the services as `GITHUB_APP_*`. Their Setup URL is the frontend's `/github/setup` and their webhook URL the api's `/github/webhook`.
 
@@ -113,6 +121,7 @@ Deployed environments read `CORE_APP_ID` and `CORE_APP_SLUG` from GitHub environ
 make stop     # Stop the cluster while preserving its data
 make cluster  # Create the cluster without starting Tilt
 make clean    # Delete the cluster and generated kubeconfig
+make github-app  # Create a development GitHub App and save it in .env.tilt
 ```
 
 ## Service dependencies
@@ -145,11 +154,11 @@ For issues and questions:
 
 ### Team and profile pictures and backgrounds
 
-Team members can upload, crop, replace, and remove artwork in **My Team → edit icon on the team picture or Edit background on the cover**, including while the roster is locked. Users manage their own profile picture
-and background in **Settings → Profile Appearance**; without an uploaded
-picture, the GitHub avatar is shown. JPEG, PNG, static WebP, and animated GIF
+Team members can upload, crop, replace, and remove artwork in **My Team → edit icon on the team picture or Edit background on the cover**, including while the roster is locked. On your **Profile** page, use the edit icon on your picture
+or the background button on the cover. Your GitHub avatar is shown until you
+upload a picture. JPEG, PNG, static WebP, and animated GIF
 uploads are limited to 10 MB and 25 megapixels. The API generates square WebP
-pictures (128/512 px) and a single wide cover (1600×600 px), without enlarging
+pictures (128/512 px) and a single 10:3 cover up to 1600 px wide, without enlarging
 small inputs. GIF animation, frame timing, and looping are preserved in WebP output.
 GIFs are limited to 200 frames and 25 million total pixels across all frames,
 with a 15-second processing timeout per output. Original uploads are discarded; metadata is stripped.

@@ -40,9 +40,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!userId) throw new UnauthorizedException();
     // Tokens without a family id are not tied to a session; reject them.
     if (!payload.fid) throw new UnauthorizedException();
-    // Load current user; if missing, reject token
-    const user = await this.users.getUserById(userId).catch(() => null);
+    // Load current user with their roles; if missing, reject token
+    const user = await this.users.getUserWithRoles(userId);
     if (!user) throw new UnauthorizedException();
-    return user; // attaches to request.user
+    return user; // attaches to request.user, roles included
   }
 }
